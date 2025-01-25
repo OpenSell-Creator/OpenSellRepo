@@ -1,0 +1,408 @@
+{% extends 'base.html'%}
+{% load static %}
+
+{% block 'Body'%}
+    {% if user.is_authenticated %}
+        {% include 'banner.html' %}
+        <a href="{% url 'product_create' %}" id="create-listing-btn" class="btn btn-primary rounded-circle position-fixed" data-bs-toggle="tooltip" data-bs-placement="left" title="Create New Listing">
+            <i class="bi bi-plus"></i>
+        </a>
+    {% else %}
+        <div class="hero-container">
+            <div id="mainCarousel" class="carousel slide" data-bs-ride="carousel">
+                <div class="carousel-inner">
+                    {% static 'images/cars.png' as car_img %}
+                    {% static 'images/market1.jpg' as market1 %}
+                    {% static 'images/market2.jpg' as market2 %}
+                    <div class="carousel-item active" data-bs-interval="5000">
+                        <img src="{{ car_img }}" class="d-block w-100" alt="Cars">
+                        <div class="carousel-overlay"></div>
+                    </div>
+                    <div class="carousel-item" data-bs-interval="5000">
+                        <img src="{{ market1 }}" class="d-block w-100" alt="Market 1">
+                        <div class="carousel-overlay"></div>
+                    </div>
+                    <div class="carousel-item" data-bs-interval="5000">
+                        <img src="{{ market2 }}" class="d-block w-100" alt="Market 2">
+                        <div class="carousel-overlay"></div>
+                    </div>
+                </div>
+                <div class="carousel-caption">
+                    <h1 class="hero-title">Welcome to Iwo Marketplace</h1>
+                    <p class="hero-subtitle">Buying and selling made easy...</p>
+                    <div class="hero-cta mt-4">
+                        <a href="/register" class="btn btn-primary btn-lg me-2">Get Started</a>
+                        <a href="/login" class="btn btn-outline-light btn-lg">Sign In</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Categories Section -->
+    <section class="categories py-5">
+        <div class="container text-center">
+            <h2 class="section-title mb-4">Browse Categories</h2>
+            <div class="category-container">
+                <!-- Desktop Layout -->
+                <div class="category-list d-none d-lg-flex">
+                    {% for category in categories %}
+                        <a href="{% url 'product_list' %}?category={{ category.id }}" class="category-item text-decoration-none">
+                            <div class="category-card">
+                                <div class="category-icon">
+                                    {% if category.image %}
+                                        <img src="{{ category.image.url }}" alt="{{ category.name }}" class="category-image">
+                                    {% else %}
+                                        <i class="fas fa-box"></i>
+                                    {% endif %}
+                                </div>
+                                <h5 class="category-title">{{ category.name }}</h5>
+                            </div>
+                        </a>
+                    {% endfor %}
+                </div>
+
+                <!-- Mobile Layout -->
+                <div class="d-lg-none">
+                    <div class="row g-2">
+                        {% for category in categories|slice:":3" %}
+                            <div class="col-4">
+                                <a href="{% url 'product_list' %}?category={{ category.id }}" class="category-card text-decoration-none">
+                                    <div class="category-icon">
+                                        {% if category.image %}
+                                            <img src="{{ category.image.url }}" alt="{{ category.name }}" class="category-image">
+                                        {% else %}
+                                            <i class="fas fa-box"></i>
+                                        {% endif %}
+                                    </div>
+                                    <h5 class="category-title">{{ category.name }}</h5>
+                                </a>
+                            </div>
+                        {% endfor %}
+                        
+                        {% if categories|length > 3 %}
+                            <div class="col-12">
+                                <div class="collapse" id="mobileCategories">
+                                    <div class="row g-2">
+                                        {% for category in categories|slice:"3:" %}
+                                            <div class="col-4">
+                                                <a href="{% url 'product_list' %}?category={{ category.id }}" class="category-card text-decoration-none">
+                                                    <div class="category-icon">
+                                                        {% if category.image %}
+                                                            <img src="{{ category.image.url }}" alt="{{ category.name }}" class="category-image">
+                                                        {% else %}
+                                                            <i class="fas fa-box"></i>
+                                                        {% endif %}
+                                                    </div>
+                                                    <h5 class="category-title">{{ category.name }}</h5>
+                                                </a>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <button class="btn btn-link w-100 mt-2" data-bs-toggle="collapse" data-bs-target="#mobileCategories">
+                                    Show More Categories <i class="bi bi-chevron-down collapse-icon"></i>
+                                </button>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured Products -->
+    <section class="featured-products py-5">
+        <div class="container-fluid">
+            <h2 class="section-title text-center mb-4">Featured Products</h2>
+            <div class="row g-3">
+                {% for product in featured_products %}
+                    <div class="col-6 col-md-4 col-lg-3 col-xl-2">
+                        {% include 'product_card.html' with product=product %}
+                    </div>
+                {% endfor %}
+            </div>
+
+            {% if featured_products.has_other_pages %}
+                <nav aria-label="Featured products pagination" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if featured_products.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?product_page={{ featured_products.previous_page_number }}">Previous</a>
+                            </li>
+                        {% endif %}
+                        
+                        {% for i in featured_products.paginator.page_range %}
+                            <li class="page-item {% if featured_products.number == i %}active{% endif %}">
+                                <a class="page-link" href="?product_page={{ i }}">{{ i }}</a>
+                            </li>
+                        {% endfor %}
+                        
+                        {% if featured_products.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?product_page={{ featured_products.next_page_number }}">Next</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        </div>
+    </section>
+
+    <style>
+        /* Consolidated & Optimized CSS */
+        /* Section Titles */
+        .section-title {
+            background-color: var(--card-background);
+            color: var(--text-primary);
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            display: inline-block;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+    
+        /* Categories */
+        .category-container {
+            width: 100%;
+            margin: 0 auto;
+        }
+    
+        .category-list {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+            scroll-snap-type: x mandatory;
+        }
+    
+        .category-item {
+            flex: 0 0 140px;
+            max-width: 140px;
+            aspect-ratio: 1/1;
+            scroll-snap-align: start;
+        }
+    
+        .category-card {
+            background: var(--card-background);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+    
+        .category-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+    
+        .category-icon {
+            height: 60px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    
+        .category-image {
+            max-width: 100%;
+            max-height: 60px;
+            object-fit: contain;
+        }
+    
+        .category-title {
+            text-decoration: none !important;
+            font-size: 0.88rem;
+            color: var(--text-primary);
+            margin: 0;
+        }
+    
+        /* Hero Section */
+        .hero-container {
+            position: relative;
+            margin: -2rem -1rem 2rem -1rem;
+            overflow: hidden;
+            border-radius: 0 0 1rem 1rem;
+        }
+    
+        .carousel-item {
+            height: 70vh;
+            min-height: 400px;
+            background-color: #000;
+        }
+    
+        .carousel-item img {
+            object-fit: cover;
+            height: 100%;
+            width: 100%;
+            opacity: 0.8;
+        }
+    
+        .carousel-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.7));
+        }
+    
+        .carousel-caption {
+            bottom: 40%;
+            transform: translateY(50%);
+        }
+    
+        .hero-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+    
+        .hero-subtitle {
+            font-size: 1.25rem;
+            max-width: 600px;
+            margin: 1rem auto;
+        }
+    
+        /* Create Listing Button */
+        #create-listing-btn {
+            right: 40px;
+            bottom: 100px;
+            height: 60px;
+            width: 60px;
+            z-index: 1050;
+            background-color: var(--primary-color);
+            border: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+    
+        #create-listing-btn:hover {
+            transform: scale(1.05);
+            background-color: var(--secondary-color);
+        }
+    
+        /* Pagination */
+        .pagination .page-link {
+            color: var(--text-primary);
+            background-color: var(--card-background);
+            border-color: var(--border-color);
+        }
+    
+        .pagination .page-item.active .page-link {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            color: #fff;
+        }
+    
+        /* Responsive Adjustments */
+        @media (max-width: 991px) {
+            .category-list { display: none !important; }
+            .category-card { aspect-ratio: 1/1; }
+        }
+    
+        @media (max-width: 768px) {
+            .hero-title { font-size: 1.75rem; }
+            .hero-subtitle { font-size: 1rem; }
+            .carousel-item { height: 50vh; }
+        }
+    
+        @media (max-width: 576px) {
+            .hero-title { font-size: 1.5rem; }
+            #create-listing-btn {
+                right: 10px;
+                bottom: 70px;
+                height: 50px;
+                width: 50px;
+            }
+        }
+
+    .category-card a.text-decoration-none,.category-card a:hover {
+        text-decoration: none !important;
+    }
+
+  
+    .category-list::-webkit-scrollbar {
+        height: 4px;
+        background: var(--background-color);
+    }
+
+    .category-list::-webkit-scrollbar-thumb {
+        background: var(--text-secondary);
+        border-radius: 2px;
+    }
+
+    .category-list {
+        scrollbar-color: var(--text-secondary) var(--background-color);
+    }
+
+    /* Mobile collapse button styling */
+    .btn-link[data-bs-toggle="collapse"] {
+        text-decoration: none;
+        color: var(--text-primary) !important;
+    }
+
+    .btn-link[data-bs-toggle="collapse"]:hover {
+        text-decoration: none;
+    }
+
+    /* Collapse icon transition */
+    .collapse-icon {
+        transition: transform 0.3s ease;
+    }
+
+    [aria-expanded="true"] .collapse-icon {
+        transform: rotate(180deg);
+    }
+    </style>
+
+    <script>
+       // Optimized JavaScript
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initialize carousel
+        const carousel = new bootstrap.Carousel('#mainCarousel', {
+            interval: 5000,
+            wrap: true,
+            pause: 'hover'
+        });
+
+        // Handle category collapse
+        const collapseBtns = document.querySelectorAll('[data-bs-toggle="collapse"]');
+        collapseBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const icon = btn.querySelector('i');
+                if (btn.getAttribute('aria-expanded') === 'true') {
+                    icon.classList.replace('bi-chevron-up', 'bi-chevron-down');
+                } else {
+                    icon.classList.replace('bi-chevron-down', 'bi-chevron-up');
+                }
+            });
+        });
+
+        // Initialize tooltip
+        new bootstrap.Tooltip(document.getElementById('create-listing-btn'));
+    });
+
+    // Modified collapse button functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const collapseElement = document.getElementById('mobileCategories');
+        const collapseButton = document.querySelector('[data-bs-target="#mobileCategories"]');
+
+        collapseElement.addEventListener('show.bs.collapse', function () {
+            collapseButton.innerHTML = 'Show Less Categories <i class="bi bi-chevron-up collapse-icon"></i>';
+        });
+
+        collapseElement.addEventListener('hide.bs.collapse', function () {
+            collapseButton.innerHTML = 'Show More Categories <i class="bi bi-chevron-down collapse-icon"></i>';
+        });
+    });
+    </script>
+{% endblock %}
+{% block 'Footer'%}{% endblock %}

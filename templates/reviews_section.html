@@ -1,0 +1,92 @@
+<div class="row mt-5">
+    <div class="col-md-12">
+        <h2>Reviews ({{ review_count }})</h2>
+        {% if reviews %}
+            <div class="mb-3">
+                <h4>Average Rating: {{ average_rating|floatformat:1 }} / 5</h4>
+                <div class="progress">
+                    <div class="progress-bar bg-success" role="progressbar" 
+                         style="width: {% widthratio average_rating 5 100 %}%" 
+                         aria-valuenow="{% widthratio average_rating 5 100 %}" 
+                         aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+            </div>
+            
+            {% for review in reviews %}
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <h5 class="card-title">{{ review.rating }} / 5 stars</h5>
+                            <div class="d-flex align-items-center">
+                                <small class="text-muted me-3">{{ review.created_at|date:"F d, Y" }}</small>
+                                {% if user == review.reviewer %}
+                                    <div class="btn-group">
+                                        <a href="{% url 'edit_review' pk=product.id review_id=review.id %}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                           <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{% url 'delete_review' pk=product.id review_id=review.id %}" 
+                                           class="btn btn-sm btn-outline-danger">
+                                           <i class="fas fa-trash"></i>
+                                        </a>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <h6 class="card-subtitle mb-2 text-muted">By {{ review.reviewer.username }}</h6>
+                        <p class="card-text">{{ review.comment }}</p>
+                        
+                        {% if user.is_authenticated %}
+                            {% if user == product.seller.user and not review.replies.exists %}
+                                <a href="{% url 'reply_to_review' pk=product.id review_id=review.id %}" 
+                                   class="btn btn-primary btn-sm">Reply</a>
+                            {% endif %}
+                        {% endif %}
+
+                        <!-- Replies -->
+                        {% for reply in review.replies.all %}
+                            <div class="card mt-3 ms-4">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <h6 class="card-subtitle mb-2 text-muted">Reply from Seller</h6>
+                                        <div class="d-flex align-items-center">
+                                            <small class="text-muted me-3">{{ reply.created_at|date:"F d, Y" }}</small>
+                                            {% if user == reply.reviewer %}
+                                                <div class="btn-group">
+                                                    <a href="{% url 'edit_reply' pk=product.id reply_id=reply.id %}" 
+                                                       class="btn btn-sm btn-outline-primary">
+                                                       <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a href="{% url 'delete_reply' pk=product.id reply_id=reply.id %}" 
+                                                       class="btn btn-sm btn-outline-danger">
+                                                       <i class="fas fa-trash"></i>
+                                                    </a>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <p class="card-text">{{ reply.comment }}</p>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No reviews yet.</p>
+        {% endif %}
+
+        {% if user.is_authenticated and user != product.seller.user %}
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h5 class="card-title">Write a Review</h5>
+                    <form method="post" action="{% url 'submit_review' review_type='product' pk=product.id %}">
+                        {% csrf_token %}
+                        {{ review_form.as_p }}
+                        <button type="submit" class="btn btn-primary">Submit Review</button>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>

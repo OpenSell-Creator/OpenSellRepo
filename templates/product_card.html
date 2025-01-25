@@ -1,0 +1,386 @@
+<div class="card product-card h-100">
+    <div class="product-image-container">
+        <a href="{% url 'product_detail' pk=product.id %}">
+            {% with primary_image=product.images.filter.first %}
+                {% if primary_image %}
+                    <img src="{{ primary_image.image.url }}" class="product-image" alt="{{ product.title }}">
+                {% else %}
+                    <img src="" class="product-image" alt="{{ product.title }}">
+                {% endif %}
+            {% endwith %}
+        </a>
+        {% if user.is_authenticated %}
+            <button class="save-button {% if product.is_saved %}saved{% endif %}"
+                data-product-id="{{ product.id }}"
+                onclick="toggleSaveProduct(event, '{{ product.id }}')">
+                <i class="fas fa-bookmark"></i>
+            </button>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <a href="{% url 'product_detail' pk=product.id %}" class="product-title-link">
+            <h3 class="product-title">{{ product.title }}</h3>
+        </a>
+        <div class="product-info">
+            <div class="info-wrapper">
+                <div class="info-main">
+                    <div class="price-seller-wrapper">
+                        <div class="product-price">{{ product.formatted_price }}</div>
+                        <div class="seller-info">
+                            <img src="{{ product.seller.user.profile.photo.url }}" alt="{{ product.seller.username }}" class="seller-avatar">
+                            <span class="seller-name">{{ product.seller.user.username }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="condition-date-wrapper">
+                    <div class="product-condition condition-{{ product.condition|lower }}">{{ product.get_condition_display }}</div>
+                    <div class="product-date">{{ product.created_at|date:"M d" }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .container-fluid {
+        padding-right: 15px;
+        padding-left: 15px;
+        margin-right: auto;
+        margin-left: auto;
+        max-width: 1400px;
+    }
+
+    .product-column {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .product-card {
+        transition: all 0.3s ease;
+        height: 100%;
+        background: var(--card-background);
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius-md);
+        box-shadow: 0 2px 8px var(--shadow-color);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .product-card:hover {
+        border-color: var(--primary-color);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px var(--shadow-color);
+    }
+
+    .product-image-container {
+        position: relative;
+        padding-top: 100%;
+        overflow: hidden;
+    }
+
+    .product-image {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+    }
+
+    .product-card:hover .product-image {
+        transform: scale(1.05);
+    }
+
+    .card-body {
+        display: flex;
+        flex-direction: column;
+        padding: var(--spacing-md);
+        flex-grow: 1;
+    }
+
+    .product-title-link {
+        text-decoration: none;
+        color: var(--text-primary);
+    }
+
+    .product-title {
+        font-weight: 700;
+        line-height: 1.2;
+        margin-bottom: 0.5rem;
+        font-size: var(--font-size-base);
+        margin: 0 0 var(--spacing-md) 0;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        min-height: 2.6em;
+        color: var(--text-primary);
+    }
+
+    .product-info {
+        margin-top: auto;
+    }
+
+    .info-wrapper {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: var(--spacing-sm);
+        min-width: 0;
+    }
+
+    .info-main {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .price-seller-wrapper {
+        min-width: 0;
+    }
+
+    .product-price {
+        font-size: var(--font-size-lg);
+        font-weight: 600;
+        color: var(--primary-color);
+        margin-bottom: var(--spacing-xs);
+        white-space: nowrap;
+    }
+
+    .seller-info {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        min-width: 0;
+    }
+
+    .seller-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: var(--radius-full);
+        object-fit: cover;
+        border: 2px solid var(--border-color);
+        flex-shrink: 0;
+    }
+
+    .seller-name {
+        font-size: var(--font-size-sm);
+        color: var(--text-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
+    }
+
+    .condition-date-wrapper {
+        text-align: right;
+        flex-shrink: 0;
+    }
+
+    .product-condition {
+        font-size: var(--font-size-xs);
+        color: var(--light-card-background);
+        padding: var(--spacing-xs) var(--spacing-sm);
+        border-radius: var(--radius-sm);
+        display: inline-block;
+        margin-bottom: var(--spacing-xs);
+        white-space: nowrap;
+    }
+
+    .condition-new { 
+        background-color: var(--light-success);
+        border: 1px solid var(--light-border-color);
+    }
+    
+    .condition-used { 
+        background-color: var(--light-info);
+        border: 1px solid var(--light-border-color);
+    }
+
+    .product-date {
+        font-size: var(--font-size-xs);
+        color: var(--text-secondary);
+        white-space: nowrap;
+    }
+
+    .save-button {
+        position: absolute;
+        top: var(--spacing-sm);
+        right: var(--spacing-sm);
+        background: var(--card-background);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-full);
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        z-index: 1;
+        box-shadow: 0 2px 4px var(--shadow-color);
+    }
+
+    .save-button:hover {
+        transform: scale(1.05);
+        background: var(--hover-bg);
+        border-color: var(--primary-color);
+    }
+
+    .save-button i {
+        color: var(--text-secondary);
+        font-size: var(--font-size-lg);
+        transition: color 0.2s ease;
+    }
+
+    .save-button.saved i {
+        color: var(--accent-color);
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 1199.98px) {
+        .card-body {
+            padding: var(--spacing-sm);
+        }
+
+        .product-title {
+            font-size: var(--font-size-sm);
+            min-height: 2.4em;
+        }
+        
+        .product-price {
+            font-size: var(--font-size-base);
+        }
+    }
+
+    @media (max-width: 767.98px) {
+        .product-title {
+            font-size: var(--font-size-xs);
+            min-height: 2.2em;
+        }
+
+        .seller-avatar {
+            width: 20px;
+            height: 20px;
+        }
+
+        .seller-name {
+            font-size: var(--font-size-xs);
+        }
+
+        .product-price {
+            font-size: var(--font-size-sm);
+        }
+
+        .info-wrapper {
+            gap: var(--spacing-xs);
+        }
+    }
+
+    @media (max-width: 575.98px) {
+        .save-button {
+            width: 32px;
+            height: 32px;
+        }
+
+        .save-button i {
+            font-size: var(--font-size-base);
+        }
+
+        .card-body {
+            padding: var(--spacing-xs);
+        }
+    }
+</style>
+<script>
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    function toggleSaveProduct(event, productId) {
+        event.preventDefault();
+        
+        const button = event.currentTarget;
+        const csrfToken = getCookie('csrftoken');
+        
+        if (!csrfToken) {
+            console.error('CSRF token not found');
+            return;
+        }
+    
+        // Disable button during request
+        button.disabled = true;
+        
+        fetch('/products/toggle-save/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': csrfToken,
+            },
+            body: `product_id=${productId}`
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Update all instances of this product's save button on the page
+            const buttons = document.querySelectorAll(`[data-product-id="${productId}"]`);
+            buttons.forEach(btn => {
+                if (data.status === 'saved') {
+                    btn.classList.add('saved');
+                } else if (data.status === 'removed') {
+                    btn.classList.remove('saved');
+                }
+            });
+            
+            showToast(data.message);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('An error occurred. Please try again.');
+        })
+        .finally(() => {
+            button.disabled = false;
+        });
+    }
+    
+    function showToast(message) {
+        // Create a toast element
+        const toast = document.createElement('div');
+        toast.className = 'save-toast';
+        toast.textContent = message;
+        
+        // Add toast styles
+        toast.style.position = 'fixed';
+        toast.style.bottom = '20px';
+        toast.style.right = '20px';
+        toast.style.backgroundColor = '#333';
+        toast.style.color = 'white';
+        toast.style.padding = '10px 20px';
+        toast.style.borderRadius = '4px';
+        toast.style.zIndex = '1000';
+        
+        // Add to document
+        document.body.appendChild(toast);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+    </script>

@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block 'Body' %}
+<div class="container-fluid">
+    <!-- Subcategory Quick Links -->
+    {% if selected_category_obj and subcategories %}
+    <div class="card mb-3">
+        <div class="card-body">
+            <h6 class="card-subtitle mb-2 text-muted">{{ selected_category_obj.name }} Categories</h6>
+            <div class="subcategory-scroll-container">
+                <div class="subcategory-wrapper">
+                    <!-- Add "All" subcategory option -->
+                    <a href="?category={{ selected_category_obj.id }}" 
+                       class="subcategory-pill {% if not selected_subcategory %}active{% endif %}">
+                        All
+                    </a>
+                    {% for subcategory in subcategories %}
+                    <a href="?category={{ selected_category_obj.id }}&subcategory={{ subcategory.id }}" 
+                       class="subcategory-pill {% if subcategory.id == selected_subcategory %}active{% endif %}">
+                        {{ subcategory.name }}
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <!-- Desktop Sidebar -->
+        <div class="col-md-3 d-none d-md-block">
+            <div class="sticky-top" style="top: 80px;">
+                {% include 'filter_sidebar.html' %}
+            </div>
+        </div>
+
+        <!-- Product Grid -->
+        <div class="col-12 col-md-9">
+            <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-2">
+                {% for product in products %}
+                    <div class="col">
+                        {% include 'product_card.html' with product=product %}
+                    </div>
+                {% empty %}
+                    <div class="col-12">
+                        <p class="text-center">No products found.</p>
+                    </div>
+                {% endfor %}
+            </div>
+            <div class="mt-4">
+                {% include 'pagination.html' %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    
+    @media (max-width: 768px) {
+        .card-subtitle {
+            margin-bottom: 0.75rem !important;
+            margin-left: 0.5rem;
+        }
+    }
+    .subcategory-scroll-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding-bottom: 8px;
+        margin: 0 -1rem;
+    }
+
+    .subcategory-scroll-container::-webkit-scrollbar {
+        display: none;
+    }
+
+    .subcategory-wrapper {
+        display: flex;
+        gap: 0.75rem;
+        padding: 0 1rem;
+        width: max-content;
+    }
+
+    .subcategory-pill {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        background-color: var(--card-background);
+        border: 1px solid var(--border-color);
+        border-radius: 50px;
+        color: var(--text-primary);
+        text-decoration: none;
+        white-space: nowrap;
+        transition: all 0.2s ease;
+    }
+
+    .subcategory-pill.active {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+        color: var(--text-primary-inverse);
+    }
+
+    /* Filter Sidebar Fixes */
+    .list-group-item {
+        background-color: var(--card-background);
+        border-color: var(--border-color) !important;
+        color: var(--text-primary);
+    }
+
+    .list-group-item.active {
+        background-color: var(--primary-color) !important;
+        border-color: var(--primary-color) !important;
+        color: var(--text-primary-inverse) !important;
+    }
+
+    .list-group-item a {
+        color: inherit;
+        text-decoration: none !important;
+    }
+
+    .bi-chevron-down {
+        transition: transform 0.2s ease-in-out;
+    }
+
+    .show .bi-chevron-down {
+        transform: rotate(180deg);
+    }
+
+    /* Mobile Optimization */
+    @media (max-width: 768px) {
+        .row-cols-2 > .col {
+            flex: 0 0 50%;
+            max-width: 50%;
+        }
+        
+        .subcategory-scroll-container {
+            margin: 0 -1rem;
+        }
+    }
+</style>
+{% endblock %}
+{% block 'Footer'%}{% endblock %}

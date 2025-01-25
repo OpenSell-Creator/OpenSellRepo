@@ -1,0 +1,86 @@
+{% extends 'messages/base.html' %}
+
+{% block messages_content %}
+<div class="mb-3">
+    <a href="{% url 'inbox' %}" class="text-decoration-none">
+        <i class="fas fa-arrow-left"></i> Back to Messages
+    </a>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">{{ conversation.product.title }}</h5>
+            <div class="text-end">
+                <div class="fs-6">{{ formatted_price }}.00</div>
+                <small class="text-muted">
+                    Seller: {{ conversation.product.seller.user.username }}
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="chat-container">
+    {% for message in messages %}
+        <div class="message-bubble {% if message.sender == request.user.profile %}message-sent{% else %}message-received{% endif %}">
+            <div class="message-content">{{ message.content |linebreaks }}</div>
+            <div class="message-timestamp">
+                {% if message.sender != request.user.profile %}
+                    {{ message.sender.user.username }} • 
+                {% endif %}
+                {{ message.timestamp|date:"g:i A, M d" }}
+            </div>
+        </div>
+    {% empty %}
+        <div class="text-center text-muted">
+            <p>Start the conversation by sending a message.</p>
+        </div>
+    {% endfor %}
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" id="messageForm">
+            {% csrf_token %}
+            {% if is_buyer %}
+                <div class="mb-3">
+                    {{ form.inquiry_type }}
+                </div>
+            {% endif %}
+            <div class="message-form">
+                {{ form.content }}
+                <div class="mt-2 text-end">
+                    <button type="submit" class="btn btn-secondary">
+                        Send Message
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const inquirySelect = document.getElementById('{{ form.inquiry_type.id_for_label }}');
+    const contentTextarea = document.getElementById('{{ form.content.id_for_label }}');
+    const chatContainer = document.querySelector('.chat-container');
+    
+    // Set initial scroll position
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    
+    if (inquirySelect) {
+        inquirySelect.addEventListener('change', function() {
+            const selectedText = this.options[this.selectedIndex].text;
+            if (this.value !== '') {
+                contentTextarea.value = selectedText;
+                contentTextarea.focus();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+{% block 'Footer'%}
+    
+    {% endblock%}

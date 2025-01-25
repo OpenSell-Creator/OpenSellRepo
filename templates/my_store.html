@@ -1,0 +1,344 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block 'Body' %}
+<div class="store-container">
+    <!-- Store Header Section -->
+    <div class="store-header">
+        <div class="container">
+            <div class="row align-items-center py-3 py-md-5">
+                <div class="col-12 col-md-4 text-center mb-4 mb-md-0">
+                    {% if store_owner.profile.photo %}
+                        <img src="{{ store_owner.profile.photo.url }}" 
+                             alt="Profile Photo" 
+                             class="store-profile-photo">
+                    {% else %}
+                        <img src="{% static 'default_profile.png' %}" 
+                             alt="Default Profile Photo" 
+                             class="store-profile-photo">
+                    {% endif %}
+                </div>
+                <div class="col-12 col-md-8 text-center text-md-start">
+                    <h1 class="mb-2 h3 h-md-1">{{ store_owner.username }}'s Store</h1>
+                    {% if store_owner.profile.bio %}
+                        <p class="store-bio mb-3">{{ store_owner.profile.bio }}</p>
+                    {% endif %}
+                    {% if request.user == store_owner %}
+                        <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-md-start">
+                            <a href="{% url 'product_create' %}" class="btn btn-add-product">
+                                <span class="btn-icon">
+                                    <i class="bi bi-plus-lg"></i>
+                                    <i class="bi bi-box-seam"></i>
+                                </span>
+                                <span class="btn-text">Add Product</span>
+                            </a>
+                            <a href="{% url 'profile_update' %}" class="btn btn-edit-profile">
+                                <span class="btn-icon">
+                                    <i class="bi bi-pencil-fill"></i>
+                                    <i class="bi bi-person-gear"></i>
+                                </span>
+                                <span class="btn-text">Edit Profile</span>
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container">
+        <div class="row g-4">
+            <!-- Store Information Sidebar - Moved below on mobile -->
+            <div class="col-12 col-lg-3 order-lg-first">
+                <div class="card store-info-card">
+                    <div class="card-body">
+                        <h5 class="card-title border-bottom pb-2 mb-3 h6">
+                            {% if request.user == store_owner %}
+                                My Information
+                            {% else %}
+                                Seller's Information
+                            {% endif %}
+                        </h5>
+                        
+                        <div class="store-info-item">
+                            <i class="bi bi-person-circle me-2"></i>
+                            <span class="text-break">{{ store_owner.get_full_name }}</span>
+                        </div>
+                        
+                        <div class="store-info-item">
+                            <i class="bi bi-envelope me-2"></i>
+                            <span class="text-break">{{ store_owner.email }}</span>
+                        </div>
+                        
+                        {% if store_owner.profile.phone_number %}
+                        <div class="store-info-item">
+                            <i class="bi bi-telephone me-2"></i>
+                            <span>{{ store_owner.profile.phone_number }}</span>
+                        </div>
+                        {% endif %}
+                        
+                        {% if store_owner.profile.location %}
+                        <div class="store-info-item">
+                            <i class="bi bi-geo-alt me-2"></i>
+                            <span>{{ store_owner.profile.location.district }}, 
+                                  {{ store_owner.profile.location.state }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Products Section -->
+            <div class="col-12 col-lg-9">
+                <div class="products-section">
+                    <h3 class="h5 mb-3">Active Listings</h3>
+                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+                        {% for product in products %}
+                            <div class="col">
+                                {% include 'product_card.html' with product=product %}
+                            </div>
+                        {% empty %}
+                            <div class="col-12">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center py-4">
+                                        <i class="bi bi-box2-heart h1 text-muted mb-3"></i>
+                                        <h5 class="h6 mb-3">No products available yet</h5>
+                                        {% if request.user == store_owner %}
+                                            <a href="{% url 'product_create' %}" class="btn btn-primary btn-sm">
+                                                Create Your First Listing
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .store-container {
+        background-color: var(--background-color);
+        min-height: 100vh;
+    }
+
+    .store-header {
+        background-color: var(--primary-color);
+        color: var(--text-primary);
+        margin: -2rem -1rem 2rem -1rem;
+        border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+    }
+
+    .store-profile-photo {
+        width: 120px;
+        height: 120px;
+        object-fit: cover;
+        border-radius: var(--radius-full);
+        border: 3px solid var(--card-background);
+        box-shadow: 0 4px 20px var(--shadow-color);
+    }
+
+    .store-info-card {
+        background-color: var(--card-background);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        margin-top: 1rem;
+        padding: 0.5rem; /* Added padding */
+    }
+
+    .store-info-item {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem; /* Added horizontal padding */
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        font-size: 0.95rem; /* Slightly larger text */
+    }
+
+    @media (max-width: 768px) {
+        .store-info-card {
+            padding: 1rem; /* Adjusted mobile padding */
+        }
+        
+        .store-info-item {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.9rem;
+        }
+    }
+    .store-info-item:last-child {
+        border-bottom: none;
+    }
+
+    .store-info-item i {
+        color: var(--accent-color);
+        width: 24px;
+        font-size: 1.1rem;
+    }
+
+    .products-section {
+        background-color: var(--card-background);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-md);
+        border: 1px solid var(--border-color);
+    }
+
+    @media (max-width: 768px) {
+        .store-header {
+            margin: -1rem -0.5rem 1.5rem -0.5rem;
+            padding: 1.5rem 0;
+        }
+        
+        .store-profile-photo {
+            width: 100px;
+            height: 100px;
+        }
+        
+        .products-section {
+            padding: var(--spacing-sm);
+        }
+
+        .store-info-card {
+            margin-top: 0;
+        }
+
+        .store-info-item {
+            padding: 0.5rem 0;
+            font-size: 0.85rem;
+        }
+
+        .store-info-item i {
+            font-size: 1rem;
+        }
+    }
+
+    @media (min-width: 992px) {
+        .store-profile-photo {
+            width: 160px;
+            height: 160px;
+        }
+    }
+    .btn-add-product, .btn-edit-profile {
+        position: relative;
+        padding: 0.8rem 1.5rem;
+        border: none;
+        border-radius: var(--radius-lg);
+        font-weight: 600;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .btn-add-product {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        color: white !important;
+        box-shadow: 0 4px 6px -1px rgba(45, 106, 79, 0.2);
+    }
+
+    .btn-edit-profile {
+        background: var(--card-background);
+        color: var(--text-primary) !important;
+        border: 2px solid var(--border-color);
+        box-shadow: 0 2px 4px -1px var(--shadow-color);
+    }
+
+    .btn-icon {
+        position: relative;
+        display: inline-flex;
+        transition: transform 0.3s ease;
+    }
+
+    .btn-icon i {
+        transition: all 0.3s ease;
+    }
+
+    .btn-icon i:last-child {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, 100%);
+        opacity: 0;
+    }
+
+    .btn-add-product:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 12px -2px rgba(45, 106, 79, 0.25);
+    }
+
+    .btn-edit-profile:hover {
+        background: var(--hover-bg);
+        transform: translateY(-2px);
+        border-color: var(--accent-color);
+    }
+
+    /* Button Hover Animations */
+    .btn-add-product:hover .btn-icon i:first-child {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+
+    .btn-add-product:hover .btn-icon i:last-child {
+        transform: translate(-50%, -50%);
+        opacity: 1;
+    }
+
+    .btn-edit-profile:hover .btn-icon i:first-child {
+        transform: rotate(-15deg) scale(1.1);
+    }
+
+    /* Bio Text Mobile Optimization */
+    .store-bio {
+        font-size: 1rem;
+        line-height: 1.5;
+        color: var(--text-secondary);
+        max-width: 600px;
+    }
+
+    @media (max-width: 768px) {
+        .store-bio {
+            font-size: 0.875rem;
+            line-height: 1.4;
+            padding: 0 1rem;
+        }
+        
+        .btn-add-product, .btn-edit-profile {
+            padding: 0.7rem 1.2rem;
+            font-size: 0.9rem;
+        }
+        
+        .btn-icon {
+            font-size: 1.1rem;
+        }
+    }
+
+    /* Button Glow Effect */
+    .btn-add-product::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(45deg, 
+            transparent 25%,
+            rgba(255,255,255,0.1) 50%,
+            transparent 75%);
+        background-size: 400% 400%;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .btn-add-product:hover::after {
+        opacity: 1;
+        animation: gradientFlow 3s infinite linear;
+    }
+
+    @keyframes gradientFlow {
+        0% { background-position: 100% 50% }
+        100% { background-position: 0% 50% }
+    }
+</style>
+{% endblock %}
+{% block 'Footer'%}{% endblock %}

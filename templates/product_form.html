@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block 'Body' %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="text-center">{{ title }}</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        {% for field in form %}
+                            <div class="mb-3">
+                                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                                {% if field.name in 'condition,category,subcategory,brand' %}
+                                    <select name="{{ field.name }}" id="{{ field.id_for_label }}" class="form-select {% if field.errors %}is-invalid{% endif %}">
+                                        <option value="" disabled {% if not field.value %}selected{% endif %}>Select {{ field.label }}</option>
+                                        {% for choice in field.field.choices %}
+                                            <option value="{{ choice.0 }}" {% if field.value == choice.0 %}selected{% endif %}>{{ choice.1 }}</option>
+                                        {% endfor %}
+                                    </select>
+                                {% elif field.name == 'images' %}
+                                    {{ field }}
+                                {% elif field.name == 'formatted_price' %}
+                                    <input type="text" name="{{ field.name }}" id="{{ field.id_for_label }}" 
+                                           class="form-control {% if field.errors %}is-invalid{% endif %}"
+                                           placeholder="₦ 0" value="{{ field.value|default:'' }}">
+                                {% else %}
+                                    {{ field }}
+                                {% endif %}
+                                {% if field.help_text %}
+                                    <small class="form-text text-muted">{{ field.help_text }}</small>
+                                {% endif %}
+                                {% for error in field.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-secondary">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const categorySelect = document.getElementById('id_category');
+        const subcategorySelect = document.getElementById('id_subcategory');
+        const brandSelect = document.getElementById('id_brand');
+
+        categorySelect.addEventListener('change', function() {
+            const categoryId = this.value;
+            subcategorySelect.innerHTML = '<option value="">Select Subcategory</option>';
+            brandSelect.innerHTML = '<option value="">Select Brand</option>';
+
+            if (categoryId) {
+                fetch(`/ajax/load-subcategories/?category=${categoryId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        data.forEach(subcategory => {
+                            const option = document.createElement('option');
+                            option.value = subcategory.id;
+                            option.textContent = subcategory.name;
+                            subcategorySelect.appendChild(option);
+                        });
+                    });
+            }
+        });
+
+        subcategorySelect.addEventListener('change', function() {
+            const subcategoryId = this.value;
+            brandSelect.innerHTML = '<option value="">Select Brand</option>';
+
+            if (subcategoryId) {
+                fetch(`/ajax/load-brands/?subcategory=${subcategoryId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        data.forEach(brand => {
+                            const option = document.createElement('option');
+                            option.value = brand.id;
+                            option.textContent = brand.name;
+                            brandSelect.appendChild(option);
+                        });
+                    });
+            }
+        });
+    });
+
+    // PriceInput formatting
+    document.addEventListener('DOMContentLoaded', function() {
+        var priceInput = document.getElementById('id_formatted_price');
+        
+        priceInput.addEventListener('input', function(e) {
+            var value = e.target.value.replace(/[^\d]/g, '');
+            if (value !== '') {
+                value = parseInt(value, 10);
+                e.target.value = '₦ ' + value.toLocaleString('en-NG');
+            }
+        });
+    
+        priceInput.addEventListener('blur', function(e) {
+            var value = e.target.value.replace(/[^\d]/g, '');
+            if (value !== '') {
+                value = parseInt(value, 10);
+                e.target.value = '₦ ' + value.toLocaleString('en-NG');
+            }
+        });
+    });
+    </script>
+{% endblock %}
+{% block 'Footer'%}{% endblock %}

@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block 'Body' %}
+<h2 class="text-center sm-2">Product Search</h2>
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="get" action="{% url 'product_search' %}" id="advancedSearchForm">
+                <!-- Main search row with filter button -->
+                <div class="row mg-1">
+                    <div class="col">
+                        {{ form.query|add_class:"form-control form-control-md"|attr:"placeholder:Search products..." }}
+                    </div>
+                    <div class="col-auto">
+                        <button type="button" 
+                                class="btn btn-outline-secondary btn-mg d-flex align-items-center gap-1" 
+                                data-bs-toggle="collapse" 
+                                data-bs-target="#filterSection"
+                                aria-expanded="false"
+                                aria-controls="filterSection">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="21" y1="4" x2="14" y2="4"></line>
+                                <line x1="10" y1="4" x2="3" y2="4"></line>
+                                <line x1="21" y1="12" x2="12" y2="12"></line>
+                                <line x1="8" y1="12" x2="3" y2="12"></line>
+                                <line x1="21" y1="20" x2="16" y2="20"></line>
+                                <line x1="12" y1="20" x2="3" y2="20"></line>
+                                <line x1="14" y1="2" x2="14" y2="6"></line>
+                                <line x1="8" y1="10" x2="8" y2="14"></line>
+                                <line x1="16" y1="18" x2="16" y2="22"></line>
+                            </svg>
+                            
+                            <span class="badge bg-secondary" id="activeFiltersCount">0</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Collapsible filter section -->
+                <div class="collapse" id="filterSection">
+                    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
+                        <div class="col">
+                            <label class="form-label">Category</label>
+                            {{ form.category|add_class:"form-select" }}
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Subcategory</label>
+                            <select name="subcategory" id="id_subcategory" class="form-select" disabled>
+                                <option value="">All Subcategories</option>
+                            </select>
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Condition</label>
+                            {{ form.condition|add_class:"form-select"|attr:"aria-label:Condition" }}
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Minimum Price</label>
+                            {{ form.min_price|add_class:"form-control"|attr:"placeholder:Enter minimum price" }}
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Maximum Price</label>
+                            {{ form.max_price|add_class:"form-control"|attr:"placeholder:Enter maximum price" }}
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col">
+                            <button type="submit" class="btn btn-primary">Apply Filters</button>
+                            <button type="button" class="btn btn-outline-secondary ms-2" id="clearFilters">Clear All</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <h2 class="text-center mt-4">Search Results</h2>
+    <div class="mt-4">
+        <div class="row row-cols-2 row-cols-md-5 g-2">
+            {% for product in products %}
+                <div class="col">
+                    {% include 'product_card.html' with product=product %}
+                </div>
+            {% empty %}
+                <div class="col-12">
+                    <p class="text-center">No products found matching your criteria.</p>
+                </div>
+            {% endfor %}
+        </div>
+        <div class="mt-4">
+            {% include 'pagination.html' %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Category and subcategory handling
+    const categorySelect = document.getElementById('id_category');
+    const subcategorySelect = document.getElementById('id_subcategory');
+    const filterSection = document.getElementById('filterSection');
+    const clearFiltersBtn = document.getElementById('clearFilters');
+    const form = document.getElementById('advancedSearchForm');
+    const activeFiltersCount = document.getElementById('activeFiltersCount');
+
+    // Function to update active filters count
+    function updateActiveFiltersCount() {
+        let count = 0;
+        const formElements = form.elements;
+        
+        for (let element of formElements) {
+            if (element.type !== 'submit' && element.type !== 'button' && element.value) {
+                // Don't count the main search query
+                if (element.name !== 'query') {
+                    count++;
+                }
+            }
+        }
+        
+        activeFiltersCount.textContent = count;
+        // Show/hide badge based on count
+        activeFiltersCount.style.display = count > 0 ? 'inline-block' : 'none';
+    }
+
+    // Initialize active filters count
+    updateActiveFiltersCount();
+
+    // Category change handler
+    categorySelect.addEventListener('change', function() {
+        const categoryId = this.value;
+        if (categoryId) {
+            fetch(`/api/subcategories/${categoryId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
+                    data.forEach(subcategory => {
+                        const option = document.createElement('option');
+                        option.value = subcategory.id;
+                        option.textContent = subcategory.name;
+                        subcategorySelect.appendChild(option);
+                    });
+                    subcategorySelect.disabled = false;
+                    updateActiveFiltersCount();
+                });
+        } else {
+            subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
+            subcategorySelect.disabled = true;
+            updateActiveFiltersCount();
+        }
+    });
+
+    // Clear filters handler
+    clearFiltersBtn.addEventListener('click', function() {
+        const formElements = form.elements;
+        for (let element of formElements) {
+            if (element.type !== 'submit' && element.type !== 'button') {
+                // Preserve the main search query
+                if (element.name !== 'query') {
+                    element.value = '';
+                }
+            }
+        }
+        subcategorySelect.disabled = true;
+        updateActiveFiltersCount();
+    });
+
+    // Listen for changes on all form inputs
+    form.addEventListener('change', updateActiveFiltersCount);
+    form.addEventListener('input', updateActiveFiltersCount);
+});
+</script>
+{% endblock %}
+{% block 'Footer'%}{% endblock %}
