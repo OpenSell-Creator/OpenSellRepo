@@ -11,8 +11,9 @@ from django.contrib.auth.models import User
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from .forms import SignUpForm
+from .forms import SignUpForm,ProfileUpdateForm
 from .models import Profile,location
+from django.core.files.base import ContentFile
 from django.contrib.auth.models import User
 from django.db.models import Max, Q
 
@@ -76,8 +77,8 @@ def profile_menu(request):
 
 class ProfileUpdateView(LoginRequiredMixin, UpdateView):
     model = Profile
+    form_class = ProfileUpdateForm  # Use the custom form
     template_name = 'profile_update.html'
-    fields = ['photo', 'bio', 'phone_number']
     success_url = reverse_lazy('my_store')
 
     def get_object(self, queryset=None):
@@ -86,30 +87,26 @@ class ProfileUpdateView(LoginRequiredMixin, UpdateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['user'] = self.request.user
+        context['location'] = self.object.location
         return context
 
     def form_valid(self, form):
-        # Update User
+        # Handle User model updates
         user = self.request.user
         user.username = self.request.POST.get('username')
         user.email = self.request.POST.get('email')
         user.save()
 
-        # Update or create Location
-        location_instance, created = location.objects.get_or_create(profile=self.object)
+        # Handle Location updates
+        location_instance = self.object.location
         location_instance.address = self.request.POST.get('address')
         location_instance.address_2 = self.request.POST.get('address_2')
         location_instance.state = self.request.POST.get('state')
         location_instance.district = self.request.POST.get('district')
         location_instance.save()
 
-        # Update Profile
-        profile = form.save(commit=False)
-        profile.location = location_instance
-        profile.save()
-
+        # Let the form handle profile updates
         return super().form_valid(form)
-
 class ProfileDetailView(LoginRequiredMixin, DetailView):
     model = Profile
     template_name = 'profile_detail.html'

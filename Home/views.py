@@ -169,21 +169,29 @@ class ProductDetailView(DetailView):
         context['primary_image'] = self.object.images.filter(is_primary=True).first() or self.object.images.first()
         
         # Get reviews with their replies
-        reviews = self.object.reviews.select_related(
-            'reviewer'
-        ).prefetch_related(
-            Prefetch(
-                'replies',
-                queryset=ReviewReply.objects.select_related('reviewer').order_by('created_at')
-            )
-        ).order_by('-created_at')
+        reviews = self.object.reviews.select_related('reviewer').prefetch_related(
+            Prefetch('replies', queryset=ReviewReply.objects.select_related('reviewer').order_by('created_at'))
+            ).order_by('-created_at')
+        
+        total_reviews = reviews.count()
+        
+        # Calculate star percentages
+        star_percentages  = {
+            '5': reviews.filter(rating=5).count() / total_reviews * 100 if total_reviews else 0,
+            '4': reviews.filter(rating=4).count() / total_reviews * 100 if total_reviews else 0,
+            '3': reviews.filter(rating=3).count() / total_reviews * 100 if total_reviews else 0,
+            '2': reviews.filter(rating=2).count() / total_reviews * 100 if total_reviews else 0,
+            '1': reviews.filter(rating=1).count() / total_reviews * 100 if total_reviews else 0,
+            }
         
         context['reviews'] = reviews
+        context['star_percentages'] = star_percentages
         
-        # Get latest review and its replies
+        # Get reviews with their replies
         latest_review = reviews.first()
         context['latest_review'] = latest_review
-        context['replies'] = latest_review.replies.all() if latest_review else None
+        context['replies'] = latest_review.replies.all() if latest_review else []
+        
         
         # Calculate review statistics
         context['review_count'] = reviews.count()
@@ -193,9 +201,7 @@ class ProductDetailView(DetailView):
         related_products = Product_Listing.objects.filter(
             Q(category=self.object.category) | 
             Q(subcategory=self.object.subcategory)
-        ).exclude(
-            id=self.object.id
-        ).distinct()[:4]
+        ).exclude(id=self.object.id).distinct()[:4]
         
         if self.request.user.is_authenticated:
             saved_products = SavedProduct.objects.filter(
@@ -254,6 +260,8 @@ class ProductDetailView(DetailView):
             'subcategory',
             'brand'
         )
+        
+    
         
 class ProductCreateView(LoginRequiredMixin, CreateView):
     model = Product_Listing

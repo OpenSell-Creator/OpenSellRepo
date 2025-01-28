@@ -19,17 +19,17 @@ class SignUpForm(UserCreationForm):
         self.fields['username'].widget.attrs['class'] = 'form-control'
         self.fields['username'].widget.attrs['placeholder'] = 'User Name'
         self.fields['username'].label = ''
-        self.fields['username'].help_text = '<span class="form-text text-muted"><small>Required. Letters, digits and @/./+/-/_ only.</small></span>'
+        self.fields['username'].help_text = 'Required. Letters, digits and symbols (@/./+/-/_) only.'
 
         self.fields['password1'].widget.attrs['class'] = 'form-control'
         self.fields['password1'].widget.attrs['placeholder'] = 'Password'
         self.fields['password1'].label = ''
-        self.fields['password1'].help_text = '<ul class="form-text text-muted small"><li>Your password must contain at least 6 characters.</li></ul>'
+        self.fields['password1'].help_text = 'Your password must contain at least 6 characters.'
 
         self.fields['password2'].widget.attrs['class'] = 'form-control'
         self.fields['password2'].widget.attrs['placeholder'] = 'Confirm Password'
         self.fields['password2'].label = ''
-        self.fields['password2'].help_text = '<span class="form-text text-muted"><small>Enter the same password as before, for verification.</small></span>'
+        self.fields['password2'].help_text = 'Enter the same password as before, for verification.'
 
     def clean_password1(self):
         password1 = self.cleaned_data.get("password1")
@@ -52,17 +52,41 @@ class UserUpdateForm(forms.ModelForm):
         fields = ['username', 'email']
 
 class ProfileUpdateForm(forms.ModelForm):
+    remove_photo = forms.BooleanField(
+        required=False,
+        widget=forms.HiddenInput(),
+        initial=False
+    )
+
     class Meta:
         model = Profile
-        fields = ['phone_number', 'location', 'photo', 'bio']
+        fields = ['phone_number', 'photo', 'bio', 'remove_photo']  # Removed location
         widgets = {
-            'location': forms.Textarea(attrs={'rows': 4}),
-            'bio': forms.Textarea(attrs={'rows': 4}),
+            'bio': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
+            'photo': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['photo'].required = False
         self.fields['phone_number'].widget.attrs.update({'class': 'form-control'})
-        self.fields['location'].widget.attrs.update({'class': 'form-control'})
-        self.fields['photo'].widget.attrs.update({'class': 'form-control'})
-        self.fields['bio'].widget.attrs.update({'class': 'form-control'})
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get('remove_photo'):
+            # Clear the photo field and mark existing file for deletion
+            cleaned_data['photo'] = None
+            if self.instance.photo:
+                self.instance.photo.delete(save=False)
+        return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        
+        if self.cleaned_data.get('remove_photo'):
+            instance.photo = None
+        
+        if commit:
+            instance.save()
+        return instance
+        

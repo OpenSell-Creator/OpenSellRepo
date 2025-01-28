@@ -1,69 +1,208 @@
 {% extends 'base.html' %}
-{% block 'Body' %}
 
-    
-        
-            <div class="card shadow">
-                <div class="card-header bg-secondary text-white">
-                    <h3 class="mb-0">Profile</h3>
+{% block 'Body' %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card">
+                <div class="card-header bg-card-header py-3">
+                    <h3 class="mb-0">Profile Settings</h3>
+                    <p class="text-muted mb-0">Manage your personal and location information</p>
                 </div>
-                <div class="card-body">
-                    <form method="post" enctype="multipart/form-data">
+                <div class="card-body p-4 p-lg-5">
+                    <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
                         {% csrf_token %}
-                        <div class="row">
+                        
+                        <div class="row g-4">
+                            <!-- User Information Column -->
                             <div class="col-md-6">
-                                <h4>User Information</h4>
-                                <div class="mb-3">
-                                    <label for="id_username" class="form-label">Username</label>
-                                    <input type="text" name="username" class="form-control" id="id_username" value="{{ user.username }}">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="id_email" class="form-label">Email</label>
-                                    <input type="email" name="email" class="form-control" id="id_email" value="{{ user.email }}">
-                                </div>
-                                <h4>Profile Information</h4>
-                                <div class="mb-3">
-                                    <label for="id_photo" class="form-label">Profile Photo</label>
-                                    <input type="file" name="photo" class="form-control" id="id_photo">
-                                    {% if profile.photo %}
-                                        <p class="mt-2">Current photo: {{ profile.photo.name }}</p>
-                                    {% endif %}
-                                </div>
-                                <div class="mb-3">
-                                    <label for="id_bio" class="form-label">Bio</label>
-                                    <input type="text" name="bio" class="form-control" id="id_bio" value="{{ profile.bio }}" maxlength="120">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="id_phone_number" class="form-label">Phone Number</label>
-                                    <input type="text" name="phone_number" class="form-control" id="id_phone_number" value="{{ profile.phone_number }}" maxlength="12">
+                                <div class="section-card mb-4">
+                                    <h4 class="section-title mb-4">User Information</h4>
+                                    <!-- Profile Photo -->
+                                    <div class="mb-4">
+                                        <label class="form-label">Profile Photo</label>
+                                        <div class="file-input-wrapper border rounded p-3">
+                                            <div class="d-flex flex-column gap-2">
+                                                <input type="file" name="photo" class="form-control" id="id_photo"><!-- In your photo section -->
+                                                {% if form.instance.photo %}
+                                                <div class="current-photo d-flex justify-content-between align-items-center mt-2">
+                                                    <span class="text-muted small">
+                                                        <i class="bi bi-image me-2"></i>
+                                                        {{ form.instance.photo.name }}
+                                                    </span>
+                                                    <button type="button" class="btn btn-link text-danger p-0 remove-photo"
+                                                            onclick="document.getElementById('id_remove_photo').value = 'true'; this.parentElement.remove()">
+                                                        <i class="bi bi-x-circle"></i>
+                                                    </button>
+                                                </div>
+                                                {% endif %}
+                                                <input type="hidden" name="remove_photo" id="id_remove_photo" value="false">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Username Input -->
+                                    <div class="form-floating mb-3">
+                                        <input type="text" name="username" class="form-control" 
+                                               id="id_username" value="{{ user.username }}" required>
+                                        <label for="id_username">Username</label>
+                                        <div class="form-text text-muted">Letters, digits and @/./+/-/_ only</div>
+                                    </div>
+                                    
+                                    <!-- Email Input -->
+                                    <div class="form-floating mb-3">
+                                        <input type="email" name="email" class="form-control" 
+                                               id="id_email" value="{{ user.email }}" required>
+                                        <label for="id_email">Email Address</label>
+                                    </div>
+                                    
+
+                                    <!-- Bio Input -->
+                                    <div class="form-floating mb-3">
+                                        <textarea name="bio" class="form-control" id="id_bio" 
+                                                  maxlength="120" style="height: 100px">{{ profile.bio }}</textarea>
+                                        <label for="id_bio">Bio</label>
+                                    </div>
+                                    
+                                    <!-- Phone Number -->
+                                    <div class="form-floating mb-3">
+                                        <input type="text" name="phone_number" class="form-control" 
+                                               id="id_phone_number" value="{{ profile.phone_number }}" 
+                                               maxlength="12">
+                                        <label for="id_phone_number">Phone Number</label>
+                                    </div>
                                 </div>
                             </div>
+
+                            <!-- Location Information Column -->
                             <div class="col-md-6">
-                                <h4>Location Information</h4>
-                                <div class="mb-3">
-                                    <label for="id_address" class="form-label">Address</label>
-                                    <input type="text" name="address" class="form-control" id="id_address" value="{{ profile.location.address }}" maxlength="120">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="id_address_2" class="form-label">Address 2</label>
-                                    <input type="text" name="address_2" class="form-control" id="id_address_2" value="{{ profile.location.address_2 }}" maxlength="225">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="id_district" class="form-label">District</label>
-                                    <input type="text" name="district" class="form-control" id="id_district" value="{{ profile.location.district }}" maxlength="50">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="id_state" class="form-label">State</label>
-                                    <input type="text" name="state" class="form-control" id="id_state" value="{{ profile.location.state }}" maxlength="50">
+                                <div class="section-card">
+                                    <h4 class="section-title mb-4">Location Information</h4>
+                                    
+                                    <!-- Address Inputs -->
+                                    <div class="form-floating mb-3">
+                                        <input type="text" name="address" class="form-control" 
+                                               id="id_address" value="{{ profile.location.address }}" 
+                                               maxlength="120">
+                                        <label for="id_address">Address</label>
+                                    </div>
+                                    
+                                    <div class="form-floating mb-3">
+                                        <input type="text" name="address_2" class="form-control" 
+                                               id="id_address_2" value="{{ profile.location.address_2 }}" 
+                                               maxlength="225">
+                                        <label for="id_address_2">Address 2</label>
+                                    </div>
+                                    
+                                    <div class="form-floating mb-3">
+                                        <input type="text" name="district" class="form-control" 
+                                               id="id_district" value="{{ profile.location.district }}" 
+                                               maxlength="50">
+                                        <label for="id_district">District</label>
+                                    </div>
+                                    
+                                    <div class="form-floating mb-3">
+                                        <input type="text" name="state" class="form-control" 
+                                               id="id_state" value="{{ profile.location.state }}" 
+                                               maxlength="50">
+                                        <label for="id_state">State</label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-secondary btn-block mt-4">Save</button>
+
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">Save Changes</button>
+                        </div>
                     </form>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    /* Consistent Form Styling */
+    .form-control {
+        border-width: 2px;
+        border-style: solid;
+        border-color: var(--border-color);
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .form-control:focus {
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.2);
+    }
+
+    /* File Input Section */
+    .file-input-wrapper {
+        background-color: var(--card-background);
+        border: 2px solid var(--border-color) !important;
+        border-radius: var(--radius-md);
+    }
+
+    .current-photo {
+        padding: 0.5rem;
+        border-radius: var(--radius-sm);
+        background-color: var(--hover-bg);
+    }
+
+    .remove-photo {
+        transition: all 0.2s ease;
+    }
+
+    .remove-photo:hover {
+        transform: scale(1.1);
+    }
+
+    /* Dark Theme Adjustments */
+    [data-bs-theme="dark"] {
+        .form-control:focus {
+            box-shadow: 0 0 0 3px rgba(205, 127, 50, 0.2);
+        }
+
+        .file-input-wrapper {
+            background-color: var(--dark-card-background);
+            border-color: var(--dark-border-color);
+        }
+
+        .current-photo {
+            background-color: var(--dark-hover-bg);
+        }
+    }
+
+    /* Form Text */
+    .form-text {
+        font-size: 0.8rem;
+        margin-top: 0.25rem;
+        color: var(--text-secondary) !important;
+        padding-left: 0.5rem;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Remove photo functionality
+        document.querySelectorAll('.remove-photo').forEach(button => {
+            button.addEventListener('click', function() {
+                const fileInput = document.getElementById('id_photo');
+                const photoContainer = this.closest('.current-photo');
+                
+                // Clear file input
+                fileInput.value = '';
+                
+                // Remove photo display
+                if (photoContainer) {
+                    photoContainer.remove();
+                }
+            });
+        });
+
+        // Initialize Bootstrap tooltips
+        const tooltips = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltips.map(tooltipEl => new bootstrap.Tooltip(tooltipEl));
+    });
+</script>
 {% endblock %}
 {% block 'Footer'%}{% endblock %}

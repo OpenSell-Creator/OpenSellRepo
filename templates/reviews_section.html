@@ -1,92 +1,309 @@
 <div class="row mt-5">
     <div class="col-md-12">
-        <h2>Reviews ({{ review_count }})</h2>
-        {% if reviews %}
-            <div class="mb-3">
-                <h4>Average Rating: {{ average_rating|floatformat:1 }} / 5</h4>
-                <div class="progress">
-                    <div class="progress-bar bg-success" role="progressbar" 
-                         style="width: {% widthratio average_rating 5 100 %}%" 
-                         aria-valuenow="{% widthratio average_rating 5 100 %}" 
-                         aria-valuemin="0" aria-valuemax="100"></div>
-                </div>
-            </div>
-            
-            {% for review in reviews %}
-                <div class="card mb-3">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <h5 class="card-title">{{ review.rating }} / 5 stars</h5>
-                            <div class="d-flex align-items-center">
-                                <small class="text-muted me-3">{{ review.created_at|date:"F d, Y" }}</small>
-                                {% if user == review.reviewer %}
-                                    <div class="btn-group">
-                                        <a href="{% url 'edit_review' pk=product.id review_id=review.id %}" 
-                                           class="btn btn-sm btn-outline-primary">
-                                           <i class="fas fa-edit"></i>
-                                        </a>
-                                        <a href="{% url 'delete_review' pk=product.id review_id=review.id %}" 
-                                           class="btn btn-sm btn-outline-danger">
-                                           <i class="fas fa-trash"></i>
-                                        </a>
-                                    </div>
-                                {% endif %}
+        <h2 class="mb-4" style="color: var(--text-primary);">Reviews ({{ review_count }})</h2>
+        
+        <!-- Average Rating Card -->
+        <div class="card mb-4" style="background-color: var(--card-background); border-color: var(--border-color);">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-4 text-center border-end" style="border-color: var(--border-color) !important;">
+                        <div class="rating-display">
+                            <div class="h1 mb-0" style="color: var(--accent-color);">{{ average_rating|floatformat:1 }}</div>
+                            <div class="stars mb-2">
+                                {% for _ in "12345" %}
+                                    <i class="fas fa-star{% if forloop.counter <= average_rating|floatformat:0 %}{% else %}-half-alt{% endif %}" 
+                                       style="color: var(--accent-color);"></i>
+                                {% endfor %}
                             </div>
+                            <small class="text-muted" style="color: var(--text-secondary) !important;">Based on {{ review_count }} reviews</small>
                         </div>
-                        <h6 class="card-subtitle mb-2 text-muted">By {{ review.reviewer.username }}</h6>
-                        <p class="card-text">{{ review.comment }}</p>
-                        
-                        {% if user.is_authenticated %}
-                            {% if user == product.seller.user and not review.replies.exists %}
-                                <a href="{% url 'reply_to_review' pk=product.id review_id=review.id %}" 
-                                   class="btn btn-primary btn-sm">Reply</a>
-                            {% endif %}
-                        {% endif %}
-
-                        <!-- Replies -->
-                        {% for reply in review.replies.all %}
-                            <div class="card mt-3 ms-4">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between">
-                                        <h6 class="card-subtitle mb-2 text-muted">Reply from Seller</h6>
-                                        <div class="d-flex align-items-center">
-                                            <small class="text-muted me-3">{{ reply.created_at|date:"F d, Y" }}</small>
-                                            {% if user == reply.reviewer %}
-                                                <div class="btn-group">
-                                                    <a href="{% url 'edit_reply' pk=product.id reply_id=reply.id %}" 
-                                                       class="btn btn-sm btn-outline-primary">
-                                                       <i class="fas fa-edit"></i>
-                                                    </a>
-                                                    <a href="{% url 'delete_reply' pk=product.id reply_id=reply.id %}" 
-                                                       class="btn btn-sm btn-outline-danger">
-                                                       <i class="fas fa-trash"></i>
-                                                    </a>
-                                                </div>
-                                            {% endif %}
+                    </div>
+                    <div class="col-md-8">
+                        <div class="rating-bars">
+                            {% for star, percentage in star_percentages.items %}
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="text-nowrap me-3" style="width: 80px;">
+                                    <span class="text-muted">{{ star }} star</span>
+                                </div>
+                                <div class="flex-grow-1 me-3">
+                                    <div class="progress" style="height: 8px; background-color: var(--card-background);">
+                                        <div class="progress-bar" 
+                                             role="progressbar" 
+                                             style="width: {{ percentage }}%; background-color: var(--success);">
                                         </div>
                                     </div>
-                                    <p class="card-text">{{ reply.comment }}</p>
+                                </div>
+                                <div class="text-muted" style="width: 40px; color: var(--text-secondary) !important;">
+                                    {{ percentage|floatformat:0 }}%
                                 </div>
                             </div>
                         {% endfor %}
+                        </div>
                     </div>
                 </div>
-            {% endfor %}
-        {% else %}
-            <p>No reviews yet.</p>
-        {% endif %}
+            </div>
+        </div>
 
-        {% if user.is_authenticated and user != product.seller.user %}
-            <div class="card mt-4">
+        <!-- Reviews List -->
+        {% if reviews %}
+        {% for review in reviews %}
+        <div class="card mb-3 review-card" 
+             style="background-color: var(--card-background); 
+                    border: 2px solid var(--border-color);
+                    transition: transform 0.2s ease;">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-3">
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <div class="user-avatar">
+                                {% if review.reviewer.profile.avatar %}
+                                <img src="{{ review.reviewer.profile.avatar.url }}" 
+                                     class="rounded-circle"
+                                     style="width: 45px; height: 45px; object-fit: cover; border: 2px solid var(--border-color);">
+                                {% else %}
+                                <div class="rounded-circle d-flex align-items-center justify-content-center"
+                                     style="width: 45px; height: 45px; background-color: var(--primary-color); color: white;">
+                                    {{ review.reviewer.username|first|upper }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <h5 class="mb-0" style="color: var(--text-primary);">{{ review.reviewer.username }}</h5>
+                                <small class="text-muted" style="color: var(--text-secondary) !important;">
+                                    {{ review.created_at|timesince }} ago
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <div class="rating-stars mb-3" style="color: var(--accent-color);">
+                            {% for _ in "12345" %}
+                                <i class="fas fa-star{% if forloop.counter > review.rating %}-half-alt{% endif %}"></i>
+                            {% endfor %}
+                        </div>
+                        
+                        <p class="card-text" 
+                           style="color: var(--text-secondary); 
+                                  padding-left: 16px;
+                                  border-left: 3px solid var(--accent-color);">
+                            {{ review.comment }}
+                        </p>
+                    </div>
+                    
+                    {% if user == review.reviewer %}
+                    <div class="btn-group btn-group-sm">
+                        <a href="{% url 'edit_review' pk=product.id review_id=review.id %}" 
+                           class="btn btn-outline-primary"
+                           style="border-color: var(--border-color); color: var(--text-primary);">
+                           <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="{% url 'delete_review' pk=product.id review_id=review.id %}" 
+                           class="btn btn-outline-danger"
+                           style="border-color: var(--border-color); color: var(--text-primary);">
+                           <i class="fas fa-trash"></i>
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+    
+                <!-- Add Reply Button (Visible to Seller) -->
+                {% if user.is_authenticated and user == product.seller.user and not review.replies.exists %}
+                    <div class="mt-3">
+                        <a href="{% url 'reply_to_review' pk=product.id review_id=review.id %}" 
+                           class="btn btn-sm btn-primary"
+                           style="background-color: var(--primary-color); border: none;">
+                           <i class="fas fa-reply me-2"></i> Reply
+                        </a>
+                    </div>
+                {% endif %}
+    
+                <!-- Replies Section -->
+                {% for reply in review.replies.all %}
+                <div class="reply-card mt-4 ms-4 p-3" 
+                     style="background-color: var(--background-color); 
+                            border: 1px solid var(--border-color);
+                            border-radius: var(--radius-md);">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge" 
+                              style="background-color: var(--primary-color); 
+                                     color: white;">Seller</span>
+                        <small class="text-muted" 
+                               style="color: var(--text-secondary) !important;">
+                            {{ reply.created_at|timesince }} ago
+                        </small>
+                    </div>
+                    <p class="mb-0" style="color: var(--text-secondary);">{{ reply.comment }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endfor %}
+        {% else %}
+            <div class="card" style="background-color: var(--card-background); border-color: var(--border-color);">
                 <div class="card-body">
-                    <h5 class="card-title">Write a Review</h5>
-                    <form method="post" action="{% url 'submit_review' review_type='product' pk=product.id %}">
-                        {% csrf_token %}
-                        {{ review_form.as_p }}
-                        <button type="submit" class="btn btn-primary">Submit Review</button>
-                    </form>
+                    <p class="mb-0" style="color: var(--text-secondary);">No reviews yet. Be the first to review!</p>
                 </div>
             </div>
         {% endif %}
+
+        <!-- Review Form -->
+        {% if user.is_authenticated and user != product.seller.user %}
+        <div class="card mt-4 review-form-card" 
+             style="background-color: var(--card-background); 
+                    border: 2px solid var(--primary-color);">
+            <div class="card-body">
+                <h5 class="card-title mb-4" style="color: var(--text-primary);">Write a Review</h5>
+                <form method="post" action="{% url 'submit_review' review_type='product' pk=product.id %}">
+                    {% csrf_token %}
+                    
+                    <!-- Rating Input -->
+                    <div class="mb-4">
+                        <label class="form-label" style="color: var(--text-primary);">Your Rating</label>
+                        <div class="rating-stars-input mb-3">
+                            {% for _ in "54321" %}
+                            <input type="radio" 
+                                   name="rating" 
+                                   value="{{ forloop.counter }}" 
+                                   id="star{{ forloop.counter }}" 
+                                   {% if review_form.rating.value == forloop.counter %}checked{% endif %}>
+                            <label for="star{{ forloop.counter }}" class="star-label">
+                                <i class="far fa-star"></i>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Comment Input -->
+                    <div class="mb-4">
+                        <label class="form-label" style="color: var(--text-primary);">Your Review</label>
+                        <textarea name="comment" 
+                                  class="form-control" 
+                                  rows="4"
+                                  style="border: 2px solid var(--border-color);
+                                         background-color: var(--background-color) !important;
+                                         color: var(--text-primary) !important;"></textarea>
+                    </div>
+                    
+                    <button type="submit" 
+                            class="btn btn-primary px-4"
+                            style="background-color: var(--primary-color); 
+                                   border: none;
+                                   padding: 0.75rem 1.5rem;">
+                        Submit Review
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
+
+<style>
+    .review-card {
+        padding: var(--spacing-md);
+        border-radius: var(--radius-lg);
+    }
+
+    .review-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 15px var(--shadow-color);
+    }
+
+    .rating-stars-input {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+    }
+
+    .rating-stars-input input {
+        display: none;
+    }
+
+    .rating-stars-input .star-label i {
+        font-size: 1.75rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        color: var(--text-secondary);
+    }
+
+    .rating-stars-input input:checked ~ .star-label i,
+    .rating-stars-input .star-label:hover i,
+    .rating-stars-input .star-label:hover ~ .star-label i {
+        color: var(--accent-color) !important;
+    }
+
+    .reply-card {
+        position: relative;
+        margin-left: 2rem;
+    }
+
+    .reply-card::before {
+        content: "";
+        position: absolute;
+        left: -1.5rem;
+        top: 1rem;
+        width: 1rem;
+        height: 2px;
+        background-color: var(--border-color);
+    }
+
+    .review-form-card {
+        box-shadow: 0 4px 20px var(--shadow-color);
+    }
+
+    .rating-bars .progress {
+        border-radius: var(--radius-full);
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Star Rating Input
+    const starInputs = document.querySelectorAll('.rating-stars-input input');
+    const starLabels = document.querySelectorAll('.rating-stars-input .star-label');
+    
+    starLabels.forEach(label => {
+        label.addEventListener('click', function(e) {
+            const input = this.previousElementSibling;
+            const ratingValue = input.value;
+            
+            // Update star colors
+            starLabels.forEach((star, index) => {
+                if (index < ratingValue) {
+                    star.querySelector('i').classList.remove('far');
+                    star.querySelector('i').classList.add('fas');
+                } else {
+                    star.querySelector('i').classList.remove('fas');
+                    star.querySelector('i').classList.add('far');
+                }
+            });
+        });
+    });
+
+    // Hover effects for stars
+    starLabels.forEach(label => {
+        label.addEventListener('mouseenter', function() {
+            const currentIndex = Array.from(starLabels).indexOf(this);
+            starLabels.forEach((star, index) => {
+                if (index <= currentIndex) {
+                    star.querySelector('i').style.color = 'var(--accent-color)';
+                }
+            });
+        });
+
+        label.addEventListener('mouseleave', function() {
+            const checkedInput = document.querySelector('.rating-stars-input input:checked');
+            if (!checkedInput) {
+                starLabels.forEach(star => {
+                    star.querySelector('i').style.color = 'var(--text-secondary)';
+                });
+            } else {
+                const checkedValue = checkedInput.value;
+                starLabels.forEach((star, index) => {
+                    star.querySelector('i').style.color = 
+                        index < checkedValue ? 'var(--accent-color)' : 'var(--text-secondary)';
+                });
+            }
+        });
+    });
+});
+</script>

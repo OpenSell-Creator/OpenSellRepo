@@ -24,10 +24,26 @@ class Profile(models.Model):
     
     def __str__(self):
      return f'{self.user.username}'
+
+def save(self, *args, **kwargs):
+    # Delete old file when updating
+    try:
+        old = Profile.objects.get(pk=self.pk)
+        if old.photo and old.photo != self.photo:
+            old.photo.delete(save=False)
+    except Profile.DoesNotExist:
+        pass
+    super().save(*args, **kwargs)
+
+def delete(self, *args, **kwargs):
+    if self.photo:
+        self.photo.delete(save=False)
+    super().delete(*args, **kwargs)
  
     @property
     def average_rating(self):
         return self.seller_reviews.aggregate(Avg('rating'))['rating__avg'] or 0
+   
     
     
     
