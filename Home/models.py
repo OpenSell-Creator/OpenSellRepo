@@ -2,6 +2,9 @@ import uuid
 from django.contrib.auth.models import User
 from User.models import Profile, location
 from User import models
+from django.urls import reverse, reverse_lazy
+from django.utils import timezone
+from datetime import timedelta
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from .utils import user_listing_path
@@ -48,19 +51,32 @@ class Product_Listing(models.Model):
         ('new', 'New'),
         ('used', 'Used'),
     ]
+    LISTING_TYPES = [
+        ('standard', 'Standard Listing (7 days)'),
+        ('premium', 'Premium Listing (30 days)'),
+        ('emergency', 'Emergency Sale (3 days)'),
+        ('permanent', 'Permanent Retail Listing'),
+    ]
     title = models.CharField(max_length=255)
     seller = models.ForeignKey(Profile, on_delete=models.CASCADE)
     description = models.TextField()
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, default=1)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE)
     subcategory = models.ForeignKey(Subcategory, related_name='products', on_delete=models.SET_NULL, null=True)
     brand = models.ForeignKey(Brand, related_name='products', null=True, blank=True, on_delete=models.SET_NULL)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    location = models.OneToOneField(
-        location, on_delete=models.SET_NULL, null=True)
+    location = models.OneToOneField(location, on_delete=models.SET_NULL, null=True)
     condition = models.CharField(max_length=4, choices=CONDITION_CHOICES)
     view_count = models.PositiveIntegerField(default=0)
+    
+    listing_type = models.CharField(max_length=10, choices=LISTING_TYPES, default='standard')
+    quantity = models.PositiveIntegerField(default=1)
+    sold_quantity = models.PositiveIntegerField(default=0)
+    is_always_available = models.BooleanField(default=False)
+    expiration_date = models.DateTimeField(null=True, blank=True)
+    last_stock_notification = models.DateTimeField(null=True, blank=True)
+    deletion_warning_sent = models.BooleanField(default=False)
 
     def increase_view_count(self):
         self.view_count += 1
@@ -82,6 +98,137 @@ class Product_Listing(models.Model):
             user=user,
             product=self
         ).exists()
+        
+    @property
+    def stock_status(self):
+        if self.is_always_available:
+            return 'always_available'
+        if self.quantity <= 0:
+            return 'out_of_stock'
+        if self.quantity <= 5:
+            return 'low_stock'
+        return 'in_stock'
+    @property
+    def days_until_deletion(self):
+        if self.expiration_date:
+            delta = (self.expiration_date - timezone.now()).days
+            return max(0, delta)
+        return None
+    
+    @property
+    def time_remaining(self):
+        """Returns detailed time remaining before deletion"""
+        if not self.expiration_date or self.listing_type == 'permanent':
+            return {
+                'days': 0,
+                'hours': 0,
+                'minutes': 0,
+                'seconds': 0,
+                'total_seconds': 0
+            }
+            
+        now = timezone.now()
+        if now >= self.expiration_date:
+            return {
+                'days': 0,
+                'hours': 0,
+                'minutes': 0,
+                'seconds': 0,
+                'total_seconds': 0
+            }
+            
+        delta = self.expiration_date - now
+        days = delta.days
+        hours = delta.seconds // 3600
+        minutes = (delta.seconds % 3600) // 60
+        seconds = delta.seconds % 60
+        
+        return {
+            'days': days,
+            'hours': hours,
+            'minutes': minutes,
+            'seconds': seconds,
+            'total_seconds': delta.total_seconds()
+        }
+        
+    def reset_expiration(self):
+        """Reset the expiration date based on listing type"""
+        if self.listing_type == 'permanent':
+            self.expiration_date = None
+        else:
+            duration = {
+                'standard': 7,
+                'premium': 30,
+                'emergency': 3,
+            }.get(self.listing_type, 7)
+            
+            self.expiration_date = timezone.now() + timedelta(days=duration)
+            self.deletion_warning_sent = False
+        self.save()
+
+    def save(self, *args, **kwargs):
+        if self.pk:  # Only for existing instances
+            try:
+                original = Product_Listing.objects.get(pk=self.pk)
+                
+                # Reset expiration date if listing type changes
+                if original.listing_type != self.listing_type:
+                    self.deletion_warning_sent = False
+                    if self.listing_type == 'permanent':
+                        self.expiration_date = None
+                    else:
+                        duration = {
+                            'standard': 7,
+                            'premium': 30,
+                            'emergency': 3
+                        }.get(self.listing_type, 7)
+                        self.expiration_date = timezone.now() + timedelta(days=duration)
+                
+                # Reset expiration on significant updates
+                elif self.listing_type != 'permanent':
+                    significant_fields = ['title', 'description', 'price', 'quantity']
+                    if any(getattr(original, field) != getattr(self, field) for field in significant_fields):
+                        duration = {
+                            'standard': 7,
+                            'premium': 30,
+                            'emergency': 3
+                        }.get(self.listing_type, 7)
+                        self.expiration_date = timezone.now() + timedelta(days=duration)
+                        self.deletion_warning_sent = False
+                        
+            except Product_Listing.DoesNotExist:
+                pass
+        else:  # New instance
+            if self.listing_type != 'permanent':
+                duration = {
+                    'standard': 7,
+                    'premium': 30,
+                    'emergency': 3
+                }.get(self.listing_type, 7)
+                self.expiration_date = timezone.now() + timedelta(days=duration)
+                print(f"Setting expiration date to: {self.expiration_date}")  # Debug line
+
+        super().save(*args, **kwargs)
+
+    def send_deletion_warning(self):
+        if not self.deletion_warning_sent and self.days_until_deletion in [1, 3]:
+            # Send notification logic here
+            self.deletion_warning_sent = True
+            self.save()
+            
+            
+    @classmethod
+    def delete_expired_listings(cls):
+        """Delete all expired listings regardless of user status"""
+        expired = cls.objects.filter(
+            expiration_date__lte=timezone.now(),
+            listing_type__in=['standard', 'premium', 'emergency']
+        )
+        count = expired.count()
+        expired.delete()
+        return count
+    
+    
     
 class Product_Image(models.Model):
     product = models.ForeignKey(Product_Listing, related_name='images', on_delete=models.CASCADE)

@@ -4,6 +4,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.utils import timezone
 
 class NotificationCategory(models.TextChoices):
     ANNOUNCEMENT = 'announcement', 'Announcement'
@@ -11,8 +12,8 @@ class NotificationCategory(models.TextChoices):
     NEWS = 'news', 'News'
 
 class Notification(models.Model):
-    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications', null=True, blank=True)
-    title = models.CharField(max_length=255, default=False)
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    title = models.CharField(max_length=255, default='')
     message = models.TextField()
     category = models.CharField(
         max_length=20,
@@ -21,12 +22,10 @@ class Notification(models.Model):
     )
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
-    
-    # For linking to specific objects (listings, reviews, etc.)
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True)
-    object_id = models.CharField(max_length=36, null=True)  # Using CharField for UUID compatibility
+    object_id = models.CharField(max_length=36, null=True)
     content_object = GenericForeignKey('content_type', 'object_id')
-    
+
     class Meta:
         ordering = ['-created_at']
         indexes = [
@@ -36,7 +35,17 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"{self.recipient.username} - {self.title}"
-    pass
+    
+    def get_content_type_name(self):
+        """Get the model name of the content object"""
+        if self.content_object:
+            return self.content_type.model
+        return ''
+    
+    @classmethod
+    def delete_old_notifications(cls, days=30):
+        cutoff = timezone.now() - timezone.timedelta(days=days)
+        cls.objects.filter(created_at__lte=cutoff).delete()
 
 class NotificationPreference(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='notification_preferences')
@@ -44,24 +53,18 @@ class NotificationPreference(models.Model):
     save_notifications = models.BooleanField(default=True)
     view_milestone_notifications = models.BooleanField(default=True)
     system_notifications = models.BooleanField(default=True)
+    deletion_warnings = models.BooleanField(default=True)
+    stock_alerts = models.BooleanField(default=True)
 
     def __str__(self):
-        return f"Notification preferences for {self.user.username}"
-    pass
+        return f"Preferences for {self.user.username}"
 
     @classmethod
     def get_or_create_preferences(cls, user):
-        """Utility method to get or create preferences for a user"""
-        preferences, created = cls.objects.get_or_create(
+        return cls.objects.get_or_create(
             user=user,
-            defaults={
-                'review_notifications': True,
-                'save_notifications': True,
-                'view_milestone_notifications': True,
-                'system_notifications': True
-            }
+            defaults={field.name: True for field in cls._meta.fields if isinstance(field, models.BooleanField)}
         )
-        return preferences
 
 def create_notification(user, title, message, category, content_object=None):
     """Utility function to create notifications"""
@@ -72,78 +75,4 @@ def create_notification(user, title, message, category, content_object=None):
         category=category,
         content_object=content_object
     )
-
-# Signal to create notification preferences when a new user is created
-@receiver(post_save, sender=User)
-def create_user_notification_preferences(sender, instance, created, **kwargs):
-    if created:
-        NotificationPreference.get_or_create_preferences(instance)
-
-# Signal for saved products
-@receiver(post_save, sender='Home.SavedProduct')
-def notify_on_save(sender, instance, created, **kwargs):
-    if created:
-        preferences = NotificationPreference.objects.filter(
-            user=instance.product.seller.user,
-            save_notifications=True
-        ).exists()
-        
-        if preferences:
-            create_notification(
-                user=instance.product.seller.user,
-                title="Listing Saved",
-                message=f"{instance.user.username} saved your listing '{instance.product.title}'",
-                category=NotificationCategory.NEWS,
-                content_object=instance.product
-            )
-
-# Signal for view milestones
-@receiver(post_save, sender='Home.Product_Listing')
-def notify_on_view_milestone(sender, instance, **kwargs):
-    milestones = [100, 500, 1000, 5000, 10000]
-    
-    # Get the last notified milestone from instance
-    last_milestone = getattr(instance, '_last_milestone', 0)
-    
-    # Find the next milestone that has been reached
-    reached_milestone = next(
-        (m for m in milestones if instance.view_count >= m > last_milestone),
-        None
-    )
-    
-    if reached_milestone:
-        preferences = NotificationPreference.objects.filter(
-            user=instance.seller.user,
-            view_milestone_notifications=True
-        ).exists()
-        
-        if preferences:
-            create_notification(
-                user=instance.seller.user,
-                title=f"View Milestone Reached!",
-                message=f"Your listing '{instance.title}' has reached {reached_milestone} views!",
-                category=NotificationCategory.NEWS,
-                content_object=instance
-            )
-            
-            # Update the last milestone
-            instance._last_milestone = reached_milestone
-
-# Optional: Signal for reviews
-@receiver(post_save, sender='Home.Review')
-def notify_on_review(sender, instance, created, **kwargs):
-    if created:
-        preferences = NotificationPreference.objects.filter(
-            user=instance.product.seller.user,
-            review_notifications=True
-        ).exists()
-        
-        if preferences:
-            create_notification(
-                user=instance.product.seller.user,
-                title="New Review",
-                message=f"{instance.user.username} left a review on '{instance.product.title}'",
-                category=NotificationCategory.NEWS,
-                content_object=instance
-            )
 

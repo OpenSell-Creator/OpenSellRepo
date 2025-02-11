@@ -116,7 +116,8 @@
                                 </div>
                             </div>
                         </div>
-
+                        
+                        
                         <!-- Description Section -->
                         <div class="product-description mb-4 p-3" style="position: relative; z-index: 1;">
                         <div class="product-description mb-4 p-3">
@@ -127,22 +128,107 @@
                         </div>
                     </div>
                     </div>
-
-                    <!-- Enhanced Action Buttons -->
-                    {% if user == product.seller.user %}
-                    <div class="action-buttons mt-4" style="position: relative; z-index: 2;">
-                        <div class="d-flex gap-3 flex-wrap">
-                            <a href="{% url 'product_update' product.id %}" 
-                               class="btn btn-edit flex-grow-1">
-                                <i class="fas fa-pen-to-square me-2"></i>Edit Listing
-                            </a>
-                            <a href="{% url 'product_delete' product.id %}" 
-                               class="btn btn-delete flex-grow-1">
-                                <i class="fas fa-trash-can me-2"></i>Delete Product
-                            </a>
+                    
+                    <!-- Stock Status, Listing Type, and Deletion Warning Section -->
+                    <div class="product-status-section mb-4 p-3 rounded-3" style="background-color: var(--hover-bg); border: 1px solid var(--border-color);">
+                        <!-- Stock Status (Visible to All) -->
+                        <div class="stock-status mb-3">
+                            <h6 class="fw-semibold mb-2"><i class="fas fa-box me-2"></i>Stock Status</h6>
+                            <div class="d-flex align-items-center gap-2">
+                                {% if product.stock_status == 'always_available' %}
+                                    <span class="text-success">
+                                        <i class="fas fa-check-circle me-2"></i>
+                                        Always Available
+                                    </span>
+                                {% elif product.stock_status == 'out_of_stock' %}
+                                    <span class="text-danger">
+                                        <i class="fas fa-times-circle me-2"></i>
+                                        Out of Stock
+                                    </span>
+                                {% elif product.stock_status == 'low_stock' %}
+                                    <span class="text-warning">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        Only {{ product.quantity }} left!
+                                    </span>
+                                {% else %}
+                                    <span class="text-primary">
+                                        <i class="fas fa-inventory me-2"></i>
+                                        In Stock
+                                    </span>
+                                {% endif %}
+                            </div>
                         </div>
+                    
+                        <!-- Seller-Only Section -->
+                        {% if user == product.seller.user %}
+
+                        <!-- Listing Type -->
+                        <div class="listing-type mb-3">
+                            <h6 class="fw-semibold mb-2"><i class="fas fa-tag me-2"></i>Listing Type</h6>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="text-accent">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    {{ product.get_listing_type_display }}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        
+                        {% if product.listing_type != 'permanent' %}
+                        <div class="listing-timer mb-3">
+                            <h6 class="fw-semibold mb-2">
+                                <i class="fas fa-clock me-2"></i>Expires in
+                            </h6>
+                            <div class="countdown-timer" data-expiration="{{ product.expiration_date|date:'c' }}">
+                                {% if time_remaining %}
+                                    <span class="days">{{ time_remaining.days|default:"0" }}</span>d
+                                    <span class="hours">{{ time_remaining.hours|default:"0" }}</span>h
+                                    <span class="minutes">{{ time_remaining.minutes|default:"0" }}</span>m
+                                    <span class="seconds">{{ time_remaining.seconds|default:"0" }}</span>s
+                                {% else %}
+                                    <span class="days">0</span>d
+                                    <span class="hours">0</span>h
+                                    <span class="minutes">0</span>m
+                                    <span class="seconds">0</span>s
+                                {% endif %}
+                            </div>
+                        
+                            <!-- Update Button -->
+                            {% if time_remaining.days <= 3 %}
+                            {% if user == product.seller.user %}
+                            <div class="quick-actions mt-2">
+                                <div class="deletion-warning alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>Update your listing before it expires
+                                <form id="quickUpdateForm" method="POST" action="{% url 'product_quick_update' product.pk %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-primary quick-update-btn">
+                                        <i class="fas fa-sync-alt me-1"></i>Quick Update
+                                    </button>
+                                </form>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                    
+                    
+                                <!-- Quick Actions -->
+                                <div class="quick-actions">
+                                    <h6 class="fw-semibold mb-2"><i class="fas fa-bolt me-2"></i>Actions</h6>
+                                    <div class="d-flex gap-2">
+                                        <a href="{% url 'product_update' product.id %}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-edit me-2"></i>Edit
+                                        </a>
+                                        <a href="{% url 'product_delete' product.id %}" class="btn btn-sm btn-danger">
+                                            <i class="fas fa-trash me-2"></i>Delete
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
                     </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
@@ -479,35 +565,83 @@
         z-index: 1;
     }
 
-    /* Button Color Fix */
-    .btn-delete {
-        background: linear-gradient(135deg, 
-            var(--error, #dc3545), 
-            var(--warning, #ffc107)) !important;
-        color: var(--card-background) !important;
-        border: none;
-    }
+    /* Stock Status Section */
+.product-status-section {
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px var(--shadow-color);
+}
 
-    .btn-edit {
-        background: linear-gradient(135deg, 
-            var(--primary-color), 
-            var(--secondary-color)) !important;
-        color: var(--card-background) !important;
-        border: none;
-    }
+.product-status-section:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px var(--shadow-color);
+}
 
-    /* Hover States */
-    .btn-delete:hover, .btn-edit:hover {
-        opacity: 0.9;
-        transform: translateY(-2px);
-        box-shadow: 0 3px 10px var(--shadow-color);
-    }
+/* Stock Status Text */
+.stock-status span {
+    font-size: 0.95rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+}
 
-    /* Icon Visibility */
-    .btn-delete i, .btn-edit i {
-        color: inherit !important;
-        font-size: 1rem;
-    }
+.stock-status i {
+    font-size: 1.1rem;
+    margin-right: 0.5rem;
+}
+
+/* Listing Type */
+.listing-type span {
+    font-size: 0.95rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+}
+
+.listing-type i {
+    font-size: 1.1rem;
+    margin-right: 0.5rem;
+}
+
+/* Deletion Warning */
+.deletion-warning {
+    background: linear-gradient(135deg, #fff3cd, #ffe69c);
+    color: var(--text-primary);
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.deletion-warning i {
+    font-size: 1.25rem;
+    color: #ffc107;
+}
+
+.deletion-warning a {
+    color: var(--text-primary);
+    text-decoration: underline;
+    font-weight: bold;
+    transition: opacity 0.3s ease;
+}
+
+.deletion-warning a:hover {
+    opacity: 0.8;
+}
+
+/* Quick Actions */
+.quick-actions .btn {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: var(--radius-sm);
+    display: inline-flex;
+    align-items: center;
+}
+
+.quick-actions .btn i {
+    margin-right: 0.375rem;
+}
 
     /* Scrollbar Styling */
     .description-content::-webkit-scrollbar {
@@ -866,6 +1000,162 @@
                         .then(() => alert('Phone number copied to clipboard!'))
                         .catch(err => console.error('Failed to copy: ', err));
                 }
+            });
+        }
+
+        // Timer functionality
+        const timers = document.querySelectorAll('.countdown-timer');
+    
+        timers.forEach(timer => {
+            const expirationDateStr = timer.dataset.expiration;
+            
+            // Check if we have a valid date string
+            if (!expirationDateStr) {
+                console.error('No expiration date provided');
+                timer.innerHTML = 'Date not set';
+                return;
+            }
+
+            const expirationDate = new Date(expirationDateStr);
+            
+            // Validate the date object
+            if (isNaN(expirationDate.getTime())) {
+                console.error('Invalid date format:', expirationDateStr);
+                timer.innerHTML = 'Invalid date';
+                return;
+            }
+            
+            function updateTimer() {
+                const now = new Date();
+                const timeLeft = expirationDate - now;
+                
+                if (timeLeft <= 0) {
+                    timer.innerHTML = '<span class="text-danger">Expired</span>';
+                    return;
+                }
+                
+                const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                
+                // Check if elements exist before updating
+                const daysElement = timer.querySelector('.days');
+                const hoursElement = timer.querySelector('.hours');
+                const minutesElement = timer.querySelector('.minutes');
+                const secondsElement = timer.querySelector('.seconds');
+                
+                if (daysElement) daysElement.textContent = days;
+                if (hoursElement) hoursElement.textContent = hours.toString().padStart(2, '0');
+                if (minutesElement) minutesElement.textContent = minutes.toString().padStart(2, '0');
+                if (secondsElement) secondsElement.textContent = seconds.toString().padStart(2, '0');
+            }
+        
+            // Update immediately and then every second
+            updateTimer();
+            const intervalId = setInterval(updateTimer, 1000);
+            
+            // Cleanup interval when needed
+            timer.dataset.intervalId = intervalId;
+        });
+
+        // Add Quick Update Form Handler
+        const quickUpdateForm = document.getElementById('quickUpdateForm');
+        if (quickUpdateForm) {
+            quickUpdateForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const submitButton = this.querySelector('button[type="submit"]');
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Updating...';
+                
+                fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': this.querySelector('[name="csrfmiddlewaretoken"]').value
+                    },
+                    credentials: 'same-origin'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update the countdown timer
+                        const timer = document.querySelector('.countdown-timer');
+                        if (timer) {
+                            // Clear existing interval
+                            clearInterval(timer.dataset.intervalId);
+                            
+                            // Update expiration date
+                            timer.dataset.expiration = data.expiration_date;
+                            
+                            // Reset timer display
+                            timer.querySelector('.days').textContent = data.time_remaining.days;
+                            timer.querySelector('.hours').textContent = data.time_remaining.hours.toString().padStart(2, '0');
+                            timer.querySelector('.minutes').textContent = data.time_remaining.minutes.toString().padStart(2, '0');
+                            timer.querySelector('.seconds').textContent = data.time_remaining.seconds.toString().padStart(2, '0');
+                            
+                            // Restart timer
+                            const expirationDate = new Date(data.expiration_date);
+                            const intervalId = setInterval(() => {
+                                const now = new Date();
+                                const timeLeft = expirationDate - now;
+                                
+                                if (timeLeft <= 0) {
+                                    timer.innerHTML = '<span class="text-danger">Expired</span>';
+                                    clearInterval(intervalId);
+                                    return;
+                                }
+                                
+                                const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+                                const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                                const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                                const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                                
+                                timer.querySelector('.days').textContent = days;
+                                timer.querySelector('.hours').textContent = hours.toString().padStart(2, '0');
+                                timer.querySelector('.minutes').textContent = minutes.toString().padStart(2, '0');
+                                timer.querySelector('.seconds').textContent = seconds.toString().padStart(2, '0');
+                            }, 1000);
+                            
+                            timer.dataset.intervalId = intervalId;
+                        }
+                        
+                        // Show success message
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = 'alert alert-success alert-dismissible fade show mt-2';
+                        alertDiv.innerHTML = `
+                            ${data.message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        `;
+                        quickUpdateForm.after(alertDiv);
+                        
+                        // Remove any existing deletion warnings
+                        const deletionWarning = document.querySelector('.deletion-warning');
+                        if (deletionWarning) {
+                            deletionWarning.remove();
+                        }
+                        
+                        // Auto-dismiss alert after 3 seconds
+                        setTimeout(() => {
+                            alertDiv.remove();
+                        }, 3000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-danger alert-dismissible fade show mt-2';
+                    alertDiv.innerHTML = `
+                        Error updating listing
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+                    quickUpdateForm.after(alertDiv);
+                })
+                .finally(() => {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Reset Timer';
+                });
             });
         }
     

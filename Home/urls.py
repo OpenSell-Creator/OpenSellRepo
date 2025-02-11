@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.urls import path,include
 from . import views
+from .views import QuickUpdateView
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -22,6 +23,7 @@ urlpatterns = [
     path('product/<uuid:pk>/review/<int:review_id>/delete/', views.delete_review, name='delete_review'),
     path('product/<uuid:pk>/reply/<int:reply_id>/edit/', views.edit_reply, name='edit_reply'),
     path('product/<uuid:pk>/reply/<int:reply_id>/delete/', views.delete_reply, name='delete_reply'),
+    path('product/<uuid:pk>/quick-update/', QuickUpdateView.as_view(), name='product_quick_update'),
     
     path('products/toggle-save/', views.toggle_save_product, name='toggle_save_product'),
     path('products/saved/', views.saved_products, name='saved_products'),

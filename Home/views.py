@@ -1,6 +1,5 @@
-from django.http import JsonResponse
+from django.http import JsonResponse,HttpResponseRedirect
 from django.db import IntegrityError
-from mptt.templatetags.mptt_tags import cache_tree_children
 from django.shortcuts import render, get_object_or_404,redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -8,7 +7,8 @@ from .models import Product_Listing, Review, ReviewReply, SavedProduct
 from django.core.paginator import Paginator
 from django.db.models import Q,F, Avg, Exists, OuterRef
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.views.generic import View
 from django.urls import reverse_lazy
 from .models import Subcategory,Category,Product_Listing,Brand,Product_Image,Banner
 from .forms import ListingForm
@@ -17,6 +17,8 @@ from django.contrib.auth.models import User
 from .forms import ProductSearchForm, ReviewForm,ReviewReplyForm, Review
 from django.utils import timezone
 from decimal import Decimal
+from django.db.models import Count
+from datetime import timedelta
 from django.core.exceptions import ValidationError
 from User.models import Profile
 from django.views.decorators.http import require_POST
@@ -24,11 +26,29 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 import logging
 import uuid
 
-
 logger = logging.getLogger(__name__)
 
-
 # Create your views here.
+def load_subcategories(request):
+    category_id = request.GET.get('category')
+    subcategories = Subcategory.objects.filter(category_id=category_id).values('id', 'name')
+    return JsonResponse(list(subcategories), safe=False)
+
+def get_subcategories(request):
+    category_id = request.GET.get('category')
+    subcategories = Subcategory.objects.filter(category_id=category_id).values('id', 'name')
+    return JsonResponse(list(subcategories), safe=False)
+
+#for Advanced search form
+def get_subcategories(request, category_id):
+    subcategories = Subcategory.objects.filter(category_id=category_id).values('id', 'name')
+    return JsonResponse(list(subcategories), safe=False)
+
+def load_brands(request):
+    subcategory_id = request.GET.get('subcategory')
+    brands = Brand.objects.filter(subcategories=subcategory_id).values('id', 'name')
+    return JsonResponse(list(brands), safe=False)
+
 def format_price(price):
     return '₦ {:,.0f}'.format(Decimal(price))
 
@@ -48,6 +68,8 @@ def home(request):
     # Fetch all active banners
     active_banners = Banner.objects.filter(is_active=True)
     
+    Product_Listing.delete_expired_listings()
+    
     # Paginate featured products
     product_paginator = Paginator(featured_products, 20)  # Show 20 featured products per page
     product_page_number = request.GET.get('product_page')
@@ -60,29 +82,11 @@ def home(request):
         'categories': categories,
         'featured_products': product_page_obj,
         'banners': active_banners,
+        'active_users_count': User.objects.filter(is_active=True).count(),
+        'new_items_last_hour': Product_Listing.objects.filter(created_at__gte=timezone.now()-timedelta(hours=1)).count()
     }
     return render(request, 'home.html', context)
    
-def load_subcategories(request):
-    category_id = request.GET.get('category')
-    subcategories = Subcategory.objects.filter(category_id=category_id).values('id', 'name')
-    return JsonResponse(list(subcategories), safe=False)
-
-def get_subcategories(request):
-    category_id = request.GET.get('category')
-    subcategories = Subcategory.objects.filter(category_id=category_id).values('id', 'name')
-    return JsonResponse(list(subcategories), safe=False)
-
-#for Advanced search form
-def get_subcategories(request, category_id):
-    subcategories = Subcategory.objects.filter(category_id=category_id).values('id', 'name')
-    return JsonResponse(list(subcategories), safe=False)
-
-def load_brands(request):
-    subcategory_id = request.GET.get('subcategory')
-    brands = Brand.objects.filter(subcategories__id=subcategory_id).values('id', 'name')
-    return JsonResponse(list(brands), safe=False)
-
 class ProductListView(ListView):
     model = Product_Listing
     template_name = 'product_list.html'
@@ -108,8 +112,9 @@ class ProductListView(ListView):
                     )
                 )
             )
-
         return queryset.order_by('-created_at')
+        
+      
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -161,6 +166,12 @@ class ProductDetailView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
+        
+        time_remaining = self.object.time_remaining
+        if time_remaining:
+            context['time_remaining'] = time_remaining
+            
+            
         # Format the price
         context['formatted_price'] = self.format_price(self.object.price)
         
@@ -260,34 +271,86 @@ class ProductDetailView(DetailView):
             'subcategory',
             'brand'
         )
-        
+                  
+class QuickUpdateView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def post(self, request, pk):
+        try:
+            product = Product_Listing.objects.get(pk=pk)
+            
+            # Reset the expiration
+            product.reset_expiration()
+            
+            # If it's an AJAX request, return JSON response
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Listing updated successfully',
+                    'time_remaining': product.time_remaining,
+                    'expiration_date': product.expiration_date.isoformat() if product.expiration_date else None
+                })
+            
+            # For regular requests, redirect with message
+            messages.success(request, 'Listing timer has been reset successfully!')
+            return redirect('product_detail', pk=pk)
+            
+        except Product_Listing.DoesNotExist:
+            messages.error(request, 'Product not found!')
+            return redirect('home')
+        except Exception as e:
+            messages.error(request, f'Error updating product: {str(e)}')
+            return redirect('product_detail', pk=pk)
     
-        
+    def test_func(self):
+        product = Product_Listing.objects.get(pk=self.kwargs['pk'])
+        return self.request.user == product.seller.user          
+                
 class ProductCreateView(LoginRequiredMixin, CreateView):
     model = Product_Listing
     form_class = ListingForm
     template_name = 'product_form.html'
-    success_url = reverse_lazy('home') 
+    success_url = reverse_lazy('home')
     
-
     def form_valid(self, form):
-        form.instance.seller = self.request.user.profile
-        self.object = form.save()
-
-        images = self.request.FILES.getlist('images')
-        for i, image in enumerate(images):
-            Product_Image.objects.create(
-                product=self.object,
-                image=image,
-                is_primary=(i == 0)  # Set the first image as primary
-            )
-
-        messages.success(self.request, 'Product created successfully.')
-        return super().form_valid(form)
+        try:
+            # Set the seller
+            form.instance.seller = self.request.user.profile
+            
+            # Save the form manually
+            self.object = form.save()
+            
+            # Set expiration date explicitly before saving images
+            if self.object.listing_type != 'permanent':
+                duration = {
+                    'standard': 7,
+                    'premium': 30,
+                    'emergency': 3
+                }.get(self.object.listing_type, 7)
+                self.object.expiration_date = timezone.now() + timedelta(days=duration)
+                self.object.save()
+            
+            # Handle images
+            images = self.request.FILES.getlist('images')
+            for i, image in enumerate(images[:5]):  # Limit to 5 images
+                Product_Image.objects.create(
+                    product=self.object,
+                    image=image,
+                    is_primary=(i == 0)
+                )
+            
+            messages.success(self.request, 'Product created successfully.')
+            return HttpResponseRedirect(self.get_success_url())
+            
+        except Exception as e:
+            messages.error(self.request, f'Error creating product: {str(e)}')
+            return self.form_invalid(form)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Create New Listing'
+        context['save'] = 'List Product'
+        # Add time_remaining to context if object exists
+        if hasattr(self, 'object') and self.object:
+            context['time_remaining'] = self.object.time_remaining
         return context
 
 class ProductUpdateView(LoginRequiredMixin, UpdateView):
@@ -302,22 +365,54 @@ class ProductUpdateView(LoginRequiredMixin, UpdateView):
         return kwargs
 
     def form_valid(self, form):
-        # Delete the existing images
-        self.object.images.all().delete()
-
-        # Save the new images
-        self.save_images(form.cleaned_data.get('images', []))
-
-        messages.success(self.request, 'Product updated successfully.')
-        return super().form_valid(form)
+        try:
+            self.object = form.save(commit=False)
+            
+            # Reset expiration based on listing type
+            duration = {
+                'standard': 7,
+                'premium': 30,
+                'emergency': 3
+            }.get(self.object.listing_type)
+            
+            if self.object.listing_type != 'permanent':
+                self.object.expiration_date = timezone.now() + timedelta(days=duration)
+                self.object.deletion_warning_sent = False
+            else:
+                self.object.expiration_date = None
+            
+            self.object.save()
+            
+            # Handle images
+            if form.cleaned_data.get('images'):
+                # Delete existing images
+                self.object.images.all().delete()
+                # Save new images
+                self.save_images(form.cleaned_data['images'])
+            
+            messages.success(self.request, 'Product updated successfully.')
+            return HttpResponseRedirect(self.get_success_url())
+        except Exception as e:
+            messages.error(self.request, f'Error updating product: {str(e)}')
+            return self.form_invalid(form)
+        
 
     def save_images(self, images):
-        for image in images:
-            self.object.images.create(image=image)
+        for i, image in enumerate(images):
+            self.object.images.create(
+                image=image,
+                is_primary=(i == 0)
+            )
 
     def test_func(self):
         product = self.get_object()
         return self.request.user == product.seller
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Update Listing'
+        context['save'] = 'Update Product'
+        return context
     
 class ProductDeleteView(LoginRequiredMixin, DeleteView):
     model = Product_Listing
@@ -356,6 +451,7 @@ class ProductSearchView(ListView):
 
         return queryset.order_by('-created_at')
     
+    Product_Listing.delete_expired_listings()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -468,7 +564,8 @@ def saved_products(request):
         product.formatted_price = format_price(product.price)
         product.is_saved = True  # These are saved products by definition
         products.append(product)
-    
+        
+    Product_Listing.delete_expired_listings()
     # Add to context
     context = {
         'products': products  # Changed from saved_items to products
@@ -675,7 +772,6 @@ def delete_reply(request, pk, reply_id):
         'product': product
     }
     return render(request, 'delete_reply_confirm.html', context)
-
 
 @login_required
 def my_store(request, username=None):

@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block 'Body' %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="mb-0">{{ notification.title }}</h2>
+            <a href="{% url 'notifications:list' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Back to List
+            </a>
+        </div>
+        <div class="card-body">
+            <!-- Notification Metadata -->
+            <div class="d-flex align-items-center mb-4">
+                <span class="text-muted">
+                    <i class="bi bi-clock me-2"></i>{{ notification.created_at|timesince }} ago
+                </span>
+                {% if notification.category %}
+                    <span class="text-muted ms-3">
+                        <i class="bi bi-tag me-2"></i>{{ notification.get_category_display }}
+                    </span>
+                {% endif %}
+            </div>
+            
+            <!-- Notification Message -->
+            <div class="notification-content mb-4">
+                {{ notification.message|linebreaks }}
+            </div>
+            
+            <!-- Product Quick Actions -->
+            {% if product_url or notification.content_object.get_absolute_url %}
+            <div class="quick-actions mb-4">
+                <div class="d-flex gap-2">
+                    <a href="{% if product_url %}{{ product_url }}{% else %}{{ notification.content_object.get_absolute_url }}{% endif %}" 
+                       class="btn btn-primary">
+                        <i class="bi bi-box me-2"></i>View Product
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Related Content Section -->
+            {% if notification.content_object %}
+            <div class="related-content mt-4">
+                <div class="card bg-light border-0">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">
+                            <i class="bi bi-link-45deg me-2"></i>Related Content
+                        </h5>
+                        
+                        <!-- Display review reply details -->
+                        {% if content_type == 'reviewreply' %}
+                            <p class="mb-2">
+                                Reply to review by {{ notification.content_object.review.reviewer.username }}:
+                                <em>"{{ notification.content_object.review.comment|truncatewords:10 }}"</em>
+                            </p>
+                        {% endif %}
+                        
+                        <div class="button-group mt-3">
+                            {% if product_url or notification.content_object.get_absolute_url %}
+                                <a href="{% if product_url %}{{ product_url }}{% else %}{{ notification.content_object.get_absolute_url }}{% endif %}" 
+                                   class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-eye me-2"></i>View Details
+                                </a>
+                            {% endif %}
+                        
+                            {% if editable_notifications %}
+                                {% for editable in editable_notifications %}
+                                    {% if editable.id == notification.id %}
+                                        <a href="{{ editable.edit_url }}" 
+                                           class="btn btn-primary btn-sm ms-2">
+                                            <i class="bi bi-pencil me-2"></i>Edit
+                                        </a>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Seller Info Section -->
+            {% if notification.content_object and notification.content_object.seller.user == request.user %}
+                <div class="mt-4">
+                    <div class="alert alert-info d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="bi bi-info-circle me-2"></i>
+                            This notification is about your listing "{{ notification.content_object.title }}"
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .notification-content {
+        font-size: 1.1rem;
+        line-height: 1.6;
+    }
+
+    .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid rgba(0,0,0,.125);
+    }
+
+    .related-content .card {
+        background-color: #f8f9fa;
+    }
+
+    .alert-info {
+        background-color: #e3f2fd;
+        border-color: #90caf9;
+        color: #0d47a1;
+    }
+
+    .quick-actions {
+        border-top: 1px solid #dee2e6;
+        border-bottom: 1px solid #dee2e6;
+        padding: 1rem 0;
+    }
+
+    .button-group {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+</style>
+{% endblock %}
+
+{% block 'Footer' %}{% endblock %}
