@@ -1,417 +1,535 @@
-{% extends 'base.html'%}
+{% extends 'base.html' %}
 {% load static %}
 
-{% block 'Body'%}
+{% block 'Body' %}
     {% if user.is_authenticated %}
         {% include 'banner.html' %}
-        <a href="{% url 'product_create' %}" id="create-listing-btn" class="btn btn-primary rounded-circle position-fixed" data-bs-toggle="tooltip" data-bs-placement="left" title="Create New Listing">
-            <i class="bi bi-plus"></i>
-        </a>
     {% else %}
-        <div class="hero-container">
-            <div id="mainCarousel" class="carousel slide" data-bs-ride="carousel">
-                <div class="carousel-inner">
-                    {% static 'images/cars.png' as car_img %}
-                    {% static 'images/market1.jpg' as market1 %}
-                    {% static 'images/market2.jpg' as market2 %}
-                    <div class="carousel-item active" data-bs-interval="5000">
-                        <img src="{{ car_img }}" class="d-block w-100" alt="Cars">
-                        <div class="carousel-overlay"></div>
-                    </div>
-                    <div class="carousel-item" data-bs-interval="5000">
-                        <img src="{{ market1 }}" class="d-block w-100" alt="Market 1">
-                        <div class="carousel-overlay"></div>
-                    </div>
-                    <div class="carousel-item" data-bs-interval="5000">
-                        <img src="{{ market2 }}" class="d-block w-100" alt="Market 2">
-                        <div class="carousel-overlay"></div>
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-content">
+            <div class="hero-overlay"></div>
+            <div class="hero-text-container">
+                <h1 class="hero-title">Welcome to Iwo Marketplace</h1>
+                <p class="hero-subtitle">Join thousands of satisfied customers in the most trusted marketplace</p>
+                <div class="hero-buttons">
+                    <a href="{% url 'register' %}" class="btn btn-primary btn-lg">Get Started</a>
+                    <a href="{% url 'login' %}" class="btn btn-outline-light btn-lg">Sign In</a>
+                </div>
+            </div>
+            <!-- Stats Bar -->
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <i class="bi bi-people-fill"></i>
+                    <div class="stat-text">
+                        <div class="stat-value">{{ active_users_count }}+</div>
+                        <div class="stat-label">Active Users</div>
                     </div>
                 </div>
-                <div class="carousel-caption">
-                    <h1 class="hero-title">Welcome to Iwo Marketplace</h1>
-                    <p class="hero-subtitle">Buying and selling made easy...</p>
-                    <div class="hero-cta mt-4">
-                        <a href="/register" class="btn btn-primary btn-lg me-2">Get Started</a>
-                        <a href="/login" class="btn btn-outline-light btn-lg">Sign In</a>
+                <div class="stat-item">
+                    <i class="bi bi-bag-fill"></i>
+                    <div class="stat-text">
+                        <div class="stat-value">{{ total_products }}+</div>
+                        <div class="stat-label">Total Products</div>
                     </div>
                 </div>
-                <div class="hero-psychology-elements">
-                    <div class="trust-badges animate__animated animate__fadeInUp">
-                        <div class="trust-item">
-                            <i class="bi bi-shield-check"></i>
-                            <span>Secure Payments</span>
-                        </div>
-                        <div class="trust-item">
-                            <i class="bi bi-people-fill"></i>
-                            <span>5000+ Active Users</span>
-                        </div>
+                <div class="stat-item">
+                    <i class="bi bi-clock-fill"></i>
+                    <div class="stat-text">
+                        <div class="stat-value">{{ new_items_last_hour }}+</div>
+                        <div class="stat-label">New Today</div>
                     </div>
-                    <div class="scarcity-banner bg-danger animate__pulse">
-                        <i class="bi bi-clock-history"></i> 15 items added in the last hour!
+                </div>
+                <div class="stat-item">
+                    <i class="bi bi-graph-up"></i>
+                    <div class="stat-text">
+                        <div class="stat-value">98%</div>
+                        <div class="stat-label">Success Rate</div>
                     </div>
                 </div>
             </div>
         </div>
+    </section>
     {% endif %}
 
-    
-
-    <!-- Categories Section -->
-    <section class="categories py-5">
-        <div class="container text-center">
-            <h2 class="section-title mb-4">Browse Categories</h2>
-            <div class="category-container">
-                <!-- Desktop Layout -->
-                <div class="category-list d-none d-lg-flex">
-                    {% for category in categories %}
-                        <a href="{% url 'product_list' %}?category={{ category.id }}" class="category-item text-decoration-none">
-                            <div class="category-card">
-                                <div class="category-icon">
+<!-- Categories Section -->
+<section class="categories-section py-5">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+            <h2 class="section-title">Popular Categories</h2>
+            <a href="{% url 'category_list' %}" class="text-primary text-decoration-none">
+                View All <i class="bi bi-chevron-right"></i>
+            </a>
+        </div>
+        
+        <div class="categories-wrapper">
+            <!-- Added scroll indicator -->
+            <div class="scroll-indicator d-md-none">
+                <i class="bi bi-arrow-left-right"></i>
+                <span>Scroll</span>
+            </div>
+            
+            <div class="row g-4 categories-grid">
+                {% for category in categories %}
+                <div class="category-item col-6 col-md-4 col-lg-2">
+                    <a href="{% url 'product_list' %}?category={{ category.id }}" class="text-decoration-none">
+                        <div class="category-card card h-100">
+                            <div class="card-body">
+                                <div class="category-icon mb-3">
                                     {% if category.image %}
-                                        <img src="{{ category.image.url }}" alt="{{ category.name }}" class="category-image">
+                                        <img src="{{ category.image.url }}" alt="{{ category.name }}" class="img-fluid">
                                     {% else %}
-                                        <i class="fas fa-box"></i>
+                                        <i class="bi bi-grid-fill fs-2 text-primary"></i>
                                     {% endif %}
                                 </div>
-                                <h5 class="category-title">{{ category.name }}</h5>
+                                <h3 class="category-title h6 mb-1">{{ category.name }}</h3>
+                                <p class="text-muted category-count small mb-0">
+                                    {{ category.product_listing_set.count }} items
+                                </p>
                             </div>
-                        </a>
-                    {% endfor %}
+                        </div>
+                    </a>
                 </div>
-
-                <!-- Mobile Layout -->
-                <div class="d-lg-none">
-                    <div class="row g-2">
-                        {% for category in categories|slice:":3" %}
-                            <div class="col-4">
-                                <a href="{% url 'product_list' %}?category={{ category.id }}" class="category-card text-decoration-none">
-                                    <div class="category-icon">
-                                        {% if category.image %}
-                                            <img src="{{ category.image.url }}" alt="{{ category.name }}" class="category-image">
-                                        {% else %}
-                                            <i class="fas fa-box"></i>
-                                        {% endif %}
-                                    </div>
-                                    <h5 class="category-title">{{ category.name }}</h5>
-                                </a>
-                            </div>
-                        {% endfor %}
-                        
-                        {% if categories|length > 3 %}
-                            <div class="col-12">
-                                <div class="collapse" id="mobileCategories">
-                                    <div class="row g-2">
-                                        {% for category in categories|slice:"3:" %}
-                                            <div class="col-4">
-                                                <a href="{% url 'product_list' %}?category={{ category.id }}" class="category-card text-decoration-none">
-                                                    <div class="category-icon">
-                                                        {% if category.image %}
-                                                            <img src="{{ category.image.url }}" alt="{{ category.name }}" class="category-image">
-                                                        {% else %}
-                                                            <i class="fas fa-box"></i>
-                                                        {% endif %}
-                                                    </div>
-                                                    <h5 class="category-title">{{ category.name }}</h5>
-                                                </a>
-                                            </div>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                                <button class="btn btn-link w-100 mt-2" data-bs-toggle="collapse" data-bs-target="#mobileCategories">
-                                    Show More Categories <i class="bi bi-chevron-down collapse-icon"></i>
-                                </button>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Featured Products -->
-    <section class="featured-products py-5">
-        <div class="container-fluid">
-            <h2 class="section-title text-center mb-4">Featured Products</h2>
-            <div class="row g-3">
-                {% for product in featured_products %}
-                    <div class="col-6 col-md-4 col-lg-3 col-xl-2">
-                        {% include 'product_card.html' with product=product %}
-                    </div>
                 {% endfor %}
             </div>
-
-            {% if featured_products.has_other_pages %}
-                <nav aria-label="Featured products pagination" class="mt-4">
-                    <ul class="pagination justify-content-center">
-                        {% if featured_products.has_previous %}
-                            <li class="page-item">
-                                <a class="page-link" href="?product_page={{ featured_products.previous_page_number }}">Previous</a>
-                            </li>
-                        {% endif %}
-                        
-                        {% for i in featured_products.paginator.page_range %}
-                            <li class="page-item {% if featured_products.number == i %}active{% endif %}">
-                                <a class="page-link" href="?product_page={{ i }}">{{ i }}</a>
-                            </li>
-                        {% endfor %}
-                        
-                        {% if featured_products.has_next %}
-                            <li class="page-item">
-                                <a class="page-link" href="?product_page={{ featured_products.next_page_number }}">Next</a>
-                            </li>
-                        {% endif %}
-                    </ul>
-                </nav>
-            {% endif %}
         </div>
-    </section>
+    </div>
+</section>
 
-    <style>
-        /* Consolidated & Optimized CSS */
-        /* Section Titles */
-        .section-title {
-            background-color: var(--card-background);
-            color: var(--text-primary);
-            padding: 0.75rem 1.5rem;
-            border-radius: 10px;
-            display: inline-block;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+<!-- Featured Products -->
+<section class="featured-products py-3">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h2 class="section-title">Featured Products</h2>
+            <a href="{% url 'product_list' %}" class="text-primary text-decoration-none">
+                See More <i class="bi bi-arrow-up-right"></i>
+            </a>
+        </div>
+
+        <div class="row g-4">
+            {% for product in featured_products %}
+                <div class="col-6 col-md-4 col-lg-3">
+                    {% include 'product_card.html' with product=product %}
+                </div>
+            {% endfor %}
+        </div>
+
+        {% if featured_products.has_other_pages %}
+            {% include "pagination.html" with page_obj=featured_products %}
+        {% endif %}
+    </div>
+</section>
+
+<!-- Trust Badges Section -->
+<section class="trust-badges-section">
+    <h2 class="section-title text-center">Why Choose Us</h2>
+    <div class="trust-badges-grid">
+        <div class="trust-badge-card">
+            <div class="trust-badge-icon">
+                <i class="bi bi-shield-check"></i>
+            </div>
+            <h3>Verified Sellers</h3>
+            <p>All our sellers go through a strict verification process</p>
+        </div>
+        <div class="trust-badge-card">
+            <div class="trust-badge-icon">
+                <i class="bi bi-credit-card"></i>
+            </div>
+            <h3>Secure Payments</h3>
+            <p>Multiple secure payment options available</p>
+        </div>
+        <div class="trust-badge-card">
+            <div class="trust-badge-icon">
+                <i class="bi bi-headset"></i>
+            </div>
+            <h3>24/7 Support</h3>
+            <p>Our support team is always here to help</p>
+        </div>
+    </div>
+</section>
+
+{% if user.is_authenticated %}
+    <a href="{% url 'product_create' %}" id="create-listing-btn" class="btn btn-primary-d rounded-circle position-fixed" data-bs-toggle="tooltip" data-bs-placement="left" title="Create New Listing">
+        <i class="bi bi-plus fs-4"></i>
+    </a>
+{% endif %}
+
+<style>
+    .text-primary{
+        color:
+    }
+    /* Hero Section */
+    .hero-section {
+        position: relative;
+        min-height: 70vh;
+        background: linear-gradient(to right, var(--primary-color) 0%, var(--secondary-color) 100%);
+        margin: -2rem -1rem 2rem -1rem;
+        border-radius: 0 0 2rem 2rem;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .hero-content {
+        position: relative;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 4rem 2rem;
+        z-index: 1;
+    }
+
+    .hero-overlay {
+        position: absolute;
+        inset: 0;
+        background: url('{% static "images/market1.jpg" %}') center/cover;
+        opacity: 0.8;
+        z-index: 0;
+    }
+
+    .hero-text-container {
+        position: relative;
+        width: 100%;
+        max-width: 800px;
+        color: white;
+        text-align: center;
+        padding: 2rem;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 1rem;
+        margin: 0 auto;
+    }
+
+    .hero-title {
+        font-size: clamp(2rem, 5vw, 3rem);
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        line-height: 1.2;
+    }
+
+    .hero-subtitle {
+        font-size: clamp(1.1rem, 2vw, 1.25rem);
+        opacity: 0.9;
+        margin-bottom: 1.5rem;
+        line-height: 1.5;
+    }
+
+    .hero-buttons {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .hero-buttons .btn {
+        min-width: 100px;
+        padding: 0.75rem 1.5rem;
+    }
+
+    /* Stats Bar */
+    .stats-bar {
+        width: 100%;
+        background: var(--card-background);
+        backdrop-filter: blur(10px);
+        padding: 2rem;
+        margin-top: auto;
+        z-index: 2;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 2rem;
+    }
+
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.5rem;
+    }
+
+    .stat-item i {
+        font-size: 2rem;
+        color: var(--primary-color);
+        flex-shrink: 0;
+    }
+
+    .stat-text {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        min-width: 0; /* Allows text to wrap properly */
+    }
+
+    .stat-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        white-space: nowrap;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+    }
+
+    /* Categories Section */
+    .categories-section {
+        padding-top: 1.5rem !important; 
+        padding-bottom: 1.5rem !important;
+    }
+
+    .categories-wrapper {
+        margin-top: 0.5rem;
+    }
+
+    .category-card {
+        background: var(--card-background);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1rem;
+        height: 100%;
+        transition: all 0.3s ease;
+    }
+
+    .category-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .category-icon {
+        width: 60px;
+        height: 60px;
+        margin: 0 auto 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .category-image {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+
+    .category-title {
+        font-size: 0.9rem;
+        margin: 0;
+        text-align: center;
+        color: var(--text-primary);
+    }
+
+    .category-count {
+        text-align: center;
+    }
+
+    /* Scrollable Categories for Smaller Screens */
+    @media (max-width: 767.98px) {
+        .categories-wrapper {
+            margin: 0 -15px;
+            padding: 0 15px;
+            position: relative;
         }
-    
-        /* Categories */
-        .category-container {
-            width: 100%;
-            margin: 0 auto;
-        }
-    
-        .category-list {
+
+        .categories-grid {
             display: flex;
-            gap: 8px;
+            flex-wrap: nowrap;
             overflow-x: auto;
-            padding-bottom: 10px;
             scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 1rem;
+            margin-right: 0;
+            margin-left: 0;
         }
-    
+        
         .category-item {
-            flex: 0 0 140px;
-            max-width: 140px;
-            aspect-ratio: 1/1;
+            flex: 0 0 auto;
+            width: 180px;
+            padding: 0 8px;
             scroll-snap-align: start;
         }
-    
-        .category-card {
-            background: var(--card-background);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 12px;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            transition: all 0.3s ease;
+        
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .categories-grid::-webkit-scrollbar {
+            display: none;
         }
-    
-        .category-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        
+        /* Hide scrollbar for IE, Edge and Firefox */
+        .categories-grid {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
-    
-        .category-icon {
-            height: 60px;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-    
-        .category-image {
-            max-width: 100%;
-            max-height: 60px;
-            object-fit: contain;
-        }
-    
-        .category-title {
-            text-decoration: none !important;
-            font-size: 0.88rem;
-            color: var(--text-primary);
-            margin: 0;
-        }
-    
-        /* Hero Section */
-        .hero-container {
-            position: relative;
-            margin: -2rem -1rem 2rem -1rem;
-            overflow: hidden;
-            border-radius: 0 0 1rem 1rem;
-        }
-    
-        .carousel-item {
-            height: 70vh;
-            min-height: 400px;
-            background-color: #000;
-        }
-    
-        .carousel-item img {
-            object-fit: cover;
-            height: 100%;
-            width: 100%;
-            opacity: 0.8;
-        }
-    
-        .carousel-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.7));
-        }
-    
-        .carousel-caption {
-            bottom: 40%;
-            transform: translateY(50%);
-        }
-    
-        .hero-title {
-            font-size: 2.5rem;
-            font-weight: 700;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-        }
-    
-        .hero-subtitle {
-            font-size: 1.25rem;
-            max-width: 600px;
-            margin: 1rem auto;
-        }
-    
-        /* Create Listing Button */
-        #create-listing-btn {
-            right: 40px;
-            bottom: 100px;
-            height: 60px;
-            width: 60px;
-            z-index: 1050;
-            background-color: var(--primary-color);
-            border: none;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            transition: all 0.3s ease;
-        }
-    
-        #create-listing-btn:hover {
-            transform: scale(1.05);
-            background-color: var(--secondary-color);
-        }
-    
-        /* Pagination */
-        .pagination .page-link {
-            color: var(--text-primary);
-            background-color: var(--card-background);
-            border-color: var(--border-color);
-        }
-    
-        .pagination .page-item.active .page-link {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-            color: #fff;
-        }
-    
-        /* Responsive Adjustments */
-        @media (max-width: 991px) {
-            .category-list { display: none !important; }
-            .category-card { aspect-ratio: 1/1; }
-        }
-    
-        @media (max-width: 768px) {
-            .hero-title { font-size: 1.75rem; }
-            .hero-subtitle { font-size: 1rem; }
-            .carousel-item { height: 50vh; }
-        }
-    
-        @media (max-width: 576px) {
-            .hero-title { font-size: 1.5rem; }
-            #create-listing-btn {
-                right: 10px;
-                bottom: 70px;
-                height: 50px;
-                width: 50px;
-            }
-        }
-
-    .category-card a.text-decoration-none,.category-card a:hover {
-        text-decoration: none !important;
     }
 
-  
-    .category-list::-webkit-scrollbar {
-        height: 4px;
-        background: var(--background-color);
+    /* Scroll Indicator Animation */
+    .scroll-indicator {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+        color: var(--text-muted);
+        font-size: 0.875rem;
+        animation: fadeOut 10s forwards;
+        animation-delay: 2s;
     }
 
-    .category-list::-webkit-scrollbar-thumb {
-        background: var(--text-secondary);
-        border-radius: 2px;
+    .scroll-indicator i {
+        animation: scrollHint 0.5s infinite;
     }
 
-    .category-list {
-        scrollbar-color: var(--text-secondary) var(--background-color);
+    @keyframes scrollHint {
+        0% {
+            transform: translateX(-5px);
+        }
+        50% {
+            transform: translateX(5px);
+        }
+        100% {
+            transform: translateX(-5px);
+        }
     }
 
-    /* Mobile collapse button styling */
-    .btn-link[data-bs-toggle="collapse"] {
-        text-decoration: none;
-        color: var(--text-primary) !important;
+    @keyframes fadeOut {
+        from {
+            opacity: 1;
+        }
+        to {
+            opacity: 0;
+            visibility: hidden;
+        }
     }
 
-    .btn-link[data-bs-toggle="collapse"]:hover {
-        text-decoration: none;
+    /* Adjusted Section Spacing for Mobile Screens */
+    @media (max-width: 767.98px) {
+        section {
+            margin-bottom: var(--spacing-sm); 
+        }
+
+        .categories-section,
+        .featured-products,
+        .trust-badges-section {
+            padding-top: 1rem !important;
+            padding-bottom: 1rem !important;
+        }
+
+        .hero-section {
+            margin-bottom: 1rem;
+        }
+
+        .stats-bar {
+            padding: 1rem; 
+            gap: 1rem; 
+        }
+
+        .trust-badges-section {
+            padding: 2rem 0;
+        }
     }
 
-    /* Collapse icon transition */
-    .collapse-icon {
+
+    /* Create Listing Button */
+    #create-listing-btn {
+        position: fixed;
+        right: var(--spacing-lg, 1.5rem);
+        bottom: 80px; 
+        width: 3.5rem;
+        height: 3.5rem;
+        z-index: 1030;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+        transition: all 0.3s ease;
+        background-color: var(--primary-color);
+        color: white;
+    }
+
+    #create-listing-btn i {
+        font-size: 1.5rem;
         transition: transform 0.3s ease;
     }
 
-    [aria-expanded="true"] .collapse-icon {
-        transform: rotate(180deg);
+    #create-listing-btn:hover {
+        transform: translateY(-2px) scale(1.05);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
     }
-    </style>
 
-    <script>
-       // Optimized JavaScript
-    document.addEventListener('DOMContentLoaded', () => {
-        // Initialize carousel
-        const carousel = new bootstrap.Carousel('#mainCarousel', {
-            interval: 5000,
-            wrap: true,
-            pause: 'hover'
-        });
+    #create-listing-btn:hover i {
+        transform: rotate(90deg);
+    }
 
-        // Handle category collapse
-        const collapseBtns = document.querySelectorAll('[data-bs-toggle="collapse"]');
-        collapseBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const icon = btn.querySelector('i');
-                if (btn.getAttribute('aria-expanded') === 'true') {
-                    icon.classList.replace('bi-chevron-up', 'bi-chevron-down');
-                } else {
-                    icon.classList.replace('bi-chevron-down', 'bi-chevron-up');
-                }
-            });
-        });
+    /* Adjust button position for smaller screens */
+    @media (max-width: 767.98px) {
+        #create-listing-btn {
+            right: 1.75rem;
+            bottom: 80px;
+        }
+    }
 
-        // Initialize tooltip
-        new bootstrap.Tooltip(document.getElementById('create-listing-btn'));
+    /* Trust Badges Section */
+    .trust-badges-section {
+        background: var(--card-background);
+        padding: 4rem 0;
+        margin: 2rem -1rem -2rem -1rem;
+    }
+
+    .trust-badges-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+        max-width: 1200px;
+        margin: 3rem auto 0;
+        padding: 0 1rem;
+    }
+
+    .trust-badge-card {
+        text-align: center;
+        padding: 2rem;
+        background: var(--background-color);
+        border-radius: 1rem;
+        transition: transform 0.3s ease;
+    }
+
+    .trust-badge-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .trust-badge-icon {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 1.5rem;
+        background: var(--primary-color);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+    }
+
+    .trust-badge-card h3 {
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+    }
+
+    .trust-badge-card p {
+        color: var(--text-secondary);
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 
-    // Modified collapse button functionality
-    document.addEventListener('DOMContentLoaded', function() {
-        const collapseElement = document.getElementById('mobileCategories');
-        const collapseButton = document.querySelector('[data-bs-target="#mobileCategories"]');
+    // Category collapse button functionality
+    const collapseElement = document.getElementById('mobileCategories');
+    const collapseButton = document.querySelector('[data-bs-target="#mobileCategories"]');
 
+    if (collapseElement && collapseButton) {
         collapseElement.addEventListener('show.bs.collapse', function () {
             collapseButton.innerHTML = 'Show Less Categories <i class="bi bi-chevron-up collapse-icon"></i>';
         });
@@ -419,7 +537,8 @@
         collapseElement.addEventListener('hide.bs.collapse', function () {
             collapseButton.innerHTML = 'Show More Categories <i class="bi bi-chevron-down collapse-icon"></i>';
         });
-    });
-    </script>
+    }
+});
+</script>
 {% endblock %}
 {% block 'Footer'%}{% endblock %}

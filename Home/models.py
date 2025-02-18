@@ -6,10 +6,13 @@ from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator, FileExtensionValidator
 from .utils import user_listing_path
 from django.db.models import Avg
 from django.db import models
+from django.db import models
+from imagekit.models import ProcessedImageField, ImageSpecField
+from imagekit.processors import ResizeToFit, ResizeToFill
 from mptt.models import MPTTModel, TreeForeignKey
 
 class Category(models.Model):
@@ -67,9 +70,9 @@ class Product_Listing(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     location = models.OneToOneField(location, on_delete=models.SET_NULL, null=True)
-    condition = models.CharField(max_length=4, choices=CONDITION_CHOICES)
+    condition = models.CharField(max_length=4, choices=CONDITION_CHOICES, default='new')
     view_count = models.PositiveIntegerField(default=0)
-    
+
     listing_type = models.CharField(max_length=10, choices=LISTING_TYPES, default='standard')
     quantity = models.PositiveIntegerField(default=1)
     sold_quantity = models.PositiveIntegerField(default=0)
@@ -227,12 +230,22 @@ class Product_Listing(models.Model):
         count = expired.count()
         expired.delete()
         return count
-    
-    
-    
+       
 class Product_Image(models.Model):
     product = models.ForeignKey(Product_Listing, related_name='images', on_delete=models.CASCADE)
-    image = models.ImageField(upload_to=user_listing_path)
+    image = ProcessedImageField(
+        upload_to=user_listing_path,
+        processors=[ResizeToFit(800, 600)],  # Main image size
+        format='JPEG',
+        options={'quality': 85}
+    )
+    # Auto-generated thumbnail
+    thumbnail = ImageSpecField(
+        source='image',
+        processors=[ResizeToFill(200, 200)],  # Square thumbnail
+        format='JPEG',
+        options={'quality': 80}
+    )
     is_primary = models.BooleanField(default=False)
 
     def __str__(self):
@@ -259,17 +272,64 @@ class SavedProduct(models.Model):
         super().delete(*args, **kwargs)
     
 class Banner(models.Model):
-    image = models.ImageField(upload_to='banners/')
+    BANNER_TYPES = [
+        ('hero', 'Hero Banner'),
+        ('promotional', 'Promotional Banner'),
+        ('announcement', 'Announcement Banner'),
+    ]
+    
+    DISPLAY_LOCATIONS = [
+        ('home_top', 'Home Page Top'),
+        ('home_middle', 'Home Page Middle'),
+        ('category', 'Category Pages'),
+        ('global', 'Global'),
+    ]
+
+    title = models.CharField(max_length=100, default="Advertisement Banner")  # Added default
+    subtitle = models.CharField(max_length=200, blank=True, null=True)  # Made nullable
+    image = models.ImageField(
+        upload_to='banners/',
+        validators=[FileExtensionValidator(['jpg', 'jpeg', 'png', 'webp'])]
+    )
+    mobile_image = models.ImageField(
+        upload_to='banners/mobile/',
+        validators=[FileExtensionValidator(['jpg', 'jpeg', 'png', 'webp'])],
+        help_text="Optimized image for mobile devices",
+        blank=True,
+        null=True  # Made nullable
+    )
     url = models.URLField()
+    banner_type = models.CharField(
+        max_length=20, 
+        choices=BANNER_TYPES, 
+        default='promotional'
+    )
+    display_location = models.CharField(
+        max_length=20, 
+        choices=DISPLAY_LOCATIONS, 
+        default='home_top'
+    )
     is_active = models.BooleanField(default=True)
+    priority = models.IntegerField(default=0, help_text="Higher number means higher priority")
+    start_date = models.DateTimeField(null=True, blank=True)
+    end_date = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return f"Banner {self.id}"
-
     class Meta:
-        ordering = ['-updated_at']
+        ordering = ['-priority', '-updated_at']
+        indexes = [
+            models.Index(fields=['is_active', 'display_location']),
+        ]
+
+    def __str__(self):
+        return self.title
+
+    def save(self, *args, **kwargs):
+        # Set default title if none provided
+        if not self.title:
+            self.title = f"Advertisement Banner {Banner.objects.count() + 1}"
+        super().save(*args, **kwargs)
 
 class Review(models.Model):
     REVIEW_TYPES = (

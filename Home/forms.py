@@ -53,7 +53,7 @@ class ListingForm(forms.ModelForm):
     quantity = forms.IntegerField(
         min_value=1, 
         initial=1,
-        widget=forms.NumberInput(attrs={'class': 'form-select'})
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
     
     is_always_available = forms.BooleanField(

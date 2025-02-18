@@ -40,13 +40,20 @@ def loginview(request):
                 login(request, user)
                 messages.success(
                     request, f'You are now logged in as {username}.')
-                return redirect('home')
+                # Get the next URL from GET parameters or use default
+                next_url = request.GET.get('next')
+                return redirect(next_url if next_url else 'home')
         else:
-            messages.error(request, f'An error occured trying to login.')
+            messages.error(request, f'An error occurred trying to login.')
     elif request.method == 'GET':
         login_form = AuthenticationForm()
-    return render(request, 'login.html', {'login_form': login_form})
-
+        # Store the next parameter in the form's hidden field
+        next_url = request.GET.get('next', '')
+    
+    return render(request, 'login.html', {
+        'login_form': login_form,
+        'next': next_url if request.method == 'GET' else request.GET.get('next', '')
+    })
 
 @login_required
 def logoutview(request):

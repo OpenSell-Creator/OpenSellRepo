@@ -11,8 +11,12 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
-from django.contrib.messages import constants as  messages
+from django.contrib.messages import constants as messages
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,12 +26,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-o4_ynsm6hjo^2235hw1_qiy2j64dfgwi^4q4%9$$fk^22a3$%z'
+SECRET_KEY = os.environ.get('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
 
 
 # Application definition
@@ -42,14 +46,17 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'User.apps.UserConfig',
     'Home.apps.HomeConfig',
-    'Messages', # also 'Messages.apps.MessagesConfig'
+    'Messages',  # also 'Messages.apps.MessagesConfig'
     'Notifications',
     
 
-    #Third Party Apps
+    # Third Party Apps
     'mptt',
+    'imagekit',
     'widget_tweaks',
     'crispy_forms',
+    
+    # All Auths
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -98,8 +105,8 @@ WSGI_APPLICATION = 'Iwomarketplace.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': os.environ.get('DB_ENGINE', 'django.db.backends.sqlite3'),
+        'NAME': os.path.join(BASE_DIR, os.environ.get('DB_NAME', 'db.sqlite3')),
     }
 }
 
@@ -148,8 +155,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
 
 
-
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
@@ -161,10 +166,10 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 
-
 # Authentication settings
 
 # Redirect URLs
+LOGIN_URL = 'login'  # URL name of your login view
 LOGIN_REDIRECT_URL = '/'  # Default redirect for traditional login
 ACCOUNT_SIGNUP_REDIRECT_URL = '/profile/update/'  # Redirect after signup
 SOCIALACCOUNT_LOGIN_ON_GET = True
@@ -176,11 +181,15 @@ ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_USERNAME_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
+ACCOUNT_UNIQUE_EMAIL = True
+
+
 
 
 # Social Account settings
-SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_EMAIL_REQUIRED = True
+SOCIALACCOUNT_QUERY_EMAIL = True
+SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_USERNAME_REQUIRED = True
 SOCIALACCOUNT_STORE_TOKENS = True
 SOCIALACCOUNT_LOGIN_ON_GET = True
@@ -200,7 +209,7 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 
 # Security settings
-ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'http'  # Change to 'https' for production
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https' if not DEBUG else 'http'
 ACCOUNT_SESSION_REMEMBER = None
 #ACCOUNT_LOGIN_ATTEMPTS_LIMIT = 5
 #ACCOUNT_LOGIN_ATTEMPTS_TIMEOUT = 300
@@ -209,7 +218,13 @@ ACCOUNT_SESSION_REMEMBER = None
 ACCOUNT_EMAIL_SUBJECT_PREFIX = ''
 ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
 
-
-#GOOGLE_CLIENT_ID = '577623635807-8hvenj4sj3lm6fcv1puqtmca8q13ukgl.apps.googleusercontent.com'
-#577623635807-8hvenj4sj3lm6fcv1puqtmca8q13ukgl.apps.googleusercontent.com
-#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
+# Email settings
+if not DEBUG:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = os.environ.get('EMAIL_HOST')
+    EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+    EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
+    EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+    EMAIL_USE_TLS = True
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

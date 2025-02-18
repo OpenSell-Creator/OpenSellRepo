@@ -52,10 +52,28 @@ def load_brands(request):
 def format_price(price):
     return '₦ {:,.0f}'.format(Decimal(price))
 
+def get_active_banners(location='home_top'):
+    now = timezone.now()
+    return Banner.objects.filter(
+        Q(is_active=True) &
+        Q(display_location=location) &
+        (Q(start_date__isnull=True) | Q(start_date__lte=now)) &
+        (Q(end_date__isnull=True) | Q(end_date__gte=now))
+    ).order_by('-priority', '-updated_at')
+
 def home(request):
-    featured_products = Product_Listing.objects.order_by('-created_at')[:20]
-    categories = Category.objects.all()
+    # Initialize context dictionary first
+    context = {}
     
+    # Get featured products
+    featured_products = Product_Listing.objects.order_by('-created_at')[:20]
+    
+    # Get categories with product count
+    categories = Category.objects.annotate(
+        product_count=Count('product_listing')
+    ).order_by('-product_count')[:6]
+    
+    # Handle saved products for authenticated users
     if request.user.is_authenticated:
         saved_products = SavedProduct.objects.filter(
             user=request.user
@@ -65,28 +83,43 @@ def home(request):
         for product in featured_products:
             product.is_saved = str(product.id) in saved_products
     
-    # Fetch all active banners
-    active_banners = Banner.objects.filter(is_active=True)
+    # Get active banners
+    active_banners = get_active_banners('home_top')
     
+    # Clean up expired listings
     Product_Listing.delete_expired_listings()
     
     # Paginate featured products
-    product_paginator = Paginator(featured_products, 20)  # Show 20 featured products per page
+    product_paginator = Paginator(featured_products, 8)
     product_page_number = request.GET.get('product_page')
     product_page_obj = product_paginator.get_page(product_page_number)
     
+    # Format prices for products
     for product in product_page_obj:
         product.formatted_price = format_price(product.price)
     
-    context = {
+    # Update context with all required data
+    context.update({
         'categories': categories,
         'featured_products': product_page_obj,
         'banners': active_banners,
         'active_users_count': User.objects.filter(is_active=True).count(),
-        'new_items_last_hour': Product_Listing.objects.filter(created_at__gte=timezone.now()-timedelta(hours=1)).count()
-    }
+        'new_items_last_hour': Product_Listing.objects.filter(
+            created_at__gte=timezone.now()-timedelta(hours=1)
+        ).count(),
+        'total_products': Product_Listing.objects.count(),
+    })
+    
     return render(request, 'home.html', context)
    
+def category_list(request):
+    categories = Category.objects.annotate(
+        product_count=Count('product_listing')
+    ).order_by('-product_count')
+    context = {'categories': categories}
+    return render(request, 'category_list.html', context)
+
+
 class ProductListView(ListView):
     model = Product_Listing
     template_name = 'product_list.html'
