@@ -13,19 +13,18 @@
                              alt="Profile Photo" 
                              class="store-profile-photo">
                     {% else %}
-                    
-                    <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="store-profile-photo">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="12" cy="7" r="4"></circle>
-                    </svg>
-                    
-                {% endif %}
+                        <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="store-profile-photo">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                    {% endif %}
                 </div>
                 <div class="col-12 col-md-8 text-center text-md-start">
                     <h1 class="profile-username mb-2 h3 h-md-1">{{ store_owner.username }}'s Store</h1>
                     {% if store_owner.profile.bio %}
                         <p class="store-bio mb-3">{{ store_owner.profile.bio }}</p>
                     {% endif %}
+        
                     {% if request.user == store_owner %}
                         <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-md-start">
                             <a href="{% url 'product_create' %}" class="btn btn-add-product">
@@ -52,7 +51,7 @@
     <!-- Main Content -->
     <div class="container">
         <div class="row g-4">
-            <!-- Store Information Sidebar - Moved below on mobile -->
+            <!-- Store Information Sidebar -->
             <div class="col-12 col-lg-3 order-lg-first">
                 <div class="card store-info-card">
                     <div class="card-body">
@@ -84,8 +83,25 @@
                         {% if store_owner.profile.location %}
                         <div class="store-info-item">
                             <i class="bi bi-geo-alt me-2"></i>
-                            <span>{{ store_owner.profile.location.district }}, 
-                                  {{ store_owner.profile.location.state }}</span>
+                            <span class="location-text">
+                                {% if store_owner.profile.location.address %}
+                                    {{ store_owner.profile.location.address }},
+                                {% endif %}
+                                {% if store_owner.profile.location.address_2 %}
+                                    {{ store_owner.profile.location.address_2 }},
+                                {% endif %}
+                                {% if store_owner.profile.location.city %}
+                                    {{ store_owner.profile.location.city }},
+                                {% endif %}
+                                {% if store_owner.profile.location.lga %}
+                                    {{ store_owner.profile.location.lga.name }}
+                                {% if store_owner.profile.location.state %},
+                                {% endif %}
+                                {% endif %}
+                                {% if store_owner.profile.location.state %}
+                                    {{ store_owner.profile.location.state.name }}.
+                                {% endif %}
+                            </span>
                         </div>
                         {% endif %}
                     </div>
@@ -95,7 +111,9 @@
             <!-- Products Section -->
             <div class="col-12 col-lg-9">
                 <div class="products-section">
-                    <h3 class="h5 mb-3">Active Listings</h3>
+                    <h3 class="h5 mb-3">Active Listings(
+                        {{ total_products }} Product{{ total_products|pluralize }}
+                     Listed)</h3>
                     <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
                         {% for product in products %}
                             <div class="col">
@@ -123,7 +141,23 @@
     </div>
 </div>
 
+
 <style>
+    .location-text {
+        line-height: 1.4;
+        word-break: break-word;
+    }
+    
+    .store-info-item .bi-geo-alt {
+        align-self: flex-start;
+        margin-top: 0.2rem;
+    }
+    
+    @media (max-width: 768px) {
+        .location-text {
+            font-size: 0.85rem;
+        }
+    }
     .store-container {
         background-color: var(--background-color);
         min-height: 100vh;

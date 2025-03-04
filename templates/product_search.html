@@ -46,9 +46,7 @@
                         </div>
                         <div class="col">
                             <label class="form-label">Subcategory</label>
-                            <select name="subcategory" id="id_subcategory" class="form-select" disabled>
-                                <option value="">All Subcategories</option>
-                            </select>
+                            {{ form.subcategory|add_class:"form-select"|attr:"aria-label:Subcategory" }}
                         </div>
                         <div class="col">
                             <label class="form-label">Condition</label>
@@ -61,6 +59,14 @@
                         <div class="col">
                             <label class="form-label">Maximum Price</label>
                             {{ form.max_price|add_class:"form-control"|attr:"placeholder:Enter maximum price" }}
+                        </div>
+                        <div class="col">
+                            <label class="form-label">State</label>
+                            {{ form.state|add_class:"form-select"|attr:"aria-label:State" }}
+                        </div>
+                        <div class="col">
+                            <label class="form-label">LGA</label>
+                            {{ form.lga|add_class:"form-select"|attr:"aria-label:LGA" }}
                         </div>
                     </div>
                     <div class="row mt-3">
@@ -94,80 +100,115 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Category and subcategory handling
-    const categorySelect = document.getElementById('id_category');
-    const subcategorySelect = document.getElementById('id_subcategory');
-    const filterSection = document.getElementById('filterSection');
-    const clearFiltersBtn = document.getElementById('clearFilters');
-    const form = document.getElementById('advancedSearchForm');
-    const activeFiltersCount = document.getElementById('activeFiltersCount');
-
-    // Function to update active filters count
-    function updateActiveFiltersCount() {
-        let count = 0;
-        const formElements = form.elements;
-        
-        for (let element of formElements) {
-            if (element.type !== 'submit' && element.type !== 'button' && element.value) {
-                // Don't count the main search query
-                if (element.name !== 'query') {
-                    count++;
+    document.addEventListener('DOMContentLoaded', function() {
+        const categorySelect = document.getElementById('id_category');
+        const subcategorySelect = document.getElementById('id_subcategory');
+        const stateSelect = document.getElementById('id_state');
+        const lgaSelect = document.getElementById('id_lga');
+        const form = document.getElementById('advancedSearchForm');
+        const activeFiltersCount = document.getElementById('activeFiltersCount');
+    
+        // Function to update active filters count
+        function updateActiveFiltersCount() {
+            let count = 0;
+            const formElements = form.elements;
+            
+            for (let element of formElements) {
+                if (element.type !== 'submit' && element.type !== 'button' && element.value) {
+                    // Don't count the main search query
+                    if (element.name !== 'query') {
+                        count++;
+                    }
                 }
             }
+            
+            activeFiltersCount.textContent = count;
+            // Show/hide badge based on count
+            activeFiltersCount.style.display = count > 0 ? 'inline-block' : 'none';
         }
-        
-        activeFiltersCount.textContent = count;
-        // Show/hide badge based on count
-        activeFiltersCount.style.display = count > 0 ? 'inline-block' : 'none';
-    }
-
-    // Initialize active filters count
-    updateActiveFiltersCount();
-
-    // Category change handler
-    categorySelect.addEventListener('change', function() {
-        const categoryId = this.value;
-        if (categoryId) {
-            fetch(`/api/subcategories/${categoryId}/`)
-                .then(response => response.json())
-                .then(data => {
-                    subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
-                    data.forEach(subcategory => {
-                        const option = document.createElement('option');
-                        option.value = subcategory.id;
-                        option.textContent = subcategory.name;
-                        subcategorySelect.appendChild(option);
-                    });
-                    subcategorySelect.disabled = false;
-                    updateActiveFiltersCount();
-                });
-        } else {
-            subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
-            subcategorySelect.disabled = true;
-            updateActiveFiltersCount();
-        }
-    });
-
-    // Clear filters handler
-    clearFiltersBtn.addEventListener('click', function() {
-        const formElements = form.elements;
-        for (let element of formElements) {
-            if (element.type !== 'submit' && element.type !== 'button') {
-                // Preserve the main search query
-                if (element.name !== 'query') {
-                    element.value = '';
-                }
-            }
-        }
-        subcategorySelect.disabled = true;
+    
+        // Initialize active filters count
         updateActiveFiltersCount();
+    
+        // Category change handler
+        // Category change handler
+        categorySelect.addEventListener('change', function() {
+            const categoryId = this.value;
+            if (categoryId) {
+                fetch(`/api/subcategories/${categoryId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
+                        data.forEach(subcategory => {
+                            const option = document.createElement('option');
+                            option.value = subcategory.id;
+                            option.textContent = subcategory.name;
+                            subcategorySelect.appendChild(option);
+                        });
+                        subcategorySelect.disabled = false;  // Enable subcategory
+                        updateActiveFiltersCount();
+                    })
+                    .catch(error => {
+                        console.error('Error fetching subcategories:', error);
+                        subcategorySelect.disabled = true;  // Keep disabled on error
+                        updateActiveFiltersCount();
+                    });
+            } else {
+                subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
+                subcategorySelect.disabled = true;  // Disable when category is not selected
+                updateActiveFiltersCount();
+            }
+        });
+    
+        // State change handler
+        stateSelect.addEventListener('change', function() {
+            const stateId = this.value;
+            if (stateId) {
+                fetch(`/api/lgas/${stateId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        lgaSelect.innerHTML = '<option value="">All LGAs</option>';
+                        data.forEach(lga => {
+                            const option = document.createElement('option');
+                            option.value = lga.id;
+                            option.textContent = lga.name;
+                            lgaSelect.appendChild(option);
+                        });
+                        lgaSelect.disabled = false;  // Enable the LGA field
+                        updateActiveFiltersCount();
+                    })
+                    .catch(error => {
+                        console.error('Error fetching LGAs:', error);
+                        lgaSelect.disabled = true;  // Keep disabled on error
+                        updateActiveFiltersCount();
+                    });
+            } else {
+                lgaSelect.innerHTML = '<option value="">All LGAs</option>';
+                lgaSelect.disabled = true;  // Disable when state is not selected
+                updateActiveFiltersCount();
+            }
+        });
+    
+        // Clear filters handler
+        document.getElementById('clearFilters').addEventListener('click', function() {
+            const formElements = form.elements;
+            for (let element of formElements) {
+                if (element.type !== 'submit' && element.type !== 'button') {
+                    // Preserve the main search query
+                    if (element.name !== 'query') {
+                        element.value = '';
+                    }
+                }
+            }
+            subcategorySelect.disabled = true;
+            lgaSelect.disabled = true;
+            updateActiveFiltersCount();
+        });
+    
+        // Listen for changes on all form inputs
+        form.addEventListener('change', updateActiveFiltersCount);
+        form.addEventListener('input', updateActiveFiltersCount);
     });
-
-    // Listen for changes on all form inputs
-    form.addEventListener('change', updateActiveFiltersCount);
-    form.addEventListener('input', updateActiveFiltersCount);
-});
-</script>
+    </script>
 {% endblock %}
 {% block 'Footer'%}{% endblock %}

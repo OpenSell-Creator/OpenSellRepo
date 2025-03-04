@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     # Third Party Apps
     'mptt',
     'imagekit',
+    'django_countries',
     'widget_tweaks',
     'crispy_forms',
     

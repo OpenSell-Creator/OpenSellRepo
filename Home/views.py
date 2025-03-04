@@ -4,6 +4,7 @@ from django.shortcuts import render, get_object_or_404,redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .models import Product_Listing, Review, ReviewReply, SavedProduct
+from User.models import LGA
 from django.core.paginator import Paginator
 from django.db.models import Q,F, Avg, Exists, OuterRef
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
@@ -416,9 +417,9 @@ class ProductUpdateView(LoginRequiredMixin, UpdateView):
             
             self.object.save()
             
-            # Handle images
+            # Handle images - ONLY delete and replace if new images are uploaded
             if form.cleaned_data.get('images'):
-                # Delete existing images
+                # Only delete existing images if new ones are uploaded
                 self.object.images.all().delete()
                 # Save new images
                 self.save_images(form.cleaned_data['images'])
@@ -481,7 +482,11 @@ class ProductSearchView(ListView):
                 queryset = queryset.filter(price__lte=form.cleaned_data['max_price'])
             if form.cleaned_data['condition']:
                 queryset = queryset.filter(condition=form.cleaned_data['condition'])
-
+            if form.cleaned_data['state']:
+                queryset = queryset.filter(seller__location__state=form.cleaned_data['state'])
+            if form.cleaned_data['lga']:
+                queryset = queryset.filter(seller__location__lga=form.cleaned_data['lga'])
+                
         return queryset.order_by('-created_at')
     
     Product_Listing.delete_expired_listings()
@@ -512,6 +517,10 @@ class ProductSearchView(ListView):
 
     def format_price(self, price):
         return '₦ {:,.0f}'.format(Decimal(price))
+    
+def get_lgas(request, state_id):
+    lgas = LGA.objects.filter(state_id=state_id).values('id', 'name')
+    return JsonResponse(list(lgas), safe=False)
        
 class RelatedProductsView(ListView):
     model = Product_Listing
@@ -808,26 +817,52 @@ def delete_reply(request, pk, reply_id):
 
 @login_required
 def my_store(request, username=None):
-    # If username is provided, show that user's store, otherwise show current user's store
-    store_owner = User.objects.get(username=username) if username else request.user
-    
-    # Get products for the store owner
+    # Get store owner profile with related location data
+    store_owner = get_object_or_404(
+        User.objects.select_related(
+            'profile',
+            'profile__location',
+            'profile__location__state',
+            'profile__location__lga'
+        ),
+        username=username if username else request.user.username
+    )
+
+    # Get products with prefetched saved status
     user_products = Product_Listing.objects.filter(seller=store_owner.profile)
-    
+
     # Handle saved products for authenticated users
     if request.user.is_authenticated:
         saved_products = SavedProduct.objects.filter(
             user=request.user
         ).values_list('product_id', flat=True)
         saved_products = set(str(id) for id in saved_products)
-        
+
         for product in user_products:
             product.is_saved = str(product.id) in saved_products
             product.formatted_price = format_price(product.price)
-    
+
+    # Format location display
+    location_display = None
+    if store_owner.profile.location:
+        location_parts = []
+        if store_owner.profile.location.address:
+            location_parts.append(store_owner.profile.location.address)
+        if store_owner.profile.location.address_2:
+            location_parts.append(store_owner.profile.location.address_2)
+        if store_owner.profile.location.city:
+            location_parts.append(store_owner.profile.location.city)
+        if store_owner.profile.location.lga:
+            location_parts.append(store_owner.profile.location.lga.name)
+        if store_owner.profile.location.state:
+            location_parts.append(store_owner.profile.location.state.name)
+        location_display = ', '.join(filter(None, location_parts))
+
     context = {
-        'store_owner': store_owner,  # Changed from 'user' to 'store_owner'
+        'store_owner': store_owner,
         'products': user_products,
+        'total_products': user_products.count(),
+        'location_display': location_display,
     }
-    
+
     return render(request, 'my_store.html', context)

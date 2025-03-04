@@ -1,6 +1,6 @@
 import uuid
 from django.contrib.auth.models import User
-from User.models import Profile, location
+from User.models import Profile, Location
 from User import models
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -69,7 +69,7 @@ class Product_Listing(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    location = models.OneToOneField(location, on_delete=models.SET_NULL, null=True)
+    location = models.OneToOneField(Location, on_delete=models.SET_NULL, null=True)
     condition = models.CharField(max_length=4, choices=CONDITION_CHOICES, default='new')
     view_count = models.PositiveIntegerField(default=0)
 

@@ -33,4 +33,5 @@ urlpatterns = [
     path('ajax/load-brands/', views.load_brands, name='ajax_load_brands'),
     path('api/subcategories/', views.get_subcategories, name='api_subcategories'),
     path('ajax/load-subcategories/', views.load_subcategories, name='ajax_load_subcategories'),
+    path('api/lgas/<int:state_id>/', views.get_lgas, name='get_lgas'),
     ]

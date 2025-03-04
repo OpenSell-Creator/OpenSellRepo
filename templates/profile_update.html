@@ -1,16 +1,17 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block 'Body' %}
 <div class="container">
     <div class="row justify-content-center">
         <div class="col-lg-10">
-            <div class="card">
+            <div class="card shadow-sm">
                 <div class="card-header bg-card-header py-3">
                     <h3 class="mb-0">Profile Settings</h3>
                     <p class="text-muted mb-0">Manage your personal and location information</p>
                 </div>
                 <div class="card-body p-4 p-lg-5">
-                    <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+                    <form method="post" enctype="multipart/form-data" class="needs-validation" id="profileForm" novalidate>
                         {% csrf_token %}
                         
                         <div class="row g-4">
@@ -18,22 +19,41 @@
                             <div class="col-md-6">
                                 <div class="section-card mb-4">
                                     <h4 class="section-title mb-4">User Information</h4>
+
+                                    <!-- User Name -->
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-sm-6">
+                                            <div class="form-floating">
+                                                <input type="text" name="first_name" class="form-control" 
+                                                       id="id_first_name" value="{{ user.first_name }}" required>
+                                                <label for="id_first_name">First Name</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <div class="form-floating">
+                                                <input type="text" name="last_name" class="form-control" 
+                                                       id="id_last_name" value="{{ user.last_name }}" required>
+                                                <label for="id_last_name">Last Name</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
                                     <!-- Profile Photo -->
                                     <div class="mb-4">
-                                        <label class="form-label">Profile Photo</label>
+                                        <label class="form-label fw-medium">Profile Photo</label>
                                         <div class="file-input-wrapper border rounded p-3">
                                             <div class="d-flex flex-column gap-2">
-                                                <input type="file" name="photo" class="form-control" id="id_photo"><!-- In your photo section -->
+                                                <input type="file" name="photo" class="form-control" id="id_photo" accept="image/*">
                                                 {% if form.instance.photo %}
-                                                <div class="current-photo d-flex justify-content-between align-items-center mt-2">
-                                                    <span class="text-muted small">
-                                                        <i class="bi bi-image me-2"></i>
-                                                        {{ form.instance.photo.name }}
-                                                    </span>
-                                                    <button type="button" class="btn btn-link text-danger p-0 remove-photo"
-                                                            onclick="document.getElementById('id_remove_photo').value = 'true'; this.parentElement.remove()">
-                                                        <i class="bi bi-x-circle"></i>
-                                                    </button>
+                                                <div class="current-photo-container">
+                                                    <div class="d-flex align-items-center gap-3 p-2 rounded bg-light">
+                                                        <img src="{{ form.instance.photo.url }}" alt="Current photo" class="rounded" style="width: 50px; height: 50px; object-fit: cover;">
+                                                        <span class="text-muted small flex-grow-1">Current photo</span>
+                                                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                                id="removePhoto" onclick="handlePhotoRemoval(this)">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </div>
                                                 </div>
                                                 {% endif %}
                                                 <input type="hidden" name="remove_photo" id="id_remove_photo" value="false">
@@ -46,7 +66,7 @@
                                         <input type="text" name="username" class="form-control" 
                                                id="id_username" value="{{ user.username }}" required>
                                         <label for="id_username">Username</label>
-                                        <div class="form-text text-muted">Letters, digits and @/./+/-/_ only</div>
+                                        <div class="form-text">Letters, digits and @/./+/-/_ only</div>
                                     </div>
                                     
                                     <!-- Email Input -->
@@ -56,20 +76,21 @@
                                         <label for="id_email">Email Address</label>
                                     </div>
                                     
-
                                     <!-- Bio Input -->
                                     <div class="form-floating mb-3">
                                         <textarea name="bio" class="form-control" id="id_bio" 
-                                                  maxlength="120" style="height: 100px">{{ profile.bio }}</textarea>
+                                                  maxlength="120" style="height: 100px">{{ form.instance.bio }}</textarea>
                                         <label for="id_bio">Bio</label>
+                                        <div class="form-text text-end" id="bio-counter">0/120</div>
                                     </div>
                                     
                                     <!-- Phone Number -->
                                     <div class="form-floating mb-3">
-                                        <input type="text" name="phone_number" class="form-control" 
-                                               id="id_phone_number" value="{{ profile.phone_number }}" 
-                                               maxlength="12">
+                                        <input type="tel" name="phone_number" class="form-control" 
+                                               id="id_phone_number" value="{{ form.instance.phone_number }}" 
+                                               maxlength="11" pattern="[0-9+]{10,14}">
                                         <label for="id_phone_number">Phone Number</label>
+                                        <div class="form-text">Format: 080xxxxxxxxxx,070xxxxxxxxxx, 081xxxxxxxxxx</div>
                                     </div>
                                 </div>
                             </div>
@@ -82,37 +103,57 @@
                                     <!-- Address Inputs -->
                                     <div class="form-floating mb-3">
                                         <input type="text" name="address" class="form-control" 
-                                               id="id_address" value="{{ profile.location.address }}" 
+                                               id="id_address" value="{{ location_form.instance.address|default_if_none:'' }}" 
                                                maxlength="120">
                                         <label for="id_address">Address</label>
                                     </div>
                                     
                                     <div class="form-floating mb-3">
                                         <input type="text" name="address_2" class="form-control" 
-                                               id="id_address_2" value="{{ profile.location.address_2 }}" 
+                                               id="id_address_2" value="{{ location_form.instance.address_2|default_if_none:'' }}" 
                                                maxlength="225">
-                                        <label for="id_address_2">Address 2</label>
+                                        <label for="id_address_2">Address Line 2 (Optional)</label>
+                                    </div>
+
+                                    <div class="form-floating mb-3">
+                                        <input type="text" name="city" class="form-control" 
+                                               id="id_city" value="{{ location_form.instance.city|default_if_none:'' }}" 
+                                               maxlength="100">
+                                        <label for="id_city">City/Town</label>
                                     </div>
                                     
                                     <div class="form-floating mb-3">
-                                        <input type="text" name="district" class="form-control" 
-                                               id="id_district" value="{{ profile.location.district }}" 
-                                               maxlength="50">
-                                        <label for="id_district">District</label>
-                                    </div>
-                                    
-                                    <div class="form-floating mb-3">
-                                        <input type="text" name="state" class="form-control" 
-                                               id="id_state" value="{{ profile.location.state }}" 
-                                               maxlength="50">
+                                        <select name="state" class="form-select" id="id_state" required>
+                                            <option value="">Select a state</option>
+                                            {% for state in states %}
+                                                <option value="{{ state.id }}" 
+                                                    {% if location_form.instance.state.id == state.id %}selected{% endif %}>
+                                                    {{ state.name }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
                                         <label for="id_state">State</label>
+                                    </div>
+                                    
+                                    <div class="form-floating mb-3">
+                                        <select name="lga" class="form-select" id="id_lga" required>
+                                            <option value="">Select LGA</option>
+                                            {% if location_form.instance.lga %}
+                                                <option value="{{ location_form.instance.lga.id }}" selected>
+                                                    {{ location_form.instance.lga.name }}
+                                                </option>
+                                            {% endif %}
+                                        </select>
+                                        <label for="id_lga">Local Government Area</label>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="d-grid mt-4">
-                            <button type="submit" class="btn btn-primary btn-lg">Save Changes</button>
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-check2-circle me-2"></i>Done
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -123,14 +164,14 @@
 
 <style>
     /* Consistent Form Styling */
-    .form-control {
+    .form-control, .form-select {
         border-width: 2px;
         border-style: solid;
         border-color: var(--border-color);
         transition: border-color 0.3s ease, box-shadow 0.3s ease;
     }
 
-    .form-control:focus {
+    .form-control:focus, .form-select:focus {
         border-color: var(--accent-color);
         box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.2);
     }
@@ -158,9 +199,6 @@
 
     /* Dark Theme Adjustments */
     [data-bs-theme="dark"] {
-        .form-control:focus {
-            box-shadow: 0 0 0 3px rgba(205, 127, 50, 0.2);
-        }
 
         .file-input-wrapper {
             background-color: var(--dark-card-background);
@@ -183,25 +221,82 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Remove photo functionality
-        document.querySelectorAll('.remove-photo').forEach(button => {
-            button.addEventListener('click', function() {
-                const fileInput = document.getElementById('id_photo');
-                const photoContainer = this.closest('.current-photo');
-                
-                // Clear file input
-                fileInput.value = '';
-                
-                // Remove photo display
-                if (photoContainer) {
-                    photoContainer.remove();
+        const stateSelect = document.getElementById('id_state');
+        const lgaSelect = document.getElementById('id_lga');
+        const removePhotoInput = document.getElementById('id_remove_photo');
+        const bioTextarea = document.getElementById('id_bio');
+        const bioCounter = document.getElementById('bio-counter');
+    
+        // Function to load LGAs
+        async function loadLGAs(stateId, selectedLgaId = null) {
+            if (!stateId) {
+                lgaSelect.innerHTML = '<option value="">Select LGA</option>';
+                return;
+            }
+    
+            try {
+                const response = await fetch(`/api/lgas/${stateId}/`);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
                 }
+                const data = await response.json();
+                
+                let options = '<option value="">Select LGA</option>';
+                data.forEach(lga => {
+                    const selected = (selectedLgaId && lga.id == selectedLgaId) ? 'selected' : '';
+                    options += `<option value="${lga.id}" ${selected}>${lga.name}</option>`;
+                });
+                lgaSelect.innerHTML = options;
+            } catch (error) {
+                console.error('Error loading LGAs:', error);
+                lgaSelect.innerHTML = '<option value="">Error loading LGAs</option>';
+            }
+        }
+    
+        // Bio character counter
+        if (bioTextarea && bioCounter) {
+            const updateCounter = () => {
+                const currentLength = bioTextarea.value.length;
+                bioCounter.textContent = `${currentLength}/120`;
+            };
+            
+            bioTextarea.addEventListener('input', updateCounter);
+            updateCounter(); // Initialize counter
+        }
+    
+        // Handle photo removal function
+        window.handlePhotoRemoval = function(button) {
+            removePhotoInput.value = 'true';
+            const photoContainer = button.closest('.current-photo-container');
+            if (photoContainer) {
+                photoContainer.style.display = 'none';
+            }
+        };
+    
+        // Handle state change
+        if (stateSelect) {
+            stateSelect.addEventListener('change', function() {
+                loadLGAs(this.value);
             });
-        });
-
-        // Initialize Bootstrap tooltips
-        const tooltips = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        tooltips.map(tooltipEl => new bootstrap.Tooltip(tooltipEl));
+    
+            // Initial load of LGAs if state is selected
+            if (stateSelect.value) {
+                const currentLgaId = lgaSelect.querySelector('option[selected]')?.value;
+                loadLGAs(stateSelect.value, currentLgaId);
+            }
+        }
+    
+        // Form validation
+        const form = document.getElementById('profileForm');
+        if (form) {
+            form.addEventListener('submit', function(event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            });
+        }
     });
 </script>
 {% endblock %}

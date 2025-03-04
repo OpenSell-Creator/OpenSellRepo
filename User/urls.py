@@ -10,4 +10,6 @@ urlpatterns = [
     path('profile-menu/', views.profile_menu, name='profile_menu'),
     path('profile/update/', ProfileUpdateView.as_view(), name='profile_update'),
     
+    path('api/lgas/<int:state_id>/', views.load_lgas, name='load_lgas'),
+
 ]

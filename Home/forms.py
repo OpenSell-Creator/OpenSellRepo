@@ -3,6 +3,7 @@ from .models import Product_Listing,Product_Image, Review
 from django.forms.widgets import NumberInput
 from decimal import Decimal, InvalidOperation
 from .models import Category,Brand, Subcategory,Profile, Review,ReviewReply
+from User.models import State, LGA
 
 class ListingFilterForm(forms.Form):
     category = forms.ModelChoiceField(queryset=Category.objects.all(), required=False, label='Category')
@@ -129,6 +130,9 @@ class ListingForm(forms.ModelForm):
                 self.fields['formatted_price'].initial = f'₦ {self.instance.price:,.0f}'
             
             self.fields['quantity'].required = self.instance.listing_type != 'permanent'
+            
+            self.fields['images'].required = False
+            self.fields['images'].help_text = "Leave empty to keep existing images"
 
 
     def clean_formatted_price(self):
@@ -167,17 +171,25 @@ class ProductSearchForm(forms.Form):
     min_price = forms.DecimalField(min_value=0, required=False)
     max_price = forms.DecimalField(min_value=0, required=False)
     condition = forms.ChoiceField(choices=[('', 'Any')] + Product_Listing.CONDITION_CHOICES, required=False)
+    state = forms.ModelChoiceField(queryset=State.objects.all(), required=False, empty_label="States")
+    lga = forms.ModelChoiceField(queryset=LGA.objects.none(), required=False, empty_label="LGAs")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
+        # Initialize empty querysets
         self.fields['subcategory'].queryset = Subcategory.objects.none()
+        self.fields['lga'].queryset = LGA.objects.none()
 
-        if 'category' in self.data:
-            try:
-                category_id = int(self.data.get('category'))
-                self.fields['subcategory'].queryset = Subcategory.objects.filter(category_id=category_id)
-            except (ValueError, TypeError):
-                pass
+        # Set subcategories based on category
+        category_id = self.data.get('category', None)
+        if category_id:
+            self.fields['subcategory'].queryset = Subcategory.objects.filter(category_id=category_id)
+
+        # Set LGAs based on state
+        state_id = self.data.get('state', None)
+        if state_id:
+            self.fields['lga'].queryset = LGA.objects.filter(state_id=state_id)
     
 class ReviewForm(forms.ModelForm):
     class Meta:

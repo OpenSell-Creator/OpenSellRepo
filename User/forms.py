@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import location,Profile
+from .models import Location,Profile, LGA
 
 
 class SignUpForm(UserCreationForm):
@@ -38,29 +38,42 @@ class SignUpForm(UserCreationForm):
         return password1
     
 class LocationForm(forms.ModelForm):
-
-    address = forms.CharField(required=True)
     class Meta:
-        model = location
-        fields = {'address', 'address_2', 'state', 'district'}
+        model = Location
+        fields = ['address', 'address_2', 'city', 'state', 'lga']
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['lga'].queryset = LGA.objects.none()
+        
+        if 'state' in self.data:
+            try:
+                state_id = int(self.data.get('state'))
+                self.fields['lga'].queryset = LGA.objects.filter(state_id=state_id)
+            except (ValueError, TypeError):
+                pass
+        elif self.instance and hasattr(self.instance, 'pk') and self.instance.pk and self.instance.state:
+            self.fields['lga'].queryset = self.instance.state.lgas.all()
         
 class UserUpdateForm(forms.ModelForm):
     email = forms.EmailField()
 
     class Meta:
         model = User
-        fields = ['username', 'email']
+        fields = ['last_name','first_name','username', 'email']
 
 class ProfileUpdateForm(forms.ModelForm):
+    first_name = forms.CharField(max_length=150)
+    last_name = forms.CharField(max_length=150)
     remove_photo = forms.BooleanField(
         required=False,
         widget=forms.HiddenInput(),
         initial=False
     )
-
+    
     class Meta:
         model = Profile
-        fields = ['phone_number', 'photo', 'bio', 'remove_photo']  # Removed location
+        fields = ['first_name', 'last_name', 'phone_number', 'photo', 'bio', 'remove_photo']
         widgets = {
             'bio': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
             'photo': forms.ClearableFileInput(attrs={'class': 'form-control'}),
@@ -89,4 +102,5 @@ class ProfileUpdateForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+    
         
