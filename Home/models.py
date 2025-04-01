@@ -175,15 +175,7 @@ class Product_Listing(models.Model):
         if self.pk:  # Only for existing instances
             try:
                 original = Product_Listing.objects.get(pk=self.pk)
-                
-                # Handle title/seller change - move individual files
-                if original.title != self.title or original.seller != self.seller:
-                    for image in self.images.all():
-                        # Generate new path using the upload_to function
-                        new_path = user_listing_path(image, image.image.name)
-                        image.image.save(new_path, image.image.file, save=False)
-                        image.save()
-                
+         
                 # Reset expiration date if listing type changes
                 if original.listing_type != self.listing_type:
                     self.deletion_warning_sent = False
