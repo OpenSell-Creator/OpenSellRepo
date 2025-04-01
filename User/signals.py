@@ -7,11 +7,20 @@ from .models import Profile, Location
 def create_user_profile(sender, instance, created, **kwargs):
     """Create a Profile instance with associated Location when a new User is created"""
     if created:
-        # Create Location instance first
-        location = Location.objects.create()
-        
-        # Create Profile with the location
-        Profile.objects.create(user=instance, location=location)
+        try:
+            # Try to create Location instance
+            location = Location.objects.create(
+                address='',
+                address_2='',
+                city=''  # Make sure city is explicitly included
+            )
+            
+            # Create Profile with the location
+            Profile.objects.create(user=instance, location=location)
+        except Exception as e:
+            # Fall back to creating just a profile if location creation fails
+            print(f"Error creating location: {e}")
+            Profile.objects.create(user=instance)
 
 @receiver(post_save, sender=Profile)
 def create_profile_location(sender, instance, created, **kwargs):

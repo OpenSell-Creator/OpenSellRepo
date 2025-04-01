@@ -1,13 +1,15 @@
+import os
 import uuid
 from django.contrib.auth.models import User
 from User.models import Profile, Location
 from User import models
 from django.urls import reverse, reverse_lazy
+from django.core.files.storage import default_storage
 from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator, FileExtensionValidator
-from .utils import user_listing_path
+from .utils import user_listing_path, category_image_path
 from django.db.models import Avg
 from django.db import models
 from django.db import models
@@ -17,7 +19,7 @@ from mptt.models import MPTTModel, TreeForeignKey
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
-    image = models.ImageField(upload_to=user_listing_path, null=True, blank=True)
+    image = models.ImageField(upload_to=category_image_path, null=True, blank=True)
     slug = models.SlugField(max_length=100, unique=True, null=True)
     
     def __str__(self):
@@ -174,6 +176,14 @@ class Product_Listing(models.Model):
             try:
                 original = Product_Listing.objects.get(pk=self.pk)
                 
+                # Handle title/seller change - move individual files
+                if original.title != self.title or original.seller != self.seller:
+                    for image in self.images.all():
+                        # Generate new path using the upload_to function
+                        new_path = user_listing_path(image, image.image.name)
+                        image.image.save(new_path, image.image.file, save=False)
+                        image.save()
+                
                 # Reset expiration date if listing type changes
                 if original.listing_type != self.listing_type:
                     self.deletion_warning_sent = False
@@ -213,6 +223,18 @@ class Product_Listing(models.Model):
 
         super().save(*args, **kwargs)
 
+    def delete(self, *args, **kwargs):
+        # Delete all images first
+        for image in self.images.all():
+            image.delete()
+        
+        # Delete the product's image directory if it exists
+        product_path = f'product_images/{self.seller.user.username}/{self.title}/'
+        if default_storage.exists(product_path):
+            default_storage.delete(product_path)
+        
+        super().delete(*args, **kwargs)
+
     def send_deletion_warning(self):
         if not self.deletion_warning_sent and self.days_until_deletion in [1, 3]:
             # Send notification logic here
@@ -223,13 +245,35 @@ class Product_Listing(models.Model):
     @classmethod
     def delete_expired_listings(cls):
         """Delete all expired listings regardless of user status"""
-        expired = cls.objects.filter(
-            expiration_date__lte=timezone.now(),
-            listing_type__in=['standard', 'premium', 'emergency']
-        )
-        count = expired.count()
-        expired.delete()
-        return count
+        from django.db import ProgrammingError, OperationalError, connection
+        
+        try:
+            # First check if we can connect to the database
+            connection.ensure_connection()
+            
+            # Then proceed with deletion
+            expired = cls.objects.filter(
+                expiration_date__lte=timezone.now(),
+                listing_type__in=['standard', 'premium', 'emergency']
+            )
+            count = expired.count()
+            expired.delete()
+            return count
+        except ProgrammingError:
+            # Handle case when table doesn't exist yet
+            return 0
+        except OperationalError as e:
+            # Specifically handle connection issues
+            import logging
+            logging.warning(f"Could not delete expired listings: {e}")
+            # Don't raise the error further, just log and continue
+            return 0
+        except Exception as e:
+            # Handle other exceptions
+            import logging
+            logging.warning(f"Could not delete expired listings: {e}")
+            return 0
+    
        
 class Product_Image(models.Model):
     product = models.ForeignKey(Product_Listing, related_name='images', on_delete=models.CASCADE)
@@ -250,6 +294,11 @@ class Product_Image(models.Model):
 
     def __str__(self):
         return f"Image for {self.product.title}"
+    
+    def delete(self, *args, **kwargs):
+        # Delete files using storage-agnostic method
+        self.image.delete(save=False)
+        super().delete(*args, **kwargs)
 
 class SavedProduct(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saved_products')

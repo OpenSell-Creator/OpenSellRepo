@@ -52,7 +52,7 @@ class Location(models.Model):
         return "No location details provided" # Fallback for empty locations
 
 class Profile(models.Model):
-    user = models.OneToOneField( User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
     photo = ProcessedImageField(
         upload_to=user_directory_path,
         processors=[ResizeToFill(300, 300)], 
@@ -60,34 +60,32 @@ class Profile(models.Model):
         options={'quality': 85},
         null=True
     )
-    bio = models.CharField(max_length=225, blank =True)
-    phone_number = models.CharField(max_length=11, blank= True)
+    bio = models.CharField(max_length=225, blank=True)
+    phone_number = models.CharField(max_length=11, blank=True)
     location = models.OneToOneField(
-         Location,on_delete=models.SET_NULL,null=True)
+        Location, on_delete=models.SET_NULL, null=True
+    )
     
     def __str__(self):
-     return f'{self.user.username}'
- 
-
-def save(self, *args, **kwargs):
-    try:
-        old = Profile.objects.get(pk=self.pk)
-        if old.photo and old.photo != self.photo:
-            old.photo.delete(save=False)
-    except Profile.DoesNotExist:
-        pass
-    super().save(*args, **kwargs)
-
-
-def delete(self, *args, **kwargs):
-    if self.photo:
-        self.photo.delete(save=False)
-    super().delete(*args, **kwargs)
- 
+        return f'{self.user.username}'
+    
+    def save(self, *args, **kwargs):
+        try:
+            old = Profile.objects.get(pk=self.pk)
+            if old.photo and old.photo != self.photo:
+                old.photo.delete(save=False)
+        except Profile.DoesNotExist:
+            pass
+        super().save(*args, **kwargs)
+    
+    def delete(self, *args, **kwargs):
+        if self.photo:
+            self.photo.delete(save=False)
+        super().delete(*args, **kwargs)
+    
     @property
     def average_rating(self):
         return self.seller_reviews.aggregate(Avg('rating'))['rating__avg'] or 0
-   
     
     
     

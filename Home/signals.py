@@ -2,6 +2,7 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from .models import Product_Listing
+from .utils import user_listing_path
 from Notifications.models import create_notification, NotificationPreference, Notification
 
 
@@ -48,3 +49,5 @@ def check_expiration_warning(sender, instance, **kwargs):
                 content_object=instance
             )
             instance.deletion_warning_sent = True
+            
+            

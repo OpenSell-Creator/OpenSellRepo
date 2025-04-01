@@ -78,12 +78,12 @@ class ProfileUpdateForm(forms.ModelForm):
             'bio': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
             'photo': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
-
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['photo'].required = False
         self.fields['phone_number'].widget.attrs.update({'class': 'form-control'})
-
+    
     def clean(self):
         cleaned_data = super().clean()
         if cleaned_data.get('remove_photo'):
@@ -92,7 +92,7 @@ class ProfileUpdateForm(forms.ModelForm):
             if self.instance.photo:
                 self.instance.photo.delete(save=False)
         return cleaned_data
-
+    
     def save(self, commit=True):
         instance = super().save(commit=False)
         

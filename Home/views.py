@@ -419,8 +419,9 @@ class ProductUpdateView(LoginRequiredMixin, UpdateView):
             
             # Handle images - ONLY delete and replace if new images are uploaded
             if form.cleaned_data.get('images'):
-                # Only delete existing images if new ones are uploaded
-                self.object.images.all().delete()
+                # Delete existing images individually
+                for image in self.object.images.all():
+                    image.delete()
                 # Save new images
                 self.save_images(form.cleaned_data['images'])
             
@@ -468,9 +469,15 @@ class ProductSearchView(ListView):
     paginate_by = 12
 
     def get_queryset(self):
+    # Try to delete expired listings first
+        try:
+            Product_Listing.delete_expired_listings()
+        except:
+            pass  # Silently fail if there's an issue
+        
         form = ProductSearchForm(self.request.GET)
         queryset = Product_Listing.objects.all()
-
+        
         if form.is_valid():
             if form.cleaned_data['query']:
                 queryset = queryset.filter(title__icontains=form.cleaned_data['query'])
@@ -486,7 +493,7 @@ class ProductSearchView(ListView):
                 queryset = queryset.filter(seller__location__state=form.cleaned_data['state'])
             if form.cleaned_data['lga']:
                 queryset = queryset.filter(seller__location__lga=form.cleaned_data['lga'])
-                
+        
         return queryset.order_by('-created_at')
     
     Product_Listing.delete_expired_listings()
