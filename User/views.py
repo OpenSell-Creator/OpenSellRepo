@@ -19,9 +19,6 @@ from django.views.decorators.http import require_GET
 from .utils import send_otp_email
 
 
-#Load Local Governments under the State
-
-
 class CustomSignupView(SignupView):
     def dispatch(self, request, *args, **kwargs):
         if self.is_open():
@@ -149,7 +146,6 @@ class ProfileDetailView(LoginRequiredMixin, DetailView):
 
     def get_object(self, queryset=None):
         return self.request.user.profile
-
 
 @login_required
 def send_verification_otp(request):
