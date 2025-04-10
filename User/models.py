@@ -1,9 +1,12 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
 from .utils import user_directory_path
 from imagekit.models import ProcessedImageField
 from imagekit.processors import ResizeToFill
 from django.db.models import Avg
+import random
+
 
 
 # Create your models here.
@@ -65,7 +68,10 @@ class Profile(models.Model):
     location = models.OneToOneField(
         Location, on_delete=models.SET_NULL, null=True
     )
-    
+    email_verified = models.BooleanField(default=False)
+    email_otp = models.CharField(max_length=6, blank=True, null=True)
+    otp_created_at = models.DateTimeField(null=True, blank=True)
+
     def __str__(self):
         return f'{self.user.username}'
     
@@ -87,5 +93,21 @@ class Profile(models.Model):
     def average_rating(self):
         return self.seller_reviews.aggregate(Avg('rating'))['rating__avg'] or 0
     
+    def generate_otp(self):
+        """Generate a 6-digit OTP for email verification"""
+        otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+        self.email_otp = otp
+        self.otp_created_at = timezone.now()
+        self.save()
+        return otp
+    
+    def is_otp_valid(self):
+        """Check if the OTP is still valid (within 10 minutes)"""
+        if not self.otp_created_at:
+            return False
+        
+        time_diff = timezone.now() - self.otp_created_at
+        return time_diff.total_seconds() < 600  # 10 minutes
+
     
     
