@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block 'Body'%}
+<div class="dashboard-container">
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="row align-items-center py-4">
+                <div class="col-12">
+                    <h1 class="dashboard-title">Transaction History</h1>
+                    <p class="dashboard-subtitle">View all your account transactions</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transactions Content -->
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="dashboard-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title">All Transactions</h5>
+                        <a href="{% url 'dashboard_home' %}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+                        </a>
+                    </div>
+                    <div class="card-body p-0">
+                        {% if transactions %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Description</th>
+                                            <th>Type</th>
+                                            <th>Reference</th>
+                                            <th class="text-end">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for transaction in transactions %}
+                                        <tr>
+                                            <td>{{ transaction.created_at|date:"M d, Y H:i" }}</td>
+                                            <td>{{ transaction.description }}</td>
+                                            <td>
+                                                <span class="transaction-type-badge {{ transaction.transaction_type }}">
+                                                    {{ transaction.transaction_type|title }}
+                                                </span>
+                                            </td>
+                                            <td>{{ transaction.reference_id|default:"-" }}</td>
+                                            <td class="text-end {% if transaction.amount > 0 %}text-success{% else %}text-danger{% endif %}">
+                                                {% if transaction.amount > 0 %}+{% endif %}
+                                                ₦{{ transaction.amount }}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="transaction-empty text-center py-5">
+                                <i class="bi bi-receipt fs-1"></i>
+                                <p class="mt-3">No transactions found</p>
+                                <a href="{% url 'deposit_funds' %}" class="btn btn-primary mt-2">
+                                    <i class="bi bi-plus-circle me-2"></i>Add Funds
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .dashboard-container {
+        background-color: var(--background-color);
+        min-height: 100vh;
+    }
+
+    .dashboard-header {
+        background-color: var(--primary-color);
+        margin: -2rem -1rem 2rem -1rem;
+        border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+        color: var(--light-hover-bg);
+    }
+
+    .dashboard-title {
+        font-weight: 600;
+        font-size: 2rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .dashboard-subtitle {
+        font-size: 1.1rem;
+        opacity: 0.8;
+    }
+
+    .dashboard-card {
+        background-color: var(--card-background);
+        border-radius: var(--radius-lg);
+        box-shadow: 0 2px 10px var(--shadow-color);
+        overflow: hidden;
+        border: none;
+    }
+
+    .dashboard-card .card-header {
+        background-color: transparent;
+        border-bottom: 1px solid var(--border-color);
+        padding: 1rem 1.5rem;
+    }
+
+    .dashboard-card .card-title {
+        margin-bottom: 0;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .transaction-type-badge {
+        display: inline-block;
+        padding: 0.3rem 0.7rem;
+        border-radius: var(--radius-md);
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .transaction-type-badge.deposit {
+        background-color: rgba(40, 167, 69, 0.1);
+        color: #28a745;
+    }
+
+    .transaction-type-badge.withdrawal {
+        background-color: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+    }
+
+    .transaction-type-badge.listing_fee {
+        background-color: rgba(23, 162, 184, 0.1);
+        color: #17a2b8;
+    }
+
+    .transaction-type-badge.boost_fee {
+        background-color: rgba(255, 193, 7, 0.1);
+        color: #ffc107;
+    }
+
+    .transaction-type-badge.refund {
+        background-color: rgba(111, 66, 193, 0.1);
+        color: #6f42c1;
+    }
+
+    .transaction-type-badge.bonus {
+        background-color: rgba(13, 110, 253, 0.1);
+        color: #0d6efd;
+    }
+
+    .transaction-empty {
+        color: var(--text-secondary);
+    }
+
+    .transaction-empty i {
+        opacity: 0.5;
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-header {
+            margin: -1rem -0.5rem 1.5rem -0.5rem;
+            padding: 1.5rem 0;
+        }
+
+        .dashboard-title {
+            font-size: 1.75rem;
+        }
+    }
+</style>
+{% endblock %}

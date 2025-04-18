@@ -8,7 +8,6 @@ from django.db.models import Avg
 import random
 
 
-
 # Create your models here.
 class State(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -108,6 +107,4 @@ class Profile(models.Model):
         
         time_diff = timezone.now() - self.otp_created_at
         return time_diff.total_seconds() < 600  # 10 minutes
-
-    
     

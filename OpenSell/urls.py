@@ -26,6 +26,7 @@ urlpatterns = [
     path('', include('User.urls')),
     path('', include('Messages.urls')),
     path('', include('Notifications.urls')),
+    path('', include('Dashboard.urls')),
     path('accounts/', include('allauth.urls')),
     
 ]

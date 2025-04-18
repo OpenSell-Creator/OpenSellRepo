@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .models import Product_Listing, Review, ReviewReply, SavedProduct
 from User.models import LGA
+from Dashboard.models import ProductBoost
 from django.core.paginator import Paginator
 from django.db.models import Q,F, Avg, Exists, OuterRef
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
@@ -200,6 +201,14 @@ class ProductDetailView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
+        
+        if self.request.user.is_authenticated and self.object.seller.user == self.request.user:
+            try:
+                context['user_account'] = self.request.user.account
+                context['can_boost'] = context['user_account'].balance > 0
+                context['active_boost'] = self.object.get_boost_status()
+            except AttributeError:
+                pass
         
         time_remaining = self.object.time_remaining
         if time_remaining:
@@ -542,7 +551,6 @@ class RelatedProductsView(ListView):
             Q(subcategory=product.subcategory)
         ).exclude(id=product.id).distinct()
         
-
 @login_required
 @require_POST
 def toggle_save_product(request):
@@ -871,5 +879,16 @@ def my_store(request, username=None):
         'total_products': user_products.count(),
         'location_display': location_display,
     }
+    
+    if request.user.username == username:
+        try:
+            context['account'] = request.user.account
+            context['boost_count'] = ProductBoost.objects.filter(
+                product__seller=store_owner.profile,
+                is_active=True,
+                end_date__gt=timezone.now()
+            ).count()
+        except AttributeError:
+            pass
 
     return render(request, 'my_store.html', context)

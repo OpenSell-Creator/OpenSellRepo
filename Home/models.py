@@ -265,8 +265,17 @@ class Product_Listing(models.Model):
             import logging
             logging.warning(f"Could not delete expired listings: {e}")
             return 0
+        
+    def get_boost_status(self):
+        """Return active boosts for this product"""
+        return self.boosts.filter(is_active=True, end_date__gt=timezone.now()).first()
     
-       
+    def can_be_boosted(self, user):
+        """Check if user can boost this product"""
+        if not user.is_authenticated:
+            return False
+        return self.seller.user == user and user.account.balance > 0
+        
 class Product_Image(models.Model):
     product = models.ForeignKey(Product_Listing, related_name='images', on_delete=models.CASCADE)
     image = ProcessedImageField(

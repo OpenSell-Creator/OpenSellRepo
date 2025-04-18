@@ -46,8 +46,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'User.apps.UserConfig',
     'Home.apps.HomeConfig',
-    'Messages',  # also 'Messages.apps.MessagesConfig'
+    'Messages',
     'Notifications',
+    'Dashboard',
     
 
     # Third Party Apps
@@ -247,7 +248,7 @@ else:
     }
 
 # Security settings
-ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https' if not DEBUG else 'http'
+#ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https' if not DEBUG else 'http'
 ACCOUNT_SESSION_REMEMBER = None
 
 

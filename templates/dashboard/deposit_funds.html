@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block 'Body'%}
+<div class="dashboard-container">
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="row align-items-center py-4">
+                <div class="col-12">
+                    <h1 class="dashboard-title">Add Funds</h1>
+                    <p class="dashboard-subtitle">Deposit money to your account</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Deposit Content -->
+    <div class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8 col-lg-6">
+                <div class="dashboard-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title">Deposit Form</h5>
+                        <a href="{% url 'dashboard_home' %}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-arrow-left me-1"></i> Back
+                        </a>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="balance-info mb-4">
+                            <p class="text-center text-muted mb-1">Current Balance</p>
+                            <h3 class="text-center">₦{{ request.user.account.balance }}</h3>
+                        </div>
+
+                        <form method="post">
+                            {% csrf_token %}
+                            
+                            {% if form.non_field_errors %}
+                                <div class="alert alert-danger">
+                                    {% for error in form.non_field_errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            
+                            <div class="form-group mb-4">
+                                <label for="{{ form.amount.id_for_label }}" class="form-label">Amount (₦)</label>
+                                {{ form.amount }}
+                                {% if form.amount.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.amount.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">Minimum deposit amount is ₦1.00</div>
+                            </div>
+                            
+                            <div class="quick-amounts mb-4">
+                                <p class="text-muted mb-2">Quick Select:</p>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button type="button" class="btn btn-outline-secondary quick-amount" data-amount="100">₦100</button>
+                                    <button type="button" class="btn btn-outline-secondary quick-amount" data-amount="500">₦500</button>
+                                    <button type="button" class="btn btn-outline-secondary quick-amount" data-amount="1000">₦1,000</button>
+                                    <button type="button" class="btn btn-outline-secondary quick-amount" data-amount="5000">₦5,000</button>
+                                </div>
+                            </div>
+                            
+                            <div class="payment-methods mb-4">
+                                <p class="text-muted mb-2">Payment Method:</p>
+                                <div class="payment-options">
+                                    <div class="form-check payment-option">
+                                        <input class="form-check-input" type="radio" name="paymentMethod" id="card" checked>
+                                        <label class="form-check-label" for="card">
+                                            <i class="bi bi-credit-card me-2"></i>Card Payment
+                                        </label>
+                                    </div>
+                                    <div class="form-check payment-option">
+                                        <input class="form-check-input" type="radio" name="paymentMethod" id="bank">
+                                        <label class="form-check-label" for="bank">
+                                            <i class="bi bi-bank me-2"></i>Bank Transfer
+                                        </label>
+                                    </div>
+                                    <div class="form-check payment-option">
+                                        <input class="form-check-input" type="radio" name="paymentMethod" id="ussd">
+                                        <label class="form-check-label" for="ussd">
+                                            <i class="bi bi-phone me-2"></i>USSD
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    Proceed to Payment
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .dashboard-container {
+        background-color: var(--background-color);
+        min-height: 100vh;
+    }
+
+    .dashboard-header {
+        background-color: var(--primary-color);
+        margin: -2rem -1rem 2rem -1rem;
+        border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+        color: var(--light-hover-bg);
+    }
+
+    .dashboard-title {
+        font-weight: 600;
+        font-size: 2rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .dashboard-subtitle {
+        font-size: 1.1rem;
+        opacity: 0.8;
+    }
+
+    .dashboard-card {
+        background-color: var(--card-background);
+        border-radius: var(--radius-lg);
+        box-shadow: 0 2px 10px var(--shadow-color);
+        overflow: hidden;
+        border: none;
+    }
+
+    .dashboard-card .card-header {
+        background-color: transparent;
+        border-bottom: 1px solid var(--border-color);
+        padding: 1rem 1.5rem;
+    }
+
+    .dashboard-card .card-title {
+        margin-bottom: 0;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .balance-info {
+        padding: 1rem;
+        background-color: var(--hover-bg);
+        border-radius: var(--radius-md);
+    }
+
+    .balance-info h3 {
+        font-weight: 700;
+        color: var(--primary-color);
+    }
+
+    .payment-options {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .payment-option {
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        transition: all 0.3s ease;
+    }
+
+    .payment-option:hover {
+        border-color: var(--primary-color);
+        background-color: var(--hover-bg);
+    }
+
+    .form-check-input:checked + .form-check-label {
+        font-weight: 500;
+        color: var(--primary-color);
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        border: none;
+        padding: 0.8rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-header {
+            margin: -1rem -0.5rem 1.5rem -0.5rem;
+            padding: 1.5rem 0;
+        }
+
+        .dashboard-title {
+            font-size: 1.75rem;
+        }
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Quick amount selection
+        const quickAmounts = document.querySelectorAll('.quick-amount');
+        const amountInput = document.getElementById('{{ form.amount.id_for_label }}');
+        
+        quickAmounts.forEach(button => {
+            button.addEventListener('click', function() {
+                const amount = this.getAttribute('data-amount');
+                amountInput.value = amount;
+                
+                // Reset all buttons
+                quickAmounts.forEach(btn => btn.classList.remove('active'));
+                // Highlight selected button
+                this.classList.add('active');
+            });
+        });
+    });
+</script>
+{% endblock %}

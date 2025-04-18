@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block 'Body'%}
+<div class="dashboard-container">
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="row align-items-center py-4">
+                <div class="col-12">
+                    <h1 class="dashboard-title">Account Status</h1>
+                    <p class="dashboard-subtitle">View your status benefits and upgrade options</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Account Status Content -->
+    <div class="container mt-4">
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="dashboard-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title">Your Current Status</h5>
+                        <a href="{% url 'dashboard_home' %}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-arrow-left me-1"></i> Back
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <div class="current-status text-center">
+                            <div class="status-badge mb-3 {{ account.status.name|lower }}">
+                                {{ account.status.name }}
+                            </div>
+                            <p>{{ account.status.description }}</p>
+                            
+                            <div class="status-details mt-4">
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <div class="status-detail-item">
+                                            <i class="bi bi-wallet-fill fs-1 mb-2 text-primary"></i>
+                                            <h5>₦{{ account.balance }}</h5>
+                                            <p class="text-muted">Current Balance</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <div class="status-detail-item">
+                                            <i class="bi bi-box-seam fs-1 mb-2 text-primary"></i>
+                                            <h5>{{ account.status.max_listings }}</h5>
+                                            <p class="text-muted">Maximum Listings</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <div class="status-detail-item">
+                                            <i class="bi bi-percent fs-1 mb-2 text-primary"></i>
+                                            <h5>{{ account.status.listing_discount }}%</h5>
+                                            <p class="text-muted">Listing Fee Discount</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="benefits-list mt-4 text-start">
+                                <h6>Status Benefits:</h6>
+                                <ul class="list-group">
+                                    {% for benefit in account.status.benefits.splitlines %}
+                                        {% if benefit %}
+                                            <li class="list-group-item">
+                                                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                                {{ benefit }}
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-12">
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h5 class="card-title">Status Comparison</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table status-comparison-table">
+                                <thead>
+                                    <tr>
+                                        <th>Status Level</th>
+                                        <th>Required Balance</th>
+                                        <th>Max Listings</th>
+                                        <th>Discount</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for status in all_statuses %}
+                                        <tr class="{% if status == account.status %}current-status-row{% endif %}">
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <span class="status-badge small {{ status.name|lower }} me-2">
+                                                        {{ status.name }}
+                                                    </span>
+                                                    {% if status == account.status %}
+                                                        <span class="current-badge">Current</span>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                            <td>₦{{ status.min_balance }}</td>
+                                            <td>{{ status.max_listings }}</td>
+                                            <td>{{ status.listing_discount }}%</td>
+                                            <td>
+                                                {% if status.min_balance > account.balance %}
+                                                    <a href="{% url 'deposit_funds' %}" class="btn btn-sm btn-outline-primary">
+                                                        Upgrade
+                                                        <i class="bi bi-arrow-up-circle ms-1"></i>
+                                                    </a>
+                                                {% elif status == account.status %}
+                                                    <span class="text-success">
+                                                        <i class="bi bi-check-circle-fill"></i>
+                                                        Active
+                                                    </span>
+                                                {% else %}
+                                                    <span class="text-muted">
+                                                        <i class="bi bi-check-circle"></i>
+                                                        Eligible
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .dashboard-container {
+        background-color: var(--background-color);
+        min-height: 100vh;
+    }
+
+    .dashboard-header {
+        background-color: var(--primary-color);
+        margin: -2rem -1rem 2rem -1rem;
+        border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+        color: var(--light-hover-bg);
+    }
+
+    .dashboard-title {
+        font-weight: 600;
+        font-size: 2rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .dashboard-subtitle {
+        font-size: 1.1rem;
+        opacity: 0.8;
+    }
+
+    .dashboard-card {
+        background-color: var(--card-background);
+        border-radius: var(--radius-lg);
+        box-shadow: 0 2px 10px var(--shadow-color);
+        overflow: hidden;
+        border: none;
+    }
+
+    .dashboard-card .card-header {
+        background-color: transparent;
+        border-bottom: 1px solid var(--border-color);
+        padding: 1rem 1.5rem;
+    }
+
+    .dashboard-card .card-title {
+        margin-bottom: 0;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 0.5rem 1.5rem;
+        border-radius: var(--radius-full);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .status-badge.small {
+        padding: 0.3rem 0.8rem;
+        font-size: 0.8rem;
+    }
+
+    .status-badge.basic {
+        background-color: #e9ecef;
+        color: #495057;
+    }
+
+    .status-badge.silver {
+        background: linear-gradient(135deg, #c0c0c0, #e6e6e6);
+        color: #333;
+    }
+
+    .status-badge.gold {
+        background: linear-gradient(135deg, #FFD700, #FFC107);
+        color: #333;
+    }
+
+    .status-badge.platinum {
+        background: linear-gradient(135deg, #B2DFDB, #80CBC4);
+        color: #004D40;
+    }
+
+    .current-badge {
+        font-size: 0.75rem;
+        background-color: var(--primary-color);
+        color: white;
+        padding: 0.2rem 0.5rem;
+        border-radius: var(--radius-sm);
+    }
+
+    .current-status-row {
+        background-color: rgba(var(--primary-rgb), 0.05);
+    }
+
+    .status-detail-item {
+        text-align: center;
+        padding: 1.5rem;
+        border-radius: var(--radius-md);
+        background-color: var(--hover-bg);
+        height: 100%;
+    }
+
+    .status-detail-item h5 {
+        font-weight: 600;
+        margin: 0.5rem 0;
+    }
+
+    .status-detail-item p {
+        margin-bottom: 0;
+    }
+
+    .benefits-list .list-group-item {
+        background-color: transparent;
+        border-color: var(--border-color);
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-header {
+            margin: -1rem -0.5rem 1.5rem -0.5rem;
+            padding: 1.5rem 0;
+        }
+
+        .dashboard-title {
+            font-size: 1.75rem;
+        }
+        
+        .status-detail-item {
+            padding: 1rem;
+        }
+    }
+</style>
+{% endblock %}
