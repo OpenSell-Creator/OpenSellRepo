@@ -49,7 +49,7 @@ INSTALLED_APPS = [
     'Messages',
     'Notifications',
     'Dashboard',
-    
+
 
     # Third Party Apps
     'storages',
@@ -57,7 +57,7 @@ INSTALLED_APPS = [
     'django_countries',
     'widget_tweaks',
     'crispy_forms',
-    
+
     # All Auths
     'allauth',
     'allauth.account',
@@ -243,15 +243,29 @@ ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+    },
     'handlers': {
         'file': {
             'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': '/path/to/django-oauth-debug.log',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': '/home/ubuntu/OpenSellRepo/logs/django-oauth-debug.log',
+            'maxBytes': 1024*1024*5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
         },
     },
     'loggers': {
         'allauth': {
+            'handlers': ['file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'django.request': {
             'handlers': ['file'],
             'level': 'DEBUG',
             'propagate': True,
@@ -270,10 +284,9 @@ if not DEBUG:
     DEFAULT_FROM_EMAIL = 'OpenSell'
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-        
-        
-        
-        
+
+
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 # Static files (CSS, JavaScript, Images)
@@ -285,13 +298,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 if DEBUG:
     # Static files configuration
     STATIC_URL = '/static/'
-    STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')] 
-    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles') 
-    
+    STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
     # Media files configuration
     MEDIA_URL = '/media/'
-    MEDIA_ROOT = os.path.join(BASE_DIR, 'media') 
-    
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
     # Storage backends (local filesystem)
     STORAGES = {
         "staticfiles": {
@@ -318,10 +331,10 @@ else:
     # Static files configuration
     STATIC_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/static/"
     STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Needed for collectstatic
-    
+
     # Media files configuration
     MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/media/"
-    
+
     # Storage backends (AWS S3)
     STORAGES = {
         "staticfiles": {
