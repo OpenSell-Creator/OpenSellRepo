@@ -92,6 +92,7 @@ class Product_Listing(models.Model):
 
     def __str__(self):
         return self.title
+    
     @property
     def average_rating(self):
         return self.reviews.aggregate(Avg('rating'))['rating__avg'] or 0
@@ -113,6 +114,7 @@ class Product_Listing(models.Model):
         if self.quantity <= 5:
             return 'low_stock'
         return 'in_stock'
+    
     @property
     def days_until_deletion(self):
         if self.expiration_date:

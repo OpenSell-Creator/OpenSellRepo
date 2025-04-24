@@ -190,13 +190,17 @@ SOCIALACCOUNT_LOGIN_ON_GET = True
 ACCOUNT_LOGOUT_ON_GET = True
 
 # Account settings
-ACCOUNT_LOGIN_METHODS = {'username'}
+ACCOUNT_LOGIN_METHODS = {'username','email'}
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
 ACCOUNT_EMAIL_VERIFICATION = 'none'
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_EMAIL_CONFIRMATION_HMAC = True
 
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Social Account settings
 SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
@@ -209,46 +213,27 @@ SOCIALACCOUNT_LOGIN_ON_GET = True
 SOCIALACCOUNT_AUTO_SIGNUP = True
 
 # Google-specific settings
-if DEBUG:
-    SOCIALACCOUNT_PROVIDERS = {
-        'google': {
-            'APP': {
-                'client_id': os.environ.get('GOOGLE_CLIENT_ID_DEBUG'),
-                'secret': os.environ.get('GOOGLE_CLIENT_SECRET_DEBUG'),
-                'key': ''
-            },
-            'SCOPE': [
-                'profile',
-                'email',
-            ],
-            'AUTH_PARAMS': {
-                'access_type': 'online',
-                'prompt': 'select_account',
-            }
+
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'APP': {
+            'client_id': os.environ.get('GOOGLE_CLIENT_ID'),
+            'secret': os.environ.get('GOOGLE_CLIENT_SECRET'),
+            'key': ''
+        },
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+            'prompt': 'select_account',
         }
     }
-    
-else:
-    SOCIALACCOUNT_PROVIDERS = {
-        'google': {
-            'APP': {
-                'client_id': os.environ.get('GOOGLE_CLIENT_ID'),
-                'secret': os.environ.get('GOOGLE_CLIENT_SECRET'),
-                'key': ''
-            },
-            'SCOPE': [
-                'profile',
-                'email',
-            ],
-            'AUTH_PARAMS': {
-                'access_type': 'online',
-                'prompt': 'select_account',
-            }
-        }
-    }
+}
 
 # Security settings
-ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https' if not DEBUG else 'http'
+#ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https' if not DEBUG else 'http'
 ACCOUNT_SESSION_REMEMBER = None
 
 
