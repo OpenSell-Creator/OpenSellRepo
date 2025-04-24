@@ -371,14 +371,29 @@ class ProductCreateView(LoginRequiredMixin, CreateView):
                 self.object.expiration_date = timezone.now() + timedelta(days=duration)
                 self.object.save()
             
-            # Handle images
+            # Handle images with improved error handling for large files
             images = self.request.FILES.getlist('images')
             for i, image in enumerate(images[:5]):  # Limit to 5 images
-                Product_Image.objects.create(
-                    product=self.object,
-                    image=image,
-                    is_primary=(i == 0)
-                )
+                try:
+                    # Check file size before processing
+                    if image.size > 5 * 1024 * 1024:  # 5MB
+                        messages.warning(
+                            self.request, 
+                            f'Image "{image.name}" was too large and was skipped. Please upload images under 5MB.'
+                        )
+                        continue
+                        
+                    # Create the product image
+                    Product_Image.objects.create(
+                        product=self.object,
+                        image=image,
+                        is_primary=(i == 0)
+                    )
+                except Exception as img_error:
+                    messages.warning(
+                        self.request, 
+                        f'Failed to process image "{image.name}": {str(img_error)}'
+                    )
             
             messages.success(self.request, 'Product created successfully.')
             return HttpResponseRedirect(self.get_success_url())
