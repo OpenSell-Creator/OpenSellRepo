@@ -183,11 +183,9 @@ AUTHENTICATION_BACKENDS = [
 # Authentication settings
 
 # Redirect URLs
-LOGIN_URL = 'login'  
-LOGIN_REDIRECT_URL = '/' 
-ACCOUNT_SIGNUP_REDIRECT_URL = '/profile/update/' 
-SOCIALACCOUNT_LOGIN_ON_GET = True
-ACCOUNT_LOGOUT_ON_GET = True
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = '/'
+ACCOUNT_SIGNUP_REDIRECT_URL = '/profile/update/'
 
 # Account settings
 ACCOUNT_LOGIN_METHODS = {'username','email'}
@@ -227,19 +225,39 @@ SOCIALACCOUNT_PROVIDERS = {
         ],
         'AUTH_PARAMS': {
             'access_type': 'online',
-            'prompt': 'select_account',
+            'prompt': 'select_account consent',
         }
     }
 }
 
 # Security settings
-#ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https' if not DEBUG else 'http'
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https' if not DEBUG else 'http'
 ACCOUNT_SESSION_REMEMBER = None
 
 
 # Performance and UX improvements
 ACCOUNT_EMAIL_SUBJECT_PREFIX = ''
 ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': '/path/to/django-oauth-debug.log',
+        },
+    },
+    'loggers': {
+        'allauth': {
+            'handlers': ['file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
 
 # Email settings
 if not DEBUG:
