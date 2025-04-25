@@ -7,6 +7,7 @@ from .views import ProfileUpdateView
 urlpatterns = [
     path('login/', views.loginview, name='login'),
     path('logout/', views.logoutview, name='logout'),
+    path('signup/', views.signup_options, name='signup_options'),
     path('register/', views.register_user, name='register'),
     
     path('password-reset/', 

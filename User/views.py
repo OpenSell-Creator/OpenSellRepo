@@ -75,6 +75,12 @@ def register_user(request):
 			return redirect(reverse('profile_update'))
 	return render(request, "signup.html", {'form':form})
 
+def signup_options(request):
+    next_url = request.GET.get('next', '')
+    return render(request, 'signup_options.html', {
+        'next': next_url
+    })
+
 @login_required
 def profile_menu(request):
     return render(request, 'profile_menu.html', {'user': request.user})
