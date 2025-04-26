@@ -4,33 +4,46 @@
 <div class="container-fluid py-4">
     <!-- Header Section -->
     <div class="row mb-4">
-        <div class="col-12 d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
+        <div class="col-12 d-flex justify-content-between align-items-center flex-wrap">
+            <div class="d-flex align-items-center mb-2 mb-md-0">
                 <h1 class="h3 mb-0">Notifications</h1>
+                <span class="badge bg-primary ms-2 notification-count">{{ notifications|length }}</span>
             </div>
-            <a href="{% url 'notifications:preferences' %}" class="btn btn-primary">
-                <i class="bi bi-gear-fill me-2"></i>Preferences
-            </a>
+            <div class="d-flex gap-2">
+                {% if notifications %}
+                <button id="markAllReadBtn" class="btn btn-primary btn-sm">
+                    <i class="bi bi-check-all me-1"></i>Mark All Read
+                </button>
+                <button id="clearAllBtn" class="btn btn-primary btn-sm">
+                    <i class="bi bi-trash me-1"></i>Clear All
+                </button>
+                {% endif %}
+                <a href="{% url 'notifications:preferences' %}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-gear-fill me-1"></i>Preferences
+                </a>
+            </div>
         </div>
     </div>
     
-    <!--  category filtering -->
+    <!-- Category filtering -->
     {% if categories %}
     <div class="row mb-4">
         <div class="col-12">
-            <div class="btn-group" role="group" aria-label="Notification filters">
-                <button type="button" 
-                        class="btn btn-outline-secondary category-filter active" 
-                        data-category="all">
-                    All
-                </button>
-                {% for category_id, category_name in categories %}
+            <div class="category-scrollable">
+                <div class="btn-group flex-nowrap" role="group" aria-label="Notification filters">
                     <button type="button" 
-                            class="btn btn-outline-secondary category-filter" 
-                            data-category="{{ category_id }}">
-                        {{ category_name }}
+                            class="btn btn-primary category-filter active" 
+                            data-category="all">
+                        All
                     </button>
-                {% endfor %}
+                    {% for category_id, category_name in categories %}
+                        <button type="button" 
+                                class="btn btn-primary category-filter" 
+                                data-category="{{ category_id }}">
+                            {{ category_name }}
+                        </button>
+                    {% endfor %}
+                </div>
             </div>
         </div>
     </div>
@@ -39,65 +52,67 @@
     <!-- Notifications List -->
     <div class="row">
         <div class="col-12">
-            {% if notifications %}
-                {% for notification in notifications %}
-                <div class="card mb-3 notification-card position-relative" data-category="{{ notification.category }}">
-                    {% if not notification.is_read %}
-                        <div class="unread-indicator"></div>
-                    {% endif %}
-                    <a href="{% url 'notifications:detail' notification.id %}" class="text-decoration-none">
-                        <div class="card-body d-flex justify-content-between align-items-start">
-                            <div class="notification-content">
-                                <div class="d-flex align-items-center gap-2 mb-2">
-                                    <h5 class="card-title mb-0 fw-bold">
-                                        {% if not notification.is_read %}[New] {% endif %}
-                                        {{ notification.title }}
-                                    </h5>
-                                </div>
-                                <p class="card-text text-secondary mb-2">{{ notification.message }}</p>
-                                
-                                <!-- Display related content details -->
-                                {% if notification.content_object %}
-                                    <div class="related-content mt-2">
-                                        <small class="text-muted">
-                                            Related: 
-                                            {% if notification.content_object.get_absolute_url %}
-                                                <a href="{{ notification.content_object.get_absolute_url }}" class="text-primary">
+            <div id="notificationsContainer">
+                {% if notifications %}
+                    {% for notification in notifications %}
+                    <div class="card mb-3 notification-card position-relative" data-category="{{ notification.category }}" data-id="{{ notification.id }}">
+                        {% if not notification.is_read %}
+                            <div class="unread-indicator"></div>
+                        {% endif %}
+                        <a href="{% url 'notifications:detail' notification.id %}" class="text-decoration-none">
+                            <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-start">
+                                <div class="notification-content">
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                        <h5 class="card-title mb-0 fw-bold">
+                                            {% if not notification.is_read %}<span class="new-badge">New</span>{% endif %}
+                                            {{ notification.title }}
+                                        </h5>
+                                    </div>
+                                    <p class="card-text text-body-secondary mb-2">{{ notification.message }}</p>
+                                    
+                                    <!-- Display related content details -->
+                                    {% if notification.content_object %}
+                                        <div class="related-content mt-2">
+                                            <small class="text-muted">
+                                                Related: 
+                                                {% if notification.content_object.get_absolute_url %}
+                                                    <a href="{{ notification.content_object.get_absolute_url }}" class="text-primary">
+                                                        {{ notification.content_object }}
+                                                    </a>
+                                                {% else %}
                                                     {{ notification.content_object }}
-                                                </a>
-                                            {% else %}
-                                                {{ notification.content_object }}
-                                            {% endif %}
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                    {% endif %}
+                                    
+                                    <div class="d-flex align-items-center gap-3 mt-2">
+                                        <small class="text-body-secondary">
+                                            <i class="bi bi-clock me-1"></i>{{ notification.created_at|timesince }} ago
                                         </small>
                                     </div>
-                                {% endif %}
-                                
-                                <div class="d-flex align-items-center gap-3">
-                                    <small class="text-secondary">
-                                        <i class="bi bi-clock me-1"></i>{{ notification.created_at|timesince }} ago
-                                    </small>
                                 </div>
+                                {% if not notification.is_read %}
+                                    <button class="btn btn-sm btn-primary mark-read-btn mt-3 mt-md-0" 
+                                            data-notification-id="{{ notification.id }}"
+                                            onclick="event.stopPropagation(); event.preventDefault();">
+                                        <i class="bi bi-check2 me-1"></i>Mark read
+                                    </button>
+                                {% endif %}
                             </div>
-                            {% if not notification.is_read %}
-                                <button class="btn btn-primary mark-read-btn" 
-                                        data-notification-id="{{ notification.id }}"
-                                        onclick="event.stopPropagation();">
-                                    Mark as read
-                                </button>
-                            {% endif %}
-                        </div>
-                    </a>
-                </div>
-                {% endfor %}
-            {% else %}
-                <div class="card text-center p-5">
-                    <div class="mb-3">
-                        <i class="bi bi-bell-slash fs-1 text-secondary"></i>
+                        </a>
                     </div>
-                    <h3 class="h4 mb-2">No notifications yet</h3>
-                    <p class="text-secondary">We'll notify you when something important happens</p>
-                </div>
-            {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <div class="card text-center p-5 empty-state">
+                        <div class="mb-3">
+                            <i class="bi bi-bell-slash fs-1"></i>
+                        </div>
+                        <h3 class="h4 mb-2">No notifications yet</h3>
+                        <p>We'll notify you when something important happens</p>
+                    </div>
+                {% endif %}
+            </div>
         </div>
     </div>
 
@@ -106,7 +121,7 @@
         <div class="row mt-4">
             <div class="col-12">
                 <nav aria-label="Notification pagination">
-                    <ul class="pagination justify-content-center">
+                    <ul class="pagination justify-content-center flex-wrap">
                         {% if page_obj.has_previous %}
                             <li class="page-item">
                                 <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
@@ -142,16 +157,64 @@
 </div>
 
 <style>
+    /* Theme colors with support for light and dark themes */
+    :root {
+        --theme-primary: var(--bs-primary, #0d6efd);
+        --theme-primary-hover: #0b5ed7;
+        --theme-border: rgba(0, 0, 0, 0.125);
+    }
+
+    [data-bs-theme="dark"] {
+        --theme-border: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Notifications counter */
+    .notification-count {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 50px;
+    }
+
+    /* Category filters */
+    .category-scrollable {
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 5px; /* Prevent scrollbar from cutting off button shadows */
+        -ms-overflow-style: none; /* Hide scrollbar in IE and Edge */
+        scrollbar-width: none; /* Hide scrollbar in Firefox */
+    }
+
+    .category-scrollable::-webkit-scrollbar {
+        display: none; /* Hide scrollbar in Chrome, Safari and Opera */
+    }
+
+    .btn-group .category-filter {
+        border-radius: 50px;
+        margin-right: 0.25rem;
+        transition: all 0.2s;
+        opacity: 0.8;
+    }
+
+    .btn-group .category-filter:hover {
+        opacity: 0.9;
+    }
+
+    .btn-group .category-filter.active {
+        opacity: 1;
+    }
+
+    /* Notification cards */
     .notification-card {
         transition: all 0.2s ease-in-out;
-        border: 1px solid rgba(0, 0, 0, 0.125);
+        border: 1px solid var(--theme-border);
+        border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        overflow: hidden;
     }
 
     .notification-card:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        background-color: #f8f9fa;
     }
 
     .unread-indicator {
@@ -160,7 +223,7 @@
         top: 0;
         bottom: 0;
         width: 4px;
-        background-color: var(--bs-primary);
+        background-color: var(--theme-primary);
         border-top-left-radius: var(--bs-border-radius);
         border-bottom-left-radius: var(--bs-border-radius);
     }
@@ -170,17 +233,62 @@
     }
 
     .notification-card .card-title {
-        color: #2c3e50;
+        font-size: 1rem;
+        line-height: 1.4;
     }
 
     .notification-content {
         flex: 1;
+        padding-right: 10px;
+    }
+
+    /* New badge */
+    .new-badge {
+        display: inline-block;
+        padding: 0.15rem 0.5rem;
+        font-size: 0.7rem;
+        background-color: var(--theme-primary);
+        color: white;
+        border-radius: 50px;
+        margin-right: 0.5rem;
+        font-weight: 500;
+    }
+
+    /* Empty state */
+    .empty-state {
+        border-radius: 8px;
+    }
+    
+    .empty-state i {
+        opacity: 0.6;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .card-body {
+            padding: 1rem;
+        }
+        
+        .mark-read-btn {
+            align-self: flex-start;
+        }
+        
+        .btn-group {
+            overflow-x: auto;
+            display: flex;
+            flex-wrap: nowrap;
+            padding-bottom: 0.5rem;
+        }
+        
+        .btn-group .btn {
+            flex: 0 0 auto;
+        }
     }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Mark as read functionality
+    // Mark single notification as read
     document.querySelectorAll('.mark-read-btn').forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
@@ -189,37 +297,102 @@ document.addEventListener('DOMContentLoaded', function() {
             const notificationId = this.dataset.notificationId;
             const card = this.closest('.notification-card');
             
-            fetch(`{% url 'notifications:mark_read' 0 %}`.replace('0', notificationId), {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
-                    'Content-Type': 'application/json'
-                },
-                credentials: 'same-origin'
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.status === 'success') {
-                    // Update UI
-                    card.querySelector('.unread-indicator')?.remove();
-                    const title = card.querySelector('.card-title');
-                    if (title) {
-                        title.textContent = title.textContent.replace('[New] ', '');
-                    }
-                    this.remove();
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
+            markAsRead(notificationId, card);
         });
     });
 
+    // Mark all as read functionality
+    document.getElementById('markAllReadBtn')?.addEventListener('click', function() {
+        if (!confirm('Mark all notifications as read?')) return;
+        
+        fetch('{% url "notifications:mark_all_read" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .then(data => {
+            if (data.status === 'success') {
+                // Update all cards
+                document.querySelectorAll('.unread-indicator').forEach(indicator => {
+                    indicator.remove();
+                });
+                
+                document.querySelectorAll('.new-badge').forEach(badge => {
+                    badge.remove();
+                });
+                
+                document.querySelectorAll('.mark-read-btn').forEach(btn => {
+                    btn.remove();
+                });
+                
+                // Show success toast or notification
+                showToast('All notifications marked as read', 'success');
+                
+                // Update notification count
+                document.querySelector('.notification-count').textContent = '0';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Failed to mark notifications as read', 'error');
+        });
+    });
+
+    // Clear all notifications
+    document.getElementById('clearAllBtn')?.addEventListener('click', function() {
+        if (!confirm('Are you sure you want to delete all notifications? This action cannot be undone.')) return;
+        
+        fetch('{% url "notifications:clear_all" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .then(data => {
+            if (data.status === 'success') {
+                // Clear notifications container and show empty state
+                const container = document.getElementById('notificationsContainer');
+                container.innerHTML = `
+                    <div class="card text-center p-5 empty-state">
+                        <div class="mb-3">
+                            <i class="bi bi-bell-slash fs-1"></i>
+                        </div>
+                        <h3 class="h4 mb-2">No notifications yet</h3>
+                        <p>We'll notify you when something important happens</p>
+                    </div>
+                `;
+                
+                // Hide action buttons
+                document.getElementById('markAllReadBtn').style.display = 'none';
+                document.getElementById('clearAllBtn').style.display = 'none';
+                
+                // Update notification count
+                document.querySelector('.notification-count').textContent = '0';
+                
+                // Show success toast
+                showToast('All notifications cleared', 'success');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Failed to clear notifications', 'error');
+        });
+    });
+
+    // Category filtering
     document.querySelectorAll('.category-filter').forEach(button => {
         button.addEventListener('click', function() {
             const category = this.dataset.category;
@@ -230,18 +403,101 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             this.classList.add('active');
             
-            // Filter notifications
+            // Filter notifications with smooth transition
             document.querySelectorAll('.notification-card').forEach(card => {
                 if (category === 'all' || card.dataset.category === category) {
                     card.style.display = '';
+                    setTimeout(() => {
+                        card.style.opacity = '1';
+                    }, 50);
                 } else {
-                    card.style.display = 'none';
+                    card.style.opacity = '0';
+                    setTimeout(() => {
+                        card.style.display = 'none';
+                    }, 200);
                 }
             });
         });
     });
+    
+    // Function to mark individual notification as read
+    function markAsRead(notificationId, card) {
+        fetch(`{% url 'notifications:mark_read' 0 %}`.replace('0', notificationId), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.status === 'success') {
+                // Update UI
+                card.querySelector('.unread-indicator')?.remove();
+                card.querySelector('.new-badge')?.remove();
+                card.querySelector('.mark-read-btn')?.remove();
+                
+                // Show small toast notification
+                showToast('Notification marked as read', 'success');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Failed to mark notification as read', 'error');
+        });
+    }
+    
+    // Simple toast notification system
+    function showToast(message, type = 'info') {
+        // Check if toast container exists, if not create it
+        let toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toast-container';
+            toastContainer.className = 'position-fixed bottom-0 end-0 p-3';
+            toastContainer.style.zIndex = '1050';
+            document.body.appendChild(toastContainer);
+        }
+        
+        // Create toast element
+        const toastId = 'toast-' + Date.now();
+        const toastEl = document.createElement('div');
+        toastEl.id = toastId;
+        toastEl.className = `toast align-items-center text-white bg-${type === 'success' ? 'primary' : type === 'error' ? 'danger' : 'primary'} border-0`;
+        toastEl.setAttribute('role', 'alert');
+        toastEl.setAttribute('aria-live', 'assertive');
+        toastEl.setAttribute('aria-atomic', 'true');
+        
+        toastEl.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        `;
+        
+        toastContainer.appendChild(toastEl);
+        
+        // Initialize and show toast
+        const toast = new bootstrap.Toast(toastEl, {
+            delay: 3000,
+            autohide: true
+        });
+        toast.show();
+        
+        // Remove toast element after it's hidden
+        toastEl.addEventListener('hidden.bs.toast', function() {
+            toastEl.remove();
+        });
+    }
 });
-
 </script>
 {% endblock %}
 

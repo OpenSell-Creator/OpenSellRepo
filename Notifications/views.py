@@ -175,3 +175,17 @@ def check_listing_notifications():
         # Send low stock notification
         listing.last_stock_notification = timezone.now()
         listing.save()
+        
+@login_required
+@require_POST
+def mark_all_read(request):
+    """Mark all notifications as read for the current user"""
+    Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
+    return JsonResponse({'status': 'success', 'message': 'All notifications marked as read'})
+
+@login_required
+@require_POST
+def clear_all_notifications(request):
+    """Delete all notifications for the current user"""
+    Notification.objects.filter(recipient=request.user).delete()
+    return JsonResponse({'status': 'success', 'message': 'All notifications cleared'})
