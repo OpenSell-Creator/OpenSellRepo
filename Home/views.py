@@ -251,6 +251,9 @@ class ProductDetailView(DetailView):
         context['review_count'] = reviews.count()
         context['average_rating'] = self.object.average_rating
         
+        # Ensure seller rating is properly calculated
+        context['seller_average_rating'] = self.object.seller.average_rating
+        
         # Get related products
         related_products = Product_Listing.objects.filter(
             Q(category=self.object.category) | 
