@@ -57,7 +57,7 @@ class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     photo = ProcessedImageField(
         upload_to=user_directory_path,
-        processors=[ResizeToFill(300, 300)], 
+        processors=[ResizeToFill(200, 200)], 
         format='JPEG',
         options={'quality': 85},
         null=True

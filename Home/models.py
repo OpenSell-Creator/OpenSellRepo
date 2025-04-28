@@ -284,14 +284,14 @@ class Product_Image(models.Model):
         upload_to=user_listing_path,
         processors=[ResizeToFit(800, 600)],  # Main image size
         format='JPEG',
-        options={'quality': 75}
+        options={'quality': 80}
     )
     # Auto-generated thumbnail
     thumbnail = ImageSpecField(
         source='image',
         processors=[ResizeToFill(200, 200)],  # Square thumbnail
         format='JPEG',
-        options={'quality': 70}
+        options={'quality':75}
     )
     is_primary = models.BooleanField(default=False)
 
