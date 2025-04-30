@@ -115,12 +115,33 @@ def home(request):
     return render(request, 'home.html', context)
    
 def category_list(request):
-    categories = Category.objects.annotate(
+    # First, annotate subcategories with product counts
+    subcategories = Subcategory.objects.annotate(
+        product_count=Count('products')
+    )
+    
+    # Then, fetch categories with their subcategories
+    categories = Category.objects.prefetch_related(
+        Prefetch('subcategories', queryset=subcategories)
+    ).annotate(
         product_count=Count('product_listing')
     ).order_by('-product_count')
-    context = {'categories': categories}
+    
+    selected_category = request.GET.get('category')
+    selected_subcategory = request.GET.get('subcategory')
+    
+    if selected_category:
+        selected_category = int(selected_category)
+    
+    if selected_subcategory:
+        selected_subcategory = int(selected_subcategory)
+    
+    context = {
+        'categories': categories,
+        'selected_category': selected_category,
+        'selected_subcategory': selected_subcategory
+    }
     return render(request, 'category_list.html', context)
-
 
 class ProductListView(ListView):
     model = Product_Listing
@@ -130,13 +151,15 @@ class ProductListView(ListView):
 
     def get_queryset(self):
         queryset = Product_Listing.objects.all()
-        category_id = self.request.GET.get('category')
-        subcategory_id = self.request.GET.get('subcategory')
+        category_slug = self.request.GET.get('category')
+        subcategory_slug = self.request.GET.get('subcategory')
 
-        if category_id:
-            queryset = queryset.filter(category_id=category_id)
-        if subcategory_id:
-            queryset = queryset.filter(subcategory_id=subcategory_id)
+        if category_slug:
+            # Filter by category slug instead of ID
+            queryset = queryset.filter(category__slug=category_slug)
+        if subcategory_slug:
+            # Filter by subcategory slug instead of ID
+            queryset = queryset.filter(subcategory__slug=subcategory_slug)
 
         if self.request.user.is_authenticated:
             queryset = queryset.annotate(
@@ -148,31 +171,59 @@ class ProductListView(ListView):
                 )
             )
         return queryset.order_by('-created_at')
-        
-      
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        categories = Category.objects.all()
-        selected_category_id = self.request.GET.get('category')
-        selected_subcategory_id = self.request.GET.get('subcategory')
-
+        
+        # Get category and subcategory counts using annotation
+        categories = Category.objects.annotate(
+            product_count=Count('product_listing')
+        )
+        
+        # Prefetch subcategories with their product counts
+        subcategories = Subcategory.objects.annotate(
+            product_count=Count('products')
+        )
+        
+        # Prefetch annotated subcategories with categories
+        categories = categories.prefetch_related(
+            Prefetch('subcategories', queryset=subcategories)
+        )
+        
+        category_slug = self.request.GET.get('category')
+        subcategory_slug = self.request.GET.get('subcategory')
+        
         context['categories'] = categories
-        context['selected_category'] = int(selected_category_id) if selected_category_id else None
-        context['selected_subcategory'] = int(selected_subcategory_id) if selected_subcategory_id else None
-
-        if selected_category_id:
-            selected_category = Category.objects.get(id=selected_category_id)
-            context['selected_category_obj'] = selected_category
-            context['subcategories'] = selected_category.subcategories.all()
-
+        
+        # Get selected category by slug instead of ID
+        selected_category = None
+        if category_slug:
+            try:
+                selected_category = categories.get(slug=category_slug)
+                context['selected_category'] = selected_category.id
+                context['selected_category_obj'] = selected_category
+                context['subcategories'] = selected_category.subcategories.all()
+            except Category.DoesNotExist:
+                pass
+        
+        # Get selected subcategory by slug instead of ID
+        selected_subcategory = None
+        if subcategory_slug and selected_category:
+            try:
+                selected_subcategory = subcategories.get(slug=subcategory_slug)
+                context['selected_subcategory'] = selected_subcategory.id
+            except Subcategory.DoesNotExist:
+                pass
+        
+        # Format price for products
         for product in context['products']:
             product.formatted_price = self.format_price(product.price)
-
+        
+        # Check if products are saved by the user
         if self.request.user.is_authenticated:
             for product in context['products']:
                 product.is_saved_by_user = product.is_saved_by_user(self.request.user)
-
+        
         return context
 
     def format_price(self, price):
