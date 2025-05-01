@@ -238,21 +238,62 @@ class Product_Listing(models.Model):
             
     @classmethod
     def delete_expired_listings(cls):
-        """Delete all expired listings regardless of user status"""
+        """Delete all expired listings and their associated images"""
         from django.db import ProgrammingError, OperationalError, connection
         
         try:
             # First check if we can connect to the database
             connection.ensure_connection()
             
-            # Then proceed with deletion
+            # Find expired listings
             expired = cls.objects.filter(
                 expiration_date__lte=timezone.now(),
                 listing_type__in=['standard', 'premium', 'emergency']
             )
+            
             count = expired.count()
-            expired.delete()
-            return count
+            
+            # Process in batches to prevent memory issues
+            batch_size = 50
+            total = 0
+            
+            # Get IDs first to avoid holding all objects in memory
+            expired_ids = list(expired.values_list('id', flat=True))
+            
+            for i in range(0, len(expired_ids), batch_size):
+                batch_ids = expired_ids[i:i+batch_size]
+                batch = cls.objects.filter(id__in=batch_ids)
+                
+                # For each product in the batch
+                for product in batch:
+                    try:
+                        # Clean up images manually first
+                        for image in product.images.all():
+                            try:
+                                # Delete the image file
+                                image.image.delete(save=False)
+                            except Exception as img_error:
+                                import logging
+                                logging.warning(f"Error deleting image for product {product.id}: {img_error}")
+                        
+                        # Try to delete product directory
+                        try:
+                            product_path = f'product_images/{product.seller.user.username}/{product.title}/'
+                            if default_storage.exists(product_path):
+                                default_storage.delete(product_path)
+                        except Exception as dir_error:
+                            import logging
+                            logging.warning(f"Error deleting directory for product {product.id}: {dir_error}")
+                            
+                        total += 1
+                    except Exception as prod_error:
+                        import logging
+                        logging.warning(f"Error processing product {product.id}: {prod_error}")
+                
+                # After cleaning up files, do a bulk delete on this batch
+                batch.delete()
+                
+            return total
         except ProgrammingError:
             # Handle case when table doesn't exist yet
             return 0
