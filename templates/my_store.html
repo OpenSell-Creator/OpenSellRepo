@@ -50,88 +50,96 @@
 
     <!-- Main Content -->
     <div class="container">
-        <div class="row g-4">
-            <!-- Store Information Sidebar -->
-            <div class="col-12 col-lg-3 order-lg-first">
-                <div class="card store-info-card">
-                    <div class="card-body">
-                        <h5 class="card-title border-bottom pb-2 mb-3 h6">
-                            {% if request.user == store_owner %}
-                                My Information
-                            {% else %}
-                                Seller's Information
-                            {% endif %}
-                        </h5>
-                        
-                        <div class="store-info-item">
-                            <i class="bi bi-person-circle me-2"></i>
-                            <span class="text-break">{{ store_owner.get_full_name }}</span>
-                        </div>
-
-                        <div class="store-info-item">
-                            <div class="d-flex align-items-center w-100">
-                                <div class="email-container">
-                                    <i class="bi bi-envelope me-2"></i>
-                                    <span class="text-break email-text">{{ store_owner.email }}</span>
+        <!-- Seller Information Section - Only visible to profile owner -->
+        {% if request.user == store_owner %}
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card store-info-card">
+                        <div class="card-body">
+                            <h5 class=" mb-0 fw-bold">My Information</h5>
+                            
+                            <div class="row">
+                                <div class="col-md-4 mb-3 mb-md-0">
+                                    <div class="store-info-item">
+                                        <i class="bi bi-person-circle me-2"></i>
+                                        <span class="text-break">{{ store_owner.get_full_name }}</span>
+                                    </div>
                                 </div>
                                 
-                                {% if request.user == store_owner %}
-                                    <div class="verification-container ms-auto">
-                                        {% if request.user.profile.email_verified %}
-                                            <span class="verification-badge verified" data-bs-toggle="tooltip" data-bs-placement="top" title="Email Verified">
-                                                <i class="bi bi-patch-check-fill"></i>
-                                            </span>
-                                        {% else %}
-                                            <span class="verification-badge unverified" data-bs-toggle="tooltip" data-bs-placement="top" title="Email Not Verified">
-                                                <i class="bi bi-patch-exclamation-fill"></i>
-                                            </span>
-                                            <form class="verify-form d-inline-block ms-1" method="post" action="{% url 'send_verification_otp' %}">
-                                                {% csrf_token %}
-                                                <button type="submit" class="btn btn-verify">Verify</button>
-                                            </form>
-                                        {% endif %}
+                                <div class="col-md-4 mb-3 mb-md-0">
+                                    <div class="store-info-item">
+                                        <div class="d-flex align-items-center w-100">
+                                            <div class="email-container">
+                                                <i class="bi bi-envelope me-2"></i>
+                                                <span class="text-break email-text">{{ store_owner.email }}</span>
+                                            </div>
+                                            
+                                            <div class="verification-container ms-2">
+                                                {% if request.user.profile.email_verified %}
+                                                    <span class="verification-badge verified" data-bs-toggle="tooltip" data-bs-placement="top" title="Email Verified">
+                                                        <i class="bi bi-patch-check-fill"></i>
+                                                    </span>
+                                                {% else %}
+                                                    <span class="verification-badge unverified" data-bs-toggle="tooltip" data-bs-placement="top" title="Email Not Verified">
+                                                        <i class="bi bi-patch-exclamation-fill"></i>
+                                                    </span>
+                                                    <form class="verify-form d-inline-block ms-1" method="post" action="{% url 'send_verification_otp' %}">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-verify">Verify</button>
+                                                    </form>
+                                                {% endif %}
+                                            </div>
+                                        </div>
                                     </div>
-                                {% endif %}
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    {% if store_owner.profile.phone_number %}
+                                    <div class="store-info-item">
+                                        <i class="bi bi-telephone me-2"></i>
+                                        <span>{{ store_owner.profile.phone_number }}</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
                             </div>
+                            
+                            {% if store_owner.profile.location %}
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <div class="store-info-item">
+                                        <i class="bi bi-geo-alt me-2"></i>
+                                        <span class="location-text">
+                                            {% if store_owner.profile.location.address %}
+                                                {{ store_owner.profile.location.address }},
+                                            {% endif %}
+                                            {% if store_owner.profile.location.address_2 %}
+                                                {{ store_owner.profile.location.address_2 }},
+                                            {% endif %}
+                                            {% if store_owner.profile.location.city %}
+                                                {{ store_owner.profile.location.city }},
+                                            {% endif %}
+                                            {% if store_owner.profile.location.lga %}
+                                                {{ store_owner.profile.location.lga.name }}
+                                            {% if store_owner.profile.location.state %},
+                                            {% endif %}
+                                            {% endif %}
+                                            {% if store_owner.profile.location.state %}
+                                                {{ store_owner.profile.location.state.name }}.
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
-                        
-                        {% if store_owner.profile.phone_number %}
-                        <div class="store-info-item">
-                            <i class="bi bi-telephone me-2"></i>
-                            <span>{{ store_owner.profile.phone_number }}</span>
-                        </div>
-                        {% endif %}
-                        
-                        {% if store_owner.profile.location %}
-                        <div class="store-info-item">
-                            <i class="bi bi-geo-alt me-2"></i>
-                            <span class="location-text">
-                                {% if store_owner.profile.location.address %}
-                                    {{ store_owner.profile.location.address }},
-                                {% endif %}
-                                {% if store_owner.profile.location.address_2 %}
-                                    {{ store_owner.profile.location.address_2 }},
-                                {% endif %}
-                                {% if store_owner.profile.location.city %}
-                                    {{ store_owner.profile.location.city }},
-                                {% endif %}
-                                {% if store_owner.profile.location.lga %}
-                                    {{ store_owner.profile.location.lga.name }}
-                                {% if store_owner.profile.location.state %},
-                                {% endif %}
-                                {% endif %}
-                                {% if store_owner.profile.location.state %}
-                                    {{ store_owner.profile.location.state.name }}.
-                                {% endif %}
-                            </span>
-                        </div>
-                        {% endif %}
                     </div>
                 </div>
             </div>
+        {% endif %}
 
-            <!-- Products Section -->
-            <div class="col-12 col-lg-9">
+        <!-- Products Section - Visible to all users -->
+        <div class="row">
+            <div class="col-12">
                 <div class="products-section">
                     <h3 class="h5 mb-3">Active Listings(
                         {{ total_products }} Product{{ total_products|pluralize }}
