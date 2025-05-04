@@ -43,7 +43,28 @@
                 </div>
                 <div class="condition-date-wrapper">
                     <div class="product-condition condition-{{ product.condition|lower }}">{{ product.get_condition_display }}</div>
-                    <div class="product-date">{{ product.created_at|date:"M d" }}</div>
+                    <div class="product-location">
+                        <i class="bi bi-geo-alt-fill location-icon"></i>
+                        <span class="location-text">
+                            {% if product.seller.user.profile.location %}
+                                {% with location=product.seller.user.profile.location %}
+                                    {% if location.city and location.state %}
+                                        {{ location.city }}, {{ location.state.name }}
+                                    {% elif location.city %}
+                                        {{ location.city }}
+                                    {% elif location.lga and location.state %}
+                                        {{ location.lga.name }}, {{ location.state.name }}
+                                    {% elif location.state %}
+                                        {{ location.state.name }}
+                                    {% else %}
+                                        Location N/A
+                                    {% endif %}
+                                {% endwith %}
+                            {% else %}
+                                Location N/A
+                            {% endif %}
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -150,8 +171,8 @@
     }
     
     .seller-avatar {
-        width: 28px;
-        height: 28px;
+        width: 20px;
+        height: 20px;
         border-radius: var(--radius-full);
         object-fit: cover;
         border: 2px solid var(--border-color);
@@ -192,10 +213,29 @@
         border: 1px solid var(--light-border-color);
     }
     
-    .product-date {
+    /* Updated: Replaced product-date with product-location */
+    .product-location {
         font-size: var(--font-size-xs);
         color: var(--text-secondary);
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 120px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 3px;
+    }
+    
+    .location-icon {
+        color: var(--accent-color);
+        font-size: var(--font-size-xs);
+        flex-shrink: 0;
+    }
+    
+    .location-text {
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     
     /* Save Button (Standardized) */
@@ -258,8 +298,8 @@
         }
     
         .seller-avatar {
-            width: 24px;
-            height: 24px;
+            width: 15px;
+            height: 15px;
         }
     
         .seller-name {
@@ -267,13 +307,16 @@
         }
     
         .product-price {
-            
             font-size: var(--font-size-base);
         }
     
         .info-wrapper {
             padding: var(--spacing-md);
             gap: var(--spacing-xs);
+        }
+        
+        .product-location {
+            max-width: 100px;
         }
     }
     
@@ -289,6 +332,10 @@
     
         .card-body {
             padding: var(--spacing-xs);
+        }
+        
+        .product-location {
+            max-width: 80px;
         }
     }
 </style>
