@@ -200,7 +200,7 @@ class ProductListView(ListView):
         if category_slug:
             try:
                 selected_category = categories.get(slug=category_slug)
-                context['selected_category'] = selected_category.id
+                context['selected_category'] = selected_category.slug
                 context['selected_category_obj'] = selected_category
                 context['subcategories'] = selected_category.subcategories.all()
             except Category.DoesNotExist:
@@ -211,7 +211,7 @@ class ProductListView(ListView):
         if subcategory_slug and selected_category:
             try:
                 selected_subcategory = subcategories.get(slug=subcategory_slug)
-                context['selected_subcategory'] = selected_subcategory.id
+                context['selected_subcategory'] = selected_subcategory.slug
             except Subcategory.DoesNotExist:
                 pass
         
