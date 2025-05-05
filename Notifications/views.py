@@ -17,6 +17,20 @@ from django.contrib.contenttypes.models import ContentType
 from .models import Notification, NotificationPreference, NotificationCategory
 from Home.models import Product_Listing, Review, SavedProduct
 
+
+def notification_counts(request):
+    if request.user.is_authenticated:
+        unread_notifications_count = Notification.objects.filter(
+            recipient=request.user,
+            is_read=False
+        ).count()
+        return {
+            'unread_notifications_count': unread_notifications_count
+        }
+    return {
+        'unread_notifications_count': 0
+    }
+
 class NotificationListView(LoginRequiredMixin, ListView):
     model = Notification
     template_name = 'notifications/notification_list.html'
