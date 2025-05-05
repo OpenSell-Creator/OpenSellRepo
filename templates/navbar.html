@@ -1,6 +1,5 @@
 {% load static %}
 
-
 <!-- Upper nav - can auto-hide on mobile only -->
 <nav class="navbar navbar-expand-lg custom-navbar fixed-top" id="mainNavbar">
   <div class="container-fluid">
@@ -38,6 +37,7 @@
             <div class="nav-text">Saved</div>
           </a>
         </li>
+
         <li class="nav-item d-none d-lg-block text-center">
           <a class="nav-link position-relative {% if request.resolver_match.url_name == 'inbox' %}active{% endif %}" href="{% url 'inbox' %}">
             <!-- Always using outlined message icon -->
@@ -46,22 +46,14 @@
               <path d="m22 10-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 10"/>
             </svg>
             {% if unread_messages_count > 0 %}
-              <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger notification-badge">
                 {{ unread_messages_count }}
               </span>
             {% endif %}
             <div class="nav-text">Messages</div>
           </a>
         </li>
-        <li class="nav-item d-none d-lg-block text-center">
-          <a class="nav-link {% if request.resolver_match.url_name == 'premium' %}active{% endif %}" href="#">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-              <circle cx="12" cy="12" r="3"></circle>
-            </svg>
-            <div class="nav-text">Premium</div>
-          </a>
-        </li>
+
         <li class="nav-item d-none d-lg-block text-center">
           <a class="nav-link position-relative {% if request.resolver_match.url_name == 'list' and request.resolver_match.namespace == 'notifications' %}active{% endif %}" href="{% url 'notifications:list' %}">
             <!-- Always using outlined notification icon -->
@@ -79,6 +71,7 @@
             <div class="nav-text">Notifications</div>
           </a>
         </li>
+
         <li class="nav-item d-none d-lg-block text-center">
           <a class="nav-link {% if request.resolver_match.url_name == 'profile_menu' %}active{% endif %}" href="{% url 'profile_menu' %}">
             {% if user.profile.photo %}
@@ -93,6 +86,7 @@
           </a>
         </li>
       </ul>
+      
       {% else %}
       <div class="d-flex align-items-center">
         <a href="/login" class="btn btn-outline-light btn-sm me-2">Sign In</a>
@@ -113,6 +107,132 @@
   </div>
 </nav>
 
+<!-- Hamburger Menu Button (Right-aligned) -->
+    <button class="navbar-toggler d-lg-none ms-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#mainSidebar" aria-controls="mainSidebar" aria-label="Toggle navigation">
+      <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="4" x2="20" y1="12" y2="12"/>
+        <line x1="4" x2="20" y1="6" y2="6"/>
+        <line x1="4" x2="20" y1="18" y2="18"/>
+      </svg>
+    </button>
+  </div>
+</nav>
+
+<!-- Off-canvas Sidebar -->
+<div class="offcanvas offcanvas-end custom-sidebar" tabindex="-1" id="mainSidebar" aria-labelledby="mainSidebarLabel">
+  <div class="offcanvas-body">
+    <!-- Close button at the top of the body -->
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close" data-bs-target="#bdNavbar"></button>
+    
+    <!-- Search in Sidebar - Updated with unique classes -->
+    <div class="sidebar-search-container mb-4">
+      <form class="sidebar-search-form" action="{% url 'product_search' %}" method="get">
+        <div class="input-group">
+          <input type="text" class="form-control sidebar-search-input rounded-pill" placeholder="Find anything" aria-label="Search" name="query">
+          <button class="btn sidebar-search-button rounded-pill" type="submit">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.3-4.3"></path>
+            </svg>
+          </button>
+        </div>
+      </form>
+    </div>
+    
+    {% if user.is_authenticated %}
+      <!-- Categories Section -->
+      <div class="mb-4">
+        <h6 class="sidebar-heading text-uppercase">Categories</h6>
+        <div class="list-group list-group-flush categories-list">
+          <a href="{% url 'product_list' %}" class="list-group-item border-0 d-flex align-items-center">
+            <div class="category-icon2 me-2 rounded-circle1 d-flex align-items-center justify-content-center">
+              <i class="bi bi-grid-fill text-white"></i>
+            </div>
+            All Products
+          </a>
+          
+          {% for category in global_categories %}
+            <div class="list-group-item border-0 {% if category.id == selected_category %}active{% endif %}">
+              <div class="d-flex justify-content-between align-items-center">
+                <a href="{% url 'product_list' %}?category={{ category.slug }}"
+                   class="text-decoration-none category-link d-flex align-items-center">
+                  {% if category.image %}
+                    <img src="{{ category.image.url }}" alt="{{ category.name }}" class="category-image me-2 rounded-circle">
+                  {% else %}
+                    <div class="category-icon me-2 rounded-circle d-flex align-items-center justify-content-center">
+                      <i class="bi bi-folder-fill text-white"></i>
+                    </div>
+                  {% endif %}
+                  {{ category.name }}
+                  <span class="category-count small ms-2 mb-0">
+                    ({{ category.product_count }})
+                  </span>
+                </a>
+                {% if category.subcategories.all %}
+                  <button class="btn btn-link p-0 category-toggle"
+                          data-bs-toggle="collapse"
+                          data-bs-target="#category{{ category.id }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="m6 9 6 6 6-6"/>
+                    </svg>
+                  </button>
+                {% endif %}
+              </div>
+              
+              {% if category.subcategories.all %}
+                <div class="collapse {% if category.id == selected_category %}show{% endif %}" id="category{{ category.id }}">
+                  <div class="ps-3 mt-2">
+                    {% for subcategory in category.subcategories.all %}
+                      <a href="{% url 'product_list' %}?category={{ category.slug }}&subcategory={{ subcategory.slug }}"
+                         class="d-block text-decoration-none subcategory-link mb-2 d-flex align-items-center {% if subcategory.id == selected_subcategory %}active-subcategory{% endif %}">
+                        {% if subcategory.image %}
+                          <img src="{{ subcategory.image.url }}" alt="{{ subcategory.name }}" class="subcategory-image me-2 rounded-circle">
+                        {% else %}
+                          <div class="subcategory-icon me-2 rounded-circle d-flex align-items-center justify-content-center">
+                            <i class="bi bi-folder text-white" style="font-size: 0.8rem;"></i>
+                          </div>
+                        {% endif %}
+                        {{ subcategory.name }}
+                        <span class="category-count small ms-2 mb-0">
+                          ({{ subcategory.product_count }})
+                        </span>
+                      </a>
+                    {% endfor %}
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% else %}
+      <!-- Authentication Section -->
+      <div class="auth-section text-center p-4">
+        <h6 class="mb-4">Join Our Marketplace</h6>
+        <div class="d-grid gap-3">
+          <a href="/login" class="btn btn-outline-primary btn-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2">
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+              <polyline points="10 17 15 12 10 7"/>
+              <line x1="15" y1="12" x2="3" y2="12"/>
+            </svg>
+            Sign In
+          </a>
+          <a href="/register" class="btn btn-primary btn-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <line x1="19" y1="8" x2="19" y2="14"/>
+              <line x1="16" y1="11" x2="22" y2="11"/>
+            </svg>
+            Sign Up
+          </a>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
 <!-- Mobile Bottom Navigation -->
 {% if user.is_authenticated %}
 <nav class="navbar fixed-bottom navbar-dark d-lg-none bottom-nav" id="bottomNav">
@@ -131,7 +251,7 @@
         <path d="m22 10-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 10"></path>
       </svg>
       {% if unread_messages_count > 0 %}
-      <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+      <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger notification-badge">
         {{ unread_messages_count }}
       </span>
       {% endif %}
@@ -143,8 +263,7 @@
       </svg>
       <div class="nav-text">Saved</div>
     </a>
-    <a class="nav-link text-center position-relative {% if request.resolver_match.url_name == 'list' and request.resolver_match.namespace == 'notifications' %}active{% endif %}" href="{% url 'notifications:list' %}">
-      <!-- Always using outlined notification icon -->
+    <a class="nav-link text-center {% if request.resolver_match.url_name == 'list' and request.resolver_match.namespace == 'notifications' %}active{% endif %}" href="{% url 'notifications:list' %}">
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
         <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
@@ -176,7 +295,6 @@
 <style>
   /* Theme Colors */
   :root {
-    /* These colors will be overridden by your theme system */
     --navbar-bg: var(--primary-color);
     --text-color: var(--card-background);
     --active-color: var(--secondary-color);
@@ -192,7 +310,7 @@
       background-color: var(--navbar-bg);
       z-index: 1050;
       transition: transform 0.5s ease, opacity 0.5s ease;
-      padding: 0.75rem 1.25rem; /* Reduced padding for smaller height */
+      padding: 0.75rem 1.25rem; 
       will-change: opacity, transform;
       box-shadow: 0 4px 6px rgba(0,0,0,0.08);
   }
@@ -202,13 +320,13 @@
   }
   
   .navbar-brand img {
-    height: 50px; /* Reduced logo size */
+    height: 50px; 
     margin-right: 1rem;
   }
 
   /* Body padding adjustments */
   body {
-    padding-top: 65px; /* Reduced for smaller navbar */
+    padding-top: 65px; 
     transition: padding-top 0.3s ease;
   }
   
@@ -348,24 +466,6 @@
       background-color: var(--accent-color); /* Themed color */
       color: white;
       font-weight: 600;
-  }
-  .notification-badge {
-    font-size: 0.6rem;
-    padding: 0.25em 0.6em;
-    top: -8px;
-    right: -8px;
-    background-color: var(--accent-color, #dc3545);
-    color: white;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1;
-  }
-  
-  /* This will ensure the badge is properly positioned and visible */
-  .nav-link.position-relative {
-    position: relative;
   }
   
   @media (max-width: 991px) {
@@ -540,6 +640,24 @@
     transform: scale(1.1);
 }
 
+.notification-badge {
+  font-size: 0.6rem;
+  padding: 0.25em 0.6em;
+  top: -8px;
+  right: -8px;
+  background-color: var(--accent-color, #dc3545);
+  color: white;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+/* This will ensure the badge is properly positioned and visible */
+.nav-link.position-relative {
+  position: relative;
+}
 /* Toggle Button */
 .category-toggle {
     color: var(--text-primary);
