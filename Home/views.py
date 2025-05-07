@@ -688,13 +688,13 @@ def saved_products(request):
     for saved_item in saved_items:
         product = saved_item.product
         product.formatted_price = format_price(product.price)
-        product.is_saved = True  # These are saved products by definition
+        product.is_saved = True  
         products.append(product)
         
     Product_Listing.delete_expired_listings()
     # Add to context
     context = {
-        'products': products  # Changed from saved_items to products
+        'products': products  
     }
     
     return render(request, 'saved_products.html', context)
