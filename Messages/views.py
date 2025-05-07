@@ -1,7 +1,3 @@
-from django.shortcuts import render
-
-# Create your views here.
-# messages/views.py
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
@@ -65,7 +61,6 @@ def inbox(request):
     for conversation in conversations:
         conversation.unread_count = conversation.get_unread_messages_count_for_profile(request.user.profile)
     
-    
     paginator = Paginator(conversations, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -76,7 +71,6 @@ def inbox(request):
     }
     
     return render(request, 'messages/inbox.html', context)
-
 
 
 def format_price(price):
@@ -90,6 +84,18 @@ def conversation_detail(request, conversation_id):
     
     messages = conversation.messages.order_by('timestamp')
     
+    # Decrypt all messages' content - handle existing messages that may not be encrypted
+    for message in messages:
+        try:
+            # For older messages that only use the content field
+            if not message.encrypted_content and message.content:
+                continue
+                
+            message.decrypt_content()
+        except Exception as e:
+            # Log the error but continue - don't break the page
+            print(f"Error decrypting message {message.id}: {e}")
+            
     # Mark messages as read
     unread_messages = messages.filter(is_read=False).exclude(sender=request.user.profile)
     unread_messages.update(is_read=True)
@@ -102,8 +108,8 @@ def conversation_detail(request, conversation_id):
         if form.is_valid():
             message = conversation.add_message(
                 sender=request.user.profile,
-                content=form.cleaned_data['content'],
-                inquiry_type='CUSTOM'  # We're not using inquiry_type anymore
+                content=form.cleaned_data['content'], 
+                inquiry_type='CUSTOM'
             )
             return redirect('conversation_detail', conversation_id=conversation.id)
     else:
@@ -120,4 +126,3 @@ def conversation_detail(request, conversation_id):
     }
     
     return render(request, 'messages/conversation_detail.html', context)
-

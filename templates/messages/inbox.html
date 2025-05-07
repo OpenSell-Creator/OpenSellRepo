@@ -1,15 +1,15 @@
 {% extends 'messages/base.html' %}
 
 {% block messages_content %}
-    <h4 class="mb-3">Your Messages</h4>
+    <h4 class="mb-3 inbox-title">Your Messages</h4>
     {% for conversation in page_obj %}
-        <div class="conversation-card card">
-            <a href="{% url 'conversation_detail' conversation.id %}" class="text-decoration-none text-dark">
+        <div class="conversation-card card mb-3">
+            <a href="{% url 'conversation_detail' conversation.id %}" class="text-decoration-none conversation-link">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <h6 class="mb-1">{{ conversation.product.title }}</h6>
-                            <p class="mb-0 text-muted small">
+                            <h6 class="mb-1 conversation-product-title">{{ conversation.product.title }}</h6>
+                            <p class="mb-0 conversation-participant small">
                                 {% for participant in conversation.participants.all %}
                                     {% if participant != request.user.profile %}
                                         {{ participant.user.username }}
@@ -19,12 +19,12 @@
                         </div>
                         <div class="text-end">
                             {% if conversation.unread_count > 0 %}
-                            <span class="badge bg-primary rounded-pill">{{ conversation.unread_count }}</span>
-                        {% endif %}
-                            <small class="text-muted d-block">{{ conversation.updated_at|date:"M d, Y" }}</small>
+                                <span class="badge unread-badge rounded-pill">{{ conversation.unread_count }}</span>
+                            {% endif %}
+                            <small class="conversation-date d-block">{{ conversation.updated_at|date:"M d, Y" }}</small>
                             {% if conversation.messages.exists %}
                                 {% with last_message=conversation.messages.last %}
-                                    <small class="text-truncate d-block" style="max-width: 200px;">
+                                    <small class="conversation-preview text-truncate d-block" style="max-width: 200px;">
                                         {{ last_message.content }}
                                     </small>
                                 {% endwith %}
@@ -35,14 +35,13 @@
             </a>
         </div>
     {% empty %}
-        <div class="text-center p-4 bg-light rounded">
+        <div class="empty-state text-center p-4 rounded">
             <p class="mb-0">No conversations yet.</p>
         </div>
     {% endfor %}
-</div>
 
 {% if page_obj.has_other_pages %}
-<nav aria-label="Conversations pagination">
+<nav aria-label="Conversations pagination" class="mt-4">
     <ul class="pagination justify-content-center">
         {% if page_obj.has_previous %}
             <li class="page-item">
@@ -68,7 +67,105 @@
     </ul>
 </nav>
 {% endif %}
+
+<style>
+    /* Inbox Title */
+    .inbox-title {
+        color: var(--text-primary);
+        font-weight: 600;
+        letter-spacing: -0.01em;
+    }
+    
+    /* Conversation Cards */
+    .conversation-card {
+        border: 1px solid var(--border-color);
+        background-color: var(--card-background);
+        transition: all 0.2s ease;
+        border-radius: var(--radius-md);
+        box-shadow: 0 2px 8px var(--shadow-color);
+        margin-bottom: 1rem;
+    }
+    
+    .conversation-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px var(--shadow-color);
+        border-color: var(--primary-color);
+    }
+    
+    /* Text Styling */
+    .conversation-link {
+        color: var(--text-primary) !important;
+    }
+    
+    .conversation-product-title {
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+    
+    .conversation-participant {
+        color: var(--accent-color);
+        font-weight: 500;
+    }
+    
+    .conversation-date {
+        color: var(--text-secondary);
+        font-size: var(--font-size-xs);
+    }
+    
+    .conversation-preview {
+        color: var(--text-secondary);
+        font-style: italic;
+        max-width: 200px;
+    }
+    
+    /* Unread Badge */
+    .unread-badge {
+        background-color: var(--accent-color) !important;
+        color: white !important;
+    }
+    
+    /* Empty State */
+    .empty-state {
+        background-color: var(--card-background);
+        border: 1px dashed var(--border-color);
+        color: var(--text-secondary);
+    }
+    
+    /* Pagination Styling */
+    .pagination .page-link {
+        color: var(--primary-color);
+        border-color: var(--border-color);
+        background-color: var(--card-background);
+    }
+    
+    .pagination .page-link:hover {
+        background-color: var(--hover-bg);
+        color: var(--primary-color);
+    }
+    
+    .pagination .page-item.disabled .page-link {
+        background-color: var(--card-background);
+        color: var(--text-secondary);
+        border-color: var(--border-color);
+    }
+    
+    .pagination .page-item.active .page-link {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+        color: white;
+    }
+    
+    /* Dark Mode Specific Overrides */
+    [data-bs-theme="dark"] .conversation-preview {
+        color: var(--text-secondary);
+    }
+    
+    [data-bs-theme="dark"] .empty-state {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+</style>
 {% endblock %}
+
 {% block 'Footer'%}
     
-    {% endblock%}
+{% endblock%}
