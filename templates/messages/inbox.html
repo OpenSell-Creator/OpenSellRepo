@@ -1,45 +1,57 @@
 {% extends 'messages/base.html' %}
-
 {% block messages_content %}
-    <h4 class="mb-3 inbox-title">Your Messages</h4>
-    {% for conversation in page_obj %}
-        <div class="conversation-card card mb-3">
-            <a href="{% url 'conversation_detail' conversation.id %}" class="text-decoration-none conversation-link">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h6 class="mb-1 conversation-product-title">{{ conversation.product.title }}</h6>
-                            <p class="mb-0 conversation-participant small">
-                                {% for participant in conversation.participants.all %}
-                                    {% if participant != request.user.profile %}
-                                        {{ participant.user.username }}
-                                    {% endif %}
-                                {% endfor %}
-                            </p>
-                        </div>
-                        <div class="text-end">
-                            {% if conversation.unread_count > 0 %}
-                                <span class="badge unread-badge rounded-pill">{{ conversation.unread_count }}</span>
-                            {% endif %}
-                            <small class="conversation-date d-block">{{ conversation.updated_at|date:"M d, Y" }}</small>
-                            {% if conversation.messages.exists %}
-                                {% with last_message=conversation.messages.last %}
-                                    <small class="conversation-preview text-truncate d-block" style="max-width: 200px;">
-                                        {{ last_message.content }}
-                                    </small>
-                                {% endwith %}
-                            {% endif %}
-                        </div>
+<div class="d-flex justify-content-between align-items-center mb-3">
+<h4 class="inbox-title">Your Messages</h4>
+<div class="encryption-badge">
+<i class="fas fa-lock"></i> End-to-end encrypted
+</div>
+</div>
+{% for conversation in page_obj %}
+    {% with last_message=conversation.get_last_message %}
+    <div class="conversation-card card mb-3">
+        <a href="{% url 'conversation_detail' conversation.id %}" class="text-decoration-none conversation-link">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="mb-1 conversation-product-title">{{ conversation.product.title }}</h6>
+                        <p class="mb-0 conversation-participant small">
+                            {% for participant in conversation.participants.all %}
+                                {% if participant != request.user.profile %}
+                                    {{ participant.user.username }}
+                                {% endif %}
+                            {% endfor %}
+                        </p>
+                    </div>
+                    <div class="text-end">
+                        {% if conversation.unread_count > 0 %}
+                            <span class="badge unread-badge rounded-pill">{{ conversation.unread_count }}</span>
+                        {% endif %}
+                        <small class="conversation-date d-block">{{ conversation.updated_at|date:"M d, Y" }}</small>
+                        {% if last_message %}
+                            <small class="conversation-preview text-truncate d-block" style="max-width: 200px;">
+                                <i class="fas fa-lock-alt encryption-icon"></i> {{ last_message.content }}
+                            </small>
+                        {% endif %}
                     </div>
                 </div>
-            </a>
-        </div>
-    {% empty %}
-        <div class="empty-state text-center p-4 rounded">
-            <p class="mb-0">No conversations yet.</p>
-        </div>
-    {% endfor %}
+            </div>
+        </a>
+    </div>
+    {% endwith %}
+{% empty %}
+    <div class="empty-state text-center p-4 rounded">
+        <p class="mb-0">No conversations yet.</p>
+    </div>
+{% endfor %}
 
+<div class="encryption-info-card mt-3 mb-4">
+    <div class="card">
+        <div class="card-body">
+            <h6 class="card-title"><i class="fas fa-shield-alt"></i> Your Privacy Matters</h6>
+            <p class="card-text small">All messages are end-to-end encrypted. Only you and the other conversation participant can read the messages. Not even our administrators can access your private conversations.</p>
+        </div>
+    </div>
+</div>
 {% if page_obj.has_other_pages %}
 <nav aria-label="Conversations pagination" class="mt-4">
     <ul class="pagination justify-content-center">
@@ -51,29 +63,64 @@
                 <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
             </li>
         {% endif %}
+    <li class="page-item disabled">
+        <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    </li>
 
-        <li class="page-item disabled">
-            <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
         </li>
-
-        {% if page_obj.has_next %}
-            <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
-            </li>
-            <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
-            </li>
-        {% endif %}
-    </ul>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
+        </li>
+    {% endif %}
+</ul>
 </nav>
 {% endif %}
-
 <style>
+    /* Encryption Badge & Info */
+    .encryption-badge {
+        background-color: rgba(var(--primary-rgb), 0.1);
+        color: var(--primary-color);
+        padding: 0.35rem 0.75rem;
+        border-radius: 1rem;
+        font-size: var(--font-size-sm);
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    
+    .encryption-icon {
+        font-size: 10px;
+        opacity: 0.7;
+        margin-right: 3px;
+    }
+    
+    .encryption-info-card {
+        border-radius: var(--radius-md);
+    }
+    
+    .encryption-info-card .card {
+        border-color: var(--primary-color);
+        background-color: rgba(var(--primary-rgb), 0.05);
+    }
+    
+    .encryption-info-card .card-title {
+        color: var(--primary-color);
+        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
     /* Inbox Title */
     .inbox-title {
         color: var(--text-primary);
         font-weight: 600;
         letter-spacing: -0.01em;
+        margin-bottom: 0;
     }
     
     /* Conversation Cards */
@@ -163,9 +210,15 @@
     [data-bs-theme="dark"] .empty-state {
         background-color: rgba(255, 255, 255, 0.05);
     }
+    
+    [data-bs-theme="dark"] .encryption-info-card .card {
+        background-color: rgba(var(--primary-rgb), 0.15);
+    }
+    
+    [data-bs-theme="dark"] .encryption-badge {
+        background-color: rgba(var(--primary-rgb), 0.25);
+    }
 </style>
 {% endblock %}
-
 {% block 'Footer'%}
-    
 {% endblock%}
