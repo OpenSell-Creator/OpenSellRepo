@@ -110,14 +110,12 @@
 <!-- Off-canvas Sidebar -->
 <div class="offcanvas offcanvas-end custom-sidebar" tabindex="-1" id="mainSidebar" aria-labelledby="mainSidebarLabel">
   <div class="offcanvas-body">
-    <!-- Close button at the top of the body -->
-    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close" data-bs-target="#bdNavbar"></button>
-    
+  
     <!-- Search in Sidebar - Updated with unique classes -->
     <div class="sidebar-search-container mb-4">
       <form class="sidebar-search-form" action="{% url 'product_search' %}" method="get">
         <div class="input-group">
-          <input type="text" class="form-control sidebar-search-input rounded-pill" placeholder="Find anything" aria-label="Search" name="query">
+          <input type="text" class="form-control sidebar-search-input rounded-pill" placeholder="Find anything on OpenSell" aria-label="Search" name="query">
           <button class="btn sidebar-search-button rounded-pill" type="submit">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11" cy="11" r="8"></circle>
@@ -129,69 +127,146 @@
     </div>
     
     {% if user.is_authenticated %}
-      <!-- Categories Section -->
+      <!-- Browse Section -->
       <div class="mb-4">
-        <h6 class="sidebar-heading text-uppercase">Categories</h6>
-        <div class="list-group list-group-flush categories-list">
+        <h6 class="sidebar-heading text-uppercase">Browse</h6>
+        <div class="list-group list-group-flush browse-list">
           <a href="{% url 'product_list' %}" class="list-group-item border-0 d-flex align-items-center">
             <div class="category-icon2 me-2 rounded-circle1 d-flex align-items-center justify-content-center">
               <i class="bi bi-grid-fill text-white"></i>
             </div>
-            All Products
+            <span class="browse-item-text">All Products</span>
           </a>
           
-          {% for category in global_categories %}
-            <div class="list-group-item border-0 {% if category.id == selected_category %}active{% endif %}">
-              <div class="d-flex justify-content-between align-items-center">
-                <a href="{% url 'product_list' %}?category={{ category.slug }}"
-                   class="text-decoration-none category-link d-flex align-items-center">
-                  {% if category.image %}
-                    <img src="{{ category.image.url }}" alt="{{ category.name }}" class="category-image me-2 rounded-circle">
-                  {% else %}
-                    <div class="category-icon me-2 rounded-circle d-flex align-items-center justify-content-center">
-                      <i class="bi bi-folder-fill text-white"></i>
-                    </div>
-                  {% endif %}
-                  {{ category.name }}
-                  <span class="category-count small ms-2 mb-0">
-                    ({{ category.product_count }})
-                  </span>
-                </a>
-                {% if category.subcategories.all %}
-                  <button class="btn btn-link p-0 category-toggle"
-                          data-bs-toggle="collapse"
-                          data-bs-target="#category{{ category.id }}">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="m6 9 6 6 6-6"/>
-                    </svg>
-                  </button>
-                {% endif %}
+          <!-- Browse Categories Dropdown -->
+          <div class="list-group-item border-0">
+            <div class="d-flex justify-content-between align-items-center dropdown-toggle1" data-bs-toggle="collapse" data-bs-target="#categoriesDropdown" aria-expanded="false">
+              <div class="d-flex align-items-center">
+                <div class="category-icon2 me-2 rounded-circle1 d-flex align-items-center justify-content-center">
+                  <i class="bi bi-list text-white"></i>
+                </div>
+                <span class="browse-item-text">Categories</span>
               </div>
-              
-              {% if category.subcategories.all %}
-                <div class="collapse {% if category.id == selected_category %}show{% endif %}" id="category{{ category.id }}">
-                  <div class="ps-3 mt-2">
-                    {% for subcategory in category.subcategories.all %}
-                      <a href="{% url 'product_list' %}?category={{ category.slug }}&subcategory={{ subcategory.slug }}"
-                         class="d-block text-decoration-none subcategory-link mb-2 d-flex align-items-center {% if subcategory.id == selected_subcategory %}active-subcategory{% endif %}">
-                        {% if subcategory.image %}
-                          <img src="{{ subcategory.image.url }}" alt="{{ subcategory.name }}" class="subcategory-image me-2 rounded-circle">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m6 9 6 6 6-6"/>
+              </svg>
+            </div>
+            
+            <!-- Categories Dropdown Content -->
+            <div class="collapse" id="categoriesDropdown">
+              <div class="categories-list mt-2">
+                {% for category in global_categories %}
+                  <div class="list-group-item border-0 ps-3 py-1 {% if category.id == selected_category %}active{% endif %}">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <a href="{% url 'product_list' %}?category={{ category.slug }}"
+                         class="text-decoration-none category-link d-flex align-items-center">
+                         {% if category.image %}
+                          <img src="{{ category.image.url }}" alt="{{ category.name }}" class="category-image me-2 rounded-circle">
                         {% else %}
-                          <div class="subcategory-icon me-2 rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="bi bi-folder text-white" style="font-size: 0.8rem;"></i>
+                          <div class="category-icon me-2 rounded-circle d-flex align-items-center justify-content-center">
+                            <i class="bi bi-folder-fill text-white"></i>
                           </div>
                         {% endif %}
-                        {{ subcategory.name }}
+                        <span class="category-name">{{ category.name }}</span>
                         <span class="category-count small ms-2 mb-0">
-                          ({{ subcategory.product_count }})
+                          ({{ category.product_count }})
                         </span>
                       </a>
-                    {% endfor %}
+                      {% if category.subcategories.all %}
+                        <button class="btn btn-link p-0 category-toggle"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#category{{ category.id }}">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m6 9 6 6 6-6"/>
+                          </svg>
+                        </button>
+                      {% endif %}
+                    </div>
+                    
+                    {% if category.subcategories.all %}
+                      <div class="collapse {% if category.id == selected_category %}show{% endif %}" id="category{{ category.id }}">
+                        <div class="ps-3 mt-1">
+                          {% for subcategory in category.subcategories.all %}
+                            <a href="{% url 'product_list' %}?category={{ category.slug }}&subcategory={{ subcategory.slug }}"
+                               class="d-block text-decoration-none subcategory-link py-1 d-flex align-items-center {% if subcategory.id == selected_subcategory %}active-subcategory{% endif %}">
+                              <span class="subcategory-name">{{ subcategory.name }}</span>
+                              <span class="category-count small ms-2 mb-0">
+                                ({{ subcategory.product_count }})
+                              </span>
+                            </a>
+                          {% endfor %}
+                        </div>
+                      </div>
+                    {% endif %}
                   </div>
-                </div>
-              {% endif %}
+                {% endfor %}
+              </div>
             </div>
-          {% endfor %}
+          </div>
+        </div>
+      </div>
+      
+      <!-- Help & Info Section with Icons -->
+      <div class="mb-4">
+        <h6 class="sidebar-heading text-uppercase">Help & Info</h6>
+        <div class="list-group list-group-flush help-links">
+          <a href="#" class="list-group-item border-0 py-2">
+            <span class="help-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                <path d="M12 17h.01"></path>
+              </svg>
+            </span>
+            <span class="help-item-text">About Us</span>
+          </a>
+          <a href="#" class="list-group-item border-0 py-2">
+            <span class="help-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </span>
+            <span class="help-item-text">Contact Us</span>
+          </a>
+          <a href="#" class="list-group-item border-0 py-2">
+            <span class="help-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <path d="M12 18v-6"></path>
+                <path d="M8 15h8"></path>
+              </svg>
+            </span>
+            <span class="help-item-text">How to List Items</span>
+          </a>
+          <a href="#" class="list-group-item border-0 py-2">
+            <span class="help-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+            </span>
+            <span class="help-item-text">FAQ</span>
+          </a>
+          <a href="#" class="list-group-item border-0 py-2">
+            <span class="help-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            </span>
+            <span class="help-item-text">Privacy Policy</span>
+          </a>
+          <a href="#" class="list-group-item border-0 py-2">
+            <span class="help-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 11.08V8l-6-6H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h6"></path>
+                <path d="M14 3v5h5M18 21v-6M15 18h6"></path>
+              </svg>
+            </span>
+            <span class="help-item-text">Terms & Conditions</span>
+          </a>
         </div>
       </div>
     {% else %}
@@ -218,9 +293,74 @@
           </a>
         </div>
       </div>
+      
+      <!-- Help & Info Section for non-authenticated users -->
+      <div class="mb-4">
+        <h6 class="sidebar-heading text-uppercase">Help & Info</h6>
+        <div class="list-group list-group-flush help-links">
+          <a href="#" class="list-group-item border-0 py-2">
+            <span class="help-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                <path d="M12 17h.01"></path>
+              </svg>
+            </span>
+            <span class="help-item-text">About Us</span>
+          </a>
+          <a href="#" class="list-group-item border-0 py-2">
+            <span class="help-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </span>
+            <span class="help-item-text">Contact Us</span>
+          </a>
+          <a href="#" class="list-group-item border-0 py-2">
+            <span class="help-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <path d="M12 18v-6"></path>
+                <path d="M8 15h8"></path>
+              </svg>
+            </span>
+            <span class="help-item-text">How to List Items</span>
+          </a>
+          <a href="#" class="list-group-item border-0 py-2">
+            <span class="help-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+            </span>
+            <span class="help-item-text">FAQ</span>
+          </a>
+          <a href="#" class="list-group-item border-0 py-2">
+            <span class="help-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            </span>
+            <span class="help-item-text">Privacy Policy</span>
+          </a>
+          <a href="#" class="list-group-item border-0 py-2">
+            <span class="help-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 11.08V8l-6-6H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h6"></path>
+                <path d="M14 3v5h5M18 21v-6M15 18h6"></path>
+              </svg>
+            </span>
+            <span class="help-item-text">Terms & Conditions</span>
+          </a>
+        </div>
+      </div>
     {% endif %}
   </div>
 </div>
+
 
 <!-- Mobile Bottom Navigation -->
 {% if user.is_authenticated %}
@@ -283,563 +423,97 @@
 
 <style>
   /* Theme Colors */
-  :root {
-    --navbar-bg: var(--primary-color);
-    --text-color: var(--card-background);
-    --active-color: var(--secondary-color);
-    --hover-color: var(--hover-bg);
-    --border-color: var(--border-color);
-    --search-bg: var(--card-background);
-    --search-text: var(--text-primary);
-    --badge-bg: var(--accent-color);
-  }
-
-  /* Navbar Styles */
-  .custom-navbar, .bottom-nav {
-    background-color: var(--navbar-bg);
-    z-index: 1050;
-    transition: transform 0.5s ease, opacity 0.5s ease;
-    padding: 0.75rem 1.25rem; 
-    will-change: opacity, transform;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.08);
-  }
-  
-  .navbar-brand {
-      margin-right: 0.5rem;
-  }
-  
-  .navbar-brand img {
-    height: 50px; 
-    margin-right: 1rem;
-  }
-
-  /* Body padding adjustments */
-  body {
-    padding-top: 65px; 
-    transition: padding-top 0.3s ease;
-  }
-  
-  @media (min-width: 992px) {
-    /* Desktop - account for navbar height */
-    body {
-      padding-top: var(--navbar-height);
-      padding-bottom: 0;
-      margin-bottom: var(--bottom-nav-height);
-    }
-    
-    /* Prevent navbar from auto-hiding on desktop */
-    .custom-navbar {
-      transform: none !important;
-      opacity: 1 !important;
-    }
-  }
-
-  @media (min-width: 992px) {
-      .order-lg-1 {
-          order: 1;
-      }
-      .order-lg-2 {
-          order: 2;
-      }
-  }
-  
-  @media (max-width: 991px) {
-      .container-fluid {
-        padding-right: 0.5rem;
-        padding-left: 0.5rem;
-      }
-      
-      .navbar-toggler {
-        margin-left: 0.5rem;
-      }
-  }
-  
-  .d-flex.align-items-center {
-    gap: 0.2rem;
-  }
-  
-
-  /* Search Form Styles - keeping original */
-  .search-form {
-    max-width: 800px;
-    margin: 0 auto;
-    width: 100%;
-  }
-  
-  .search-form .form-control {
-      background-color: var(--search-bg);
-      color: var(--search-text);
-      border: 1px solid var(--border-color);
-      padding: 0.6rem 1.2rem;
-      font-size: 1rem;
-      transition: all 0.3s ease;
-  }
-  
-  .search-form .form-control:focus {
-      box-shadow: 0 0 0 3px rgba(var(--active-color), 0.25);
-  }
-  
-  .search-form .btn {
-      background-color: var(--search-bg);
-      color: var(--search-text);
-      border: 1px solid var(--border-color);
-      padding: 0.5rem 1rem;
-      transition: all 0.3s ease;
-  }
-  
-  /* Navigation Links */
-  .nav-link {
-      font-size: 1rem;
-      margin: 0 10px;
-      color: rgba(255, 255, 255, 0.7) !important;
-      transition: color 0.2s ease, transform 0.2s ease;
-      position: relative;
-      padding: 0.5rem 1rem;
-  }
-  
-  .nav-link:hover {
-      color: rgba(255, 255, 255, 0.9) !important;
-  }
-  
-  .nav-link.active {
-      color: var(--accent-color) !important; 
-      font-weight: 600; 
-  }
-  
-  .nav-link svg {
-    transition: transform 0.2s ease, stroke 0.2s ease;
-      stroke: rgba(255, 255, 255, 0.7);
-  }
-  
-  .nav-link:hover svg {
-      stroke: rgba(255, 255, 255, 0.9);
-      transform: scale(1.15);
-  }
-  
-  .nav-link.active svg {
-      stroke: var(--accent-color); 
-  }
-  
-  
-  .nav-link.active::after {
-      display: none; 
-  }
-  
-  /* Navigation Text */
-  .nav-text {
-      font-size: 0.5rem;
-      margin-top: 2px;
-      color: inherit;
-  }
-
-  /* Profile Photos */
-  .profile-photo-nav {
-      width: 36px;
-      height: 36px;
-      object-fit: cover;
-      border: 2px solid #ffffff;
-  }
-  
-  .profile-photo-small {
-      width: 28px;
-      height: 28px;
-      object-fit: cover;
-      border: 1px solid #ffffff;
-  }
-  
-  .badge {
-      font-size: 0.6rem;
-      padding: 0.25em 0.6em;
-      top: -8px;
-      right: -8px;
-      background-color: var(--accent-color); /* Themed color */
-      color: white;
-      font-weight: 600;
-  }
-  
-  @media (max-width: 991px) {
-      .bottom-nav {
-          display: flex;
-      }
-      
-      .navbar-nav {
-          flex-direction: row;
-      }
-      
-      .bottom-nav .nav-link {
-          font-size: 1.3rem;
-          margin: 0;
-          padding: 5px;
-      }
-      
-      body {
-          padding-bottom: 70px; /* Space for bottom nav */
-      }
-  }
-  
-  @media (max-width: 576px) {
-      .navbar-brand img {
-          height: 38px; /* Even smaller on small screens */
-      }
-  }
-  
-  /* Offcanvas Sidebar Styling */
-.custom-sidebar {
-    max-width: 320px;
-    width: 100%;
-    padding-bottom: 40px;
-    border-left: 1px solid var(--border-color);
-    box-shadow: -5px 0 15px rgba(0, 0, 0, 0.05);
-    background-color: var(--card-background);
-}
-
-.custom-sidebar .offcanvas-body {
-    padding: 1.5rem;
-}
-
-/* Sidebar Header Styling */
-.sidebar-heading {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    margin-bottom: 1rem;
-    letter-spacing: 0.5px;
-}
-
-/* Search Bar Styling for Sidebar */
-.sidebar-search-container {
-    position: relative;
-}
-
-.sidebar-search-form {
-    position: relative;
-}
-
-.sidebar-search-input {
-    background-color: var(--card-background);
-    color: var(--text-primary);
-    border: 2px solid var(--primary-color);
-    padding: 10px 16px;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-}
-
-.sidebar-search-input:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.15);
-}
-
-.sidebar-search-button {
-    color: var(--primary-color);
-    height: 50px;
-    border-color: var(--primary-color);
-    transition: all 0.3s ease;
-}
-
-.sidebar-search-button:hover {
-    background-color: var(--primary-color);
-    color: #ffffff;
-}
-
-/* Categories List */
-.categories-list {
-    margin-left: -0.5rem;
-    margin-right: -0.5rem;
-}
-
-.categories-list .list-group-item {
-    background-color: transparent;
-    transition: background-color 0.3s ease;
-    border-radius: var(--radius-md);
-    margin-bottom: 0.25rem;
-    padding: 0.5rem;
-}
-
-.categories-list .list-group-item:hover {
-    background-color: var(--hover-bg);
-}
-
-.categories-list .list-group-item.active {
-    background-color: var(--primary-color) !important;
-    color: #ffffff !important;
-    border-color: var(--primary-color);
-}
-
-/* Category Link Styling */
-.category-link {
-    color: var(--text-primary);
-    text-decoration: none;
-    display: flex;
-    align-items: center;
-    font-weight: 500;
-    transition: color 0.3s ease;
-}
-
-.list-group-item.active .category-link {
-    color: #ffffff;
-}
-
-.category-link:hover {
-    color: var(--primary-color);
-}
-
-.list-group-item.active .category-link:hover {
-    color: #ffffff;
-}
-
-/* Category Count */
-.category-count {
-    color: var(--text-secondary);
-    transition: color 0.3s ease;
-}
-
-.list-group-item.active .category-count {
-    color: rgba(255, 255, 255, 0.8);
-}
-
-/* Category Icon */
-.category-icon2 {
-    width: 30px;
-    height: 30px;
-    background-color: var(--primary-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    margin-right: 0.75rem;
-    transition: all 0.3s ease;
-}
-
-.category-icon2 i {
-    color: #ffffff;
-    font-size: 0.875rem;
-}
-
-.category-image {
-    width: 30px;
-    height: 30px;
-    object-fit: cover;
-    border-radius: 50%;
-    margin-right: 0.75rem;
-    transition: transform 0.3s ease;
-}
-
-.category-image:hover,
-.subcategory-image:hover {
-    transform: scale(1.1);
-}
-
-.notification-badge {
-  font-size: 0.6rem;
-  padding: 0.25em 0.6em;
-  top: -8px;
-  right: -8px;
-  background-color: var(--accent-color, #dc3545);
-  color: white;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1;
-}
-
-/* This will ensure the badge is properly positioned and visible */
-.nav-link.position-relative {
-  position: relative;
-}
-/* Toggle Button */
-.category-toggle {
-    color: var(--text-primary);
-    transition: transform 0.3s ease, color 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    border-radius: 50%;
-}
-
-.category-toggle:hover {
-    background-color: var(--hover-bg);
-    color: var(--primary-color);
-}
-
-.list-group-item.active .category-toggle {
-    color: #ffffff;
-}
-
-.category-toggle[aria-expanded="true"] svg {
-    transform: rotate(180deg);
-}
-
-/* Subcategories */
-.subcategory-link {
-    color: var(--text-secondary);
-    padding: 0.5rem 0.75rem;
-    border-radius: var(--radius-md);
-    transition: all 0.3s ease;
-    text-decoration: none;
-    margin-bottom: 0.25rem;
-    font-size: 0.95rem;
-}
-
-
-.subcategory-link.active-subcategory {
-    color: var(--primary-color);
-    background-color: var(--hover-bg);
-    font-weight: 500;
-}
-
-/* Fix for subcategory text color when parent category is active */
-.list-group-item.active .subcategory-link {
-    color: rgba(255, 255, 255, 0.9);
-}
-
-.list-group-item.active .subcategory-link:hover,
-.list-group-item.active .subcategory-link.active-subcategory {
-    background-color: rgba(255, 255, 255, 0.2);
-    color: #ffffff;
-}
-
-.list-group-item.active .subcategory-link.active-subcategory {
-    background-color: rgba(255, 255, 255, 0.3);
-    border-left: 2px solid #ffffff;
-}
-
-/* Fix for subcategory count when parent category is active */
-.list-group-item.active .subcategory-link .category-count {
-    color: rgba(255, 255, 255, 0.7);
-}
-
-/* Subcategory Icons */
-.subcategory-icon {
-    width: 20px;
-    height: 20px;
-    background-color: var(--primary-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    margin-right: 0.75rem;
-    transition: all 0.3s ease;
-}
-
-.subcategory-icon i {
-    color: #ffffff;
-    font-size: 0.75rem;
-}
-
-.subcategory-image {
-    width: 20px;
-    height: 20px;
-    object-fit: cover;
-    border-radius: 50%;
-    margin-right: 0.75rem;
-}
-
-/* Fix for subcategory icons when parent is active */
-.list-group-item.active .subcategory-icon {
-    background-color: rgba(255, 255, 255, 0.3);
-}
-
-.list-group-item.active .subcategory-icon i {
-    color: #ffffff;
-}
-
-/* Auth Section */
-.auth-section {
-    background-color: var(--hover-bg);
-    border-radius: var(--radius-lg);
-    margin-top: 1rem;
-    margin-bottom: 1rem;
-}
-
-.auth-section h6 {
-    color: var(--text-primary);
-    font-weight: 600;
-}
-
-/* Animation for dropdown */
-@media (prefers-reduced-motion: no-preference) {
-    .collapse {
-        transition: height 0.3s ease;
-    }
-}
-
-/* Close button */
-.btn-close {
-  --bs-btn-close-color: #000;
-  --bs-btn-close-bg: url(data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23000'%3e%3cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 0 1-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414'/%3e%3c/svg%3e);
-  --bs-btn-close-opacity: 0.5;
-  --bs-btn-close-hover-opacity: 0.75;
-  --bs-btn-close-focus-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-  --bs-btn-close-focus-opacity: 1;
-  --bs-btn-close-disabled-opacity: 0.25;
-  box-sizing: content-box;
-  width: 1em;
-  height: 1em;
-  padding: .25em .25em;
-  color: var(--bs-btn-close-color);
-  background: transparent var(--bs-btn-close-bg) center / 1em auto no-repeat;
-  filter: var(--bs-btn-close-filter);
-  border: 0;
-  border-radius: .375rem;
-  opacity: var(--bs-btn-close-opacity);
-}
-
-.btn-close-white {
-  --bs-btn-close-filter: invert(1) grayscale(100%) brightness(200%);
-}
-
-.btn-close:hover {
-    opacity: 1;
-}
-
-/* Responsive Adjustments */
-@media (max-width: 576px) {
-    .custom-sidebar {
-        max-width: 100%;
-    }
-}
-  
-  .navbar-toggler {
-      z-index: 1030;
-      position: relative;
-      border: none;
-      padding: 0.25rem;
-      color: var(--text-color);
-  }
-  
-  .navbar-toggler:focus {
-      box-shadow: none;
-  }
-  
-  .navbar-toggler svg {
-      stroke: var(--text-color);
-  }
-
-
-  /* Custom sidebar positioning */
-.custom-sidebar {
-  /* Position below navbar */
-  top: calc(var(--navbar-height-mobile) + env(safe-area-inset-top));
-  height: calc(100% - var(--navbar-height-mobile) - var(--bottom-nav-height));
-  border-top: 1px solid var(--border-color);
-}
-
-/* Define navbar height variables */
 :root {
+  --navbar-bg: var(--primary-color);
+  --text-color: var(--card-background);
+  --active-color: var(--secondary-color);
+  --hover-color: var(--hover-bg);
+  --border-color: var(--border-color);
+  --search-bg: var(--card-background);
+  --search-text: var(--text-primary);
+  --badge-bg: var(--accent-color);
   --navbar-height: 75px; /* Desktop navbar height */
   --navbar-height-mobile: 65px; /* Mobile navbar height */
 }
 
-/* Responsive adjustments */
+/* Navbar Styles */
+.custom-navbar, .bottom-nav {
+  background-color: var(--navbar-bg);
+  z-index: 1050;
+  transition: transform 0.5s ease, opacity 0.5s ease;
+  padding: 0.75rem 1.25rem; 
+  will-change: opacity, transform;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+}
+
+.navbar-brand {
+  margin-right: 0.5rem;
+}
+
+.navbar-brand img {
+  height: 50px; 
+  margin-right: 1rem;
+}
+
+/* Body padding adjustments */
+body {
+  padding-top: 65px; 
+  transition: padding-top 0.3s ease;
+}
+
+@media (min-width: 992px) {
+  /* Desktop - account for navbar height */
+  body {
+    padding-top: var(--navbar-height);
+    padding-bottom: 0;
+    margin-bottom: var(--bottom-nav-height);
+  }
+  
+  /* Prevent navbar from auto-hiding on desktop */
+  .custom-navbar {
+    transform: none !important;
+    opacity: 1 !important;
+  }
+  
+  .order-lg-1 {
+    order: 1;
+  }
+  .order-lg-2 {
+    order: 2;
+  }
+}
+
 @media (max-width: 991px) {
+  .container-fluid {
+    padding-right: 0.5rem;
+    padding-left: 0.5rem;
+  }
+  
+  .navbar-toggler {
+    margin-left: 0.5rem;
+  }
+  
+  .bottom-nav {
+    display: flex;
+  }
+  
+  .navbar-nav {
+    flex-direction: row;
+  }
+  
+  .bottom-nav .nav-link {
+    font-size: 1.3rem;
+    margin: 0;
+    padding: 5px;
+  }
+  
+  body {
+    padding-bottom: 70px; /* Space for bottom nav */
+  }
+  
   .custom-sidebar {
     top: var(--navbar-height-mobile) !important;
     height: calc(100% - var(--navbar-height-mobile) - var(--bottom-nav-height)) !important;
-  
   }
   
   body.sidebar-open {
@@ -847,63 +521,496 @@
   }
 }
 
-/* Adjust z-index to ensure proper layering */
+.d-flex.align-items-center {
+  gap: 0.2rem;
+}
+
+/* Search Form Styles */
+.search-form {
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.search-form .form-control {
+  background-color: var(--search-bg);
+  color: var(--search-text);
+  border: 1px solid var(--border-color);
+  padding: 0.6rem 1.2rem;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.search-form .form-control:focus {
+  box-shadow: 0 0 0 3px rgba(var(--active-color), 0.25);
+}
+
+.search-form .btn {
+  background-color: var(--search-bg);
+  color: var(--search-text);
+  border: 1px solid var(--border-color);
+  padding: 0.5rem 1rem;
+  transition: all 0.3s ease;
+}
+
+/* Navigation Links */
+.nav-link {
+  font-size: 1rem;
+  margin: 0 10px;
+  color: rgba(255, 255, 255, 0.7) !important;
+  transition: color 0.2s ease, transform 0.2s ease;
+  position: relative;
+  padding: 0.5rem 1rem;
+}
+
+.nav-link:hover {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.nav-link.active {
+  color: var(--accent-color) !important; 
+  font-weight: 600; 
+}
+
+.nav-link svg {
+  transition: transform 0.2s ease, stroke 0.2s ease;
+  stroke: rgba(255, 255, 255, 0.7);
+}
+
+.nav-link:hover svg {
+  stroke: rgba(255, 255, 255, 0.9);
+  transform: scale(1.15);
+}
+
+.nav-link.active svg {
+  stroke: var(--accent-color); 
+}
+
+.nav-link.active::after {
+  display: none; 
+}
+
+/* Navigation Text */
+.nav-text {
+  font-size: 0.5rem;
+  margin-top: 2px;
+  color: inherit;
+}
+
+/* Profile Photos */
+.profile-photo-nav {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border: 2px solid #ffffff;
+}
+
+.profile-photo-small {
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  border: 1px solid #ffffff;
+}
+
+/* Badge Styles */
+.badge, .notification-badge {
+  font-size: 0.6rem;
+  padding: 0.25em 0.6em;
+  top: -8px;
+  right: -8px;
+  background-color: var(--accent-color);
+  color: white;
+  font-weight: 600;
+}
+
+.notification-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+/* Position relative for badge positioning */
+.nav-link.position-relative {
+  position: relative;
+}
+
+@media (max-width: 576px) {
+  .navbar-brand img {
+    height: 38px; /* Even smaller on small screens */
+  }
+  
+  .custom-sidebar {
+    max-width: 100%;
+  }
+}
+
+/* Navbar Toggler */
+.navbar-toggler {
+  z-index: 1030;
+  position: relative;
+  border: none;
+  padding: 0.25rem;
+  color: var(--text-color);
+}
+
+.navbar-toggler:focus {
+  box-shadow: none;
+}
+
+.navbar-toggler svg {
+  stroke: #FFFFFF;
+}
+
+/* Offcanvas Sidebar Styling */
 .custom-sidebar {
-  z-index: 1045; 
+  max-width: 320px;
+  width: 100%;
+  padding-bottom: 40px;
+  border-left: 1px solid var(--border-color);
+  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.05);
+  background-color: var(--card-background);
+  z-index: 1045;
+  /* Position below navbar */
+  top: calc(var(--navbar-height-mobile) + env(safe-area-inset-top));
+  height: calc(100% - var(--navbar-height-mobile) - var(--bottom-nav-height));
+  border-top: 1px solid var(--border-color);
 }
 
-.custom-navbar {
-  z-index: 1050; 
+.custom-sidebar .offcanvas-body {
+  padding: 1.5rem;
 }
 
-.bottom-nav {
-  z-index: 1050; 
+/* Sidebar Header Styling */
+.sidebar-heading {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-left: 0.5rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.05rem;
 }
-  
 
-  .categories-list .list-group-item {
-      background: transparent;
-      padding: 0.5rem 0;
-  }
-  
-  .category-link {
-      color: var(--text-primary);
-      font-weight: 500;
-  }
-  
-  .subcategory-link {
-      color: var(--text-secondary);
-      font-size: 0.9rem;
-      padding: 0.25rem 0;
-  }
-  
-  .category-toggle {
-      color: var(--text-secondary);
-  }
-  
-  .category-toggle svg {
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  }
-  
-  .category-toggle[aria-expanded="true"] svg {
-      transform: rotate(-180deg);
-  }
-  
-  .auth-section {
-      margin-top: 2rem;
-  }
-  
-  .auth-section .btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0.75rem 1.5rem;
-  }
-  
-  .auth-section .btn svg {
-    margin-right: 0.5rem;
-  }
+/* Search Bar Styling for Sidebar */
+.sidebar-search-container {
+  position: relative;
+}
 
+.sidebar-search-form {
+  position: relative;
+}
+
+.sidebar-search-input {
+  background-color: var(--card-background);
+  color: var(--text-primary);
+  border: 2px solid #6c757d;
+  padding: 8px 10px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  font-size: 0.75rem;
+  height: auto; 
+}
+
+.sidebar-search-input:focus {
+  border-color: #6c757d;
+  box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.15);
+}
+
+.sidebar-search-input::placeholder {
+  font-size: 0.85rem;
+}
+
+.sidebar-search-button {
+  color: #6c757d;
+  height: 40px; 
+  border-color: #6c757d;
+  transition: all 0.3s ease;
+  padding: 0 12px; 
+}
+
+.sidebar-search-button:hover {
+  background-color: var(--primary-color);
+  color: #ffffff;
+}
+
+/* Common styles for list items */
+.browse-list .list-group-item,
+.help-links .list-group-item,
+.categories-list .list-group-item {
+  background-color: transparent;  
+  transition: background-color 0.2s ease, background-color 0.3s ease;
+  border-radius: var(--radius-md);
+  margin-bottom: 0.15rem;
+  padding: 0.5rem;
+}
+
+.browse-list .list-group-item:hover,
+.help-links .list-group-item:hover,
+.categories-list .list-group-item:hover {
+  background-color: var(--hover-bg);
+}
+
+.browse-item-text,
+.help-item-text {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.help-links .list-group-item {
+  padding-left: 0.75rem;
+}
+
+/* Categories styling */
+.categories-list {
+  margin-left: -0.5rem;
+  margin-right: -0.5rem;
+}
+
+.categories-list .list-group-item.active {
+  background-color: var(--primary-color) !important;
+  color: #ffffff !important;
+  border-color: var(--primary-color);
+}
+
+/* Smaller text for categories and subcategories */
+.categories-list .category-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.subcategory-name {
+  font-size: 0.8rem;
+}
+
+.category-count {
+  font-size: 0.75rem !important;
+  color: var(--text-secondary);
+  transition: color 0.3s ease;
+}
+
+.list-group-item.active .category-count {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Remove margins from category icons */
+.categories-list .category-link {
+  padding: 0.25rem 0;
+}
+
+.subcategory-link {
+  padding: 0.25rem 0 !important;
+  margin-bottom: 0.1rem !important;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.subcategory-link.active-subcategory {
+  color: var(--primary-color);
+  background-color: var(--hover-bg);
+  font-weight: 500;
+}
+
+/* Fix for subcategory text color when parent category is active */
+.list-group-item.active .subcategory-link {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.list-group-item.active .subcategory-link:hover,
+.list-group-item.active .subcategory-link.active-subcategory {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.list-group-item.active .subcategory-link.active-subcategory {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-left: 2px solid #ffffff;
+}
+
+/* Fix for subcategory count when parent category is active */
+.list-group-item.active .subcategory-link .category-count {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Category Link Styling */
+.category-link {
+  color: var(--text-primary);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.list-group-item.active .category-link {
+  color: #ffffff;
+}
+
+.category-link:hover {
+  color: var(--primary-color);
+}
+
+.list-group-item.active .category-link:hover {
+  color: #ffffff;
+}
+
+/* Category toggle */
+.category-toggle {
+  color: var(--text-primary);
+  transition: transform 0.3s ease, color 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.category-toggle:hover {
+  background-color: var(--hover-bg);
+  color: var(--primary-color);
+}
+
+.list-group-item.active .category-toggle {
+  color: #ffffff;
+}
+
+.dropdown-toggle1, .dropdown-toggle {
+  cursor: pointer;
+}
+
+.dropdown-toggle1 svg,
+.category-toggle svg {
+  transition: transform 0.3s ease, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.dropdown-toggle1[aria-expanded="true"] svg,
+.category-toggle[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+/* Category Icon */
+.category-icon2 {
+  width: 30px;
+  height: 30px;
+  background-color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  margin-right: 0.75rem;
+  transition: all 0.3s ease;
+}
+
+.category-icon2 i {
+  color: #ffffff;
+  font-size: 0.875rem;
+}
+
+.category-image {
+  width: 20px;
+  height: 20px;
+  object-fit: cover;
+  border-radius: 50%;
+  margin-right: 0.75rem;
+  transition: transform 0.3s ease;
+}
+
+.category-image:hover,
+.subcategory-image:hover {
+  transform: scale(1.1);
+}
+
+/* Subcategory Icons */
+.subcategory-icon {
+  width: 20px;
+  height: 20px;
+  background-color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  margin-right: 0.75rem;
+  transition: all 0.3s ease;
+}
+
+.subcategory-icon i {
+  color: #ffffff;
+  font-size: 0.75rem;
+}
+
+.subcategory-image {
+  width: 20px;
+  height: 20px;
+  object-fit: cover;
+  border-radius: 50%;
+  margin-right: 0.75rem;
+}
+
+/* Fix for subcategory icons when parent is active */
+.list-group-item.active .subcategory-icon {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.list-group-item.active .subcategory-icon i {
+  color: #ffffff;
+}
+
+/* Help & Info section improvements */
+.help-links .list-group-item {
+  padding: 0.35rem 0.6rem; /* Reduced padding vertically and horizontally */
+  display: flex;
+  align-items: center;
+  gap: 0.5rem; /* Space between icon and text */
+}
+
+.help-item-text {
+  font-size: 0.8rem; /* Smaller text */
+  color: var(--text-primary);
+}
+
+.help-icon {
+  color: var(--accent-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px; 
+}
+
+/* Auth Section */
+.auth-section {
+  background-color: var(--hover-bg);
+  border-radius: var(--radius-lg);
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.auth-section h6 {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.auth-section .btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+}
+
+.auth-section .btn svg {
+  margin-right: 0.5rem;
+}
+
+/* Animation for dropdown */
+@media (prefers-reduced-motion: no-preference) {
+  .collapse {
+    transition: height 0.3s ease;
+  }
+}
 </style>
 
 <script>
@@ -1119,5 +1226,69 @@
         }
       });
     });
-  });
+
+    const mainSidebar = document.getElementById('mainSidebar');
+    const hamburgerButton = document.querySelector('.navbar-toggler');
+    
+    // Toggle hamburger to X when sidebar opens/closes
+    mainSidebar.addEventListener('show.bs.offcanvas', function () {
+      hamburgerButton.classList.add('is-active');
+      document.body.classList.add('sidebar-open');
+    });
+    
+    mainSidebar.addEventListener('hide.bs.offcanvas', function () {
+      hamburgerButton.classList.remove('is-active');
+      document.body.classList.remove('sidebar-open');
+    });
+    
+    // Handle chevron rotation for collapsible elements
+    const collapsibles = document.querySelectorAll('[data-bs-toggle="collapse"]');
+    collapsibles.forEach(element => {
+      element.addEventListener('click', function() {
+        const expanded = this.getAttribute('aria-expanded') === 'true';
+        // Chevron animation is handled by CSS
+      });
+    });
+    
+    // Close sidebar when a non-collapsible link is clicked
+    const sidebarLinks = document.querySelectorAll('.sidebar-link:not([data-bs-toggle]), .sidebar-sublink');
+    sidebarLinks.forEach(link => {
+      link.addEventListener('click', function() {
+        const bsOffcanvas = bootstrap.Offcanvas.getInstance(mainSidebar);
+        if (bsOffcanvas) {
+          bsOffcanvas.hide();
+        }
+      });
+    });
+    
+    // Update navbar toggler styles
+    function updateTogglerStyles() {
+      const sidebarOpen = document.body.classList.contains('sidebar-open');
+      if (sidebarOpen) {
+        // Apply X style when sidebar is open
+        hamburgerButton.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        `;
+      } else {
+        // Apply hamburger style when sidebar is closed
+        hamburgerButton.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" x2="20" y1="12" y2="12"/>
+            <line x1="4" x2="20" y1="6" y2="6"/>
+            <line x1="4" x2="20" y1="18" y2="18"/>
+          </svg>
+        `;
+      }
+    }
+    
+    // Initial setup
+    updateTogglerStyles();
+    
+    // Update when sidebar is shown/hidden
+    mainSidebar.addEventListener('shown.bs.offcanvas', updateTogglerStyles);
+    mainSidebar.addEventListener('hidden.bs.offcanvas', updateTogglerStyles);
+});
 </script>
