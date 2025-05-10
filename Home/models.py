@@ -57,9 +57,9 @@ class Product_Listing(models.Model):
         ('used', 'Used'),
     ]
     LISTING_TYPES = [
-        ('standard', 'Standard Listing (7 days)'),
-        ('premium', 'Premium Listing (30 days)'),
-        ('emergency', 'Emergency Sale (3 days)'),
+        ('standard', 'Standard Listing (45 days)'),
+        ('business', 'Business Listing (90 days)'),
+        ('urgent', 'Urgent Sale (30 days)'),
         ('permanent', 'Permanent Retail Listing'),
     ]
     title = models.CharField(max_length=255)
@@ -164,10 +164,10 @@ class Product_Listing(models.Model):
             self.expiration_date = None
         else:
             duration = {
-                'standard': 7,
-                'premium': 30,
-                'emergency': 3,
-            }.get(self.listing_type, 7)
+                'standard': 45,
+                'business': 90,
+                'urgent': 30,
+            }.get(self.listing_type, 45)
             
             self.expiration_date = timezone.now() + timedelta(days=duration)
             self.deletion_warning_sent = False
@@ -185,10 +185,10 @@ class Product_Listing(models.Model):
                         self.expiration_date = None
                     else:
                         duration = {
-                            'standard': 7,
-                            'premium': 30,
-                            'emergency': 3
-                        }.get(self.listing_type, 7)
+                            'standard': 45,
+                            'business': 90,
+                            'urgent': 30
+                        }.get(self.listing_type, 45)
                         self.expiration_date = timezone.now() + timedelta(days=duration)
                 
                 # Reset expiration on significant updates
@@ -196,10 +196,10 @@ class Product_Listing(models.Model):
                     significant_fields = ['title', 'description', 'price', 'quantity']
                     if any(getattr(original, field) != getattr(self, field) for field in significant_fields):
                         duration = {
-                            'standard': 7,
-                            'premium': 30,
-                            'emergency': 3
-                        }.get(self.listing_type, 7)
+                            'standard': 45,
+                            'business': 90,
+                            'urgent': 30
+                        }.get(self.listing_type, 45)
                         self.expiration_date = timezone.now() + timedelta(days=duration)
                         self.deletion_warning_sent = False
                         
@@ -208,10 +208,10 @@ class Product_Listing(models.Model):
         else:  # New instance
             if self.listing_type != 'permanent':
                 duration = {
-                    'standard': 7,
-                    'premium': 30,
-                    'emergency': 3
-                }.get(self.listing_type, 7)
+                    'standard': 45,
+                    'business': 90,
+                    'urgent': 30
+                }.get(self.listing_type, 45)
                 self.expiration_date = timezone.now() + timedelta(days=duration)
                 print(f"Setting expiration date to: {self.expiration_date}")  # Debug line
 
@@ -248,7 +248,7 @@ class Product_Listing(models.Model):
             # Find expired listings
             expired = cls.objects.filter(
                 expiration_date__lte=timezone.now(),
-                listing_type__in=['standard', 'premium', 'emergency']
+                listing_type__in=['standard', 'business', 'urgent']
             )
             
             count = expired.count()

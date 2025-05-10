@@ -418,10 +418,10 @@ class ProductCreateView(LoginRequiredMixin, CreateView):
             # Set expiration date explicitly before saving images
             if self.object.listing_type != 'permanent':
                 duration = {
-                    'standard': 7,
-                    'premium': 30,
-                    'emergency': 3
-                }.get(self.object.listing_type, 7)
+                    'standard': 45,
+                    'business': 90,
+                    'urgent': 30
+                }.get(self.object.listing_type, 45)
                 self.object.expiration_date = timezone.now() + timedelta(days=duration)
                 self.object.save()
             
@@ -482,9 +482,9 @@ class ProductUpdateView(LoginRequiredMixin, UpdateView):
             
             # Reset expiration based on listing type
             duration = {
-                'standard': 7,
-                'premium': 30,
-                'emergency': 3
+                'standard': 45,
+                'business': 90,
+                'urgent': 30
             }.get(self.object.listing_type)
             
             if self.object.listing_type != 'permanent':

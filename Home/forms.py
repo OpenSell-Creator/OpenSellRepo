@@ -40,10 +40,10 @@ class ListingForm(forms.ModelForm):
     formatted_price = forms.CharField(label='Price', required=True)
     
     LISTING_TYPE_CHOICES = [
-        ('standard', 'Standard Listing (7 days) - Free'),
-        ('premium', 'Premium Listing (30 days) - ₦500'),
-        ('emergency', 'Emergency Sale (3 days) - Free'),
-        ('permanent', 'Permanent Retail Listing - ₦1000/month'),
+        ('standard', 'Standard Listing (45 days) - Free'),
+        ('business', 'Business Listing (90 days) - ₦2,000'),
+        ('urgent', 'Urgent Sale (30 days) - ₦1,000'),
+        ('permanent', 'Permanent Retail Listing - ₦5,000/month'),
     ]
     
     listing_type = forms.ChoiceField(
