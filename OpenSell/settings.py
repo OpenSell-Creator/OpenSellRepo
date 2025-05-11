@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     'Messages',
     'Notifications',
     'Dashboard',
+    'Pages',
 
 
     # Third Party Apps

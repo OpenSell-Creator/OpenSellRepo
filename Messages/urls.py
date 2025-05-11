@@ -1,4 +1,4 @@
-# messages/urls.py
+# Messages/urls.py
 from django.urls import path
 from . import views
 
