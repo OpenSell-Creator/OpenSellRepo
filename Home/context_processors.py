@@ -51,22 +51,3 @@ def categories_with_counts(request):
         'selected_subcategory': selected_subcategory_id,
     }
     
-def global_context(request):
-    """
-    Add global context variables to all templates
-    """
-    context = {}
-    
-    # Only try to fetch categories if database is available
-    # This is important for error pages when DB might be unreachable
-    try:
-        from Home.models import Category  # Replace with your actual import
-        
-        # Get all categories for navigation
-        context['global_categories'] = Category.objects.all()
-        
-    except Exception:
-        # In case of any error, provide an empty list
-        context['global_categories'] = []
-    
-    return context

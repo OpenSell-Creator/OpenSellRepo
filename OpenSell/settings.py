@@ -118,7 +118,6 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'django.template.context_processors.static',
                 'Home.context_processors.categories_with_counts',
-                'Home.context_processors.global_context',
                 'Messages.views.get_unread_count',
                 'Notifications.views.notification_counts'
             ],

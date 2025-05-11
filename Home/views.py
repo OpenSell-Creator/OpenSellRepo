@@ -25,6 +25,8 @@ from django.core.exceptions import ValidationError
 from User.models import Profile
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.urls import resolve, Resolver404
+from urllib.parse import urlparse
 import logging
 import uuid
 
@@ -1007,22 +1009,35 @@ def my_store(request, username=None):
 
 def handler404(request, exception):
     """
-    Custom 404 handler to display our error page
+    Custom 404 handler that differentiates between product-related 404s and general 404s
     """
-    # Check if this is a product request (you can customize this logic)
-    # For example, if URLs for products are like /products/123/, you can check the path
-    is_product_request = '/products/' in request.path or '/product/' in request.path
+    url_path = urlparse(request.build_absolute_uri()).path
     
     context = {
-        'is_product_request': is_product_request,
-        # You may need to get global categories for the 404 page
-        'global_categories': get_global_categories(),
+        'is_product_related': False,
+        'request_path': url_path,
     }
     
-    # Return a response with status 404
+    # Try to determine if this was a product-related 404
+    try:
+        # Get the resolved view name if possible (to check if it was a product view)
+        resolved = resolve(url_path)
+        view_name = resolved.view_name
+        
+        # Check if the URL was intended for a product page
+        if 'product' in view_name or 'products' in view_name:
+            context['is_product_related'] = True
+    except Resolver404:
+        # If we can't resolve the URL pattern, use URL path examination as fallback
+        product_indicators = ['product', 'products', 'item', 'listings']
+        path_segments = url_path.split('/')
+        for segment in path_segments:
+            if segment in product_indicators or (segment.isdigit() and len(segment) > 4):
+                context['is_product_related'] = True
+                break
+    
+    # Return the appropriate template with context
     return render(request, '404.html', context, status=404)
-
-def get_global_categories():
     """
     Fetch categories for the 404 page - only fetch a few popular ones
     """
