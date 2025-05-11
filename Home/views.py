@@ -4,7 +4,7 @@ from django.shortcuts import render, get_object_or_404,redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .models import Product_Listing, Review, ReviewReply, SavedProduct
-from User.models import LGA
+from User.models import LGA, State
 from Dashboard.models import ProductBoost
 from django.core.paginator import Paginator
 from django.db.models import Q,F, Avg, Exists, OuterRef
@@ -148,19 +148,52 @@ class ProductListView(ListView):
     template_name = 'product_list.html'
     context_object_name = 'products'
     paginate_by = 12
-
+    
     def get_queryset(self):
         queryset = Product_Listing.objects.all()
+        
+        # Try to delete expired listings first
+        try:
+            Product_Listing.delete_expired_listings()
+        except:
+            pass  # Silently fail if there's an issue
+        
+        # Get filter parameters
         category_slug = self.request.GET.get('category')
         subcategory_slug = self.request.GET.get('subcategory')
-
+        query = self.request.GET.get('query')
+        min_price = self.request.GET.get('min_price')
+        max_price = self.request.GET.get('max_price')
+        condition = self.request.GET.get('condition')
+        state = self.request.GET.get('state')
+        lga = self.request.GET.get('lga')
+        
+        # Apply filters
+        if query:
+            queryset = queryset.filter(title__icontains=query)
+        
         if category_slug:
-            # Filter by category slug instead of ID
             queryset = queryset.filter(category__slug=category_slug)
+        
         if subcategory_slug:
-            # Filter by subcategory slug instead of ID
             queryset = queryset.filter(subcategory__slug=subcategory_slug)
-
+        
+        if min_price:
+            queryset = queryset.filter(price__gte=min_price)
+        
+        if max_price:
+            queryset = queryset.filter(price__lte=max_price)
+        
+        if condition:
+            queryset = queryset.filter(condition=condition)
+        
+        if state:
+            queryset = queryset.filter(seller__location__state=state)
+        
+        if lga:
+            queryset = queryset.filter(seller__location__lga=lga)
+        
+        # Add saved status annotation for authenticated users
         if self.request.user.is_authenticated:
             queryset = queryset.annotate(
                 is_saved=Exists(
@@ -170,8 +203,9 @@ class ProductListView(ListView):
                     )
                 )
             )
+        
         return queryset.order_by('-created_at')
-
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
@@ -194,8 +228,17 @@ class ProductListView(ListView):
         subcategory_slug = self.request.GET.get('subcategory')
         
         context['categories'] = categories
+        context['global_categories'] = categories  # For the sidebar
         
-        # Get selected category by slug instead of ID
+        # Get states for the filter
+        context['states'] = State.objects.all()
+        
+        # Get LGAs if state is selected
+        state_id = self.request.GET.get('state')
+        if state_id:
+            context['lgas'] = LGA.objects.filter(state_id=state_id)
+        
+        # Get selected category by slug
         selected_category = None
         if category_slug:
             try:
@@ -206,7 +249,7 @@ class ProductListView(ListView):
             except Category.DoesNotExist:
                 pass
         
-        # Get selected subcategory by slug instead of ID
+        # Get selected subcategory by slug
         selected_subcategory = None
         if subcategory_slug and selected_category:
             try:
@@ -225,10 +268,10 @@ class ProductListView(ListView):
                 product.is_saved_by_user = product.is_saved_by_user(self.request.user)
         
         return context
-
+    
     def format_price(self, price):
         return '₦ {:,.0f}'.format(Decimal(price))
-        
+    
 class ProductDetailView(DetailView):
     model = Product_Listing
     template_name = 'product_detail.html'

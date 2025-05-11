@@ -2,7 +2,126 @@
 
 {% block 'Body' %}
 <div class="container-fluid py-3">
-    <!-- Subcategory Quick Links -->
+    <!-- Conditional Display of Search Filter -->
+    {% if not selected_category %}
+    <!-- Search Filter Card - Only shows when no category is selected -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body">
+            <form method="get" action="{% url 'product_list' %}" id="advancedSearchForm">
+                <!-- Main search row with filter button -->
+                <div class="row mg-1">
+                    <div class="col">
+                        <input type="text" name="query" class="form-control form-control-md" 
+                               placeholder="Search products..." 
+                               value="{{ request.GET.query|default:'' }}">
+                    </div>
+                    <div class="col-auto">
+                        <button type="button" 
+                                class="btn btn-outline-secondary btn-mg d-flex align-items-center gap-1" 
+                                data-bs-toggle="collapse" 
+                                data-bs-target="#filterSection"
+                                aria-expanded="false"
+                                aria-controls="filterSection">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="21" y1="4" x2="14" y2="4"></line>
+                                <line x1="10" y1="4" x2="3" y2="4"></line>
+                                <line x1="21" y1="12" x2="12" y2="12"></line>
+                                <line x1="8" y1="12" x2="3" y2="12"></line>
+                                <line x1="21" y1="20" x2="16" y2="20"></line>
+                                <line x1="12" y1="20" x2="3" y2="20"></line>
+                                <line x1="14" y1="2" x2="14" y2="6"></line>
+                                <line x1="8" y1="10" x2="8" y2="14"></line>
+                                <line x1="16" y1="18" x2="16" y2="22"></line>
+                            </svg>
+                            
+                            <span class="badge bg-secondary" id="activeFiltersCount">0</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Collapsible filter section -->
+                <div class="collapse" id="filterSection">
+                    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3 mt-3">
+                        <div class="col">
+                            <label class="form-label">Category</label>
+                            <select name="category" class="form-select" id="id_category">
+                                <option value="">All Categories</option>
+                                {% for category in categories %}
+                                <option value="{{ category.slug }}" {% if selected_category == category.slug %}selected{% endif %}>
+                                    {{ category.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Subcategory</label>
+                            <select name="subcategory" class="form-select" id="id_subcategory" {% if not selected_category %}disabled{% endif %}>
+                                <option value="">All Subcategories</option>
+                                {% if selected_category_obj %}
+                                    {% for subcategory in selected_category_obj.subcategories.all %}
+                                    <option value="{{ subcategory.slug }}" {% if selected_subcategory == subcategory.slug %}selected{% endif %}>
+                                        {{ subcategory.name }}
+                                    </option>
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Condition</label>
+                            <select name="condition" class="form-select" id="id_condition">
+                                <option value="">Any Condition</option>
+                                <option value="new" {% if request.GET.condition == 'new' %}selected{% endif %}>New</option>
+                                <option value="used" {% if request.GET.condition == 'used' %}selected{% endif %}>Used</option>
+                            </select>
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Minimum Price</label>
+                            <input type="number" name="min_price" class="form-control" 
+                                   placeholder="Enter minimum price" value="{{ request.GET.min_price|default:'' }}">
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Maximum Price</label>
+                            <input type="number" name="max_price" class="form-control" 
+                                   placeholder="Enter maximum price" value="{{ request.GET.max_price|default:'' }}">
+                        </div>
+                        <div class="col">
+                            <label class="form-label">State</label>
+                            <select name="state" class="form-select" id="id_state">
+                                <option value="">All States</option>
+                                {% for state in states %}
+                                <option value="{{ state.id }}" {% if request.GET.state|stringformat:"i" == state.id|stringformat:"i" %}selected{% endif %}>
+                                    {{ state.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col">
+                            <label class="form-label">LGA</label>
+                            <select name="lga" class="form-select" id="id_lga" {% if not request.GET.state %}disabled{% endif %}>
+                                <option value="">All LGAs</option>
+                                {% if request.GET.state %}
+                                    {% for lga in lgas %}
+                                    <option value="{{ lga.id }}" {% if request.GET.lga|stringformat:"i" == lga.id|stringformat:"i" %}selected{% endif %}>
+                                        {{ lga.name }}
+                                    </option>
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col">
+                            <button type="submit" class="btn btn-primary">Apply Filters</button>
+                            <button type="button" class="btn btn-outline-secondary ms-2" id="clearFilters">Clear All</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Subcategory Quick Links - Only shows when a category is selected -->
     {% if selected_category_obj and subcategories %}
     <div class="card mb-4 shadow-sm">
         <div class="card-body py-3 px-3 px-md-4">
@@ -192,5 +311,125 @@
         }
     }
 </style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Only run search filter JS if the search form exists (when no category is selected)
+        const advancedSearchForm = document.getElementById('advancedSearchForm');
+        if (advancedSearchForm) {
+            const categorySelect = document.getElementById('id_category');
+            const subcategorySelect = document.getElementById('id_subcategory');
+            const stateSelect = document.getElementById('id_state');
+            const lgaSelect = document.getElementById('id_lga');
+            const activeFiltersCount = document.getElementById('activeFiltersCount');
+        
+            // Function to update active filters count
+            function updateActiveFiltersCount() {
+                let count = 0;
+                const formElements = advancedSearchForm.elements;
+                
+                for (let element of formElements) {
+                    if (element.type !== 'submit' && element.type !== 'button' && element.value && 
+                        element.type !== 'hidden') { // Don't count hidden inputs
+                        count++;
+                    }
+                }
+                
+                activeFiltersCount.textContent = count;
+                activeFiltersCount.style.display = count > 0 ? 'inline-block' : 'none';
+            }
+        
+            // Initialize active filters count
+            updateActiveFiltersCount();
+        
+            // Category change handler
+            categorySelect.addEventListener('change', function() {
+                const categoryId = this.value;
+                if (categoryId) {
+                    fetch(`/api/subcategories/${categoryId}/`)
+                        .then(response => response.json())
+                        .then(data => {
+                            subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
+                            data.forEach(subcategory => {
+                                const option = document.createElement('option');
+                                option.value = subcategory.slug;
+                                option.textContent = subcategory.name;
+                                subcategorySelect.appendChild(option);
+                            });
+                            subcategorySelect.disabled = false;  // Enable subcategory
+                            updateActiveFiltersCount();
+                        })
+                        .catch(error => {
+                            console.error('Error fetching subcategories:', error);
+                            subcategorySelect.disabled = true;  // Keep disabled on error
+                        });
+                } else {
+                    subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
+                    subcategorySelect.disabled = true;  // Disable when category is not selected
+                }
+                updateActiveFiltersCount();
+            });
+        
+            // State change handler
+            stateSelect.addEventListener('change', function() {
+                const stateId = this.value;
+                if (stateId) {
+                    fetch(`/api/lgas/${stateId}/`)
+                        .then(response => response.json())
+                        .then(data => {
+                            lgaSelect.innerHTML = '<option value="">All LGAs</option>';
+                            data.forEach(lga => {
+                                const option = document.createElement('option');
+                                option.value = lga.id;
+                                option.textContent = lga.name;
+                                lgaSelect.appendChild(option);
+                            });
+                            lgaSelect.disabled = false;  // Enable the LGA field
+                        })
+                        .catch(error => {
+                            console.error('Error fetching LGAs:', error);
+                            lgaSelect.disabled = true;  // Keep disabled on error
+                        });
+                } else {
+                    lgaSelect.innerHTML = '<option value="">All LGAs</option>';
+                    lgaSelect.disabled = true;  // Disable when state is not selected
+                }
+                updateActiveFiltersCount();
+            });
+        
+            // Clear filters handler
+            document.getElementById('clearFilters').addEventListener('click', function() {
+                const formElements = advancedSearchForm.elements;
+                for (let element of formElements) {
+                    if (element.type !== 'submit' && element.type !== 'button' && element.type !== 'hidden') {
+                        element.value = '';
+                    }
+                }
+                subcategorySelect.disabled = true;
+                lgaSelect.disabled = true;
+                updateActiveFiltersCount();
+                
+                // Simply redirect to the base products page without parameters
+                window.location.href = window.location.pathname;
+            });
+        
+            // Listen for changes on all form inputs
+            advancedSearchForm.addEventListener('change', updateActiveFiltersCount);
+            advancedSearchForm.addEventListener('input', updateActiveFiltersCount);
+            
+            // Ensure the form doesn't submit with empty values
+            advancedSearchForm.addEventListener('submit', function(e) {
+                // Remove empty fields before submission to keep URL clean
+                const elements = advancedSearchForm.elements;
+                for (let element of elements) {
+                    if (element.value === '' && element.type !== 'submit' && element.type !== 'button') {
+                        // Don't include empty fields in the query string
+                        element.disabled = true;
+                    }
+                }
+            });
+        }
+    });
+</script>
 {% endblock %}
 {% block 'Footer'%}{% endblock %}
