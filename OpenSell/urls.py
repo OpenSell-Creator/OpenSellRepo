@@ -19,6 +19,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf.urls.static import static
 
+handler404 = 'Home.views.handler404'
 
 urlpatterns = [
     path('controlroom/', admin.site.urls),

@@ -1004,3 +1004,32 @@ def my_store(request, username=None):
             pass
 
     return render(request, 'my_store.html', context)
+
+def handler404(request, exception):
+    """
+    Custom 404 handler to display our error page
+    """
+    # Check if this is a product request (you can customize this logic)
+    # For example, if URLs for products are like /products/123/, you can check the path
+    is_product_request = '/products/' in request.path or '/product/' in request.path
+    
+    context = {
+        'is_product_request': is_product_request,
+        # You may need to get global categories for the 404 page
+        'global_categories': get_global_categories(),
+    }
+    
+    # Return a response with status 404
+    return render(request, '404.html', context, status=404)
+
+def get_global_categories():
+    """
+    Fetch categories for the 404 page - only fetch a few popular ones
+    """
+    try:
+        from Home.models import Category  # Replace with your actual import
+        # Get popular categories (limited to 6)
+        return Category.objects.order_by('-product_count')[:6]
+    except:
+        # If there's any error, return an empty list
+        return []
