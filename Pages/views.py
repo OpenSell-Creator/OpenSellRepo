@@ -46,6 +46,84 @@ def contact(request):
     # For GET requests, just display the form
     return render(request, 'pages/contact.html')
 
+def support(request):
+    if request.method == 'POST':
+        # Determine which form was submitted based on the form fields
+        if 'volunteer_name' in request.POST:
+            # Process volunteer form
+            name = request.POST.get('volunteer_name', '')
+            email = request.POST.get('volunteer_email', '')
+            skills = request.POST.get('volunteer_skills', '')
+            other_skills = request.POST.get('other_skills', '')
+            message = request.POST.get('volunteer_message', '')
+            hours = request.POST.get('volunteer_hours', '')
+            
+            # Format skills - if "other" was selected, use the other_skills value
+            if skills == 'other' and other_skills:
+                skills = f"Other: {other_skills}"
+            
+            # Format the email content
+            email_message = f"""
+            You have received a new volunteer application from OpenSell:
+            
+            Name: {name}
+            Email: {email}
+            Skills: {skills}
+            Hours Available: {hours}
+            
+            Message:
+            {message}
+            """
+            
+            # Send email
+            try:
+                send_mail(
+                    subject="OpenSell: New Volunteer Application",
+                    message=email_message,
+                    from_email=email,
+                    recipient_list=['opensellmarketplace@gmail.com'],
+                    fail_silently=False,
+                )
+                # Add success message
+                messages.success(request, "Thank you for volunteering! We'll be in touch with you soon.")
+                return redirect('support')
+            except Exception as e:
+                messages.error(request, "There was an error processing your application. Please try again later.")
+        
+        elif 'feedback_type' in request.POST:
+            # Process feedback form
+            feedback_type = request.POST.get('feedback_type', '')
+            feedback_message = request.POST.get('feedback_message', '')
+            email = request.POST.get('feedback_email', 'No email provided')
+            
+            # Format the email content
+            email_message = f"""
+            You have received new feedback from OpenSell:
+            
+            Feedback Type: {feedback_type}
+            Email: {email}
+            
+            Message:
+            {feedback_message}
+            """
+            
+            # Send email
+            try:
+                send_mail(
+                    subject=f"OpenSell Feedback: {feedback_type}",
+                    message=email_message,
+                    from_email='noreply@opensell.online',
+                    recipient_list=['opensellmarketplace@gmail.com'],
+                    fail_silently=False,
+                )
+                # Add success message
+                messages.success(request, "Thank you for your feedback! We appreciate your input to help improve OpenSell.")
+                return redirect('support')
+            except Exception as e:
+                messages.error(request, "There was an error submitting your feedback. Please try again later.")
+    
+    # For GET request, just render the template
+    return render(request, 'pages/support.html')
 
 def about(request):
     return render(request, 'pages/about.html')
@@ -61,6 +139,3 @@ def privacy(request):
 
 def safety(request):
     return render(request, 'pages/safety.html')
-
-def support(request):
-    return render(request, 'pages/support.html')
