@@ -1,6 +1,7 @@
 from django import forms
 from .models import Product_Listing,Product_Image, Review
 from django.forms.widgets import NumberInput
+from django.core.validators import MinLengthValidator
 from decimal import Decimal, InvalidOperation
 from .models import Category,Brand, Subcategory,Profile, Review,ReviewReply
 from User.models import State, LGA
@@ -207,3 +208,34 @@ class ReviewReplyForm(forms.ModelForm):
         widgets = {
             'comment': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
         }
+        
+class ProductReportForm(forms.Form):
+    REPORT_REASONS = [
+        ('spam', 'Spam or Misleading Content'),
+        ('fraud', 'Fraudulent Listing'),
+        ('inappropriate', 'Inappropriate Content'),
+        ('expired', 'Expired or Sold Item'),
+        ('other', 'Other Reason')
+    ]
+
+    reason = forms.ChoiceField(
+        choices=REPORT_REASONS, 
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        required=True
+    )
+    details = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'class': 'form-control', 
+            'rows': 4, 
+            'placeholder': 'Please provide additional details about your report'
+        }),
+        validators=[MinLengthValidator(10, 'Please provide more details')],
+        required=True
+    )
+    reporter_email = forms.EmailField(
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control', 
+            'placeholder': 'Your email (optional)'
+        }),
+        required=False
+    )

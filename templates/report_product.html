@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block 'Body' %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-flag me-2"></i>Report Product
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- Product Preview Section -->
+                    <div class="product-preview mb-4">
+                        <div class="row align-items-center">
+                            <div class="col-md-4">
+                                {% if product.primary_image %}
+                                    <img src="{{ product.primary_image.image.url }}" 
+                                         alt="{{ product.title }}" 
+                                         class="img-fluid rounded">
+                                {% else %}
+                                    <div class="bg-light d-flex align-items-center justify-content-center rounded" style="height: 200px;">
+                                        <i class="fas fa-image text-muted" style="font-size: 3rem;"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-8">
+                                <h4 class="mb-2">{{ product.title }}</h4>
+                                <div class="text-muted mb-2">
+                                    <strong>Seller:</strong> {{ product.seller.user.username }}
+                                </div>
+                                <div class="text-muted">
+                                    <strong>Price:</strong> ₦ {{ product.price|floatformat:2 }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Report Form -->
+                    <form id="reportProductForm" method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="id_reason" class="form-label">Reason for Reporting <span class="text-danger">*</span></label>
+                            <select class="form-control" id="id_reason" name="reason" required>
+                                <option value="">Select a Reason</option>
+                                <option value="spam">Spam or Misleading Content</option>
+                                <option value="fraud">Fraudulent Listing</option>
+                                <option value="inappropriate">Inappropriate Content</option>
+                                <option value="expired">Expired or Sold Item</option>
+                                <option value="other">Other Reason</option>
+                            </select>
+                            <div class="invalid-feedback">Please select a reason for reporting.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_details" class="form-label">Additional Details <span class="text-danger">*</span></label>
+                            <textarea 
+                                class="form-control" 
+                                id="id_details" 
+                                name="details" 
+                                rows="5" 
+                                required
+                                minlength="10"
+                                placeholder="Please provide more information about your report. Be specific and provide context."
+                            ></textarea>
+                            <div class="invalid-feedback">Please provide more details (minimum 10 characters).</div>
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Help us understand why you're reporting this product.
+                            </small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_reporter_email" class="form-label">Your Email (Optional)</label>
+                            <input 
+                                type="email" 
+                                class="form-control" 
+                                id="id_reporter_email" 
+                                name="reporter_email" 
+                                placeholder="Enter your email if you want to be contacted"
+                            >
+                            <small class="form-text text-muted">
+                                <i class="fas fa-envelope me-1"></i>
+                                We'll use this only if we need more information.
+                            </small>
+                        </div>
+
+                        <div class="alert alert-warning" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            False reports may result in account restrictions.
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-flag me-2"></i>Submit Report
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Safety and Guidelines Section -->
+            <div class="card mt-4 shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-shield-alt me-2 text-success"></i>
+                        Reporting Guidelines
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="fas fa-check-circle me-2 text-success"></i>
+                            Provide specific and factual information
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check-circle me-2 text-success"></i>
+                            Include relevant details that support your report
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check-circle me-2 text-success"></i>
+                            Only report genuine violations of our marketplace rules
+                        </li>
+                        <li>
+                            <i class="fas fa-check-circle me-2 text-success"></i>
+                            Understand that not all reports will result in immediate action
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const reportForm = document.getElementById('reportProductForm');
+    
+    reportForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Remove any previous validation errors
+        document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+        
+        const reasonSelect = document.getElementById('id_reason');
+        const detailsTextarea = document.getElementById('id_details');
+        
+        let isValid = true;
+        
+        // Validate reason
+        if (!reasonSelect.value) {
+            reasonSelect.classList.add('is-invalid');
+            isValid = false;
+        }
+        
+        // Validate details
+        if (detailsTextarea.value.trim().length < 10) {
+            detailsTextarea.classList.add('is-invalid');
+            isValid = false;
+        }
+        
+        if (!isValid) {
+            return;
+        }
+        
+        const submitButton = this.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Submitting...';
+
+        const formData = new FormData(this);
+
+        fetch("{% url 'report_product' product.id %}", {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Redirect to a success page or show a success message
+                window.location.href = "{% url 'product_detail' product.id %}?report_submitted=true";
+            } else {
+                // Show error messages
+                alert(data.message || 'An error occurred while submitting the report.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An unexpected error occurred. Please try again.');
+        })
+        .finally(() => {
+            submitButton.disabled = false;
+            submitButton.innerHTML = '<i class="fas fa-flag me-2"></i>Submit Report';
+        });
+    });
+});
+</script>
+{% endblock %}
+{% block 'Footer'%}{% endblock %}

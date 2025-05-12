@@ -13,10 +13,9 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import View
 from django.urls import reverse_lazy
 from .models import Subcategory,Category,Product_Listing,Brand,Product_Image,Banner
-from .forms import ListingForm
 from django.db.models import Prefetch
 from django.contrib.auth.models import User
-from .forms import ProductSearchForm, ReviewForm,ReviewReplyForm, Review
+from .forms import ProductSearchForm, ReviewForm,ReviewReplyForm, Review, ProductReportForm, ListingForm
 from django.utils import timezone
 from decimal import Decimal
 from django.db.models import Count
@@ -27,6 +26,10 @@ from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.urls import resolve, Resolver404
 from urllib.parse import urlparse
+from django.core.mail import send_mail
+from django.conf import settings
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 import logging
 import uuid
 
@@ -1007,6 +1010,99 @@ def my_store(request, username=None):
 
     return render(request, 'my_store.html', context)
 
+class ReportProductView(View):
+    def get(self, request, product_id):
+        """
+        Handle GET requests to the report product page.
+        Renders the report form for the specific product.
+        """
+        try:
+            # Fetch the product, return 404 if not found
+            product = get_object_or_404(Product_Listing, id=product_id)
+            
+            # Render the report form template
+            return render(request, 'report_product.html', {
+                'product': product,
+                'form': ProductReportForm()
+            })
+        
+        except Exception as e:
+            # Log any unexpected errors
+            logging.error(f"Error accessing report product page: {e}")
+            return JsonResponse({
+                'success': False,
+                'message': 'An error occurred while accessing the report page.'
+            }, status=500)
+
+    def post(self, request, product_id):
+        """
+        Handle POST requests to submit a product report.
+        """
+        try:
+            # Fetch the product
+            product = get_object_or_404(Product_Listing, id=product_id)
+            
+            # Validate the form
+            form = ProductReportForm(request.POST)
+            if form.is_valid():
+                # Prepare email content
+                report_data = {
+                    'product_id': str(product.id),
+                    'product_title': product.title,
+                    'seller_username': product.seller.user.username,
+                    'reason': form.cleaned_data['reason'],
+                    'details': form.cleaned_data['details'],
+                    'reporter_email': form.cleaned_data['reporter_email'] or 'Anonymous',
+                }
+                
+                # Render email content
+                email_body = render_to_string('emails/product_report_email.html', report_data)
+                
+                try:
+                    # Send email
+                    send_mail(
+                        subject=f'Product Report: {product.title}',
+                        message=email_body,
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=['opensellmarketplace@gmail.com'],
+                        html_message=email_body,
+                        fail_silently=False,
+                    )
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'Thank you for reporting this product. We will review it shortly.'
+                    })
+                
+                except Exception as e:
+                    # Log email sending error
+                    logging.error(f"Error sending report email: {e}")
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'An error occurred while processing your report. Please try again.'
+                    }, status=500)
+            
+            else:
+                # Return form validation errors
+                return JsonResponse({
+                    'success': False,
+                    'errors': form.errors
+                }, status=400)
+        
+        except Product_Listing.DoesNotExist:
+            # Handle case where product is not found
+            return JsonResponse({
+                'success': False,
+                'message': 'Product not found'
+            }, status=404)
+        
+        except Exception as e:
+            # Log any unexpected errors
+            logging.error(f"Unexpected error in report product view: {e}")
+            return JsonResponse({
+                'success': False,
+                'message': 'An unexpected error occurred.'
+            }, status=500)
+            
 def handler404(request, exception):
     """
     Custom 404 handler that differentiates between product-related 404s and general 404s
