@@ -36,7 +36,7 @@ def contact(request):
             send_mail(
                 subject=f"OpenSell Contact: {subject}",
                 message=email_message,
-                from_email='support@opensell.online',  # Authorized SES/Zoho sender
+                from_email='OpenSell <support@opensell.online>',
                 recipient_list=['opensellmarketplace@gmail.com'],
                 fail_silently=False,
             )
@@ -81,7 +81,7 @@ def support(request):
                 send_mail(
                     subject="OpenSell: New Volunteer Application",
                     message=email_message,
-                    from_email='support@opensell.online',
+                    from_email='OpenSell <support@opensell.online>',
                     recipient_list=['opensellmarketplace@gmail.com'],
                     fail_silently=False,
                 )
@@ -108,7 +108,7 @@ def support(request):
                 send_mail(
                     subject=f"OpenSell Feedback: {feedback_type}",
                     message=email_message,
-                    from_email='support@opensell.online',
+                    from_email='OpenSell <support@opensell.online>',
                     recipient_list=['opensellmarketplace@gmail.com'],
                     fail_silently=False,
                 )
