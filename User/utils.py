@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 def user_directory_path(instance, filename):
     return f'profile_pictures/{instance.user.username}/{filename}'
 
-
 def send_otp_email(user):
     """Send OTP verification email to user"""
     try:
