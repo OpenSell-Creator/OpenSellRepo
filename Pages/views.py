@@ -119,7 +119,7 @@ def support(request):
             print(f"Email sending error: {e}")
             messages.error(request, "There was an error processing your request. Please try again later.")
 
-    return render(request, 'support.html')
+    return render(request, 'pages/support.html')
 
 def about(request):
     return render(request, 'pages/about.html')
