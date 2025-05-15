@@ -43,5 +43,4 @@ urlpatterns = [
     path('verify-email/', views.verify_email_form, name='verify_email_form'),
     
     path('api/lgas/<int:state_id>/', views.load_lgas, name='load_lgas'),
-
 ]

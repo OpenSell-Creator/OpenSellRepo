@@ -35,7 +35,7 @@ def contact(request):
                 subject=f"OpenSell Contact: {subject}",
                 message=email_message,
                 from_email='OpenSell <support@opensell.online>',
-                recipient_list=['opensellmarketplace@gmail.com'],
+                recipient_list=['support@opensell.online'],
                 fail_silently=False,
             )
 
@@ -80,7 +80,7 @@ def support(request):
                     subject="OpenSell: New Volunteer Application",
                     message=email_message,
                     from_email='OpenSell <support@opensell.online>',
-                    recipient_list=['opensellmarketplace@gmail.com'],
+                    recipient_list=['support@opensell.online'],
                     fail_silently=False,
                 )
 
@@ -107,7 +107,7 @@ def support(request):
                     subject=f"OpenSell Feedback: {feedback_type}",
                     message=email_message,
                     from_email='OpenSell <support@opensell.online>',
-                    recipient_list=['opensellmarketplace@gmail.com'],
+                    recipient_list=['support@opensell.online'],
                     fail_silently=False,
                 )
 
