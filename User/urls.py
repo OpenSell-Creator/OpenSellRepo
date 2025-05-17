@@ -7,7 +7,7 @@ from .views import ProfileUpdateView
 urlpatterns = [
     path('login/', views.loginview, name='login'),
     path('logout/', views.logoutview, name='logout'),
-    path('signup/', views.signup_options, name='signup_options'),
+    path('signup/', views.signup_options, name='signup'),
     path('register/', views.register_user, name='register'),
     
     path('password-reset/', 
@@ -35,6 +35,8 @@ urlpatterns = [
          ), 
          name='password_reset_complete'),
     
+    path('email-preferences/', views.email_preferences, name='email_preferences'),
+    path('unsubscribe-all/', views.unsubscribe_all, name='unsubscribe_all'),
     
     path('profile-menu/', views.profile_menu, name='profile_menu'),
     path('profile/update/', ProfileUpdateView.as_view(), name='profile_update'),

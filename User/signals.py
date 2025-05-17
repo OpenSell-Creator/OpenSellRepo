@@ -2,6 +2,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 from .models import Profile, Location
+from .models import Profile, EmailPreferences
 
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
@@ -35,3 +36,15 @@ def create_profile_location(sender, instance, created, **kwargs):
         instance.location = location
         # Save without triggering the signal again
         instance.save(update_fields=['location'])
+        
+        
+@receiver(post_save, sender=Profile)
+def create_email_preferences(sender, instance, created, **kwargs):
+    if created:
+        EmailPreferences.objects.create(profile=instance)
+
+# Signal to create a profile when a user is created
+@receiver(post_save, sender=User)
+def create_profile(sender, instance, created, **kwargs):
+    if created:
+        Profile.objects.create(user=instance)

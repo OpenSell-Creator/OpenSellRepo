@@ -4,6 +4,9 @@ from django.utils import timezone
 from .utils import user_directory_path
 from imagekit.models import ProcessedImageField
 from imagekit.processors import ResizeToFill
+from django.db import models
+from django.utils.crypto import get_random_string
+from django.urls import reverse
 from django.db.models import Avg
 import random
 
@@ -74,13 +77,22 @@ class Profile(models.Model):
     def __str__(self):
         return f'{self.user.username}'
     
+    def get_or_create_email_preferences(self):
+        """Get the user's email preferences or create default ones"""
+        try:
+            return self.email_preferences
+        except EmailPreferences.DoesNotExist:
+            return EmailPreferences.objects.create(profile=self)
+    
     def save(self, *args, **kwargs):
+        
         try:
             old = Profile.objects.get(pk=self.pk)
             if old.photo and old.photo != self.photo:
                 old.photo.delete(save=False)
         except Profile.DoesNotExist:
             pass
+        is_new = self.pk is None
         super().save(*args, **kwargs)
     
     def delete(self, *args, **kwargs):
@@ -107,4 +119,42 @@ class Profile(models.Model):
         
         time_diff = timezone.now() - self.otp_created_at
         return time_diff.total_seconds() < 600  # 10 minutes
+
+class EmailPreferences(models.Model):
+    """Model to store user email preferences"""
+    profile = models.OneToOneField('Profile', on_delete=models.CASCADE, related_name='email_preferences')
     
+    # Email categories
+    receive_marketing = models.BooleanField(default=True, help_text="Marketing emails and newsletters")
+    receive_announcements = models.BooleanField(default=True, help_text="Important announcements about OpenSell")
+    receive_notifications = models.BooleanField(default=True, help_text="Activity notifications")
+    
+    # Unsubscribe token
+    unsubscribe_token = models.CharField(max_length=64, unique=True, blank=True, null=True)
+    token_created_at = models.DateTimeField(null=True, blank=True)
+    
+    def __str__(self):
+        return f"Email preferences for {self.profile.user.username}"
+    
+    def save(self, *args, **kwargs):
+        # Generate unsubscribe token if not present
+        if not self.unsubscribe_token:
+            self.unsubscribe_token = get_random_string(64)
+            self.token_created_at = timezone.now()
+        super().save(*args, **kwargs)
+    
+    def generate_new_token(self):
+        """Generate a new unsubscribe token - use when security requires token rotation"""
+        self.unsubscribe_token = get_random_string(64)
+        self.token_created_at = timezone.now()
+        self.save()
+        return self.unsubscribe_token
+    
+    @property
+    def is_completely_unsubscribed(self):
+        """Check if user is unsubscribed from all non-essential emails"""
+        return not (self.receive_marketing or self.receive_announcements or self.receive_notifications)
+    
+    def get_absolute_preferences_url(self):
+        """Get the URL for managing email preferences"""
+        return reverse('email_preferences') + f"?user={self.profile.user.id}&token={self.unsubscribe_token}"

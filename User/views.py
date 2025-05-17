@@ -1,15 +1,16 @@
 from django.shortcuts import render, HttpResponse, redirect
 from django.http import JsonResponse
 from django.core.mail import send_mail
-from django.conf import settings
-from django.utils import timezone
-from django.core.exceptions import ObjectDoesNotExist
-from django.shortcuts import get_object_or_404
+from django.contrib import messages
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.models import User
+from django.http import Http404
+from django.views.decorators.http import require_http_methods
+from .models import EmailPreferences, Profile
 from django.urls import reverse
 from allauth.socialaccount.views import SignupView
 from django.views.generic.edit import UpdateView
 from django.views.generic.detail import DetailView
-from django.contrib import messages
 from django.urls import reverse_lazy
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -194,3 +195,97 @@ def verify_email_form(request):
     
     return render(request, 'verify_email_form.html')
     
+def email_preferences(request):
+    """
+    View for managing email preferences
+    Can be accessed either by logged-in users or via unsubscribe token
+    """
+    user_id = request.GET.get('user')
+    token = request.GET.get('token')
+    
+    # Method 1: Access via token (for unsubscribe links in emails)
+    if user_id and token:
+        try:
+            user = User.objects.get(id=user_id)
+            profile = user.profile
+            
+            # Verify token
+            if not hasattr(profile, 'email_preferences') or profile.email_preferences.unsubscribe_token != token:
+                messages.error(request, "Invalid or expired unsubscribe link. Please log in to manage your email preferences.")
+                return redirect('login')
+            
+            # Set the profile to be managed
+            managed_profile = profile
+            
+        except (User.DoesNotExist, Profile.DoesNotExist):
+            messages.error(request, "User not found.")
+            return redirect('home')
+    
+    # Method 2: Access by logged-in user
+    elif request.user.is_authenticated:
+        managed_profile = request.user.profile
+    
+    # Neither logged in nor valid token
+    else:
+        messages.info(request, "Please log in to manage your email preferences.")
+        return redirect('login')
+    
+    # Get or create email preferences
+    preferences = managed_profile.get_or_create_email_preferences()
+    
+    # Handle form submission
+    if request.method == 'POST':
+        # Update preferences
+        preferences.receive_marketing = 'receive_marketing' in request.POST
+        preferences.receive_announcements = 'receive_announcements' in request.POST
+        preferences.receive_notifications = 'receive_notifications' in request.POST
+        preferences.save()
+        
+        messages.success(request, "Email preferences updated successfully.")
+        
+        # If accessing via token, redirect to confirmation page
+        if token and user_id:
+            return render(request, 'preferences_updated.html', {
+                'user': managed_profile.user,
+                'preferences': preferences,
+            })
+    
+    return render(request, 'email_preferences.html', {
+        'preferences': preferences,
+        'user': managed_profile.user,
+        'via_token': bool(token and user_id),
+    })
+
+@require_http_methods(["GET"])
+def unsubscribe_all(request):
+    """One-click unsubscribe from all non-essential emails"""
+    user_id = request.GET.get('user')
+    token = request.GET.get('token')
+    
+    if not user_id or not token:
+        raise Http404("Invalid unsubscribe link")
+    
+    try:
+        user = User.objects.get(id=user_id)
+        profile = user.profile
+        
+        # Verify token
+        if not hasattr(profile, 'email_preferences') or profile.email_preferences.unsubscribe_token != token:
+            messages.error(request, "Invalid or expired unsubscribe link.")
+            return redirect('home')
+        
+        # Unsubscribe from all
+        preferences = profile.email_preferences
+        preferences.receive_marketing = False
+        preferences.receive_announcements = False
+        preferences.receive_notifications = False
+        preferences.save()
+        
+        return render(request, 'unsubscribed_all.html', {
+            'user': user,
+            'preferences_url': reverse('email_preferences') + f"?user={user_id}&token={token}"
+        })
+        
+    except (User.DoesNotExist, Profile.DoesNotExist):
+        messages.error(request, "User not found.")
+        return redirect('home')
