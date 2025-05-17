@@ -19,6 +19,9 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from .forms import SignUpForm, ProfileUpdateForm, LocationForm
 from .models import Profile,LGA,State,Location
+from django.core.mail import EmailMultiAlternatives
+from django.utils.html import strip_tags
+from django.template.loader import render_to_string
 from .utils import get_unsubscribe_token
 from django.views.decorators.http import require_GET
 from .utils import send_otp_email
@@ -159,26 +162,46 @@ class ProfileDetailView(LoginRequiredMixin, DetailView):
         return self.request.user.profile
 
 class CustomPasswordResetView(PasswordResetView):
-    """Enhanced password reset view that adds unsubscribe token to the context"""
+    """Enhanced password reset view that sends properly formatted HTML emails"""
     
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
+    def send_mail(self, subject_template_name, email_template_name,
+                  context, from_email, to_email, html_email_template_name=None):
+        """
+        Override the send_mail method to properly format HTML emails
+        """
+        # Get the email subject
+        subject = render_to_string(subject_template_name, context)
+        # Email subject *must not* contain newlines
+        subject = ''.join(subject.splitlines())
         
-        # Get the email from the form
-        if self.request.method == 'POST' and hasattr(self, 'form') and self.form.is_valid():
-            email = self.form.cleaned_data.get('email')
-            try:
-                user = User.objects.get(email=email)
-                # Get unsubscribe token
-                unsubscribe_token = get_unsubscribe_token(user)
-                context['unsubscribe_token'] = unsubscribe_token
-                context['user'] = user
-            except User.DoesNotExist:
-                # Don't reveal whether a user exists
-                pass
+        # Get unsubscribe token for the user if possible
+        try:
+            user = User.objects.get(email=to_email)
+            unsubscribe_token = get_unsubscribe_token(user)
+            context['unsubscribe_token'] = unsubscribe_token
+            context['user'] = user
+        except User.DoesNotExist:
+            pass
         
-        return context
-    
+        # Render the HTML email template
+        html_message = render_to_string(email_template_name, context)
+        
+        # Create a plain text version as a fallback
+        plain_message = strip_tags(html_message)
+        
+        # Create email message with both HTML and plain text alternatives
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=plain_message,
+            from_email=from_email,
+            to=[to_email]
+        )
+        
+        # Attach HTML version with the proper content type
+        email.attach_alternative(html_message, "text/html")
+        
+        # Send the email
+        email.send()
 @login_required
 def send_verification_otp(request):
     """Send verification OTP to the current user's email"""

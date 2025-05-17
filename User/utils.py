@@ -1,7 +1,9 @@
 from django.core.mail import send_mail as django_send_mail
 from django.utils import timezone
 from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
 from django.urls import reverse
+from django.utils.html import strip_tags
 from django.template.loader import render_to_string
 import hashlib
 import time
@@ -24,25 +26,25 @@ def get_unsubscribe_token(user):
 
 def send_mail(subject, message, from_email, recipient_list, html_message=None, fail_silently=False, **kwargs):
     """
-    Extended send_mail function that adds unsubscribe functionality to html emails
+    Enhanced send_mail function that properly formats HTML emails with unsubscribe functionality
     """
-    # Only process html messages for single recipients that are registered users
-    if html_message and len(recipient_list) == 1:
-        try:
-            from django.contrib.auth.models import User
-            user = User.objects.get(email=recipient_list[0])
-            
-            # Get unsubscribe token for this user
-            unsubscribe_token = get_unsubscribe_token(user)
-            
-            # Add unsubscribe context to the html message if it's a template string
-            if unsubscribe_token and '{{' in html_message:
+    try:
+        # Only process html messages for single recipients that are registered users
+        if html_message and len(recipient_list) == 1:
+            try:
+                from django.contrib.auth.models import User
+                user = User.objects.get(email=recipient_list[0])
+                
+                # Get unsubscribe token for this user
+                unsubscribe_token = get_unsubscribe_token(user)
+                
                 # Extract any existing context from kwargs
                 context = kwargs.get('context', {})
                 
-                # Add unsubscribe token to context
-                context['unsubscribe_token'] = unsubscribe_token
-                context['user'] = user
+                # Add unsubscribe token and user to context
+                if unsubscribe_token:
+                    context['unsubscribe_token'] = unsubscribe_token
+                    context['user'] = user
                 
                 # Add protocol and domain if not present
                 if 'protocol' not in context:
@@ -50,14 +52,38 @@ def send_mail(subject, message, from_email, recipient_list, html_message=None, f
                 if 'domain' not in context:
                     context['domain'] = settings.SITE_DOMAIN
                 
-                # Render template with updated context
-                html_message = render_to_string(html_message, context)
-        except Exception as e:
-            logger.warning(f"Could not add unsubscribe info to email: {str(e)}")
-    
-    # Send the email using Django's send_mail
-    return django_send_mail(subject, message, from_email, recipient_list, 
-                          html_message=html_message, fail_silently=fail_silently)
+                # If html_message is a template path, render it with context
+                if isinstance(html_message, str) and html_message.endswith('.html'):
+                    html_message = render_to_string(html_message, context)
+            except Exception as e:
+                logger.warning(f"Could not add unsubscribe info to email: {str(e)}")
+        
+        # Create a plain text version if we have HTML
+        if html_message:
+            plain_message = strip_tags(html_message) if message is None else message
+        else:
+            plain_message = message
+            
+        # Create email message with multipart alternatives
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=plain_message,
+            from_email=from_email,
+            to=recipient_list
+        )
+        
+        # Attach HTML version with proper content type if provided
+        if html_message:
+            email.attach_alternative(html_message, "text/html")
+            
+        # Send the email
+        return email.send(fail_silently=fail_silently)
+        
+    except Exception as e:
+        logger.error(f"Failed to send email: {str(e)}")
+        if not fail_silently:
+            raise
+        return 0
 
 def send_otp_email(user):
     """Send OTP verification email to user"""
@@ -69,7 +95,6 @@ def send_otp_email(user):
         unsubscribe_token = get_unsubscribe_token(user)
         
         subject = "Your Email Verification OTP"
-        message = f"Your OTP for email verification is: {otp}. It will expire in 10 minutes."
         
         context = {
             'user': user,
@@ -79,16 +104,22 @@ def send_otp_email(user):
             'unsubscribe_token': unsubscribe_token
         }
         
+        # Render HTML message
         html_message = render_to_string('otp_email.html', context)
         
-        send_mail(
-            subject,
-            message,
-            settings.NO_REPLY_EMAIL,
-            [user.email],
-            html_message=html_message,
-            fail_silently=False,
+        # Create plain text version
+        plain_message = f"Your OTP for email verification is: {otp}. It will expire in 10 minutes."
+        
+        # Send with proper HTML formatting
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=plain_message,
+            from_email=settings.NO_REPLY_EMAIL,
+            to=[user.email]
         )
+        email.attach_alternative(html_message, "text/html")
+        email.send(fail_silently=False)
+        
         return True
     except Exception as e:
         logger.error(f"Failed to send OTP email: {str(e)}")

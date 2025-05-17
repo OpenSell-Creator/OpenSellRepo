@@ -11,17 +11,20 @@ urlpatterns = [
     path('register/', views.register_user, name='register'),
     
     path('password-reset/', 
-        CustomPasswordResetView.as_view(
-            template_name='password_reset.html',
-            email_template_name='password_reset_email.html',
-            from_email='OpenSell <no-reply@opensell.online>',
-            subject_template_name='password_reset_subject.txt'
-        ), 
-        name='password_reset'),
+         CustomPasswordResetView.as_view(
+             template_name='password_reset.html',
+             email_template_name='password_reset_email.html',
+             from_email='OpenSell <no-reply@opensell.online>',
+             subject_template_name='password_reset_subject.txt'
+         ), 
+         name='password_reset'),
     
-    path('password-reset/done/', auth_views.PasswordResetDoneView.as_view(
+    # Keep the rest of the password reset URLs the same
+    path('password-reset/done/', 
+         auth_views.PasswordResetDoneView.as_view(
              template_name='password_reset_done.html'
-         ),  name='password_reset_done'),
+         ),  
+         name='password_reset_done'),
     
     path('password-reset-confirm/<uidb64>/<token>/', 
          auth_views.PasswordResetConfirmView.as_view(
