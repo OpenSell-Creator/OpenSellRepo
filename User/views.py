@@ -11,6 +11,7 @@ from django.urls import reverse
 from allauth.socialaccount.views import SignupView
 from django.views.generic.edit import UpdateView
 from django.views.generic.detail import DetailView
+from django.contrib.auth.views import PasswordResetView
 from django.urls import reverse_lazy
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -18,6 +19,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from .forms import SignUpForm, ProfileUpdateForm, LocationForm
 from .models import Profile,LGA,State,Location
+from .utils import get_unsubscribe_token
 from django.views.decorators.http import require_GET
 from .utils import send_otp_email
 
@@ -156,6 +158,27 @@ class ProfileDetailView(LoginRequiredMixin, DetailView):
     def get_object(self, queryset=None):
         return self.request.user.profile
 
+class CustomPasswordResetView(PasswordResetView):
+    """Enhanced password reset view that adds unsubscribe token to the context"""
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Get the email from the form
+        if self.request.method == 'POST' and hasattr(self, 'form') and self.form.is_valid():
+            email = self.form.cleaned_data.get('email')
+            try:
+                user = User.objects.get(email=email)
+                # Get unsubscribe token
+                unsubscribe_token = get_unsubscribe_token(user)
+                context['unsubscribe_token'] = unsubscribe_token
+                context['user'] = user
+            except User.DoesNotExist:
+                # Don't reveal whether a user exists
+                pass
+        
+        return context
+    
 @login_required
 def send_verification_otp(request):
     """Send verification OTP to the current user's email"""
