@@ -1,18 +1,18 @@
 from django.shortcuts import render, HttpResponse, redirect
 from django.http import JsonResponse
 from django.core.mail import send_mail
-from django.conf import settings
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User
 from django.http import Http404
 from django.views.decorators.http import require_http_methods
 from .models import EmailPreferences, Profile
+from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from allauth.socialaccount.views import SignupView
 from django.views.generic.edit import UpdateView
 from django.views.generic.detail import DetailView
-from django.contrib.auth.views import PasswordResetView
+from django.contrib import messages
 from django.urls import reverse_lazy
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -20,10 +20,6 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from .forms import SignUpForm, ProfileUpdateForm, LocationForm
 from .models import Profile,LGA,State,Location
-from django.core.mail import EmailMultiAlternatives
-from django.utils.html import strip_tags
-from django.template.loader import render_to_string
-from .utils import get_unsubscribe_token
 from django.views.decorators.http import require_GET
 from .utils import send_otp_email
 
@@ -162,51 +158,6 @@ class ProfileDetailView(LoginRequiredMixin, DetailView):
     def get_object(self, queryset=None):
         return self.request.user.profile
 
-class CustomPasswordResetView(PasswordResetView):
-    """Enhanced password reset view that sends properly formatted HTML emails"""
-    
-    def send_mail(self, subject_template_name, email_template_name,
-              context, from_email, to_email, html_email_template_name=None):
-        """
-        Override the send_mail method to properly format HTML emails
-        """
-        # Get the email subject
-        subject = render_to_string(subject_template_name, context)
-        # Email subject *must not* contain newlines
-        subject = ''.join(subject.splitlines())
-        
-        # Add protocol and domain if not present in context
-        if 'protocol' not in context:
-            context['protocol'] = 'https'
-        if 'domain' not in context:
-            context['domain'] = settings.SITE_DOMAIN
-        
-        # Get unsubscribe token for the user if possible
-        try:
-            user = User.objects.get(email=to_email)
-            unsubscribe_token = get_unsubscribe_token(user)
-            context['unsubscribe_token'] = unsubscribe_token
-            context['user'] = user
-        except User.DoesNotExist:
-            pass
-        
-        # Render the HTML email template
-        html_message = render_to_string(email_template_name, context)
-        
-        # Create a plain text version as a fallback
-        plain_message = strip_tags(html_message)
-        
-        # Import Django's original send_mail function to avoid recursion
-        from django.core.mail import send_mail as django_send_mail
-        
-        # Send the email using Django's original send_mail function
-        django_send_mail(
-            subject=subject,
-            message=plain_message,
-            from_email=from_email,
-            recipient_list=[to_email],
-            html_message=html_message
-    )
 @login_required
 def send_verification_otp(request):
     """Send verification OTP to the current user's email"""

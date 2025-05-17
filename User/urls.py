@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views
-from .views import ProfileUpdateView, CustomPasswordResetView
+from .views import ProfileUpdateView
 
 urlpatterns = [
     path('login/', views.loginview, name='login'),
@@ -11,7 +11,7 @@ urlpatterns = [
     path('register/', views.register_user, name='register'),
     
     path('password-reset/', 
-         CustomPasswordResetView.as_view(
+         auth_views.PasswordResetView.as_view(
              template_name='password_reset.html',
              email_template_name='password_reset_email.html',
              from_email='OpenSell <no-reply@opensell.online>',
@@ -19,11 +19,9 @@ urlpatterns = [
          ), 
          name='password_reset'),
     
-    path('password-reset/done/', 
-         auth_views.PasswordResetDoneView.as_view(
+    path('password-reset/done/', auth_views.PasswordResetDoneView.as_view(
              template_name='password_reset_done.html'
-         ),  
-         name='password_reset_done'),
+         ),  name='password_reset_done'),
     
     path('password-reset-confirm/<uidb64>/<token>/', 
          auth_views.PasswordResetConfirmView.as_view(
