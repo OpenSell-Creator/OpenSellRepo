@@ -1018,7 +1018,249 @@
                 }
             }
         </style>
-        <script src="{% static 'js/cookie_consent.js' %}"></script>
+        <script>
+            // Save this as cookie_consent.js in your static/js directory
+
+            // Cookie Consent JavaScript
+            document.addEventListener('DOMContentLoaded', function() {
+                // Check if user has already made a choice
+                const cookieConsent = localStorage.getItem('cookieConsent');
+                
+                if (cookieConsent === null) {
+                    // If no choice has been made, show the banner
+                    setTimeout(function() {
+                        document.getElementById('cookie-consent-banner').classList.add('show');
+                    }, 1000);
+                } else {
+                    // Apply saved preferences
+                    applyStoredPreferences();
+                }
+                
+                // Accept cookies
+                document.getElementById('accept-cookies').addEventListener('click', function() {
+                    acceptCookies();
+                });
+                
+                // Reject non-essential cookies
+                document.getElementById('reject-cookies').addEventListener('click', function() {
+                    rejectCookies();
+                });
+                
+                // Cookie settings button
+                document.getElementById('cookie-settings').addEventListener('click', function() {
+                    document.getElementById('cookie-consent-banner').classList.remove('show');
+                    showSettingsModal();
+                });
+                
+                // Close cookie settings modal
+                document.getElementById('close-settings').addEventListener('click', function() {
+                    document.getElementById('cookie-settings-modal').classList.remove('show');
+                    
+                    // If user hasn't made a choice yet, show banner again
+                    if (cookieConsent === null) {
+                        document.getElementById('cookie-consent-banner').classList.add('show');
+                    }
+                });
+                
+                // Save preferences from modal
+                document.getElementById('save-preferences').addEventListener('click', function() {
+                    const functional = document.getElementById('functional-cookies').checked;
+                    const analytics = document.getElementById('analytics-cookies').checked;
+                    
+                    savePreferences(functional, analytics);
+                });
+                
+                // Open cookie banner from footer link
+                if (document.getElementById('footer-cookie-settings')) {
+                    document.getElementById('footer-cookie-settings').addEventListener('click', function(e) {
+                        e.preventDefault();
+                        showSettingsModal();
+                    });
+                }
+            });
+
+            function showSettingsModal() {
+                // Load current preferences into checkboxes
+                const functional = localStorage.getItem('functionalCookies') === 'true';
+                const analytics = localStorage.getItem('analyticsCookies') === 'true';
+                
+                if (document.getElementById('functional-cookies')) {
+                    document.getElementById('functional-cookies').checked = functional;
+                }
+                
+                if (document.getElementById('analytics-cookies')) {
+                    document.getElementById('analytics-cookies').checked = analytics;
+                }
+                
+                // Show the modal
+                document.getElementById('cookie-settings-modal').classList.add('show');
+            }
+
+            function acceptCookies() {
+                // Set cookies and save preference
+                localStorage.setItem('cookieConsent', 'accepted');
+                localStorage.setItem('functionalCookies', 'true');
+                localStorage.setItem('analyticsCookies', 'true');
+                
+                // Hide the banner with animation
+                document.getElementById('cookie-consent-banner').classList.remove('show');
+                
+                // Enable all cookie types
+                enableCookies('all');
+                
+                // Send to server if needed
+                sendConsentToServer('accept');
+            }
+
+            function rejectCookies() {
+                // Save preference but only allow essential cookies
+                localStorage.setItem('cookieConsent', 'rejected');
+                localStorage.setItem('functionalCookies', 'false');
+                localStorage.setItem('analyticsCookies', 'false');
+                
+                // Hide the banner with animation
+                document.getElementById('cookie-consent-banner').classList.remove('show');
+                
+                // Only enable essential cookies
+                enableCookies('essential');
+                
+                // Send to server if needed
+                sendConsentToServer('reject');
+            }
+
+            function savePreferences(functional, analytics) {
+                // Save detailed preferences
+                localStorage.setItem('cookieConsent', 'custom');
+                localStorage.setItem('functionalCookies', functional ? 'true' : 'false');
+                localStorage.setItem('analyticsCookies', analytics ? 'true' : 'false');
+                
+                // Hide the modal
+                document.getElementById('cookie-settings-modal').classList.remove('show');
+                
+                // Enable appropriate cookies
+                const cookieTypes = ['essential'];
+                if (functional) cookieTypes.push('functional');
+                if (analytics) cookieTypes.push('analytics');
+                
+                enableCookies(cookieTypes);
+                
+                // Send to server if needed
+                sendConsentToServer('custom', {
+                    functional: functional,
+                    analytics: analytics
+                });
+            }
+
+            function applyStoredPreferences() {
+                // Apply the stored cookie preferences when page loads
+                const consent = localStorage.getItem('cookieConsent');
+                const functional = localStorage.getItem('functionalCookies') === 'true';
+                const analytics = localStorage.getItem('analyticsCookies') === 'true';
+                
+                if (consent === 'accepted') {
+                    enableCookies('all');
+                } else if (consent === 'rejected') {
+                    enableCookies('essential');
+                } else if (consent === 'custom') {
+                    const cookieTypes = ['essential'];
+                    if (functional) cookieTypes.push('functional');
+                    if (analytics) cookieTypes.push('analytics');
+                    enableCookies(cookieTypes);
+                }
+            }
+
+            function enableCookies(types) {
+                // This function handles the actual enabling/disabling of different cookie types
+                console.log('Enabling cookie types:', types);
+                
+                // Example: If you're using Google Analytics
+                if (types === 'all' || (Array.isArray(types) && types.includes('analytics'))) {
+                    // Enable analytics
+                    initializeAnalytics();
+                }
+                
+                // Enable functional cookies if needed
+                if (types === 'all' || (Array.isArray(types) && types.includes('functional'))) {
+                    // Enable functional cookies
+                    initializeFunctionalCookies();
+                }
+            }
+
+            function initializeAnalytics() {
+                // Placeholder function to initialize analytics tools like Google Analytics
+                // This is where you would add your analytics initialization code
+                console.log('Analytics initialized');
+                
+                // Example Google Analytics initialization (commented out)
+                /*
+                if (typeof ga === 'undefined') {
+                    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+                    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+                    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+                    })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+                    
+                    ga('create', 'UA-XXXXX-Y', 'auto');
+                    ga('send', 'pageview');
+                }
+                */
+            }
+
+            function initializeFunctionalCookies() {
+                // Placeholder function to initialize functional cookies
+                // This is where you would add code to enable functionality that uses cookies
+                console.log('Functional cookies initialized');
+            }
+
+            function sendConsentToServer(consentType, details = {}) {
+                // This function sends the user's consent to your server if needed
+                // Get the CSRF token
+                const csrfToken = getCsrfToken();
+                
+                // Prepare the data to send
+                const data = {
+                    consent_type: consentType,
+                    details: details
+                };
+                
+                // Send the POST request to your Django backend
+                fetch('/api/cookie-consent/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Consent saved:', data);
+                })
+                .catch(error => {
+                    console.error('Error saving consent:', error);
+                });
+            }
+
+            function getCsrfToken() {
+                // Get CSRF token from cookies
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, 'csrftoken='.length) === 'csrftoken=') {
+                            cookieValue = decodeURIComponent(cookie.substring('csrftoken='.length));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+        </script>
     {% endblock %}
 
     <!-- Essential Scripts -->
