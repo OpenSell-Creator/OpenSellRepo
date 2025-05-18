@@ -346,12 +346,7 @@ if DEBUG:
             "location": MEDIA_ROOT,
         },
     }
-# Production Settings (When DEBUG = False)
-# First, let's remove the direct boto3 client initialization at the top
-# Remove this line:
-# s3_client = boto3.client('s3', region_name='eu-west-1')
-
-# Then modify your production storage configuration (when DEBUG = False):
+    
 else:
     # AWS S3 Configuration
     AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
@@ -359,10 +354,10 @@ else:
     AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
     AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
     AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
-    AWS_S3_ADDRESSING_STYLE = 'virtual' 
-    AWS_DEFAULT_ACL = None
+    AWS_S3_ADDRESSING_STYLE = 'virtual'
+    AWS_DEFAULT_ACL = None  # This is correct - don't set ACLs
     AWS_S3_FILE_OVERWRITE = False
-    AWS_S3_VERIFY = True  
+    AWS_S3_VERIFY = True
     AWS_QUERYSTRING_AUTH = False
     
     # Static files configuration
@@ -372,27 +367,18 @@ else:
     # Media files configuration
     MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/media/"
     
-    # Legacy style configuration (works more reliably with collectstatic)
-    STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    AWS_LOCATION = 'static'
-    
-    # For media files
-    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    
-    # You can still keep the newer STORAGES dictionary if needed
+    # OPTION 2: Newer dictionary-style configuration
     STORAGES = {
         "staticfiles": {
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
             "OPTIONS": {
                 "location": "static",
-                "default_acl": "public-read",
             }
         },
         "default": {
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
             "OPTIONS": {
                 "location": "media",
-                "default_acl": "public-read",
             }
         },
     }
