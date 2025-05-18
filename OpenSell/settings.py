@@ -14,7 +14,6 @@ from pathlib import Path
 from django.contrib.messages import constants as messages
 import os
 import boto3
-
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -346,7 +345,7 @@ if DEBUG:
             "location": MEDIA_ROOT,
         },
     }
-    
+# Production Settings (When DEBUG = False)
 else:
     # AWS S3 Configuration
     AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
@@ -354,34 +353,36 @@ else:
     AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
     AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
     AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
-    AWS_S3_ADDRESSING_STYLE = 'virtual'
-    AWS_DEFAULT_ACL = None  # This is correct - don't set ACLs
+    AWS_DEFAULT_ACL = None
     AWS_S3_FILE_OVERWRITE = False
-    AWS_S3_VERIFY = True
+    AWS_S3_VERIFY = True  # Important for SSL verification
     AWS_QUERYSTRING_AUTH = False
-    
+
     # Static files configuration
     STATIC_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/static/"
-    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-    
+    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Needed for collectstatic
+
     # Media files configuration
     MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/media/"
-    
-    # OPTION 2: Newer dictionary-style configuration
+
+    # Storage backends (AWS S3)
     STORAGES = {
         "staticfiles": {
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-            "OPTIONS": {
-                "location": "static",
-            }
+            "AWS_LOCATION": "static",
+            "AWS_S3_OBJECT_PARAMETERS": {
+                "CacheControl": "public, max-age=31536000",  # 1 year cache
+            },
         },
         "default": {
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-            "OPTIONS": {
-                "location": "media",
-            }
+            "AWS_LOCATION": "media",
+            "AWS_S3_OBJECT_PARAMETERS": {
+                "CacheControl": "public, max-age=86400",  # 1 day cache
+            },
         },
     }
+
 # Increase Django's file upload limits
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
