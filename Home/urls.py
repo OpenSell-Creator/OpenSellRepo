@@ -35,4 +35,5 @@ urlpatterns = [
     path('api/subcategories/', views.get_subcategories, name='api_subcategories'),
     path('ajax/load-subcategories/', views.load_subcategories, name='ajax_load_subcategories'),
     path('api/lgas/<int:state_id>/', views.get_lgas, name='get_lgas'),
+    path('cookie-policy/', views.cookie_policy_view, name='cookie_policy'),
     ]

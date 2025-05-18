@@ -731,6 +731,293 @@
 
     {% block 'Footer' %}
         {% include "footer.html" %}
+        
+        <div id="cookie-consent-banner" class="cookie-consent-banner">
+            <div class="cookie-content">
+                <div class="cookie-header">
+                    <div class="cookie-icon">
+                        <i class="bi bi-cookie"></i>
+                    </div>
+                    <h4 class="cookie-title">Cookie Notice</h4>
+                    <div class="cookie-close-mobile">
+                        <button type="button" class="cookie-close-btn" aria-label="Close">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="cookie-body">
+                    <p>We use cookies to enhance your browsing experience on our website. By continuing to use our site, you agree to our use of cookies. Our cookies help us understand how visitors interact with our site, remember your preferences, and provide you with a more personalized experience.</p>
+                </div>
+                <div class="cookie-actions">
+                    <button id="cookie-settings" class="btn btn-outline-secondary">Cookie Settings</button>
+                    <button id="reject-cookies" class="btn btn-outline-primary">Reject All</button>
+                    <button id="accept-cookies" class="btn btn-primary">Accept All</button>
+                </div>
+            </div>
+        </div>
+
+
+        <div id="cookie-settings-modal" class="cookie-settings-modal">
+            <div class="cookie-settings-content">
+                <div class="cookie-settings-header">
+                    <h4 class="modal-title">Cookie Preferences</h4>
+                    <button type="button" id="close-settings" class="cookie-close-btn" aria-label="Close">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+                <div class="cookie-settings-body">
+                    <p class="settings-intro">Customize your cookie preferences. You can enable or disable different types of cookies below. Essential cookies cannot be disabled as they are necessary for the website to function properly.</p>
+                    
+                    <div class="cookie-type">
+                        <div class="cookie-type-header">
+                            <div class="type-name">
+                                <h5>Essential Cookies</h5>
+                            </div>
+                            <div class="type-toggle">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="essential-cookies" checked disabled>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="cookie-type-description">These cookies are necessary for the website to function and cannot be switched off. They are usually only set in response to actions made by you which amount to a request for services.</p>
+                    </div>
+                    
+                    <div class="cookie-type">
+                        <div class="cookie-type-header">
+                            <div class="type-name">
+                                <h5>Functional Cookies</h5>
+                            </div>
+                            <div class="type-toggle">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="functional-cookies">
+                                </div>
+                            </div>
+                        </div>
+                        <p class="cookie-type-description">These cookies enable the website to provide enhanced functionality and personalization, such as remembering your preferences and settings.</p>
+                    </div>
+                    
+                    <div class="cookie-type">
+                        <div class="cookie-type-header">
+                            <div class="type-name">
+                                <h5>Analytics Cookies</h5>
+                            </div>
+                            <div class="type-toggle">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="analytics-cookies">
+                                </div>
+                            </div>
+                        </div>
+                        <p class="cookie-type-description">These cookies allow us to count visits and analyze traffic sources so we can measure and improve the performance of our site.</p>
+                    </div>
+                </div>
+                <div class="cookie-settings-footer">
+                    <div class="cookie-settings-actions">
+                        <button id="save-preferences" class="btn btn-primary">Save Preferences</button>
+                    </div>
+                    <div class="cookie-settings-links">
+                        <a href="{% url 'cookie_policy' %}" class="cookie-policy-link">View our Cookie Policy</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            /* Cookie Consent Banner */
+            .cookie-consent-banner {
+                position: fixed;
+                bottom: -100%;
+                left: 0;
+                right: 0;
+                background-color: var(--card-background);
+                box-shadow: 0 -4px 12px var(--shadow-color);
+                z-index: 9999;
+                padding: 1rem;
+                transition: bottom 0.5s ease-in-out;
+                border-top: 3px solid var(--primary-color);
+            }
+            
+            .cookie-consent-banner.show {
+                bottom: 0;
+            }
+            
+            .cookie-content {
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 0.5rem;
+            }
+            
+            .cookie-header {
+                display: flex;
+                align-items: center;
+                margin-bottom: 1rem;
+            }
+            
+            .cookie-icon {
+                background-color: var(--primary-color);
+                color: #ffffff;
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin-right: 1rem;
+                font-size: 1.2rem;
+            }
+            
+            .cookie-title {
+                margin: 0;
+                font-weight: 600;
+                color: var(--text-primary);
+            }
+            
+            .cookie-close-mobile {
+                margin-left: auto;
+                display: none;
+            }
+            
+            .cookie-body {
+                margin-bottom: 1.5rem;
+                color: var(--text-primary);
+            }
+            
+            .cookie-actions {
+                display: flex;
+                justify-content: flex-end;
+                gap: 1rem;
+            }
+            
+            /* Cookie Settings Modal */
+            .cookie-settings-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                opacity: 0;
+                visibility: hidden;
+                transition: opacity 0.3s ease, visibility 0.3s ease;
+            }
+            
+            .cookie-settings-modal.show {
+                opacity: 1;
+                visibility: visible;
+            }
+            
+            .cookie-settings-content {
+                background-color: var(--card-background);
+                border-radius: var(--radius-md);
+                width: 90%;
+                max-width: 600px;
+                max-height: 90vh;
+                overflow-y: auto;
+                box-shadow: 0 4px 20px var(--shadow-color);
+            }
+            
+            .cookie-settings-header {
+                padding: 1.25rem;
+                border-bottom: 1px solid var(--border-color);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+            
+            .cookie-settings-body {
+                padding: 1.25rem;
+            }
+            
+            .cookie-settings-footer {
+                padding: 1.25rem;
+                border-top: 1px solid var(--border-color);
+            }
+            
+            .cookie-close-btn {
+                background: transparent;
+                border: none;
+                font-size: 1.5rem;
+                color: var(--text-secondary);
+                cursor: pointer;
+                padding: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: color 0.2s ease;
+            }
+            
+            .cookie-close-btn:hover {
+                color: var(--text-primary);
+            }
+            
+            .settings-intro {
+                margin-bottom: 1.5rem;
+                color: var(--text-primary);
+            }
+            
+            .cookie-type {
+                border: 1px solid var(--border-color);
+                border-radius: var(--radius-sm);
+                padding: 1rem;
+                margin-bottom: 1rem;
+            }
+            
+            .cookie-type-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 0.5rem;
+            }
+            
+            .type-name h5 {
+                margin: 0;
+                font-weight: 600;
+                font-size: 1rem;
+                color: var(--text-primary);
+            }
+            
+            .cookie-type-description {
+                font-size: 0.9rem;
+                color: var(--text-secondary);
+                margin-bottom: 0;
+            }
+            
+            .cookie-settings-actions {
+                margin-bottom: 1rem;
+            }
+            
+            .cookie-settings-links {
+                text-align: center;
+            }
+            
+            .cookie-policy-link {
+                color: var(--primary-color);
+                text-decoration: none;
+                font-size: 0.9rem;
+            }
+            
+            .cookie-policy-link:hover {
+                text-decoration: underline;
+            }
+            
+            /* Responsive */
+            @media (max-width: 768px) {
+                .cookie-actions {
+                    flex-direction: column;
+                }
+                
+                .cookie-actions button {
+                    width: 100%;
+                }
+                
+                .cookie-close-mobile {
+                    display: block;
+                }
+            }
+        </style>
         <script src="{% static 'js/cookie_consent.js' %}"></script>
     {% endblock %}
 

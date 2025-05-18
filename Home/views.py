@@ -119,6 +119,9 @@ def home(request):
     
     return render(request, 'home.html', context)
    
+def cookie_policy_view(request):
+    return render(request, 'pages/cookie_policy.html')
+                  
 def category_list(request):
     # First, annotate subcategories with product counts
     subcategories = Subcategory.objects.annotate(
