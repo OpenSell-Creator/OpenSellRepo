@@ -14,6 +14,7 @@ from pathlib import Path
 from django.contrib.messages import constants as messages
 import os
 import boto3
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -346,6 +347,11 @@ if DEBUG:
         },
     }
 # Production Settings (When DEBUG = False)
+# First, let's remove the direct boto3 client initialization at the top
+# Remove this line:
+# s3_client = boto3.client('s3', region_name='eu-west-1')
+
+# Then modify your production storage configuration (when DEBUG = False):
 else:
     # AWS S3 Configuration
     AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
@@ -353,36 +359,43 @@ else:
     AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
     AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
     AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
+    AWS_S3_ADDRESSING_STYLE = 'virtual' 
     AWS_DEFAULT_ACL = None
     AWS_S3_FILE_OVERWRITE = False
-    AWS_S3_VERIFY = True  # Important for SSL verification
+    AWS_S3_VERIFY = True  
     AWS_QUERYSTRING_AUTH = False
-
+    
     # Static files configuration
     STATIC_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/static/"
-    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Needed for collectstatic
-
+    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+    
     # Media files configuration
     MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/media/"
-
-    # Storage backends (AWS S3)
+    
+    # Legacy style configuration (works more reliably with collectstatic)
+    STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    AWS_LOCATION = 'static'
+    
+    # For media files
+    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    
+    # You can still keep the newer STORAGES dictionary if needed
     STORAGES = {
         "staticfiles": {
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-            "AWS_LOCATION": "static",
-            "AWS_S3_OBJECT_PARAMETERS": {
-                "CacheControl": "public, max-age=31536000",  # 1 year cache
-            },
+            "OPTIONS": {
+                "location": "static",
+                "default_acl": "public-read",
+            }
         },
         "default": {
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-            "AWS_LOCATION": "media",
-            "AWS_S3_OBJECT_PARAMETERS": {
-                "CacheControl": "public, max-age=86400",  # 1 day cache
-            },
+            "OPTIONS": {
+                "location": "media",
+                "default_acl": "public-read",
+            }
         },
     }
-
 # Increase Django's file upload limits
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
