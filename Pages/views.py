@@ -4,7 +4,8 @@ from django.shortcuts import render
 
 from django.core.mail import send_mail
 from django.conf import settings
-
+from django.http import JsonResponse
+import json
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.core.mail import send_mail
@@ -138,3 +139,25 @@ def safety(request):
 
 def cookie_policy(request):
     return render(request, 'pages/cookie_policy.html')
+
+def save_cookie_consent(request):
+    """API view to save user's cookie consent preferences."""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            consent_type = data.get('consent_type')
+            details = data.get('details', {})
+            
+            # You could save this information to a database if needed
+            # For example, if you have a UserProfile model:
+            # if request.user.is_authenticated:
+            #     profile = request.user.profile
+            #     profile.cookie_consent = consent_type
+            #     profile.cookie_preferences = details
+            #     profile.save()
+            
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    
+    return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)

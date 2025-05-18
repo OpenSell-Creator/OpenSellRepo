@@ -8,6 +8,7 @@ urlpatterns = [
     path('terms/', views.terms, name='terms'),
     path('privacy/', views.privacy, name='privacy'),
     path('cookies/', views.cookie_policy, name='cookies'),
+    path('api/cookie-consent/', views.save_cookie_consent, name='save_cookie_consent'),
     path('support/', views.support, name='support'),
     path('safety/', views.safety, name='safety'),
 ]
