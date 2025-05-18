@@ -135,3 +135,6 @@ def privacy(request):
 
 def safety(request):
     return render(request, 'pages/safety.html')
+
+def cookie_policy(request):
+    return render(request, 'pages/cookie_policy.html')
