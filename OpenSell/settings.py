@@ -43,6 +43,15 @@ if not DEBUG:
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     
+SESSION_COOKIE_AGE = 1209600  # 2 weeks, in seconds
+SESSION_COOKIE_SECURE = True  # Use only with HTTPS
+SESSION_COOKIE_HTTPONLY = True  # Prevents JavaScript access
+SESSION_COOKIE_SAMESITE = 'Lax'  # Recommended for security
+    
+CSRF_COOKIE_SECURE = True  # Use only with HTTPS
+CSRF_COOKIE_HTTPONLY = False  # JavaScript needs access for AJAX
+CSRF_COOKIE_SAMESITE = 'Lax'  # Recommended for security
+    
 # Message encryption settings
 MESSAGE_ENCRYPTION_KEY = os.environ.get('MESSAGE_ENCRYPTION_KEY', None)
 
