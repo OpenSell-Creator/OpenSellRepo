@@ -36,7 +36,7 @@ urlpatterns = [
          name='password_reset_complete'),
     
     path('email-preferences/', views.email_preferences, name='email_preferences'),
-    path('unsubscribe-all/', views.unsubscribe_all, name='unsubscribe_all'),
+    path('unsubscribe/', views.unsubscribe_all, name='unsubscribe_all'),
     
     path('profile-menu/', views.profile_menu, name='profile_menu'),
     path('profile/update/', ProfileUpdateView.as_view(), name='profile_update'),

@@ -78,11 +78,19 @@ class Profile(models.Model):
         return f'{self.user.username}'
     
     def get_or_create_email_preferences(self):
-        """Get the user's email preferences or create default ones"""
-        try:
+        """
+        Get or create the email preferences for this profile
+        
+        Returns:
+            EmailPreferences: The email preferences object for this profile
+        """
+        if hasattr(self, 'email_preferences'):
             return self.email_preferences
-        except EmailPreferences.DoesNotExist:
-            return EmailPreferences.objects.create(profile=self)
+        
+        # Create new preferences with default settings
+        from .models import EmailPreferences  # Import here to avoid circular imports
+        preferences = EmailPreferences.objects.create(profile=self)
+        return preferences
     
     def save(self, *args, **kwargs):
         
