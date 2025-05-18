@@ -216,8 +216,13 @@ def email_preferences(request):
                 messages.error(request, "Invalid or expired unsubscribe link. Please log in to manage your email preferences.")
                 return redirect('login')
             
-            # Set the profile to be managed
+            # Set the profile to be managed without logging in the user
             managed_profile = profile
+            
+            # Create a session to remember we're using token access
+            # But don't actually log the user in
+            request.session['managing_preferences_for_user_id'] = user_id
+            request.session['managing_preferences_token'] = token
             
         except (User.DoesNotExist, Profile.DoesNotExist):
             messages.error(request, "User not found.")
@@ -283,6 +288,7 @@ def unsubscribe_all(request):
         preferences.receive_notifications = False
         preferences.save()
         
+        # Don't log the user in, just render the unsubscribe confirmation
         return render(request, 'unsubscribed_all.html', {
             'user': user,
             'preferences_url': reverse('email_preferences') + f"?user={user_id}&token={token}"
