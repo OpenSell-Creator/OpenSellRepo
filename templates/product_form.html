@@ -9,8 +9,23 @@
                     <h3 class="mb-0">{{ title }}</h3>
                     <p class="text-muted mb-0">Manage your product listing details</p>
                 </div>
-                <div class="card-body p-4 p-lg-5">
-                    <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+                <div class="card-body p-4 p-lg-5 position-relative">
+                    <!-- Enhanced Loading Overlay -->
+                    <div id="loadingOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" 
+                         style="background-color: rgba(255,255,255,0.8); z-index: 1000; display: none;">
+                        <div class="text-center">
+                            <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <div id="uploadProgressText" class="fw-bold">Processing your listing...</div>
+                            <div id="uploadProgressBar" class="progress mt-2" style="width: 300px; height: 10px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <div id="uploadStatusText" class="text-muted mt-2 small">Please wait, we're submitting your product details</div>
+                        </div>
+                    </div>
+                    
+                    <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate id="productForm">
                         {% csrf_token %}
                         
                         <div class="row g-4">
@@ -37,7 +52,7 @@
                                         <label for="id_condition">Condition</label>
                                     </div>
                                     
-                                    <!-- Images Upload -->
+                                    <!-- Images Upload with Enhanced Visual Feedback -->
                                     <div class="mb-4">
                                         <label class="form-label">Product Images</label>
                                         <div class="file-input-wrapper border rounded p-3">
@@ -61,9 +76,17 @@
                                             </div>
                                             {% endif %}
                                             
+                                            <div class="image-preview-container mb-2" id="imagePreviewContainer">
+                                                <!-- Image previews will be added here dynamically -->
+                                            </div>
+                                            
                                             {{ form.images }}
                                             <div class="form-text text-muted">
                                                 Upload multiple images (max 5 images, first image will be primary)
+                                            </div>
+                                            <div id="imageUploadStats" class="mt-2 small text-muted d-none">
+                                                <div>Files selected: <span id="numFiles">0</span>/5</div>
+                                                <div>Total size: <span id="totalSize">0 KB</span> (Max 25MB)</div>
                                             </div>
                                         </div>
                                     </div>
@@ -144,11 +167,36 @@
                         </div>
 
                         <div class="d-grid mt-4">
-                            <button type="submit" class="btn btn-primary btn-lg">{{ save }}</button>
+                            <button type="submit" id="submitButton" class="btn btn-primary btn-lg">{{ save }}</button>
                         </div>
                     </form>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification System -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <!-- Success Toast -->
+    <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="bi bi-check-circle-fill me-2"></i>
+                <span id="successToastMessage">Product submitted successfully!</span>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+    
+    <!-- Error Toast -->
+    <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <span id="errorToastMessage">An error occurred. Please try again.</span>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
     </div>
 </div>
@@ -196,6 +244,10 @@
         .file-input-wrapper {
             background-color: var(--dark-card-background);
         }
+        
+        #loadingOverlay {
+            background-color: rgba(33, 37, 41, 0.8);
+        }
     }
 
     /* Form Text */
@@ -205,14 +257,106 @@
         color: var(--text-secondary) !important;
         padding-left: 0.5rem;
     }
+    
+    /* Image Preview Styling */
+    .image-preview-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .image-preview {
+        width: 80px;
+        height: 80px;
+        border-radius: 4px;
+        object-fit: cover;
+        border: 2px solid var(--border-color);
+        position: relative;
+    }
+    
+    .image-preview.primary {
+        border-color: var(--primary-color);
+    }
+    
+    /* Loading Overlay */
+    #loadingOverlay {
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+    }
+    
+    #loadingOverlay.show {
+        opacity: 1;
+        display: flex !important;
+        pointer-events: all;
+    }
+    
+    /* Submit Button Loading State */
+    #submitButton.loading {
+        position: relative;
+        color: transparent;
+    }
+    
+    #submitButton.loading::after {
+        content: '';
+        position: absolute;
+        width: 1rem;
+        height: 1rem;
+        top: calc(50% - 0.5rem);
+        left: calc(50% - 0.5rem);
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        border-radius: 50%;
+        border-top: 2px solid white;
+        animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    /* Progress animation smoothing */
+    #uploadProgressBar .progress-bar {
+        transition: width 0.5s ease;
+    }
 </style>
 
-<!-- Keep existing JavaScript for dynamic dropdowns and price formatting -->
+<!-- Enhanced JavaScript for dynamic dropdowns, price formatting, form submission and progress tracking -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const categorySelect = document.getElementById('id_category');
         const subcategorySelect = document.getElementById('id_subcategory');
         const brandSelect = document.getElementById('id_brand');
+        const form = document.getElementById('productForm');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const progressBar = document.querySelector('#uploadProgressBar .progress-bar');
+        const progressText = document.getElementById('uploadProgressText');
+        const statusText = document.getElementById('uploadStatusText');
+        const imageField = document.querySelector('input[name="images"]');
+        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+        const submitButton = document.getElementById('submitButton');
+        const imageUploadStats = document.getElementById('imageUploadStats');
+        const numFilesEl = document.getElementById('numFiles');
+        const totalSizeEl = document.getElementById('totalSize');
+        
+        // Toast setup
+        const successToast = document.getElementById('successToast');
+        const errorToast = document.getElementById('errorToast');
+        const successToastMessage = document.getElementById('successToastMessage');
+        const errorToastMessage = document.getElementById('errorToastMessage');
+        const successToastBS = new bootstrap.Toast(successToast, { delay: 5000 });
+        const errorToastBS = new bootstrap.Toast(errorToast, { delay: 5000 });
+        
+        // Show toast helper functions
+        function showSuccessToast(message) {
+            successToastMessage.textContent = message;
+            successToastBS.show();
+        }
+        
+        function showErrorToast(message) {
+            errorToastMessage.textContent = message;
+            errorToastBS.show();
+        }
     
         // Update subcategories when category changes
         categorySelect.addEventListener('change', function() {
@@ -221,17 +365,19 @@
             brandSelect.innerHTML = '<option value="">Select Brand</option>';
     
             if (categoryId) {
-                fetch(`/ajax/load-subcategories/?category=${categoryId}`)
-                    .then(response => response.json())
-                    .then(data => {
+                fetchWithFeedback(`/ajax/load-subcategories/?category=${categoryId}`, 
+                    (data) => {
                         data.forEach(subcategory => {
                             const option = document.createElement('option');
                             option.value = subcategory.id;
                             option.textContent = subcategory.name;
                             subcategorySelect.appendChild(option);
                         });
-                    })
-                    .catch(error => console.error('Error loading subcategories:', error));
+                    },
+                    (error) => {
+                        showErrorToast('Error loading subcategories. Please try selecting another category.');
+                    }
+                );
             }
         });
     
@@ -241,19 +387,43 @@
             brandSelect.innerHTML = '<option value="">Select Brand</option>';
     
             if (subcategoryId) {
-                fetch(`/ajax/load-brands/?subcategory=${subcategoryId}`)
-                    .then(response => response.json())
-                    .then(data => {
+                fetchWithFeedback(`/ajax/load-brands/?subcategory=${subcategoryId}`,
+                    (data) => {
                         data.forEach(brand => {
                             const option = document.createElement('option');
                             option.value = brand.id;
                             option.textContent = brand.name;
                             brandSelect.appendChild(option);
                         });
-                    })
-                    .catch(error => console.error('Error loading brands:', error));
+                    },
+                    (error) => {
+                        showErrorToast('Error loading brands. Please try selecting another subcategory.');
+                    }
+                );
             }
         });
+        
+        // Helper function for fetch with feedback
+        function fetchWithFeedback(url, successCallback, errorCallback) {
+            submitButton.classList.add('loading');
+            
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    successCallback(data);
+                    submitButton.classList.remove('loading');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    if (errorCallback) errorCallback(error);
+                    submitButton.classList.remove('loading');
+                });
+        }
     
         // Price formatting
         const priceInput = document.getElementById('id_formatted_price');
@@ -276,41 +446,273 @@
             });
         }
 
-        const imageField = document.querySelector('input[name="images"]');
+        // Enhanced image preview functionality with stats
         if (imageField) {
             imageField.addEventListener('change', function() {
                 const maxFiles = 5;
-                const maxSize = 5 * 1024 * 1024; // 5MB
+                const maxSize = 5 * 1024 * 1024; // 5MB per file
+                const maxTotalSize = 25 * 1024 * 1024; // 25MB total
                 const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
                 const files = this.files;
                 
+                // Clear existing previews
+                imagePreviewContainer.innerHTML = '';
+                
                 // Check number of files
                 if (files.length > maxFiles) {
-                    alert(`You can only upload a maximum of ${maxFiles} images. Only the first ${maxFiles} will be used.`);
+                    showErrorToast(`You can only upload a maximum of ${maxFiles} images. Only the first ${maxFiles} will be used.`);
                 }
                 
-                // Check each file
+                // Calculate total size and show stats
+                let totalSize = 0;
+                const filesToProcess = Math.min(files.length, maxFiles);
+                
+                for (let i = 0; i < filesToProcess; i++) {
+                    totalSize += files[i].size;
+                }
+                
+                // Show upload stats
+                if (files.length > 0) {
+                    imageUploadStats.classList.remove('d-none');
+                    numFilesEl.textContent = filesToProcess;
+                    totalSizeEl.textContent = formatFileSize(totalSize);
+                    
+                    // Check total size
+                    if (totalSize > maxTotalSize) {
+                        showErrorToast(`Total file size (${formatFileSize(totalSize)}) exceeds the maximum allowed (25MB).`);
+                        this.value = '';
+                        imagePreviewContainer.innerHTML = '';
+                        imageUploadStats.classList.add('d-none');
+                        return;
+                    }
+                } else {
+                    imageUploadStats.classList.add('d-none');
+                }
+                
+                // Check each file and generate previews
                 let hasError = false;
-                for (let i = 0; i < Math.min(files.length, maxFiles); i++) {
+                for (let i = 0; i < filesToProcess; i++) {
                     const file = files[i];
                     
                     // Check file size
                     if (file.size > maxSize) {
-                        alert(`Image "${file.name}" is too large (${(file.size/1024/1024).toFixed(2)}MB). Maximum size is 5MB.`);
+                        showErrorToast(`Image "${file.name}" is too large (${formatFileSize(file.size)}). Maximum size is 5MB.`);
                         hasError = true;
                         break;
                     }
                     
                     // Check file type
                     if (!validTypes.includes(file.type)) {
-                        alert(`File "${file.name}" is not a supported format. Only JPG, JPEG or PNG files are allowed.`);
+                        showErrorToast(`File "${file.name}" is not a supported format. Only JPG, JPEG or PNG files are allowed.`);
                         hasError = true;
                         break;
                     }
+                    
+                    // Create image preview
+                    createImagePreview(file, i);
                 }
                 
                 if (hasError) {
                     this.value = ''; // Clear the input
+                    imagePreviewContainer.innerHTML = ''; // Clear previews
+                    imageUploadStats.classList.add('d-none');
+                }
+            });
+            
+            // Helper for creating image previews
+            function createImagePreview(file, index) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const container = document.createElement('div');
+                    container.className = 'position-relative';
+                    
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'image-preview';
+                    if (index === 0) img.classList.add('primary');
+                    img.title = file.name;
+                    
+                    container.appendChild(img);
+                    
+                    // Add primary badge to first image
+                    if (index === 0) {
+                        const badge = document.createElement('span');
+                        badge.className = 'badge bg-primary position-absolute top-0 end-0';
+                        badge.textContent = 'Primary';
+                        container.appendChild(badge);
+                    }
+                    
+                    // Add file size as a small text under the image
+                    const sizeLabel = document.createElement('div');
+                    sizeLabel.className = 'text-center small text-muted mt-1';
+                    sizeLabel.textContent = formatFileSize(file.size);
+                    container.appendChild(sizeLabel);
+                    
+                    imagePreviewContainer.appendChild(container);
+                };
+                reader.readAsDataURL(file);
+            }
+            
+            // Format file size helper
+            function formatFileSize(bytes) {
+                if (bytes < 1024) return bytes + ' B';
+                else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+                else return (bytes / 1048576).toFixed(1) + ' MB';
+            }
+        }
+        
+        // Enhanced form submission handling with realistic progress tracking
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Form validation
+                if (!form.checkValidity()) {
+                    e.stopPropagation();
+                    form.classList.add('was-validated');
+                    return;
+                }
+                
+                // Show loading overlay and disable submit button
+                submitButton.disabled = true;
+                submitButton.classList.add('loading');
+                loadingOverlay.classList.add('show');
+                
+                // Determine if we have images to upload and their total size
+                const hasImages = imageField && imageField.files.length > 0;
+                let totalBytes = 0;
+                let fileCount = 0;
+                
+                if (hasImages) {
+                    fileCount = Math.min(imageField.files.length, 5);
+                    for (let i = 0; i < fileCount; i++) {
+                        totalBytes += imageField.files[i].size;
+                    }
+                }
+                
+                // Get form data for submission
+                const formData = new FormData(form);
+                
+                // Track upload progress realistically based on file sizes
+                let progress = 0;
+                let progressInterval;
+                let startTime = Date.now();
+                const simulatedUploadDuration = calculateUploadDuration(totalBytes);
+                
+                function calculateUploadDuration(bytes) {
+                    // Simulate network speed: ~500KB/s for small uploads, slower for larger ones
+                    const baseSpeed = 500 * 1024; // 500KB/s base speed
+                    const minDuration = 2000; // Minimum 2 seconds for any upload
+                    
+                    if (bytes === 0) return minDuration;
+                    
+                    // Calculate duration with some randomness to simulate network variability
+                    let calculatedDuration = (bytes / baseSpeed) * 1000;
+                    // Add some randomness (±20%)
+                    calculatedDuration *= (0.8 + Math.random() * 0.4);
+                    
+                    return Math.max(minDuration, calculatedDuration);
+                }
+                
+                // Update progress based on time elapsed
+                if (hasImages) {
+                    progressText.textContent = 'Uploading images...';
+                    statusText.textContent = `Uploading ${fileCount} image${fileCount !== 1 ? 's' : ''}...`;
+                    
+                    progressInterval = setInterval(() => {
+                        const elapsedTime = Date.now() - startTime;
+                        const progressPercent = Math.min(elapsedTime / simulatedUploadDuration, 1) * 100;
+                        
+                        if (progressPercent >= 100) {
+                            clearInterval(progressInterval);
+                            progressText.textContent = 'Processing your listing...';
+                            statusText.textContent = 'Almost done! Finalizing your product listing...';
+                            progressBar.style.width = '95%';
+                            
+                            // Start processing phase
+                            startProcessingPhase();
+                        } else {
+                            progressBar.style.width = `${progressPercent}%`;
+                            
+                            // Update status messages based on progress
+                            if (progressPercent < 30) {
+                                statusText.textContent = `Uploading image ${Math.min(Math.ceil(progressPercent / 20) + 1, fileCount)} of ${fileCount}...`;
+                            } else if (progressPercent < 70) {
+                                statusText.textContent = 'Optimizing images...';
+                            } else {
+                                statusText.textContent = 'Almost done! Saving images...';
+                            }
+                        }
+                    }, 100);
+                } else {
+                    progressText.textContent = 'Processing your listing...';
+                    statusText.textContent = 'Creating your product listing...';
+                    progressBar.style.width = '60%';
+                    
+                    // Move straight to processing phase for listings without images
+                    startProcessingPhase();
+                }
+                
+                function startProcessingPhase() {
+                    // Actual form submission using Fetch API
+                    submitForm(formData);
+                }
+                
+                // Function to submit the form data
+                function submitForm(formData) {
+                    fetch(form.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Server responded with status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Clear any interval if it exists
+                        if (progressInterval) clearInterval(progressInterval);
+                        
+                        // Complete progress bar
+                        progressBar.style.width = '100%';
+                        progressText.textContent = 'Success!';
+                        statusText.textContent = 'Your listing has been created successfully.';
+                        
+                        // Show success toast and redirect
+                        showSuccessToast('Product listed successfully!');
+                        
+                        // Short delay before redirecting
+                        setTimeout(() => {
+                            window.location.href = data.redirect_url || '/';
+                        }, 1000);
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        
+                        // Update UI for error state
+                        if (progressInterval) clearInterval(progressInterval);
+                        progressText.textContent = 'Error!';
+                        statusText.textContent = 'There was a problem processing your listing.';
+                        progressBar.classList.remove('bg-primary');
+                        progressBar.classList.add('bg-danger');
+                        
+                        // Show error toast
+                        showErrorToast('Failed to create product listing. Please try again.');
+                        
+                        // Re-enable the submit button after a delay
+                        setTimeout(() => {
+                            loadingOverlay.classList.remove('show');
+                            submitButton.disabled = false;
+                            submitButton.classList.remove('loading');
+                            progressBar.classList.remove('bg-danger');
+                            progressBar.classList.add('bg-primary');
+                            progressBar.style.width = '0%';
+                        }, 3000);
+                    });
                 }
             });
         }

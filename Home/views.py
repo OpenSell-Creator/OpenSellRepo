@@ -501,10 +501,27 @@ class ProductCreateView(LoginRequiredMixin, CreateView):
                     )
             
             messages.success(self.request, 'Product created successfully.')
+            
+            # Handle AJAX requests
+            if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Product created successfully',
+                    'redirect_url': self.get_success_url()
+                })
+            
             return HttpResponseRedirect(self.get_success_url())
             
         except Exception as e:
             messages.error(self.request, f'Error creating product: {str(e)}')
+            
+            # Handle AJAX requests with error
+            if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Error creating product: {str(e)}'
+                }, status=400)
+                
             return self.form_invalid(form)
 
     def get_context_data(self, **kwargs):
@@ -555,9 +572,27 @@ class ProductUpdateView(LoginRequiredMixin, UpdateView):
                 self.save_images(form.cleaned_data['images'])
             
             messages.success(self.request, 'Product updated successfully.')
+            
+            # Handle AJAX requests
+            if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Product updated successfully',
+                    'redirect_url': self.get_success_url()
+                })
+            
             return HttpResponseRedirect(self.get_success_url())
+            
         except Exception as e:
             messages.error(self.request, f'Error updating product: {str(e)}')
+            
+            # Handle AJAX requests with error
+            if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Error updating product: {str(e)}'
+                }, status=400)
+                
             return self.form_invalid(form)
         
 
