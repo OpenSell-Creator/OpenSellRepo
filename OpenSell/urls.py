@@ -17,9 +17,18 @@ Including another URLconf
 from django.conf import settings
 from django.contrib import admin
 from django.urls import path, include
+from django.contrib.sitemaps.views import sitemap
 from django.conf.urls.static import static
+from .robots import robots_txt
+from .sitemaps import StaticViewSitemap, ProductSitemap, CategorySitemap, SubcategorySitemap
 
 handler404 = 'Home.views.handler404'
+sitemaps = {
+    'static': StaticViewSitemap,
+    'products': ProductSitemap,
+    'categories': CategorySitemap,
+    'subcategories': SubcategorySitemap,
+}
 
 urlpatterns = [
     path('controlroom/', admin.site.urls),
@@ -30,6 +39,9 @@ urlpatterns = [
     path('', include('Dashboard.urls')),
     path('', include('Pages.urls')),
     path('accounts/', include('allauth.urls')),
+    path('robots.txt', robots_txt),
+    path('sitemap.xml', sitemap, {'sitemaps': sitemaps},
+         name='django.contrib.sitemaps.views.sitemap'),
     
 ]
 if settings.DEBUG:

@@ -93,6 +93,14 @@ class Product_Listing(models.Model):
     def __str__(self):
         return self.title
     
+    def get_absolute_url(self):
+        """
+        Returns the URL to access a detailed record for this product.
+        This is required for sitemap generation.
+        """
+        from django.urls import reverse
+        return reverse('product_detail', kwargs={'pk': self.id})
+    
     @property
     def average_rating(self):
         return self.reviews.aggregate(Avg('rating'))['rating__avg'] or 0
