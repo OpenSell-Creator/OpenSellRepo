@@ -266,7 +266,7 @@ ACCOUNT_EMAIL_SUBJECT_PREFIX = ''
 ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
 
 
-LOGGING = {
+'''LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
@@ -341,7 +341,7 @@ LOGGING = {
             'propagate': True,
         },
     },
-}
+}'''
 
 # Email settings
 if not DEBUG:
