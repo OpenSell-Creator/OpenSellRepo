@@ -274,6 +274,10 @@ LOGGING = {
             'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
             'style': '{',
         },
+        'simple': {
+            'format': '{levelname} {asctime} {message}',
+            'style': '{',
+        },
     },
     'handlers': {
         'file': {
@@ -283,6 +287,19 @@ LOGGING = {
             'maxBytes': 1024*1024*5,  # 5 MB
             'backupCount': 5,
             'formatter': 'verbose',
+        },
+        'mail_file': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': '/home/ubuntu/OpenSellRepo/logs/django-mail-debug.log',
+            'maxBytes': 1024*1024*5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
         },
     },
     'loggers': {
@@ -294,6 +311,33 @@ LOGGING = {
         'django.request': {
             'handlers': ['file'],
             'level': 'DEBUG',
+            'propagate': True,
+        },
+        # Add these new loggers
+        'django.core.mail': {
+            'handlers': ['mail_file', 'console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'django.utils.log': {
+            'handlers': ['mail_file', 'console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'django.core.mail.backends': {
+            'handlers': ['mail_file', 'console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'smtplib': {  # This will capture low-level SMTP operations
+            'handlers': ['mail_file', 'console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        # Add a catch-all logger for your application
+        '': {  # Root logger
+            'handlers': ['file', 'console'],
+            'level': 'ERROR',
             'propagate': True,
         },
     },
@@ -310,9 +354,10 @@ if not DEBUG:
     EMAIL_USE_TLS = True
     EMAIL_USE_SSL = False
     
+    SERVER_EMAIL = 'support@opensell.online'
     DEFAULT_FROM_EMAIL = 'OpenSell <support@opensell.online>'
     SUPPORT_EMAIL = 'OpenSell Support <support@opensell.online>'
-    NO_REPLY_EMAIL = 'OpenSell <no-reply@opensell.online>'
+    NO_REPLY_EMAIL = 'OpenSell <support@opensell.online>'
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
