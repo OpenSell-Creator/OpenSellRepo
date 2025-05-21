@@ -1,6 +1,12 @@
 from django.contrib import admin
-from .models import Category, Subcategory, Brand, Product_Listing, Banner, Review, ReviewReply
 from django.utils.html import format_html
+from django.utils import timezone
+from django.urls import reverse, path
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from django.http import HttpResponseRedirect
+
+from .models import Category, Subcategory, Brand, Product_Listing, Banner, Review, ReviewReply, ProductReport
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
@@ -21,13 +27,24 @@ class BrandAdmin(admin.ModelAdmin):
     prepopulated_fields = {'slug': ('name',)}
     search_fields = ('name',)
 
+class ProductReportInline(admin.TabularInline):
+    model = ProductReport
+    extra = 0
+    readonly_fields = ('reason', 'details', 'reporter_email', 'reported_at', 'status')
+    can_delete = False
+    
+    def has_add_permission(self, request, obj=None):
+        return False
+
 @admin.register(Product_Listing)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('title', 'seller', 'category', 'subcategory', 'brand', 'price', 'condition', 'created_at')
-    list_filter = ('category', 'subcategory', 'brand', 'condition', 'created_at')
-    search_fields = ('title', 'description', 'seller__username', 'category__name', 'subcategory__name', 'brand__name')
+    list_display = ('title', 'seller', 'category', 'price', 'created_at', 'view_count', 'report_count', 'suspension_status')
+    list_filter = ('category', 'subcategory', 'brand', 'condition', 'created_at', 'is_suspended')
+    search_fields = ('title', 'description', 'seller__user__username', 'seller__user__email', 'category__name')
     date_hierarchy = 'created_at'
     list_per_page = 20
+    actions = ['suspend_listings', 'unsuspend_listings', 'delete_listings']
+    inlines = [ProductReportInline]
 
     fieldsets = (
         (None, {
@@ -36,27 +53,134 @@ class ProductAdmin(admin.ModelAdmin):
         ('Categories', {
             'fields': ('category', 'subcategory', 'brand')
         }),
-        ('Images', {
-            'fields': ('image',)
+        ('Status', {
+            'fields': ('is_suspended', 'suspension_reason', 'suspended_at', 'suspended_by')
         }),
     )
-
-    def get_readonly_fields(self, request, obj=None):
-        if obj:  # editing an existing object
-            return ('created_at', 'updated_at')
-        return ()
+    
+    readonly_fields = ('suspended_at', 'suspended_by')
+    
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('category', 'subcategory', 'brand', 'seller')
+        return super().get_queryset(request).select_related(
+            'category', 'subcategory', 'brand', 'seller', 'seller__user'
+        ).prefetch_related('reports')
 
-    def seller_email(self, obj):
-        return obj.seller.user.email
-    seller_email.short_description = 'Seller Email'
+    def report_count(self, obj):
+        count = obj.reports.count()
+        if count > 0:
+            return format_html(
+                '<span style="color: {};">{}</span>',
+                'red' if count > 2 else 'orange' if count > 0 else 'inherit',
+                count
+            )
+        return count
+    report_count.short_description = 'Reports'
+    
+    def suspension_status(self, obj):
+        if obj.is_suspended:
+            return format_html('<span style="color: red;">Suspended</span>')
+        return format_html('<span style="color: green;">Active</span>')
+    suspension_status.short_description = 'Status'
+    
+    def suspend_listings(self, request, queryset):
+        if 'apply' in request.POST:
+            reason = request.POST.get('suspension_reason', '')
+            count = 0
+            for product in queryset:
+                product.suspend(request.user, reason)
+                count += 1
+            self.message_user(request, f"{count} listings were suspended successfully.", messages.SUCCESS)
+            return HttpResponseRedirect(request.get_full_path())
+        
+        return render(request, 'admin/suspend_listings.html', {
+            'title': 'Suspend selected listings',
+            'queryset': queryset,
+            'opts': self.model._meta,
+        })
+    suspend_listings.short_description = "Suspend selected listings"
+    
+    def unsuspend_listings(self, request, queryset):
+        count = 0
+        for product in queryset.filter(is_suspended=True):
+            product.unsuspend()
+            count += 1
+        self.message_user(request, f"{count} listings were unsuspended successfully.", messages.SUCCESS)
+    unsuspend_listings.short_description = "Unsuspend selected listings"
+    
+    def delete_listings(self, request, queryset):
+        if 'apply' in request.POST:
+            count = queryset.count()
+            for product in queryset:
+                product.delete()
+            self.message_user(request, f"{count} listings were deleted successfully.", messages.SUCCESS)
+            return HttpResponseRedirect(request.get_full_path())
+        
+        return render(request, 'admin/delete_listings.html', {
+            'title': 'Delete selected listings',
+            'queryset': queryset,
+            'opts': self.model._meta,
+        })
+    delete_listings.short_description = "Delete selected listings permanently"
+    
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                'reports/',
+                self.admin_site.admin_view(self.product_reports_view),
+                name='product_reports',
+            ),
+        ]
+        return custom_urls + urls
+    
+    def product_reports_view(self, request):
+        """View to show all reported products"""
+        from django.db.models import Count
+        
+        # Get all products with reports, ordered by report count
+        reported_products = Product_Listing.objects.annotate(
+            num_reports=Count('reports')
+        ).filter(num_reports__gt=0).order_by('-num_reports')
+        
+        context = {
+            'title': 'Reported Listings',
+            'reported_products': reported_products,
+            'opts': self.model._meta,
+        }
+        
+        return render(request, 'admin/reported_listings.html', context)
 
-    def image_preview(self, obj):
-        if obj.image:
-            return format_html('<img src="{}" width="50" height="50" />', obj.image.url)
-        return "No Image"
-    image_preview.short_description = 'Image Preview'
+@admin.register(ProductReport)
+class ProductReportAdmin(admin.ModelAdmin):
+    list_display = ('product', 'reason', 'status', 'reported_at', 'reviewed_by')
+    list_filter = ('status', 'reason', 'reported_at')
+    search_fields = ('product__title', 'details', 'reporter_email')
+    date_hierarchy = 'reported_at'
+    readonly_fields = ('product', 'reason', 'details', 'reporter_email', 'reported_at')
+    fieldsets = (
+        (None, {
+            'fields': ('product', 'reason', 'details', 'reporter_email', 'reported_at')
+        }),
+        ('Review', {
+            'fields': ('status', 'reviewed_by', 'reviewed_at', 'resolution_notes')
+        }),
+    )
+    actions = ['mark_as_resolved', 'mark_as_dismissed']
+    
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('product', 'reviewed_by')
+    
+    def mark_as_resolved(self, request, queryset):
+        for report in queryset:
+            report.mark_as_reviewed(request.user, status='resolved', notes='Marked as resolved by admin')
+        self.message_user(request, f"{queryset.count()} reports marked as resolved.", messages.SUCCESS)
+    mark_as_resolved.short_description = "Mark selected reports as resolved"
+    
+    def mark_as_dismissed(self, request, queryset):
+        for report in queryset:
+            report.mark_as_reviewed(request.user, status='dismissed', notes='Marked as dismissed by admin')
+        self.message_user(request, f"{queryset.count()} reports marked as dismissed.", messages.SUCCESS)
+    mark_as_dismissed.short_description = "Mark selected reports as dismissed"
     
 @admin.register(Banner)
 class BannerAdmin(admin.ModelAdmin):

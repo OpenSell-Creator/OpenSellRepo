@@ -3,7 +3,7 @@ from django.db import IntegrityError
 from django.shortcuts import render, get_object_or_404,redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from .models import Product_Listing, Review, ReviewReply, SavedProduct
+from .models import Product_Listing, Review, ReviewReply, SavedProduct, ProductReport
 from User.models import LGA, State
 from Dashboard.models import ProductBoost
 from django.core.paginator import Paginator
@@ -1058,6 +1058,10 @@ class ReportProductView(View):
             # Fetch the product, return 404 if not found
             product = get_object_or_404(Product_Listing, id=product_id)
             
+            # Check if product is already suspended
+            if product.is_suspended:
+                messages.warning(request, "This listing has already been suspended by the marketplace.")
+            
             # Render the report form template
             return render(request, 'report_product.html', {
                 'product': product,
@@ -1083,6 +1087,18 @@ class ReportProductView(View):
             # Validate the form
             form = ProductReportForm(request.POST)
             if form.is_valid():
+                # Create a new report record
+                report = ProductReport(
+                    product=product,
+                    reason=form.cleaned_data['reason'],
+                    details=form.cleaned_data['details'],
+                    reporter_email=form.cleaned_data['reporter_email'] or None,
+                )
+                report.save()
+                
+                # Check for automatic suspension threshold (e.g., if more than 5 reports)
+                report_count = product.reports.count()
+                
                 # Prepare email content
                 report_data = {
                     'product_id': str(product.id),
@@ -1091,6 +1107,7 @@ class ReportProductView(View):
                     'reason': form.cleaned_data['reason'],
                     'details': form.cleaned_data['details'],
                     'reporter_email': form.cleaned_data['reporter_email'] or 'Anonymous',
+                    'report_count': report_count
                 }
                 
                 # Render email content
@@ -1099,13 +1116,38 @@ class ReportProductView(View):
                 try:
                     # Send email
                     send_mail(
-                        subject=f'Product Report: {product.title}',
+                        subject=f'Product Report: {product.title} (#{report_count})',
                         message=email_body,
                         from_email=settings.DEFAULT_FROM_EMAIL,
                         recipient_list=['opensellmarketplace@gmail.com'],
                         html_message=email_body,
                         fail_silently=False,
                     )
+                    
+                    # Auto-suspend if threshold reached
+                    if report_count >= 5 and not product.is_suspended:
+                        try:
+                            # Get a superuser
+                            from django.contrib.auth.models import User
+                            superuser = User.objects.filter(is_superuser=True).first()
+                            
+                            if superuser:
+                                # Auto-suspend the listing
+                                product.suspend(
+                                    superuser, 
+                                    f"Auto-suspended after receiving {report_count} reports. Last report reason: {report.get_reason_display()}"
+                                )
+                                
+                                # Mark all related reports as resolved
+                                product.reports.filter(status='pending').update(
+                                    status='resolved',
+                                    reviewed_by=superuser,
+                                    reviewed_at=timezone.now(),
+                                    resolution_notes=f"Auto-resolved due to listing suspension after {report_count} reports."
+                                )
+                        except Exception as auto_suspend_error:
+                            logging.error(f"Error auto-suspending product: {auto_suspend_error}")
+                    
                     return JsonResponse({
                         'success': True,
                         'message': 'Thank you for reporting this product. We will review it shortly.'

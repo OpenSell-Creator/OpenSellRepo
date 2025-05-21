@@ -1,0 +1,49 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block content %}
+<div id="content" class="colM">
+    <h1>Reported Listings</h1>
+    <div id="content-main">
+        {% if reported_products %}
+            <div class="results">
+                <table id="result_list">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Seller</th>
+                            <th>Reports</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in reported_products %}
+                        <tr class="{% cycle 'row1' 'row2' %}">
+                            <td><a href="{% url 'admin:your_app_name_product_listing_change' product.id %}">{{ product.title }}</a></td>
+                            <td>{{ product.seller.user.username }}</td>
+                            <td>{{ product.num_reports }}</td>
+                            <td>{% if product.is_suspended %}<span style="color: red;">Suspended</span>{% else %}<span style="color: green;">Active</span>{% endif %}</td>
+                            <td>
+                                <form method="post" action="{% url 'admin:your_app_name_product_listing_changelist' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="_selected_action" value="{{ product.id }}" />
+                                    {% if not product.is_suspended %}
+                                    <button type="submit" name="action" value="suspend_listings" class="button">Suspend</button>
+                                    {% else %}
+                                    <button type="submit" name="action" value="unsuspend_listings" class="button">Unsuspend</button>
+                                    {% endif %}
+                                    <button type="submit" name="action" value="delete_listings" class="button" style="background-color: #ba2121; border-color: #ba2121;">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p>No reported listings found.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

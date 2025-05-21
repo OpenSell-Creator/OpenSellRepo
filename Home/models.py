@@ -82,6 +82,81 @@ class Product_Listing(models.Model):
     expiration_date = models.DateTimeField(null=True, blank=True)
     last_stock_notification = models.DateTimeField(null=True, blank=True)
     deletion_warning_sent = models.BooleanField(default=False)
+    is_suspended = models.BooleanField(default=False)
+    suspension_reason = models.TextField(blank=True, null=True)
+    suspended_at = models.DateTimeField(null=True, blank=True)
+    suspended_by = models.ForeignKey(
+        'auth.User', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='suspended_listings'
+    )
+    
+    def suspend(self, admin_user, reason=None):
+        """Suspend a product listing"""
+        self.is_suspended = True
+        self.suspended_at = timezone.now()
+        self.suspended_by = admin_user
+        if reason:
+            self.suspension_reason = reason
+        self.save()
+        
+        # Notify the seller
+        from django.core.mail import send_mail
+        from django.conf import settings
+        from django.template.loader import render_to_string
+        
+        context = {
+            'product': self,
+            'reason': reason or 'Policy violation',
+            'seller': self.seller
+        }
+        
+        email_body = render_to_string('emails/listing_suspended_email.html', context)
+        
+        try:
+            send_mail(
+                subject=f'Your listing "{self.title}" has been suspended',
+                message=email_body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[self.seller.user.email],
+                html_message=email_body,
+                fail_silently=True,
+            )
+        except Exception as e:
+            import logging
+            logging.error(f"Error sending suspension email: {e}")
+            
+    def unsuspend(self):
+        """Unsuspend a product listing"""
+        self.is_suspended = False
+        self.save()
+        
+        # Notify the seller
+        from django.core.mail import send_mail
+        from django.conf import settings
+        from django.template.loader import render_to_string
+        
+        context = {
+            'product': self,
+            'seller': self.seller
+        }
+        
+        email_body = render_to_string('emails/listing_unsuspended_email.html', context)
+        
+        try:
+            send_mail(
+                subject=f'Your listing "{self.title}" has been reinstated',
+                message=email_body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[self.seller.user.email],
+                html_message=email_body,
+                fail_silently=True,
+            )
+        except Exception as e:
+            import logging
+            logging.error(f"Error sending unsuspension email: {e}")
 
     def increase_view_count(self):
         self.view_count += 1
@@ -372,6 +447,46 @@ class SavedProduct(models.Model):
         print(f"Deleting saved product {self.product.id} for user {self.user.id}")
         super().delete(*args, **kwargs)
     
+class ProductReport(models.Model):
+    REPORT_STATUS = [
+        ('pending', 'Pending Review'),
+        ('reviewing', 'Under Review'),
+        ('resolved', 'Resolved'),
+        ('dismissed', 'Dismissed'),
+    ]
+    
+    REPORT_REASONS = [
+        ('spam', 'Spam or Misleading Content'),
+        ('fraud', 'Fraudulent Listing'),
+        ('inappropriate', 'Inappropriate Content'),
+        ('expired', 'Expired or Sold Item'),
+        ('other', 'Other Reason')
+    ]
+    
+    product = models.ForeignKey('Product_Listing', on_delete=models.CASCADE, related_name='reports')
+    reason = models.CharField(max_length=20, choices=REPORT_REASONS)
+    details = models.TextField()
+    reporter_email = models.EmailField(blank=True, null=True)
+    reported_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=10, choices=REPORT_STATUS, default='pending')
+    reviewed_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_reports')
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    resolution_notes = models.TextField(blank=True, null=True)
+    
+    class Meta:
+        ordering = ['-reported_at']
+        
+    def __str__(self):
+        return f"Report for {self.product.title} - {self.get_reason_display()}"
+        
+    def mark_as_reviewed(self, admin_user, status='resolved', notes=None):
+        self.status = status
+        self.reviewed_by = admin_user
+        self.reviewed_at = timezone.now()
+        if notes:
+            self.resolution_notes = notes
+        self.save()
+        
 class Banner(models.Model):
     BANNER_TYPES = [
         ('hero', 'Hero Banner'),
