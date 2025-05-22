@@ -1410,7 +1410,7 @@ def generate_specifications_section(product_type, title, brand, condition):
             "• Storage Capacity: [e.g. 128GB]",
             "• RAM: [e.g. 8GB]",
             "• Color: [e.g., Black]",
-            "• Screen Size: [e.g., 6.1 inch",
+            "• Screen Size: [e.g., 6.1 inch]",
             "• Battery Health: [e.g., 85%]",
             "• Operating System: [iOS/Android version]",
             "• Network: [4G/5G compatibility]"
