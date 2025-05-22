@@ -15,7 +15,7 @@ from django.db import models
 from django.db import models
 from imagekit.models import ProcessedImageField, ImageSpecField
 from imagekit.processors import ResizeToFit, ResizeToFill
-from mptt.models import MPTTModel, TreeForeignKey
+from datetime import date
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -590,3 +590,33 @@ class ReviewReply(models.Model):
 
     class Meta:
         verbose_name_plural = 'Review replies'
+        
+class AIDescriptionUsage(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    date = models.DateField(default=timezone.now)
+    count = models.PositiveIntegerField(default=0)
+    
+    class Meta:
+        unique_together = ('user', 'date')
+        
+    @classmethod
+    def get_today_count(cls, user):
+        today = timezone.now().date()
+        usage, created = cls.objects.get_or_create(
+            user=user, 
+            date=today,
+            defaults={'count': 0}
+        )
+        return usage.count
+    
+    @classmethod
+    def increment_usage(cls, user):
+        today = timezone.now().date()
+        usage, created = cls.objects.get_or_create(
+            user=user, 
+            date=today,
+            defaults={'count': 0}
+        )
+        usage.count += 1
+        usage.save()
+        return usage.count

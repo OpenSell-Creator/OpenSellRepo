@@ -14,6 +14,7 @@ from pathlib import Path
 from django.contrib.messages import constants as messages
 import os
 import boto3
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -266,7 +267,7 @@ ACCOUNT_EMAIL_SUBJECT_PREFIX = ''
 ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
 
 
-'''LOGGING = {
+LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
@@ -341,7 +342,7 @@ ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
             'propagate': True,
         },
     },
-}'''
+}
 
 # Email settings
 if not DEBUG:
@@ -432,3 +433,9 @@ else:
 # Increase Django's file upload limits
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB 
+
+
+# Free API Keys (get from respective platforms)
+HUGGINGFACE_API_TOKEN = os.environ.get('HUGGINGFACE_API_TOKEN')
+
+

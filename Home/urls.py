@@ -30,6 +30,7 @@ urlpatterns = [
     path('products/toggle-save/', views.toggle_save_product, name='toggle_save_product'),
     path('products/saved/', views.saved_products, name='saved_products'),
     
+    path('ajax/generate-ai-description/', views.generate_ai_description, name='generate_ai_description'),
     path('api/subcategories/<int:category_id>/', views.get_subcategories, name='get_subcategories'),
     path('ajax/load-brands/', views.load_brands, name='ajax_load_brands'),
     path('api/subcategories/', views.get_subcategories, name='api_subcategories'),

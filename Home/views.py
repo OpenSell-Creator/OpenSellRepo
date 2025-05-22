@@ -1,9 +1,14 @@
 from django.http import JsonResponse,HttpResponseRedirect
+import requests
+import json
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from django.db import IntegrityError
 from django.shortcuts import render, get_object_or_404,redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from .models import Product_Listing, Review, ReviewReply, SavedProduct, ProductReport
+from django.views.decorators.http import require_http_methods
+from .models import Product_Listing, Review, ReviewReply, SavedProduct, ProductReport, AIDescriptionUsage
 from User.models import LGA, State
 from Dashboard.models import ProductBoost
 from django.core.paginator import Paginator
@@ -487,7 +492,7 @@ class ProductCreateView(LoginRequiredMixin, CreateView):
                             f'Image "{image.name}" was too large and was skipped. Please upload images under 5MB.'
                         )
                         continue
-                        
+                    
                     # Create the product image
                     Product_Image.objects.create(
                         product=self.object,
@@ -521,18 +526,20 @@ class ProductCreateView(LoginRequiredMixin, CreateView):
                     'status': 'error',
                     'message': f'Error creating product: {str(e)}'
                 }, status=400)
-                
+            
             return self.form_invalid(form)
-
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Create New Listing'
         context['save'] = 'List Product'
+        context['ai_descriptions_remaining'] = get_remaining_descriptions(self.request.user)
+        
         # Add time_remaining to context if object exists
         if hasattr(self, 'object') and self.object:
             context['time_remaining'] = self.object.time_remaining
         return context
-
+    
 class ProductUpdateView(LoginRequiredMixin, UpdateView):
     model = Product_Listing
     form_class = ListingForm
@@ -705,7 +712,142 @@ class RelatedProductsView(ListView):
             Q(category=product.category) | 
             Q(subcategory=product.subcategory)
         ).exclude(id=product.id).distinct()
+
+class ReportProductView(View):
+    def get(self, request, product_id):
+        """
+        Handle GET requests to the report product page.
+        Renders the report form for the specific product.
+        """
+        try:
+            # Fetch the product, return 404 if not found
+            product = get_object_or_404(Product_Listing, id=product_id)
+            
+            # Check if product is already suspended
+            if product.is_suspended:
+                messages.warning(request, "This listing has already been suspended by the marketplace.")
+            
+            # Render the report form template
+            return render(request, 'report_product.html', {
+                'product': product,
+                'form': ProductReportForm()
+            })
         
+        except Exception as e:
+            # Log any unexpected errors
+            logging.error(f"Error accessing report product page: {e}")
+            return JsonResponse({
+                'success': False,
+                'message': 'An error occurred while accessing the report page.'
+            }, status=500)
+
+    def post(self, request, product_id):
+        """
+        Handle POST requests to submit a product report.
+        """
+        try:
+            # Fetch the product
+            product = get_object_or_404(Product_Listing, id=product_id)
+            
+            # Validate the form
+            form = ProductReportForm(request.POST)
+            if form.is_valid():
+                # Create a new report record
+                report = ProductReport(
+                    product=product,
+                    reason=form.cleaned_data['reason'],
+                    details=form.cleaned_data['details'],
+                    reporter_email=form.cleaned_data['reporter_email'] or None,
+                )
+                report.save()
+                
+                # Check for automatic suspension threshold (e.g., if more than 5 reports)
+                report_count = product.reports.count()
+                
+                # Prepare email content
+                report_data = {
+                    'product_id': str(product.id),
+                    'product_title': product.title,
+                    'seller_username': product.seller.user.username,
+                    'reason': form.cleaned_data['reason'],
+                    'details': form.cleaned_data['details'],
+                    'reporter_email': form.cleaned_data['reporter_email'] or 'Anonymous',
+                    'report_count': report_count
+                }
+                
+                # Render email content
+                email_body = render_to_string('emails/product_report_email.html', report_data)
+                
+                try:
+                    # Send email
+                    send_mail(
+                        subject=f'Product Report: {product.title} (#{report_count})',
+                        message=email_body,
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=['opensellmarketplace@gmail.com'],
+                        html_message=email_body,
+                        fail_silently=False,
+                    )
+                    
+                    # Auto-suspend if threshold reached
+                    if report_count >= 5 and not product.is_suspended:
+                        try:
+                            # Get a superuser
+                            from django.contrib.auth.models import User
+                            superuser = User.objects.filter(is_superuser=True).first()
+                            
+                            if superuser:
+                                # Auto-suspend the listing
+                                product.suspend(
+                                    superuser, 
+                                    f"Auto-suspended after receiving {report_count} reports. Last report reason: {report.get_reason_display()}"
+                                )
+                                
+                                # Mark all related reports as resolved
+                                product.reports.filter(status='pending').update(
+                                    status='resolved',
+                                    reviewed_by=superuser,
+                                    reviewed_at=timezone.now(),
+                                    resolution_notes=f"Auto-resolved due to listing suspension after {report_count} reports."
+                                )
+                        except Exception as auto_suspend_error:
+                            logging.error(f"Error auto-suspending product: {auto_suspend_error}")
+                    
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'Thank you for reporting this product. We will review it shortly.'
+                    })
+                
+                except Exception as e:
+                    # Log email sending error
+                    logging.error(f"Error sending report email: {e}")
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'An error occurred while processing your report. Please try again.'
+                    }, status=500)
+            
+            else:
+                # Return form validation errors
+                return JsonResponse({
+                    'success': False,
+                    'errors': form.errors
+                }, status=400)
+        
+        except Product_Listing.DoesNotExist:
+            # Handle case where product is not found
+            return JsonResponse({
+                'success': False,
+                'message': 'Product not found'
+            }, status=404)
+        
+        except Exception as e:
+            # Log any unexpected errors
+            logging.error(f"Unexpected error in report product view: {e}")
+            return JsonResponse({
+                'success': False,
+                'message': 'An unexpected error occurred.'
+            }, status=500)
+            
 @login_required
 @require_POST
 def toggle_save_product(request):
@@ -1048,141 +1190,6 @@ def my_store(request, username=None):
 
     return render(request, 'my_store.html', context)
 
-class ReportProductView(View):
-    def get(self, request, product_id):
-        """
-        Handle GET requests to the report product page.
-        Renders the report form for the specific product.
-        """
-        try:
-            # Fetch the product, return 404 if not found
-            product = get_object_or_404(Product_Listing, id=product_id)
-            
-            # Check if product is already suspended
-            if product.is_suspended:
-                messages.warning(request, "This listing has already been suspended by the marketplace.")
-            
-            # Render the report form template
-            return render(request, 'report_product.html', {
-                'product': product,
-                'form': ProductReportForm()
-            })
-        
-        except Exception as e:
-            # Log any unexpected errors
-            logging.error(f"Error accessing report product page: {e}")
-            return JsonResponse({
-                'success': False,
-                'message': 'An error occurred while accessing the report page.'
-            }, status=500)
-
-    def post(self, request, product_id):
-        """
-        Handle POST requests to submit a product report.
-        """
-        try:
-            # Fetch the product
-            product = get_object_or_404(Product_Listing, id=product_id)
-            
-            # Validate the form
-            form = ProductReportForm(request.POST)
-            if form.is_valid():
-                # Create a new report record
-                report = ProductReport(
-                    product=product,
-                    reason=form.cleaned_data['reason'],
-                    details=form.cleaned_data['details'],
-                    reporter_email=form.cleaned_data['reporter_email'] or None,
-                )
-                report.save()
-                
-                # Check for automatic suspension threshold (e.g., if more than 5 reports)
-                report_count = product.reports.count()
-                
-                # Prepare email content
-                report_data = {
-                    'product_id': str(product.id),
-                    'product_title': product.title,
-                    'seller_username': product.seller.user.username,
-                    'reason': form.cleaned_data['reason'],
-                    'details': form.cleaned_data['details'],
-                    'reporter_email': form.cleaned_data['reporter_email'] or 'Anonymous',
-                    'report_count': report_count
-                }
-                
-                # Render email content
-                email_body = render_to_string('emails/product_report_email.html', report_data)
-                
-                try:
-                    # Send email
-                    send_mail(
-                        subject=f'Product Report: {product.title} (#{report_count})',
-                        message=email_body,
-                        from_email=settings.DEFAULT_FROM_EMAIL,
-                        recipient_list=['opensellmarketplace@gmail.com'],
-                        html_message=email_body,
-                        fail_silently=False,
-                    )
-                    
-                    # Auto-suspend if threshold reached
-                    if report_count >= 5 and not product.is_suspended:
-                        try:
-                            # Get a superuser
-                            from django.contrib.auth.models import User
-                            superuser = User.objects.filter(is_superuser=True).first()
-                            
-                            if superuser:
-                                # Auto-suspend the listing
-                                product.suspend(
-                                    superuser, 
-                                    f"Auto-suspended after receiving {report_count} reports. Last report reason: {report.get_reason_display()}"
-                                )
-                                
-                                # Mark all related reports as resolved
-                                product.reports.filter(status='pending').update(
-                                    status='resolved',
-                                    reviewed_by=superuser,
-                                    reviewed_at=timezone.now(),
-                                    resolution_notes=f"Auto-resolved due to listing suspension after {report_count} reports."
-                                )
-                        except Exception as auto_suspend_error:
-                            logging.error(f"Error auto-suspending product: {auto_suspend_error}")
-                    
-                    return JsonResponse({
-                        'success': True,
-                        'message': 'Thank you for reporting this product. We will review it shortly.'
-                    })
-                
-                except Exception as e:
-                    # Log email sending error
-                    logging.error(f"Error sending report email: {e}")
-                    return JsonResponse({
-                        'success': False,
-                        'message': 'An error occurred while processing your report. Please try again.'
-                    }, status=500)
-            
-            else:
-                # Return form validation errors
-                return JsonResponse({
-                    'success': False,
-                    'errors': form.errors
-                }, status=400)
-        
-        except Product_Listing.DoesNotExist:
-            # Handle case where product is not found
-            return JsonResponse({
-                'success': False,
-                'message': 'Product not found'
-            }, status=404)
-        
-        except Exception as e:
-            # Log any unexpected errors
-            logging.error(f"Unexpected error in report product view: {e}")
-            return JsonResponse({
-                'success': False,
-                'message': 'An unexpected error occurred.'
-            }, status=500)
-            
 def handler404(request, exception):
     """
     Custom 404 handler that differentiates between product-related 404s and general 404s
@@ -1224,3 +1231,643 @@ def handler404(request, exception):
     except:
         # If there's any error, return an empty list
         return []
+    
+def generate_product_description(title, category=None, brand=None, condition=None):
+    """
+    Generate comprehensive product description with category-specific details
+    """
+    try:
+        # First try AI generation, then enhance with structured details
+        ai_description = generate_ai_base_description(title, category, brand, condition)
+        
+        # Generate structured details based on category
+        structured_details = generate_category_specific_details(title, category, brand, condition)
+        
+        # Combine AI description with structured details
+        if ai_description and structured_details:
+            final_description = f"{ai_description}\n\n{structured_details}"
+        elif structured_details:
+            # Use fallback base description + structured details
+            base_description = generate_fallback_description(title, category, brand, condition)
+            final_description = f"{base_description}\n\n{structured_details}"
+        else:
+            final_description = ai_description or generate_fallback_description(title, category, brand, condition)
+        
+        return final_description
+        
+    except Exception as e:
+        logger.error(f"Error in generate_product_description: {str(e)}")
+        return generate_comprehensive_fallback(title, category, brand, condition)
+
+def generate_ai_base_description(title, category=None, brand=None, condition=None):
+    """
+    Generate base description using Hugging Face API
+    """
+    try:
+        API_URL = "https://api-inference.huggingface.co/models/gpt2"
+        
+        headers = {
+            "Authorization": f"Bearer {settings.HUGGINGFACE_API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        
+        # Create enhanced prompt for better AI generation
+        prompt_parts = [f"Product: {title}"]
+        
+        if category:
+            prompt_parts.append(f"Category: {category}")
+        if brand:
+            prompt_parts.append(f"Brand: {brand}")
+        if condition:
+            prompt_parts.append(f"Condition: {condition}")
+            
+        prompt_parts.append("Write a detailed product description highlighting key features and benefits:")
+        
+        prompt = ". ".join(prompt_parts)
+        
+        payload = {
+            "inputs": prompt,
+            "parameters": {
+                "max_length": 120,
+                "min_length": 40,
+                "temperature": 0.7,
+                "do_sample": True,
+                "pad_token_id": 50256
+            }
+        }
+        
+        response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
+        
+        if response.status_code == 200:
+            result = response.json()
+            if isinstance(result, list) and len(result) > 0:
+                generated_text = result[0].get('generated_text', '')
+                description = clean_generated_description(generated_text, prompt)
+                return description
+        
+        return None
+        
+    except Exception as e:
+        logger.error(f"AI generation error: {str(e)}")
+        return None
+
+def generate_category_specific_details(title, category=None, brand=None, condition=None):
+    """
+    Generate structured, category-specific details section
+    """
+    try:
+        details_sections = []
+        product_type = detect_product_type(title, category)
+        
+        # Add specification section based on product type
+        specs = generate_specifications_section(product_type, title, brand, condition)
+        if specs:
+            details_sections.append(f"📋 SPECIFICATIONS:\n{specs}")
+        
+        # Add condition details
+        condition_details = generate_condition_details(condition, product_type)
+        if condition_details:
+            details_sections.append(f"🔍 CONDITION & DETAILS:\n{condition_details}")
+        
+        # Add features section
+        features = generate_features_section(product_type, title)
+        if features:
+            details_sections.append(f"✨ KEY FEATURES:\n{features}")
+        
+        # Add compatibility/usage section
+        compatibility = generate_compatibility_section(product_type, title)
+        if compatibility:
+            details_sections.append(f"🔗 COMPATIBILITY & USAGE:\n{compatibility}")
+        
+        # Add what's included section
+        included = generate_included_items(product_type, condition)
+        if included:
+            details_sections.append(f"📦 WHAT'S INCLUDED:\n{included}")
+        
+        return "\n\n".join(details_sections) if details_sections else None
+        
+    except Exception as e:
+        logger.error(f"Error generating category-specific details: {str(e)}")
+        return None
+
+def detect_product_type(title, category=None):
+    """
+    Detect product type from title and category for targeted details
+    """
+    title_lower = title.lower()
+    category_lower = category.lower() if category else ""
+    
+    # Smartphones and Tablets
+    if any(phone in title_lower for phone in ['iphone', 'samsung', 'android', 'smartphone', 'phone']) or 'iphones' in category_lower:
+        return 'smartphone'
+    elif any(tablet in title_lower for tablet in ['ipad', 'tablet']) or 'tablets' in category_lower or 'ipads' in category_lower:
+        return 'tablet'
+    
+    # Electronics
+    elif any(laptop in title_lower for laptop in ['laptop', 'macbook', 'thinkpad', 'dell', 'hp', 'lenovo']) or 'computers' in category_lower:
+        return 'laptop'
+    elif any(tv in title_lower for tv in ['tv', 'television', 'smart tv', 'led', 'oled']) or 'televisions' in category_lower:
+        return 'television'
+    elif any(audio in title_lower for audio in ['headphone', 'speaker', 'earphone', 'airpods', 'audio']) or 'audio' in category_lower:
+        return 'audio_device'
+    elif any(gaming in title_lower for gaming in ['ps4', 'ps5', 'xbox', 'nintendo', 'gaming']) or 'gaming' in category_lower:
+        return 'gaming_console'
+    
+    # Vehicles
+    elif any(car in title_lower for car in ['car', 'toyota', 'honda', 'mercedes', 'bmw', 'lexus']) or 'cars' in category_lower:
+        return 'car'
+    elif any(bike in title_lower for bike in ['motorcycle', 'bike', 'yamaha', 'honda', 'suzuki']) or 'motorcycles' in category_lower:
+        return 'motorcycle'
+    
+    # Home Appliances
+    elif any(appliance in title_lower for appliance in ['refrigerator', 'washing machine', 'microwave', 'ac', 'air conditioner']):
+        return 'home_appliance'
+    
+    # Fashion
+    elif 'fashion' in category_lower or any(fashion in title_lower for fashion in ['shirt', 'dress', 'shoe', 'bag', 'watch']):
+        return 'fashion_item'
+    
+    # Real Estate
+    elif 'real estate' in category_lower or any(estate in title_lower for estate in ['house', 'apartment', 'land', 'property']):
+        return 'real_estate'
+    
+    # Solar & Renewable Energy
+    elif 'solar' in category_lower or any(solar in title_lower for solar in ['solar', 'inverter', 'battery', 'panel']):
+        return 'solar_equipment'
+    
+    # Default
+    return 'general'
+
+def generate_specifications_section(product_type, title, brand, condition):
+    """
+    Generate specifications based on product type
+    """
+    specs = []
+    
+    if product_type == 'smartphone':
+        specs.extend([
+            "• Brand: [Please specify brand/model]",
+            "• Storage Capacity: [e.g., 64GB, 128GB, 256GB, 512GB]",
+            "• RAM: [e.g., 4GB, 6GB, 8GB, 12GB]",
+            "• Color: [e.g., Black, White, Blue, Gold, etc.]",
+            "• Screen Size: [e.g., 6.1 inch, 6.7 inch]",
+            "• Battery Health: [e.g., 85%, 90%, 95%]",
+            "• Operating System: [iOS/Android version]",
+            "• Network: [4G/5G compatibility]"
+        ])
+    
+    elif product_type == 'tablet':
+        specs.extend([
+            "• Brand: [Please specify brand/model]",
+            "• Storage Capacity: [e.g., 32GB, 64GB, 128GB, 256GB]",
+            "• Screen Size: [e.g., 10.2 inch, 11 inch, 12.9 inch]",
+            "• Color: [e.g., Space Gray, Silver, Gold]",
+            "• Connectivity: [Wi-Fi only/Wi-Fi + Cellular]",
+            "• Battery Life: [Estimated hours of usage]",
+            "• Operating System: [iOS/Android version]"
+        ])
+    
+    elif product_type == 'laptop':
+        specs.extend([
+            "• Brand & Model: [Please specify]",
+            "• Processor: [e.g., Intel Core i5, AMD Ryzen 7]",
+            "• RAM: [e.g., 8GB, 16GB, 32GB]",
+            "• Storage: [e.g., 256GB SSD, 512GB SSD, 1TB HDD]",
+            "• Screen Size: [e.g., 13.3 inch, 15.6 inch]",
+            "• Graphics: [Integrated/Dedicated GPU]",
+            "• Operating System: [Windows/macOS/Linux]",
+            "• Battery Life: [Estimated hours]"
+        ])
+    
+    elif product_type == 'television':
+        specs.extend([
+            "• Brand & Model: [Please specify]",
+            "• Screen Size: [e.g., 32 inch, 43 inch, 55 inch, 65 inch]",
+            "• Display Type: [LED, OLED, QLED]",
+            "• Resolution: [HD, Full HD, 4K, 8K]",
+            "• Smart TV Features: [Yes/No - specify platform]",
+            "• Connectivity: [HDMI ports, USB ports, Wi-Fi]",
+            "• Audio: [Built-in speakers wattage]"
+        ])
+    
+    elif product_type == 'car':
+        specs.extend([
+            "• Make & Model: [Please specify]",
+            "• Year of Manufacture: [e.g., 2018, 2020, 2022]",
+            "• Mileage: [e.g., 45,000 km, 80,000 km]",
+            "• Engine Type: [Petrol/Diesel/Hybrid]",
+            "• Transmission: [Manual/Automatic]",
+            "• Color: [Exterior and Interior colors]",
+            "• Fuel Efficiency: [e.g., 12km/L city, 18km/L highway]",
+            "• Number of Owners: [First owner, Second owner, etc.]"
+        ])
+    
+    elif product_type == 'motorcycle':
+        specs.extend([
+            "• Make & Model: [Please specify]",
+            "• Engine Capacity: [e.g., 125cc, 200cc, 400cc]",
+            "• Year: [Year of manufacture]",
+            "• Mileage: [Kilometers covered]",
+            "• Color: [Primary color]",
+            "• Fuel Type: [Petrol/Electric]",
+            "• Transmission: [Manual/Automatic]"
+        ])
+    
+    elif product_type == 'home_appliance':
+        specs.extend([
+            "• Brand & Model: [Please specify]",
+            "• Capacity/Size: [Relevant capacity/dimensions]",
+            "• Energy Rating: [Energy efficiency rating]",
+            "• Power Consumption: [Watts/kWh]",
+            "• Color/Finish: [e.g., White, Stainless Steel, Black]",
+            "• Special Features: [List key features]"
+        ])
+    
+    elif product_type == 'solar_equipment':
+        specs.extend([
+            "• Brand & Model: [Please specify]",
+            "• Capacity/Rating: [e.g., 200W, 5KVA, 100Ah]",
+            "• Type: [Monocrystalline/Polycrystalline/Gel/Lithium]",
+            "• Warranty: [Manufacturer warranty period]",
+            "• Efficiency: [Conversion efficiency percentage]",
+            "• Certifications: [Quality certifications]"
+        ])
+    
+    else:  # general
+        specs.extend([
+            "• Brand: [Please specify if applicable]",
+            "• Model/Type: [Product model or type]",
+            "• Size/Dimensions: [Physical dimensions]",
+            "• Color: [Available colors]",
+            "• Material: [Primary materials used]"
+        ])
+    
+    return "\n".join(specs) if specs else None
+
+def generate_condition_details(condition, product_type):
+    """
+    Generate condition-specific details
+    """
+    details = []
+    
+    if not condition:
+        details.append("• Condition: [Please specify - New, Like New, Good, Fair]")
+    
+    if product_type == 'smartphone':
+        details.extend([
+            "• Screen Condition: [No cracks, minor scratches, etc.]",
+            "• Body Condition: [Excellent, good, minor wear, etc.]",
+            "• Button Functionality: [All buttons working perfectly]",
+            "• Camera Quality: [Front and back camera condition]",
+            "• Charging Port: [Working condition]",
+            "• Face ID/Fingerprint: [Working status]",
+            "• Known Issues: [Any defects or problems]"
+        ])
+    
+    elif product_type in ['laptop', 'tablet']:
+        details.extend([
+            "• Screen Condition: [No dead pixels, brightness level]",
+            "• Keyboard/Touch: [All keys/touch working]",
+            "• Battery Health: [Backup time, charging status]",
+            "• Physical Condition: [Scratches, dents, wear level]",
+            "• Ports & Connections: [All ports working status]",
+            "• Known Issues: [Any hardware/software problems]"
+        ])
+    
+    elif product_type == 'car':
+        details.extend([
+            "• Engine Condition: [Excellent, Good, Fair]",
+            "• Transmission: [Smooth operation status]",
+            "• Exterior Condition: [Paint, dents, scratches]",
+            "• Interior Condition: [Seats, dashboard, electronics]",
+            "• Tire Condition: [Tread depth, replacement needed]",
+            "• Service History: [Recent services, maintenance]",
+            "• Accident History: [No accidents, minor, etc.]",
+            "• Documents: [Complete papers, registration status]"
+        ])
+    
+    else:
+        details.extend([
+            "• Overall Condition: [Detailed condition description]",
+            "• Functionality: [All features working status]",
+            "• Physical Appearance: [Wear, scratches, damage]",
+            "• Known Issues: [Any defects or limitations]"
+        ])
+    
+    return "\n".join(details) if details else None
+
+def generate_features_section(product_type, title):
+    """
+    Generate key features based on product type
+    """
+    features = []
+    
+    if product_type == 'smartphone':
+        features.extend([
+            "• High-quality camera for photos and videos",
+            "• Fast processing for smooth performance",
+            "• Long-lasting battery life",
+            "• Secure biometric authentication",
+            "• Premium build quality and design",
+            "• Latest software updates supported"
+        ])
+    
+    elif product_type == 'laptop':
+        features.extend([
+            "• Powerful processor for multitasking",
+            "• Portable and lightweight design",
+            "• High-resolution display",
+            "• Fast SSD storage for quick boot-up",
+            "• Multiple connectivity options",
+            "• Perfect for work, study, or entertainment"
+        ])
+    
+    elif product_type == 'car':
+        features.extend([
+            "• Reliable and well-maintained vehicle",
+            "• Comfortable seating and interior",
+            "• Good fuel efficiency",
+            "• Safety features included",
+            "• Smooth driving experience",
+            "• Ready for immediate use"
+        ])
+    
+    return "\n".join(features) if features else None
+
+def generate_compatibility_section(product_type, title):
+    """
+    Generate compatibility and usage information
+    """
+    compatibility = []
+    
+    if product_type == 'smartphone':
+        compatibility.extend([
+            "• Compatible with all network providers in Nigeria",
+            "• Supports 4G/5G networks (where available)",
+            "• Works with wireless chargers (if supported)",
+            "• Compatible with Bluetooth accessories",
+            "• Supports all popular apps and games"
+        ])
+    
+    elif product_type == 'laptop':
+        compatibility.extend([
+            "• Compatible with all major software applications",
+            "• Supports external monitors and peripherals",
+            "• Wi-Fi and Bluetooth connectivity",
+            "• USB ports for various devices",
+            "• Perfect for students, professionals, and creators"
+        ])
+    
+    elif product_type == 'solar_equipment':
+        compatibility.extend([
+            "• Suitable for Nigerian climate conditions",
+            "• Compatible with standard electrical systems",
+            "• Works with various appliances and devices",
+            "• Easy installation and maintenance",
+            "• Reduces electricity bills significantly"
+        ])
+    
+    return "\n".join(compatibility) if compatibility else None
+
+def generate_included_items(product_type, condition):
+    """
+    Generate what's included with the product
+    """
+    included = []
+    
+    if product_type == 'smartphone':
+        if condition and condition.lower() == 'new':
+            included.extend([
+                "• Original retail box and packaging",
+                "• Charging cable and adapter",
+                "• User manual and warranty card",
+                "• Unused accessories (if any)",
+                "• Screen protector (may be pre-installed)"
+            ])
+        else:
+            included.extend([
+                "• Phone unit only (unless stated otherwise)",
+                "• Charging cable (if available)",
+                "• May include original box and accessories",
+                "• Please confirm included items with seller"
+            ])
+    
+    elif product_type == 'laptop':
+        included.extend([
+            "• Laptop unit",
+            "• Original charger/power adapter",
+            "• Battery (condition as described)",
+            "• May include original box and manuals",
+            "• Pre-installed operating system"
+        ])
+    
+    elif product_type == 'car':
+        included.extend([
+            "• Complete vehicle documentation",
+            "• Spare tire and tools",
+            "• Car keys (original and spare if available)",
+            "• User manual and service records",
+            "• Current registration and insurance details"
+        ])
+    
+    else:
+        included.append("• Item as described (please confirm details with seller)")
+    
+    return "\n".join(included) if included else None
+
+def generate_comprehensive_fallback(title, category=None, brand=None, condition=None):
+    """
+    Comprehensive fallback when all other methods fail
+    """
+    try:
+        base_description = generate_fallback_description(title, category, brand, condition)
+        product_type = detect_product_type(title, category)
+        
+        # Add basic structured section
+        structured_section = f"""
+📋 PRODUCT DETAILS:
+• Title: {title}
+• Category: {category or 'Please specify'}
+• Brand: {brand or 'Please specify'}
+• Condition: {condition or 'Please specify'}
+
+🔍 ADDITIONAL INFORMATION NEEDED:
+Please contact seller for detailed specifications, exact condition, included accessories, and any other relevant information about this {title.lower()}.
+
+📞 SELLER COMMUNICATION:
+Feel free to ask questions about specifications, condition, price negotiation, viewing arrangements, and delivery options.
+        """
+        
+        return f"{base_description}\n{structured_section.strip()}"
+        
+    except Exception as e:
+        logger.error(f"Error in comprehensive fallback: {str(e)}")
+        return f"Quality {title} available for sale. Contact seller for detailed information about specifications, condition, and pricing."
+
+# Keep existing functions (clean_generated_description, generate_fallback_description, generate_ai_description view)
+# with the same implementation as they're working fine
+
+def clean_generated_description(generated_text, original_prompt):
+    """
+    Clean and format the generated description (keep existing implementation)
+    """
+    try:
+        if original_prompt in generated_text:
+            description = generated_text.replace(original_prompt, '').strip()
+        else:
+            description = generated_text.strip()
+        
+        unwanted_patterns = [
+            'Write a detailed product description for:',
+            'Product:', 'Description should be professional',
+            'Category:', 'Brand:', 'Condition:'
+        ]
+        
+        for pattern in unwanted_patterns:
+            description = description.replace(pattern, '').strip()
+        
+        if description and not description[0].isupper():
+            description = description[0].upper() + description[1:]
+        
+        # Limit the AI part to be concise since we're adding structured details
+        if len(description) > 200:
+            description = description[:197] + '...'
+        
+        return description if description else None
+        
+    except Exception as e:
+        logger.error(f"Error cleaning generated description: {str(e)}")
+        return None
+
+def generate_fallback_description(title, category=None, brand=None, condition=None):
+    """
+    Generate a basic description when AI generation fails (keep existing but enhance)
+    """
+    try:
+        description_parts = []
+        
+        if condition:
+            if condition.lower() == 'new':
+                description_parts.append(f"Brand new {title} in excellent condition, never used.")
+            elif condition.lower() in ['like new', 'excellent']:
+                description_parts.append(f"Premium quality {title} in like-new condition.")
+            elif condition.lower() == 'good':
+                description_parts.append(f"Well-maintained {title} in good working condition.")
+            elif condition.lower() == 'fair':
+                description_parts.append(f"Functional {title} in fair condition, perfect for budget-conscious buyers.")
+            else:
+                description_parts.append(f"Quality {title} in {condition.lower()} condition.")
+        else:
+            description_parts.append(f"Premium {title} available for sale.")
+        
+        if brand:
+            description_parts.append(f"Authentic {brand} product ensuring reliability and quality.")
+        
+        # Category-specific descriptions
+        category_descriptions = {
+            'smartphones': 'Perfect for communication, entertainment, and productivity.',
+            'tablets': 'Ideal for work, study, entertainment, and creative tasks.',
+            'laptops': 'Great for professional work, students, and personal computing needs.',
+            'electronics': 'Fully functional and ready for immediate use.',
+            'vehicles': 'Well-maintained and roadworthy vehicle.',
+            'fashion': 'Stylish and trendy fashion item.',
+            'home appliances': 'Efficient and reliable home appliance.',
+            'real estate': 'Prime property with excellent potential.',
+        }
+        
+        category_key = category.lower() if category else 'general'
+        for key, desc in category_descriptions.items():
+            if key in category_key:
+                description_parts.append(desc)
+                break
+        else:
+            description_parts.append('Excellent value for money and ready for immediate use.')
+        
+        description_parts.append('Serious buyers only. Inspection welcome before purchase.')
+        
+        return ' '.join(description_parts)
+        
+    except Exception as e:
+        logger.error(f"Error generating fallback description: {str(e)}")
+        return f"Quality {title} available for sale. Contact seller for more information."
+
+def get_remaining_descriptions(user):
+    if not user.is_authenticated:
+        return 0
+    
+    DAILY_LIMIT = 3
+    today_count = AIDescriptionUsage.get_today_count(user)
+    return max(0, DAILY_LIMIT - today_count)
+
+# AJAX View remains the same
+@require_http_methods(["POST"])
+@csrf_exempt
+def generate_ai_description(request):
+    try:
+        # Check if user is authenticated
+        if not request.user.is_authenticated:
+            return JsonResponse({
+                'success': False,
+                'error': 'You must be logged in to generate descriptions.'
+            })
+        
+        # Check daily limit
+        DAILY_LIMIT = 2
+        today_count = AIDescriptionUsage.get_today_count(request.user)
+        
+        if today_count >= DAILY_LIMIT:
+            return JsonResponse({
+                'success': False,
+                'error': f'Daily limit reached. You can generate {DAILY_LIMIT} descriptions per day. Try again tomorrow.'
+            })
+        
+        data = json.loads(request.body)
+        title = data.get('title', '').strip()
+        category = data.get('category', '').strip()
+        brand = data.get('brand', '').strip()
+        condition = data.get('condition', '').strip()
+                 
+        if not title:
+            return JsonResponse({
+                'success': False,
+                'error': 'Product title is required to generate description.'
+            })
+        
+        # Generate description
+        description = generate_product_description(title, category, brand, condition)
+                 
+        if description:
+            # Increment usage count only on successful generation
+            new_count = AIDescriptionUsage.increment_usage(request.user)
+            remaining = DAILY_LIMIT - new_count
+            
+            return JsonResponse({
+                'success': True,
+                'description': description,
+                'message': f'Description generated successfully! ({remaining} remaining today)',
+                'remaining_today': remaining
+            })
+        else:
+            fallback_description = generate_comprehensive_fallback(title, category, brand, condition)
+            # Increment usage count for fallback too
+            new_count = AIDescriptionUsage.increment_usage(request.user)
+            remaining = DAILY_LIMIT - new_count
+            
+            return JsonResponse({
+                'success': True,
+                'description': fallback_description,
+                'message': f'Description generated using template. ({remaining} remaining today)',
+                'remaining_today': remaining
+            })
+                      
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid request format.'
+        })
+    except Exception as e:
+        logger.error(f"Error in generate_ai_description view: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': 'An error occurred while generating the description. Please try again.'
+        })
