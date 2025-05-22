@@ -1809,7 +1809,7 @@ def generate_ai_description(request):
             })
         
         # Check daily limit
-        DAILY_LIMIT = 2
+        DAILY_LIMIT = 3
         today_count = AIDescriptionUsage.get_today_count(request.user)
         
         if today_count >= DAILY_LIMIT:
