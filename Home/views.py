@@ -784,7 +784,7 @@ class ReportProductView(View):
                         subject=f'Product Report: {product.title} (#{report_count})',
                         message=email_body,
                         from_email=settings.DEFAULT_FROM_EMAIL,
-                        recipient_list=settings.SUPPORT_EMAIL,
+                        recipient_list=['support@opensell.online'],
                         html_message=email_body,
                         fail_silently=False,
                     )
