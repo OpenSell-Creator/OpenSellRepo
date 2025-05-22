@@ -1406,12 +1406,12 @@ def generate_specifications_section(product_type, title, brand, condition):
     
     if product_type == 'smartphone':
         specs.extend([
-            "• Brand: [Please specify brand/model]",
-            "• Storage Capacity: [e.g., 64GB, 128GB, 256GB, 512GB]",
-            "• RAM: [e.g., 4GB, 6GB, 8GB, 12GB]",
-            "• Color: [e.g., Black, White, Blue, Gold, etc.]",
-            "• Screen Size: [e.g., 6.1 inch, 6.7 inch]",
-            "• Battery Health: [e.g., 85%, 90%, 95%]",
+            "• Brand: [brand/model]",
+            "• Storage Capacity: [e.g. 128GB]",
+            "• RAM: [e.g. 8GB]",
+            "• Color: [e.g., Black]",
+            "• Screen Size: [e.g., 6.1 inch",
+            "• Battery Health: [e.g., 85%]",
             "• Operating System: [iOS/Android version]",
             "• Network: [4G/5G compatibility]"
         ])
@@ -1419,9 +1419,9 @@ def generate_specifications_section(product_type, title, brand, condition):
     elif product_type == 'tablet':
         specs.extend([
             "• Brand: [Please specify brand/model]",
-            "• Storage Capacity: [e.g., 32GB, 64GB, 128GB, 256GB]",
-            "• Screen Size: [e.g., 10.2 inch, 11 inch, 12.9 inch]",
-            "• Color: [e.g., Space Gray, Silver, Gold]",
+            "• Storage Capacity: [e.g. 128GB]",
+            "• Screen Size: [e.g. 12.9 inch]",
+            "• Color: [e.g. Silver]",
             "• Connectivity: [Wi-Fi only/Wi-Fi + Cellular]",
             "• Battery Life: [Estimated hours of usage]",
             "• Operating System: [iOS/Android version]"
@@ -1431,9 +1431,9 @@ def generate_specifications_section(product_type, title, brand, condition):
         specs.extend([
             "• Brand & Model: [Please specify]",
             "• Processor: [e.g., Intel Core i5, AMD Ryzen 7]",
-            "• RAM: [e.g., 8GB, 16GB, 32GB]",
-            "• Storage: [e.g., 256GB SSD, 512GB SSD, 1TB HDD]",
-            "• Screen Size: [e.g., 13.3 inch, 15.6 inch]",
+            "• RAM: [e.g. 16GB]",
+            "• Storage: [e.g. 512GB SSD, 1TB HDD]",
+            "• Screen Size: [e.g. 15.6 inch]",
             "• Graphics: [Integrated/Dedicated GPU]",
             "• Operating System: [Windows/macOS/Linux]",
             "• Battery Life: [Estimated hours]"
@@ -1442,7 +1442,7 @@ def generate_specifications_section(product_type, title, brand, condition):
     elif product_type == 'television':
         specs.extend([
             "• Brand & Model: [Please specify]",
-            "• Screen Size: [e.g., 32 inch, 43 inch, 55 inch, 65 inch]",
+            "• Screen Size: [e.g. 32 inch]",
             "• Display Type: [LED, OLED, QLED]",
             "• Resolution: [HD, Full HD, 4K, 8K]",
             "• Smart TV Features: [Yes/No - specify platform]",
@@ -1453,8 +1453,8 @@ def generate_specifications_section(product_type, title, brand, condition):
     elif product_type == 'car':
         specs.extend([
             "• Make & Model: [Please specify]",
-            "• Year of Manufacture: [e.g., 2018, 2020, 2022]",
-            "• Mileage: [e.g., 45,000 km, 80,000 km]",
+            "• Year of Manufacture: [e.g. 2018]",
+            "• Mileage: [e.g. 45,000 km]",
             "• Engine Type: [Petrol/Diesel/Hybrid]",
             "• Transmission: [Manual/Automatic]",
             "• Color: [Exterior and Interior colors]",
@@ -1465,7 +1465,7 @@ def generate_specifications_section(product_type, title, brand, condition):
     elif product_type == 'motorcycle':
         specs.extend([
             "• Make & Model: [Please specify]",
-            "• Engine Capacity: [e.g., 125cc, 200cc, 400cc]",
+            "• Engine Capacity: [e.g. 200cc]",
             "• Year: [Year of manufacture]",
             "• Mileage: [Kilometers covered]",
             "• Color: [Primary color]",
