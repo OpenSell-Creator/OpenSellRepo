@@ -355,10 +355,10 @@ if not DEBUG:
     EMAIL_USE_TLS = True
     EMAIL_USE_SSL = False
     
-    SERVER_EMAIL = 'support@opensell.online'
-    DEFAULT_FROM_EMAIL = 'OpenSell <support@opensell.online>'
+    SERVER_EMAIL = 'no-reply@opensell.online'
+    DEFAULT_FROM_EMAIL = 'OpenSell <no-reply@opensell.online>'
     SUPPORT_EMAIL = 'OpenSell Support <support@opensell.online>'
-    NO_REPLY_EMAIL = 'OpenSell <support@opensell.online>'
+    NO_REPLY_EMAIL = 'OpenSell <no-reply@opensell.online>'
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 

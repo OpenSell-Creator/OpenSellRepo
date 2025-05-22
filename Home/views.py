@@ -1704,9 +1704,6 @@ Feel free to ask questions about specifications, condition, price negotiation, v
         logger.error(f"Error in comprehensive fallback: {str(e)}")
         return f"Quality {title} available for sale. Contact seller for detailed information about specifications, condition, and pricing."
 
-# Keep existing functions (clean_generated_description, generate_fallback_description, generate_ai_description view)
-# with the same implementation as they're working fine
-
 def clean_generated_description(generated_text, original_prompt):
     """
     Clean and format the generated description (keep existing implementation)
