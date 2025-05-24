@@ -12,7 +12,7 @@ from .models import Product_Listing, Review, ReviewReply, SavedProduct, ProductR
 from User.models import LGA, State
 from Dashboard.models import ProductBoost
 from django.core.paginator import Paginator
-from django.db.models import Q,F, Avg, Exists, OuterRef
+from django.db.models import Q, Avg, Exists, OuterRef, Count
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import View
@@ -23,7 +23,6 @@ from django.contrib.auth.models import User
 from .forms import ProductSearchForm, ReviewForm,ReviewReplyForm, Review, ProductReportForm, ListingForm
 from django.utils import timezone
 from decimal import Decimal
-from django.db.models import Count
 from datetime import timedelta
 from django.core.exceptions import ValidationError
 from User.models import Profile
@@ -35,6 +34,8 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
+import random
+import hashlib
 import logging
 import uuid
 
@@ -73,12 +74,48 @@ def get_active_banners(location='home_top'):
         (Q(end_date__isnull=True) | Q(end_date__gte=now))
     ).order_by('-priority', '-updated_at')
 
+from django.db.models import Q, Count
+from django.utils import timezone
+from datetime import timedelta
+import random
+import hashlib
+
 def home(request):
     # Initialize context dictionary first
     context = {}
     
-    # Get featured products
-    featured_products = Product_Listing.objects.order_by('-created_at')[:20]
+    # PROFESSIONAL APPROACH: User-specific random seeding for unique experience per user
+    # Create a unique seed for each user to ensure different random selections
+    if request.user.is_authenticated:
+        # Use user ID + current day to create consistent but changing seed
+        seed_string = f"{request.user.id}_{timezone.now().date()}"
+        user_seed = int(hashlib.md5(seed_string.encode()).hexdigest()[:8], 16)
+    else:
+        # For anonymous users, use session key or IP-based seed
+        session_key = request.session.session_key or request.META.get('REMOTE_ADDR', 'anonymous')
+        seed_string = f"{session_key}_{timezone.now().date()}"
+        user_seed = int(hashlib.md5(seed_string.encode()).hexdigest()[:8], 16)
+    
+    # Set seed for reproducible randomness per user per day
+    random.seed(user_seed)
+    
+    # Get a larger pool of quality products (not suspended, not expired, with valid data)
+    quality_products = Product_Listing.objects.filter(
+        is_suspended=False,  # Not suspended
+        expiration_date__gt=timezone.now(),  # Not expired
+        price__gt=0,  # Has valid price
+        # images__isnull=False,  # Uncomment if you want only products with images
+    ).order_by('-created_at')[:200]  # Get larger pool for better randomness
+    
+    # Randomly select featured products for this specific user
+    quality_products_list = list(quality_products)
+    featured_products = random.sample(
+        quality_products_list, 
+        min(20, len(quality_products_list))
+    )
+    
+    # Reset random seed to ensure no interference with other random operations
+    random.seed()
     
     # Get categories with product count
     categories = Category.objects.annotate(
@@ -123,6 +160,25 @@ def home(request):
     })
     
     return render(request, 'home.html', context)
+
+
+# BONUS: Cache-friendly random selection for better performance
+from django.core.cache import cache
+
+def get_random_featured_products():
+    """Get cached random featured products that refresh every 30 minutes"""
+    cache_key = 'random_featured_products'
+    featured_products = cache.get(cache_key)
+    
+    if not featured_products:
+        # Get a larger pool and randomly select from it
+        product_pool = list(Product_Listing.objects.order_by('-created_at')[:100])
+        featured_products = random.sample(product_pool, min(20, len(product_pool)))
+        
+        # Cache for 30 minutes
+        cache.set(cache_key, featured_products, 30 * 60)
+    
+    return featured_products
    
 def cookie_policy_view(request):
     return render(request, 'pages/cookie_policy.html')
