@@ -271,31 +271,31 @@
                 {{ product.seller.user.username }}
             </h5>
 
-            <!-- Star Rating -->
+            <!-- Star Rating (Consistent with review stars) -->
             <div class="rating-wrapper">
                 <div class="d-flex align-items-center gap-1">
                     <div class="stars">
-                        {% with ''|center:product.average_rating|make_list as stars %}
-                        {% for _ in stars %}
-                            <i class="fas fa-star"></i>
-                        {% endfor %}
-                        {% endwith %}
-                        {% with ''|center:5|make_list as empty_stars %}
-                        {% for _ in empty_stars %}
-                            {% if forloop.counter > product.average_rating %}
-                                <i class="far fa-star"></i>
+                        {% for i in "12345" %}
+                            {% if forloop.counter <= seller_average_rating|floatformat:0|add:0 %}
+                                <i class="fas fa-star" style="color: var(--accent-color);"></i>
+                            {% elif forloop.counter <= seller_average_rating|add:0.5 %}
+                                <i class="fas fa-star-half-alt" style="color: var(--accent-color);"></i>
+                            {% else %}
+                                <i class="far fa-star" style="color: var(--accent-color);"></i>
                             {% endif %}
                         {% endfor %}
-                        {% endwith %}
                     </div>
                     <span class="rating-value fw-semibold small">
-                        {{ product.average_rating|floatformat:1 }}/5
+                        {{ seller_average_rating|floatformat:1 }}/5
                     </span>
                 </div>
+                <small class="text-muted d-block text-center mt-1" style="color: var(--text-secondary) !important;">
+                    Based on {{ total_seller_reviews }} reviews
+                </small>
             </div>
 
             <!-- Bio -->
-            <p class="bio-text small mb-0">
+            <p class="bio-text small mb-0 text-center">
                 {{ product.seller.user.profile.bio|default:"No bio provided"|truncatechars:100 }}
             </p>
         </div>
@@ -314,6 +314,40 @@
                                 <small class="text-muted d-block">Member Since</small>
                                 <span class="fw-medium small">
                                     {{ product.seller.user.date_joined|date:"F d, Y" }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Total Products Ever Listed -->
+                <div class="col-12">
+                    <div class="detail-item">
+                        <div class="d-flex align-items-center">
+                            <div class="icon-wrapper">
+                                <i class="fas fa-box"></i>
+                            </div>
+                            <div class="content-wrapper">
+                                <small class="text-muted d-block">Total Products Listed</small>
+                                <span class="fw-medium small">
+                                    {{ seller_product_stats.total_ever_listed }} listings
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active Products -->
+                <div class="col-12">
+                    <div class="detail-item">
+                        <div class="d-flex align-items-center">
+                            <div class="icon-wrapper">
+                                <i class="fas fa-check-circle text-success"></i>
+                            </div>
+                            <div class="content-wrapper">
+                                <small class="text-muted d-block">Currently Active</small>
+                                <span class="fw-medium small text-success">
+                                    {{ seller_product_stats.active_products }} active
                                 </span>
                             </div>
                         </div>
@@ -341,13 +375,19 @@
                 <div class="col-12">
                     <a href="{% url 'user_store' username=product.seller.user.username %}" 
                        class="btn btn-secondary w-100">
-                        <i class="fas fa-store me-2"></i>Visit Store
+                        <i class="fas fa-store me-2"></i>Visit Store ({{ seller_product_stats.active_products }} items)
                     </a>
                 </div>
                 <div class="col-12">
                     <a href="{% url 'send_message' product.id %}" 
                        class="btn btn-outline-primary w-100">
                         <i class="fas fa-envelope me-2"></i>Send Message
+                    </a>
+                </div>
+                <div class="col-12">
+                    <a href="{% url 'all_seller_reviews' username=product.seller.user.username %}" 
+                       class="btn btn-outline-info w-100">
+                        <i class="fas fa-star me-2"></i>View All Reviews ({{ total_seller_reviews }})
                     </a>
                 </div>
                 <div class="col-12">

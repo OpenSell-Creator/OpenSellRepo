@@ -1,0 +1,357 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}All Reviews for {{ seller.username }}{% endblock %}
+
+{% block 'Body' %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <!-- Seller Header -->
+            <div class="card seller-header-card mb-4" style="background-color: var(--card-background); border-color: var(--border-color);">
+                <div class="card-body text-center py-4">
+                    <div class="seller-avatar-wrapper mb-3">
+                        {% if seller.profile.photo %}
+                            <img src="{{ seller.profile.photo.url }}" 
+                                 alt="{{ seller.username }}" 
+                                 class="seller-main-avatar">
+                        {% else %}
+                            <div class="seller-main-avatar-placeholder">
+                                <span class="h3 mb-0">
+                                    {{ seller.username|make_list|first|upper }}
+                                </span>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <h2 class="mb-2" style="color: var(--text-primary);">{{ seller.username }}</h2>
+                    
+                    <!-- Overall Rating Display -->
+                    <div class="rating-display mb-3">
+                        <div class="h4 mb-1" style="color: var(--accent-color);">{{ average_rating|floatformat:1 }}</div>
+                        <div class="stars mb-2">
+                            {% for i in "12345" %}
+                                {% if forloop.counter <= average_rating|floatformat:0|add:0 %}
+                                    <i class="fas fa-star" style="color: var(--accent-color); font-size: 1.5rem;"></i>
+                                {% elif forloop.counter <= average_rating|add:0.5 %}
+                                    <i class="fas fa-star-half-alt" style="color: var(--accent-color); font-size: 1.5rem;"></i>
+                                {% else %}
+                                    <i class="far fa-star" style="color: var(--accent-color); font-size: 1.5rem;"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        <p class="text-muted mb-0" style="color: var(--text-secondary) !important;">
+                            Based on {{ total_reviews }} reviews across all products
+                        </p>
+                    </div>
+                    
+                    <!-- Star Distribution -->
+                    <div class="rating-bars-horizontal">
+                        {% for star, percentage in star_percentages.items %}
+                        <div class="d-flex align-items-center mb-2 justify-content-center">
+                            <div class="text-nowrap me-3" style="width: 80px;">
+                                <span class="text-muted">{{ star }} star</span>
+                            </div>
+                            <div class="flex-grow-1 me-3" style="max-width: 200px;">
+                                <div class="progress" style="height: 8px; background-color: var(--background-color);">
+                                    <div class="progress-bar" 
+                                         role="progressbar" 
+                                         style="width: {{ percentage }}%; background-color: var(--success);">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-muted" style="width: 40px; color: var(--text-secondary) !important;">
+                                {{ percentage|floatformat:0 }}%
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reviews List -->
+            <h3 class="mb-4" style="color: var(--text-primary);">All Reviews ({{ total_reviews }})</h3>
+            
+            {% if reviews %}
+                {% for review in reviews %}
+                <div class="card mb-3 review-card" 
+                     style="background-color: var(--card-background); 
+                            border: 2px solid var(--border-color);
+                            transition: transform 0.2s ease;">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start gap-3">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center gap-3 mb-3">
+                                    <div class="user-avatar">
+                                        {% if review.reviewer.profile.avatar %}
+                                        <img src="{{ review.reviewer.profile.avatar.url }}" 
+                                             class="rounded-circle"
+                                             style="width: 50px; height: 50px; object-fit: cover; border: 2px solid var(--border-color);">
+                                        {% else %}
+                                        <div class="rounded-circle d-flex align-items-center justify-content-center"
+                                             style="width: 50px; height: 50px; background-color: var(--primary-color); color: white;">
+                                            {{ review.reviewer.username|first|upper }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <h5 class="mb-1" style="color: var(--text-primary);">{{ review.reviewer.username }}</h5>
+                                        <small class="text-muted" style="color: var(--text-secondary) !important;">
+                                            {{ review.created_at|timesince }} ago
+                                        </small>
+                                    </div>
+                                </div>
+                                
+                                <div class="rating-stars mb-3" style="color: var(--accent-color);">
+                                    {% for i in "12345" %}
+                                        {% if forloop.counter <= review.rating %}
+                                            <i class="fas fa-star"></i>
+                                        {% elif forloop.counter <= review.rating|add:0.5 %}
+                                            <i class="fas fa-star-half-alt"></i>
+                                        {% else %}
+                                            <i class="far fa-star"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                                
+                                <p class="card-text mb-3" 
+                                   style="color: var(--text-secondary); 
+                                          padding-left: 15px;
+                                          border-left: 4px solid var(--accent-color);">
+                                    {{ review.comment }}
+                                </p>
+                                
+                                <!-- Product Information -->
+                                <div class="product-info-card p-3" 
+                                     style="background-color: var(--background-color); 
+                                            border: 1px solid var(--border-color);
+                                            border-radius: var(--radius-md);">
+                                    <div class="d-flex align-items-center gap-3">
+                                        {% if review.product.images.first %}
+                                        <img src="{{ review.product.images.first.image.url }}" 
+                                             alt="{{ review.product.title }}"
+                                             style="width: 60px; height: 60px; object-fit: cover; border-radius: var(--radius-sm);">
+                                        {% endif %}
+                                        <div>
+                                            <h6 class="mb-1" style="color: var(--text-primary);">
+                                                <a href="{% url 'product_detail' pk=review.product.id %}" 
+                                                   class="text-decoration-none" 
+                                                   style="color: var(--accent-color);">
+                                                    {{ review.product.title }}
+                                                </a>
+                                            </h6>
+                                            <small class="text-muted" style="color: var(--text-secondary) !important;">
+                                                ₦ {{ review.product.price|floatformat:0 }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Add Reply Button (Visible to Seller only if no reply exists) -->
+                        {% if user.is_authenticated and user == seller and not review.replies.exists %}
+                            <div class="mt-3 mb-2">
+                                <a href="{% url 'reply_to_review' pk=review.product.id review_id=review.id %}" 
+                                   class="btn btn-sm btn-primary reply-btn"
+                                   style="background-color: var(--primary-color); 
+                                          border: none;
+                                          padding: 0.5rem 1rem;
+                                          border-radius: var(--radius-md);">
+                                   <i class="fas fa-reply me-2"></i> Reply to Review
+                                </a>
+                            </div>
+                        {% endif %}
+
+                        <!-- Replies Section -->
+                        {% for reply in review.replies.all %}
+                        <div class="reply-card mt-3 ms-4 p-3" 
+                             style="background-color: var(--background-color); 
+                                    border: 1px solid var(--border-color);
+                                    border-radius: var(--radius-md);">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                        <h6 class="card-subtitle mb-0" style="color: var(--text-primary);">
+                                            {{ seller.username }} (Seller)
+                                        </h6>
+                                        <small class="text-muted" style="color: var(--text-secondary) !important;">
+                                            {{ reply.created_at|timesince }} ago
+                                        </small>
+                                    </div>
+                                    <p class="mb-0" style="color: var(--text-secondary);">{{ reply.comment }}</p>
+                                </div>
+                                
+                                <!-- Edit/Delete Reply Buttons (Only for seller) -->
+                                {% if user == seller %}
+                                <div class="btn-group btn-group-sm ms-3">
+                                    <a href="{% url 'edit_reply' pk=review.product.id reply_id=reply.id %}" 
+                                       class="btn btn-outline-primary btn-sm"
+                                       style="border-color: var(--border-color); color: var(--text-primary);"
+                                       title="Edit Reply">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'delete_reply' pk=review.product.id reply_id=reply.id %}" 
+                                       class="btn btn-outline-danger btn-sm"
+                                       style="border-color: var(--border-color); color: var(--danger);"
+                                       title="Delete Reply"
+                                       onclick="return confirm('Are you sure you want to delete this reply?')">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+
+                <!-- Pagination -->
+                {% if is_paginated %}
+                <div class="d-flex justify-content-center mt-4">
+                    <nav aria-label="Reviews pagination">
+                        <ul class="pagination">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1" style="color: var(--accent-color);">&laquo; First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}" style="color: var(--accent-color);">Previous</a>
+                                </li>
+                            {% endif %}
+                            
+                            <li class="page-item active">
+                                <span class="page-link" style="background-color: var(--accent-color); border-color: var(--accent-color);">
+                                    {{ page_obj.number }}
+                                </span>
+                            </li>
+                            
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}" style="color: var(--accent-color);">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" style="color: var(--accent-color);">Last &raquo;</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+
+            {% else %}
+                <div class="card" style="background-color: var(--card-background); border-color: var(--border-color);">
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-star fa-3x mb-3" style="color: var(--text-secondary);"></i>
+                        <h4 style="color: var(--text-primary);">No Reviews Yet</h4>
+                        <p class="mb-0" style="color: var(--text-secondary);">
+                            This seller hasn't received any reviews yet.
+                        </p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.seller-main-avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid var(--accent-color);
+}
+
+.seller-main-avatar-placeholder {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    border: 4px solid var(--accent-color);
+    margin: 0 auto;
+}
+
+.seller-header-card {
+    box-shadow: 0 4px 20px var(--shadow-color);
+    border-radius: var(--radius-lg);
+}
+
+.review-card {
+    border-radius: var(--radius-lg);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.review-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 25px var(--shadow-color);
+}
+
+.product-info-card {
+    transition: background-color 0.2s ease;
+}
+
+.product-info-card:hover {
+    background-color: var(--card-background) !important;
+}
+
+.reply-card {
+    position: relative;
+    margin-left: 2rem;
+}
+
+.reply-card::before {
+    content: "";
+    position: absolute;
+    left: -1.5rem;
+    top: 1rem;
+    width: 1rem;
+    height: 2px;
+    background-color: var(--border-color);
+}
+
+.rating-bars-horizontal {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.rating-bars-horizontal .progress {
+    border-radius: var(--radius-full);
+}
+
+.pagination .page-link {
+    border-color: var(--border-color);
+    background-color: var(--card-background);
+}
+
+.pagination .page-item.active .page-link {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+.reply-btn {
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.reply-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background-color: var(--primary-color) !important;
+}
+
+.btn-group .btn {
+    transition: all 0.2s ease;
+}
+
+.btn-group .btn:hover {
+    transform: translateY(-1px);
+}
+</style>
+{% endblock %}

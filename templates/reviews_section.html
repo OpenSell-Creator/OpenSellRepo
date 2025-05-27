@@ -1,6 +1,6 @@
 <div class="row mt-0">
     <div class="col-md-12">
-        <h2 class="mb-2" style="color: var(--text-primary);">Reviews ({{ review_count }})</h2>
+        <h2 class="mb-2" style="color: var(--text-primary);">Reviews ({{ product_review_count }})</h2>
         
         <!-- Average Rating Card -->
         <div class="card mb-4" style="background-color: var(--card-background); border-color: var(--border-color);">
@@ -8,19 +8,24 @@
                 <div class="row align-items-center">
                     <div class="col-md-4 text-center border-end" style="border-color: var(--border-color) !important;">
                         <div class="rating-display">
-                            <div class="h1 mb-0" style="color: var(--accent-color);">{{ average_rating|floatformat:1 }}</div>
+                            <div class="h1 mb-0" style="color: var(--accent-color);">{{ seller_average_rating|floatformat:1 }}</div>
                             <div class="stars mb-2">
-                                {% for _ in "12345" %}
-                                    <i class="fas fa-star{% if forloop.counter <= average_rating|floatformat:0 %}{% else %}-half-alt{% endif %}" 
-                                       style="color: var(--accent-color);"></i>
+                                {% for i in "12345" %}
+                                    {% if forloop.counter <= seller_average_rating|floatformat:0|add:0 %}
+                                        <i class="fas fa-star" style="color: var(--accent-color);"></i>
+                                    {% elif forloop.counter <= seller_average_rating|add:0.5 %}
+                                        <i class="fas fa-star-half-alt" style="color: var(--accent-color);"></i>
+                                    {% else %}
+                                        <i class="far fa-star" style="color: var(--accent-color);"></i>
+                                    {% endif %}
                                 {% endfor %}
                             </div>
-                            <small class="text-muted" style="color: var(--text-secondary) !important;">Based on {{ review_count }} reviews</small>
+                            <small class="text-muted" style="color: var(--text-secondary) !important;">Based on {{ total_seller_reviews }} seller reviews</small>
                         </div>
                     </div>
                     <div class="col-md-8">
                         <div class="rating-bars">
-                            {% for star, percentage in star_percentages.items %}
+                            {% for star, percentage in seller_star_percentages.items %}
                             <div class="d-flex align-items-center mb-2">
                                 <div class="text-nowrap me-3" style="width: 80px;">
                                     <span class="text-muted">{{ star }} star</span>
@@ -44,7 +49,7 @@
             </div>
         </div>
 
-        <!-- Reviews List -->
+        <!-- Reviews List (Only showing 2 reviews) -->
         {% if reviews %}
         {% for review in reviews %}
         <div class="card mb-2 review-card" 
@@ -76,8 +81,14 @@
                         </div>
                         
                         <div class="rating-stars mb-2" style="color: var(--accent-color);">
-                            {% for _ in "12345" %}
-                                <i class="fas fa-star{% if forloop.counter > review.rating %}-half-alt{% endif %}"></i>
+                            {% for i in "12345" %}
+                                {% if forloop.counter <= review.rating %}
+                                    <i class="fas fa-star"></i>
+                                {% elif forloop.counter <= review.rating|add:0.5 %}
+                                    <i class="fas fa-star-half-alt"></i>
+                                {% else %}
+                                    <i class="far fa-star"></i>
+                                {% endif %}
                             {% endfor %}
                         </div>
                         
@@ -87,16 +98,28 @@
                                   border-left: 3px solid var(--accent-color);">
                             {{ review.comment }}
                         </p>
+                        
+                        <!-- Show which product this review is for -->
+                        <div class="review-product-info mt-2">
+                            <small class="text-muted" style="color: var(--text-secondary) !important;">
+                                <i class="fas fa-box me-1"></i>Review for: 
+                                <a href="{% url 'product_detail' pk=review.product.id %}" 
+                                   class="text-decoration-none" 
+                                   style="color: var(--accent-color);">
+                                    {{ review.product.title|truncatechars:30 }}
+                                </a>
+                            </small>
+                        </div>
                     </div>
                     
                     {% if user == review.reviewer %}
                     <div class="btn-group btn-group-sm">
-                        <a href="{% url 'edit_review' pk=product.id review_id=review.id %}" 
+                        <a href="{% url 'edit_review' pk=review.product.id review_id=review.id %}" 
                            class="btn btn-outline-primary"
                            style="border-color: var(--border-color); color: var(--text-primary);">
                            <i class="fas fa-edit"></i>
                         </a>
-                        <a href="{% url 'delete_review' pk=product.id review_id=review.id %}" 
+                        <a href="{% url 'delete_review' pk=review.product.id review_id=review.id %}" 
                            class="btn btn-outline-danger"
                            style="border-color: var(--border-color); color: var(--text-primary);">
                            <i class="fas fa-trash"></i>
@@ -108,7 +131,7 @@
                 <!-- Add Reply Button (Visible to Seller) -->
                 {% if user.is_authenticated and user == product.seller.user and not review.replies.exists %}
                     <div class="mt-2">
-                        <a href="{% url 'reply_to_review' pk=product.id review_id=review.id %}" 
+                        <a href="{% url 'reply_to_review' pk=review.product.id review_id=review.id %}" 
                            class="btn btn-sm btn-primary"
                            style="background-color: var(--primary-color); border: none;">
                            <i class="fas fa-reply me-2"></i> Reply
@@ -137,12 +160,12 @@
    
                 {% if user == product.seller.user %}
                 <div class="btn-group btn-group-sm ms-3">
-                    <a href="{% url 'edit_reply' pk=product.id reply_id=reply.id %}" 
+                    <a href="{% url 'edit_reply' pk=review.product.id reply_id=reply.id %}" 
                         class="btn btn-outline-primary"
                         style="border-color: var(--border-color); color: var(--text-primary);">
                         <i class="fas fa-edit"></i>
                     </a>
-                    <a href="{% url 'delete_reply' pk=product.id reply_id=reply.id %}" 
+                    <a href="{% url 'delete_reply' pk=review.product.id reply_id=reply.id %}" 
                         class="btn btn-outline-danger"
                         style="border-color: var(--border-color); color: var(--text-primary);">
                         <i class="fas fa-trash"></i>
@@ -155,6 +178,18 @@
     </div>
 </div>
     {% endfor %}
+    
+    <!-- Show All Reviews Button -->
+    {% if has_more_reviews %}
+    <div class="text-center mt-3 mb-4">
+        <a href="{% url 'all_seller_reviews' username=product.seller.user.username %}" 
+           class="btn btn-outline-primary btn-lg">
+            <i class="fas fa-eye me-2"></i>
+            View All {{ total_seller_reviews }} Reviews
+        </a>
+    </div>
+    {% endif %}
+    
         {% else %}
             <div class="card" style="background-color: var(--card-background); border-color: var(--border-color);">
                 <div class="card-body">
@@ -177,7 +212,7 @@
                     <div class="mb-4">
                         <label class="form-label" style="color: var(--text-primary);">Your Rating</label>
                         <div class="rating-stars-input mb-3">
-                            {% for _ in "54321" %}
+                            {% for i in "12345" %}
                             <input type="radio" 
                                    name="rating" 
                                    value="{{ forloop.counter }}" 
@@ -230,6 +265,7 @@
         display: flex;
         gap: 0.75rem;
         align-items: center;
+        justify-content: flex-start;
     }
 
     .rating-stars-input input {
@@ -271,57 +307,65 @@
     .rating-bars .progress {
         border-radius: var(--radius-full);
     }
+
+    .review-product-info {
+        background-color: var(--background-color);
+        padding: 8px 12px;
+        border-radius: var(--radius-sm);
+        border-left: 3px solid var(--accent-color);
+    }
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Star Rating Input
-    const starInputs = document.querySelectorAll('.rating-stars-input input');
-    const starLabels = document.querySelectorAll('.rating-stars-input .star-label');
+    document.addEventListener('DOMContentLoaded', function() {
+        const starInputs = document.querySelectorAll('.rating-stars-input input');
+        const starLabels = document.querySelectorAll('.rating-stars-input .star-label');
+        
+        starLabels.forEach((label, index) => {
+            label.addEventListener('click', function(e) {
+                const input = this.previousElementSibling;
+                const ratingValue = parseInt(input.value);
+                
+                // Update star colors - fill from left to selected star
+                starLabels.forEach((star, starIndex) => {
+                    if (starIndex < ratingValue) {
+                        star.querySelector('i').classList.remove('far');
+                        star.querySelector('i').classList.add('fas');
+                    } else {
+                        star.querySelector('i').classList.remove('fas');
+                        star.querySelector('i').classList.add('far');
+                    }
+                });
+            });
     
-    starLabels.forEach(label => {
-        label.addEventListener('click', function(e) {
-            const input = this.previousElementSibling;
-            const ratingValue = input.value;
-            
-            // Update star colors
-            starLabels.forEach((star, index) => {
-                if (index < ratingValue) {
-                    star.querySelector('i').classList.remove('far');
-                    star.querySelector('i').classList.add('fas');
+            // Hover effects
+            label.addEventListener('mouseenter', function() {
+                const input = this.previousElementSibling;
+                const ratingValue = parseInt(input.value);
+                
+                starLabels.forEach((star, starIndex) => {
+                    if (starIndex < ratingValue) {
+                        star.querySelector('i').style.color = 'var(--accent-color)';
+                    } else {
+                        star.querySelector('i').style.color = 'var(--text-secondary)';
+                    }
+                });
+            });
+    
+            label.addEventListener('mouseleave', function() {
+                const checkedInput = document.querySelector('.rating-stars-input input:checked');
+                if (!checkedInput) {
+                    starLabels.forEach(star => {
+                        star.querySelector('i').style.color = 'var(--text-secondary)';
+                    });
                 } else {
-                    star.querySelector('i').classList.remove('fas');
-                    star.querySelector('i').classList.add('far');
+                    const checkedValue = parseInt(checkedInput.value);
+                    starLabels.forEach((star, starIndex) => {
+                        star.querySelector('i').style.color = 
+                            starIndex < checkedValue ? 'var(--accent-color)' : 'var(--text-secondary)';
+                    });
                 }
             });
         });
     });
-
-    // Hover effects for stars
-    starLabels.forEach(label => {
-        label.addEventListener('mouseenter', function() {
-            const currentIndex = Array.from(starLabels).indexOf(this);
-            starLabels.forEach((star, index) => {
-                if (index <= currentIndex) {
-                    star.querySelector('i').style.color = 'var(--accent-color)';
-                }
-            });
-        });
-
-        label.addEventListener('mouseleave', function() {
-            const checkedInput = document.querySelector('.rating-stars-input input:checked');
-            if (!checkedInput) {
-                starLabels.forEach(star => {
-                    star.querySelector('i').style.color = 'var(--text-secondary)';
-                });
-            } else {
-                const checkedValue = checkedInput.value;
-                starLabels.forEach((star, index) => {
-                    star.querySelector('i').style.color = 
-                        index < checkedValue ? 'var(--accent-color)' : 'var(--text-secondary)';
-                });
-            }
-        });
-    });
-});
-</script>
+    </script>

@@ -73,6 +73,7 @@ class Profile(models.Model):
     email_verified = models.BooleanField(default=False)
     email_otp = models.CharField(max_length=6, blank=True, null=True)
     otp_created_at = models.DateTimeField(null=True, blank=True)
+    total_products_listed = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return f'{self.user.username}'
@@ -127,6 +128,30 @@ class Profile(models.Model):
         
         time_diff = timezone.now() - self.otp_created_at
         return time_diff.total_seconds() < 600  # 10 minutes
+    
+    @property
+    def seller_average_rating(self):
+        """Calculate average rating across all seller's products"""
+        from .models import Review, Product_Listing
+        
+        # Get all products by this seller
+        seller_products = Product_Listing.objects.filter(seller=self)
+        
+        # Get all reviews for these products
+        reviews = Review.objects.filter(product__in=seller_products)
+        
+        if reviews.exists():
+            avg_rating = reviews.aggregate(avg_rating=Avg('rating'))['avg_rating']
+            return round(avg_rating, 1) if avg_rating else 0
+        return 0
+    
+    @property
+    def total_seller_reviews(self):
+        """Get total count of reviews across all seller's products"""
+        from .models import Review, Product_Listing
+        
+        seller_products = Product_Listing.objects.filter(seller=self)
+        return Review.objects.filter(product__in=seller_products).count()
 
 class EmailPreferences(models.Model):
     """Model to store user email preferences"""

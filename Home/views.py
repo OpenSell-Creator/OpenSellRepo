@@ -34,6 +34,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
+from django.core.cache import cache
 import random
 import hashlib
 import logging
@@ -74,17 +75,10 @@ def get_active_banners(location='home_top'):
         (Q(end_date__isnull=True) | Q(end_date__gte=now))
     ).order_by('-priority', '-updated_at')
 
-from django.db.models import Q, Count
-from django.utils import timezone
-from datetime import timedelta
-import random
-import hashlib
-
 def home(request):
     # Initialize context dictionary first
     context = {}
     
-    # PROFESSIONAL APPROACH: User-specific random seeding for unique experience per user
     # Create a unique seed for each user to ensure different random selections
     if request.user.is_authenticated:
         # Use user ID + current day to create consistent but changing seed
@@ -160,10 +154,6 @@ def home(request):
     })
     
     return render(request, 'home.html', context)
-
-
-# BONUS: Cache-friendly random selection for better performance
-from django.core.cache import cache
 
 def get_random_featured_products():
     """Get cached random featured products that refresh every 30 minutes"""
@@ -364,7 +354,6 @@ class ProductDetailView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
-        
         if self.request.user.is_authenticated and self.object.seller.user == self.request.user:
             try:
                 context['user_account'] = self.request.user.account
@@ -377,7 +366,6 @@ class ProductDetailView(DetailView):
         if time_remaining:
             context['time_remaining'] = time_remaining
             
-            
         # Format the price
         context['formatted_price'] = self.format_price(self.object.price)
         
@@ -385,37 +373,60 @@ class ProductDetailView(DetailView):
         context['images'] = self.object.images.all()
         context['primary_image'] = self.object.images.filter(is_primary=True).first() or self.object.images.first()
         
-        # Get reviews with their replies
-        reviews = self.object.reviews.select_related('reviewer').prefetch_related(
+        # Get ALL reviews for this seller across ALL their products
+        seller_products = Product_Listing.objects.filter(seller=self.object.seller)
+        all_seller_reviews = Review.objects.filter(
+            product__in=seller_products
+        ).select_related('reviewer').prefetch_related(
             Prefetch('replies', queryset=ReviewReply.objects.select_related('reviewer').order_by('created_at'))
-            ).order_by('-created_at')
+        ).order_by('-created_at')
         
-        total_reviews = reviews.count()
+        # Get only reviews for this specific product (for display)
+        product_reviews = all_seller_reviews.filter(product=self.object)[:2]  # Only show 2 reviews
         
-        # Calculate star percentages
-        star_percentages  = {
-            '5': reviews.filter(rating=5).count() / total_reviews * 100 if total_reviews else 0,
-            '4': reviews.filter(rating=4).count() / total_reviews * 100 if total_reviews else 0,
-            '3': reviews.filter(rating=3).count() / total_reviews * 100 if total_reviews else 0,
-            '2': reviews.filter(rating=2).count() / total_reviews * 100 if total_reviews else 0,
-            '1': reviews.filter(rating=1).count() / total_reviews * 100 if total_reviews else 0,
-            }
+        # Calculate seller's overall statistics from ALL reviews
+        total_seller_reviews = all_seller_reviews.count()
+        seller_avg_rating = all_seller_reviews.aggregate(avg_rating=Avg('rating'))['avg_rating'] or 0
         
-        context['reviews'] = reviews
-        context['star_percentages'] = star_percentages
+        # Calculate star distribution for seller (from all reviews)
+        seller_star_percentages = {
+            '5': all_seller_reviews.filter(rating=5).count() / total_seller_reviews * 100 if total_seller_reviews else 0,
+            '4': all_seller_reviews.filter(rating=4).count() / total_seller_reviews * 100 if total_seller_reviews else 0,
+            '3': all_seller_reviews.filter(rating=3).count() / total_seller_reviews * 100 if total_seller_reviews else 0,
+            '2': all_seller_reviews.filter(rating=2).count() / total_seller_reviews * 100 if total_seller_reviews else 0,
+            '1': all_seller_reviews.filter(rating=1).count() / total_seller_reviews * 100 if total_seller_reviews else 0,
+        }
         
-        # Get reviews with their replies
-        latest_review = reviews.first()
-        context['latest_review'] = latest_review
-        context['replies'] = latest_review.replies.all() if latest_review else []
+        # Context for reviews (only show 2 product reviews)
+        context['reviews'] = product_reviews
+        context['total_seller_reviews'] = total_seller_reviews
+        context['seller_average_rating'] = seller_avg_rating
+        context['seller_star_percentages'] = seller_star_percentages
+        context['has_more_reviews'] = total_seller_reviews > 2
         
+        # Product specific review count
+        product_review_count = Review.objects.filter(product=self.object).count()
+        context['product_review_count'] = product_review_count
         
-        # Calculate review statistics
-        context['review_count'] = reviews.count()
-        context['average_rating'] = self.object.average_rating
+        # Calculate seller product statistics (simplified)
+        seller_profile = self.object.seller
         
-        # Ensure seller rating is properly calculated
-        context['seller_average_rating'] = self.object.seller.average_rating
+        # Total products ever listed (from counter field)
+        total_ever_listed = getattr(seller_profile, 'total_products_listed', 0)
+        
+        # Currently active products (not suspended and not expired)
+        active_products = Product_Listing.objects.filter(
+            seller=seller_profile,
+            is_suspended=False
+        ).exclude(
+            expiration_date__lte=timezone.now()
+        ).count()
+        
+        # Add seller product statistics to context
+        context['seller_product_stats'] = {
+            'total_ever_listed': total_ever_listed,
+            'active_products': active_products,
+        }
         
         # Get related products
         related_products = Product_Listing.objects.filter(
@@ -432,7 +443,6 @@ class ProductDetailView(DetailView):
             
             for product in related_products:
                 product.is_saved = str(product.id) in saved_products
-                
                 
         context['related_products'] = related_products
         for product in context['related_products']:
@@ -470,7 +480,6 @@ class ProductDetailView(DetailView):
         return '₦ {:,.0f}'.format(Decimal(price))
 
     def get_queryset(self):
-        
         # Optimize the main query
         return super().get_queryset().select_related(
             'seller',
@@ -480,7 +489,53 @@ class ProductDetailView(DetailView):
             'subcategory',
             'brand'
         )
-                  
+             
+class AllSellerReviewsView(ListView):
+    template_name = 'all_seller_reviews.html'
+    context_object_name = 'reviews'
+    paginate_by = 10
+
+    def get_queryset(self):
+        seller_username = self.kwargs['username']
+        seller_user = get_object_or_404(User, username=seller_username)
+        seller_products = Product_Listing.objects.filter(seller__user=seller_user)
+        
+        return Review.objects.filter(
+            product__in=seller_products
+        ).select_related('reviewer', 'product').prefetch_related(
+            Prefetch('replies', queryset=ReviewReply.objects.select_related('reviewer').order_by('created_at'))
+        ).order_by('-created_at')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        seller_username = self.kwargs['username']
+        seller_user = get_object_or_404(User, username=seller_username)
+        
+        # Get all reviews for this seller
+        seller_products = Product_Listing.objects.filter(seller__user=seller_user)
+        all_reviews = Review.objects.filter(product__in=seller_products)
+        
+        # Calculate statistics
+        total_reviews = all_reviews.count()
+        avg_rating = all_reviews.aggregate(avg_rating=Avg('rating'))['avg_rating'] or 0
+        
+        star_percentages = {
+            '5': all_reviews.filter(rating=5).count() / total_reviews * 100 if total_reviews else 0,
+            '4': all_reviews.filter(rating=4).count() / total_reviews * 100 if total_reviews else 0,
+            '3': all_reviews.filter(rating=3).count() / total_reviews * 100 if total_reviews else 0,
+            '2': all_reviews.filter(rating=2).count() / total_reviews * 100 if total_reviews else 0,
+            '1': all_reviews.filter(rating=1).count() / total_reviews * 100 if total_reviews else 0,
+        }
+        
+        context.update({
+            'seller': seller_user,
+            'total_reviews': total_reviews,
+            'average_rating': avg_rating,
+            'star_percentages': star_percentages,
+        })
+        
+        return context
+         
 class QuickUpdateView(LoginRequiredMixin, UserPassesTestMixin, View):
     def post(self, request, pk):
         try:
@@ -679,7 +734,7 @@ class ProductUpdateView(LoginRequiredMixin, UpdateView):
 class ProductDeleteView(LoginRequiredMixin, DeleteView):
     model = Product_Listing
     template_name = 'product_confirm_delete.html'
-    success_url = reverse_lazy('product_list')
+    success_url = reverse_lazy('home')
 
     def test_func(self):
         product = self.get_object()
@@ -1924,3 +1979,4 @@ def generate_ai_description(request):
             'success': False,
             'error': 'An error occurred while generating the description. Please try again.'
         })
+        

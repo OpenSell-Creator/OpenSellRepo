@@ -257,10 +257,12 @@ class Product_Listing(models.Model):
         self.save()
 
     def save(self, *args, **kwargs):
+        is_new = self.pk is None  # Check if this is a new product
+        
         if self.pk:  # Only for existing instances
             try:
                 original = Product_Listing.objects.get(pk=self.pk)
-         
+        
                 # Reset expiration date if listing type changes
                 if original.listing_type != self.listing_type:
                     self.deletion_warning_sent = False
@@ -299,6 +301,11 @@ class Product_Listing(models.Model):
                 print(f"Setting expiration date to: {self.expiration_date}")  # Debug line
 
         super().save(*args, **kwargs)
+        
+        # Increment seller's total products counter for new products only
+        if is_new:
+            self.seller.total_products_listed += 1
+            self.seller.save(update_fields=['total_products_listed'])
 
     def delete(self, *args, **kwargs):
         # Delete all images first
@@ -318,7 +325,16 @@ class Product_Listing(models.Model):
             self.deletion_warning_sent = True
             self.save()
             
-            
+    @property
+    def seller_average_rating(self):
+        """Get the seller's overall average rating"""
+        return self.seller.seller_average_rating
+    
+    @property
+    def seller_total_reviews(self):
+        """Get the seller's total review count"""
+        return self.seller.total_seller_reviews
+    
     @classmethod
     def delete_expired_listings(cls):
         """Delete all expired listings and their associated images"""

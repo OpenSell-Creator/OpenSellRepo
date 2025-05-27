@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path,include
 from . import views
-from .views import QuickUpdateView, ReportProductView
+from .views import QuickUpdateView, ReportProductView, AllSellerReviewsView
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -19,6 +19,7 @@ urlpatterns = [
     path('my-store/', views.my_store, name='my_store'),
     
     path('review/<str:review_type>/<uuid:pk>/', views.submit_review, name='submit_review'),
+    path('seller/<str:username>/reviews/', AllSellerReviewsView.as_view(), name='all_seller_reviews'),
     path('product/<uuid:pk>/review/<int:review_id>/', views.reply_to_review, name='reply_to_review'),
     path('product/<uuid:pk>/review/<int:review_id>/edit/',views.edit_review, name='edit_review'),
     path('product/<uuid:pk>/review/<int:review_id>/delete/', views.delete_review, name='delete_review'),
