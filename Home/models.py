@@ -303,10 +303,16 @@ class Product_Listing(models.Model):
         super().save(*args, **kwargs)
         
         # Increment seller's total products counter for new products only
+        # This counter should ONLY increase, never decrease
         if is_new:
-            self.seller.total_products_listed += 1
-            self.seller.save(update_fields=['total_products_listed'])
-
+            # Use F() expression to avoid race conditions
+            from django.db.models import F
+            Profile.objects.filter(id=self.seller.id).update(
+                total_products_listed=F('total_products_listed') + 1
+            )
+            # Refresh the seller instance to get the updated count
+            self.seller.refresh_from_db(fields=['total_products_listed'])
+            
     def delete(self, *args, **kwargs):
         # Delete all images first
         for image in self.images.all():

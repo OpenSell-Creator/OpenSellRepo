@@ -169,6 +169,7 @@ class ProductSearchForm(forms.Form):
     query = forms.CharField(label='Search', max_length=100, required=False)
     category = forms.ModelChoiceField(queryset=Category.objects.all(), required=False, empty_label="All Categories")
     subcategory = forms.ModelChoiceField(queryset=Subcategory.objects.none(), required=False, empty_label="All Subcategories")
+    brand = forms.ModelChoiceField(queryset=Brand.objects.none(), required=False, empty_label="All Brands")  # Add brand field
     min_price = forms.DecimalField(min_value=0, required=False)
     max_price = forms.DecimalField(min_value=0, required=False)
     condition = forms.ChoiceField(choices=[('', 'Any')] + Product_Listing.CONDITION_CHOICES, required=False)
@@ -180,12 +181,21 @@ class ProductSearchForm(forms.Form):
         
         # Initialize empty querysets
         self.fields['subcategory'].queryset = Subcategory.objects.none()
+        self.fields['brand'].queryset = Brand.objects.none()  # Initialize brand queryset
         self.fields['lga'].queryset = LGA.objects.none()
 
-        # Set subcategories based on category
+        # Set subcategories and brands based on category
         category_id = self.data.get('category', None)
         if category_id:
-            self.fields['subcategory'].queryset = Subcategory.objects.filter(category_id=category_id)
+            try:
+                category = Category.objects.get(id=category_id)
+                self.fields['subcategory'].queryset = Subcategory.objects.filter(category_id=category_id)
+                self.fields['brand'].queryset = Brand.objects.filter(categories=category)
+            except Category.DoesNotExist:
+                pass
+        else:
+            # Show all brands if no category is selected
+            self.fields['brand'].queryset = Brand.objects.all()
 
         # Set LGAs based on state
         state_id = self.data.get('state', None)

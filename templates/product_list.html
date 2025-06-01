@@ -1,153 +1,178 @@
 {% extends 'base.html' %}
 
 {% block 'Body' %}
-<div class="container-fluid py-3">
-    <!-- Conditional Display of Search Filter -->
+<div class="container">
+    <!-- Popular Categories Section - Shows when no category is selected -->
     {% if not selected_category %}
-    <!-- Search Filter Card - Only shows when no category is selected -->
-    <div class="card mb-4 shadow-sm">
-        <div class="card-body">
-            <form method="get" action="{% url 'product_list' %}" id="advancedSearchForm">
-                <!-- Main search row with filter button -->
-                <div class="row mg-1">
-                    <div class="col">
-                        <input type="text" name="query" class="form-control form-control-md" 
-                               placeholder="Search products..." 
-                               value="{{ request.GET.query|default:'' }}">
-                    </div>
-                    <div class="col-auto">
-                        <button type="button" 
-                                class="btn btn-outline-secondary btn-mg d-flex align-items-center gap-1" 
-                                data-bs-toggle="collapse" 
-                                data-bs-target="#filterSection"
-                                aria-expanded="false"
-                                aria-controls="filterSection">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="21" y1="4" x2="14" y2="4"></line>
-                                <line x1="10" y1="4" x2="3" y2="4"></line>
-                                <line x1="21" y1="12" x2="12" y2="12"></line>
-                                <line x1="8" y1="12" x2="3" y2="12"></line>
-                                <line x1="21" y1="20" x2="16" y2="20"></line>
-                                <line x1="12" y1="20" x2="3" y2="20"></line>
-                                <line x1="14" y1="2" x2="14" y2="6"></line>
-                                <line x1="8" y1="10" x2="8" y2="14"></line>
-                                <line x1="16" y1="18" x2="16" y2="22"></line>
-                            </svg>
-                            
-                            <span class="badge bg-secondary" id="activeFiltersCount">0</span>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Collapsible filter section -->
-                <div class="collapse" id="filterSection">
-                    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3 mt-3">
-                        <div class="col">
-                            <label class="form-label">Category</label>
-                            <select name="category" class="form-select" id="id_category">
-                                <option value="">All Categories</option>
-                                {% for category in categories %}
-                                <option value="{{ category.slug }}" {% if selected_category == category.slug %}selected{% endif %}>
-                                    {{ category.name }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col">
-                            <label class="form-label">Subcategory</label>
-                            <select name="subcategory" class="form-select" id="id_subcategory" {% if not selected_category %}disabled{% endif %}>
-                                <option value="">All Subcategories</option>
-                                {% if selected_category_obj %}
-                                    {% for subcategory in selected_category_obj.subcategories.all %}
-                                    <option value="{{ subcategory.slug }}" {% if selected_subcategory == subcategory.slug %}selected{% endif %}>
-                                        {{ subcategory.name }}
-                                    </option>
-                                    {% endfor %}
-                                {% endif %}
-                            </select>
-                        </div>
-                        <div class="col">
-                            <label class="form-label">Condition</label>
-                            <select name="condition" class="form-select" id="id_condition">
-                                <option value="">Any Condition</option>
-                                <option value="new" {% if request.GET.condition == 'new' %}selected{% endif %}>New</option>
-                                <option value="used" {% if request.GET.condition == 'used' %}selected{% endif %}>Used</option>
-                            </select>
-                        </div>
-                        <div class="col">
-                            <label class="form-label">Minimum Price</label>
-                            <input type="number" name="min_price" class="form-control" 
-                                   placeholder="Enter minimum price" value="{{ request.GET.min_price|default:'' }}">
-                        </div>
-                        <div class="col">
-                            <label class="form-label">Maximum Price</label>
-                            <input type="number" name="max_price" class="form-control" 
-                                   placeholder="Enter maximum price" value="{{ request.GET.max_price|default:'' }}">
-                        </div>
-                        <div class="col">
-                            <label class="form-label">State</label>
-                            <select name="state" class="form-select" id="id_state">
-                                <option value="">All States</option>
-                                {% for state in states %}
-                                <option value="{{ state.id }}" {% if request.GET.state|stringformat:"i" == state.id|stringformat:"i" %}selected{% endif %}>
-                                    {{ state.name }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col">
-                            <label class="form-label">LGA</label>
-                            <select name="lga" class="form-select" id="id_lga" {% if not request.GET.state %}disabled{% endif %}>
-                                <option value="">All LGAs</option>
-                                {% if request.GET.state %}
-                                    {% for lga in lgas %}
-                                    <option value="{{ lga.id }}" {% if request.GET.lga|stringformat:"i" == lga.id|stringformat:"i" %}selected{% endif %}>
-                                        {{ lga.name }}
-                                    </option>
-                                    {% endfor %}
-                                {% endif %}
-                            </select>
-                        </div>
-                    </div>
-                    <div class="row mt-3">
-                        <div class="col">
-                            <button type="submit" class="btn btn-primary">Apply Filters</button>
-                            <button type="button" class="btn btn-outline-secondary ms-2" id="clearFilters">Clear All</button>
-                        </div>
-                    </div>
-                </div>
-            </form>
+    <div class="welcome-section">
+        <div class="welcome-header">
+            <h4 class="welcome-title">Browse Our Marketplace</h4>
+            <p class="welcome-subtitle">Find what you're looking for in our popular categories</p>
+        </div>
+        
+        <!-- Popular Categories Grid -->
+        <div class="categories-scroll-container">
+            <div class="categories-pills">
+                {% for category in categories %}
+                    {% if category.product_count > 0 %}
+                    <a href="{% url 'product_list' %}?category={{ category.slug }}" class="category-pill">
+                        <span class="category-name">{{ category.name }}</span>
+                        <span class="category-count">({{ category.product_count }})</span>
+                    </a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="action-buttons-mobile">
+            <a href="{% url 'product_list' %}?sort=-created_at" class="action-btn primary">
+                <i class="bi bi-clock-history"></i>
+                <span>Latest Products</span>
+            </a>
+
+            <a href="/search/" class="action-btn outline">
+                <i class="bi bi-search"></i>
+                <span>Advanced Search</span>
+            </a>
         </div>
     </div>
     {% endif %}
 
-    <!-- Subcategory Quick Links - Only shows when a category is selected -->
-    {% if selected_category_obj and subcategories %}
-    <div class="card mb-4 shadow-sm">
-        <div class="card-body py-3 px-3 px-md-4">
-            <h6 class="card-subtitle mb-3 py-2 fw-semibold">{{ selected_category_obj.name }} Categories</h6>
-            <div class="subcategory-scroll-container">
-                <div class="subcategory-wrapper">
-                    <!-- Add "All" subcategory option -->
-                    <a href="?category={{ selected_category_obj.slug }}" 
-                       class="subcategory-pill {% if not selected_subcategory %}active{% endif %}">
-                        All
-                    </a>
-                    {% for subcategory in subcategories %}
-                    <a href="?category={{ selected_category_obj.slug }}&subcategory={{ subcategory.slug }}" 
-                       class="subcategory-pill {% if selected_subcategory == subcategory.slug %}active{% endif %}">
-                        {{ subcategory.name }}
-                    </a>
-                    {% endfor %}
+    <!-- Category Filter Section -->
+    {% if selected_category_obj %}
+    <div class="filter-section">
+        <div class="filter-header">
+            <h5 class="filter-title">{{ selected_category_obj.name }} Filters</h5>
+            <span class="filter-subtitle">Refine your search</span>
+        </div>
+        
+        <form method="get" action="{% url 'product_list' %}" id="dropdownFilterForm">
+            <input type="hidden" name="category" value="{{ selected_category_obj.slug }}">
+            
+            <div class="filters-scroll-container">
+                <div class="filters-wrapper">
+                <!-- Subcategory Filter -->
+                    <div class="filter-control">
+                        <select name="subcategory" class="filter-select" id="dropdown_subcategory">
+                            <option value="">All Subcategories</option>
+                            {% for subcategory in subcategories %}
+                            <option value="{{ subcategory.slug }}" {% if selected_subcategory == subcategory.slug %}selected{% endif %}>
+                                {{ subcategory.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Brand Filter -->
+                    <div class="filter-control">
+                        <select name="brand" class="filter-select" id="dropdown_brand">
+                            <option value="">All Brands</option>
+                            {% for brand in brands %}
+                            <option value="{{ brand.slug }}" {% if selected_brand == brand.slug %}selected{% endif %}>
+                                {{ brand.name }} {% if brand.product_count %}({{ brand.product_count }}){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Condition Filter -->
+                    <div class="filter-control">
+                        <select name="condition" class="filter-select" id="dropdown_condition">
+                            <option value="">Any Condition</option>
+                            <option value="new" {% if request.GET.condition == 'new' %}selected{% endif %}>New</option>
+                            <option value="used" {% if request.GET.condition == 'used' %}selected{% endif %}>Used</option>
+                        </select>
+                    </div>
+
+                    <!-- Price Range Filter -->
+                    <div class="filter-control">
+                        <select name="price_range" class="filter-select" id="dropdown_price_range">
+                            <option value="">Any Price</option>
+                            <option value="0-10000" {% if request.GET.min_price == '0' and request.GET.max_price == '10000' %}selected{% endif %}>₦0 - ₦10,000</option>
+                            <option value="10000-50000" {% if request.GET.min_price == '10000' and request.GET.max_price == '50000' %}selected{% endif %}>₦10,000 - ₦50,000</option>
+                            <option value="50000-100000" {% if request.GET.min_price == '50000' and request.GET.max_price == '100000' %}selected{% endif %}>₦50,000 - ₦100,000</option>
+                            <option value="100000-500000" {% if request.GET.min_price == '100000' and request.GET.max_price == '500000' %}selected{% endif %}>₦100,000 - ₦500,000</option>
+                            <option value="500000-999999999" {% if request.GET.min_price == '500000' %}selected{% endif %}>₦500,000+</option>
+                        </select>
+                    </div>
+
+                    <!-- State Filter -->
+                    <div class="filter-control">
+                        <select name="state" class="filter-select" id="dropdown_state">
+                            <option value="">All States</option>
+                            {% for state in states %}
+                            <option value="{{ state.id }}" {% if request.GET.state|stringformat:"i" == state.id|stringformat:"i" %}selected{% endif %}>
+                                {{ state.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- LGA Filter -->
+                    <div class="filter-control">
+                        <select name="lga" class="filter-select" id="dropdown_lga" {% if not request.GET.state %}disabled{% endif %}>
+                            <option value="">All LGAs</option>
+                            {% if request.GET.state %}
+                                {% for lga in lgas %}
+                                <option value="{{ lga.id }}" {% if request.GET.lga|stringformat:"i" == lga.id|stringformat:"i" %}selected{% endif %}>
+                                    {{ lga.name }}
+                                </option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                    </div>
+
+                    <!-- Clear Filters Button -->
+                    <button type="button" class="clear-filters-btn" id="clearDropdownFilters">
+                        <i class="bi bi-x-lg"></i>
+                        <span>Clear</span>
+                    </button>
                 </div>
             </div>
-        </div>
+        </form>
     </div>
     {% endif %}
+
+    <!-- Results Summary and Sort Options -->
+    <div class="results-header">
+        <div class="results-info">
+            {% if products %}
+                Showing {{ products|length }} of {{ paginator.count }} products
+                {% if selected_category_obj %}
+                    in {{ selected_category_obj.name }}
+                    {% if selected_subcategory_obj %} > {{ selected_subcategory_obj.name }}{% endif %}
+                    {% if selected_brand_obj %} > {{ selected_brand_obj.name }}{% endif %}
+                {% endif %}
+            {% else %}
+                {% if selected_category_obj %}
+                    No products found in {{ selected_category_obj.name }}
+                {% else %}
+                    Browse categories above to find products
+                {% endif %}
+            {% endif %}
+        </div>
+        
+        <!-- Sort Options -->
+        {% if products or selected_category_obj %}
+        <div class="sort-control">
+            <label for="sortSelect" class="sort-label">Sort by:</label>
+            <select class="sort-select" id="sortSelect">
+                <option value="-created_at" {% if current_sort == '-created_at' %}selected{% endif %}>Newest First</option>
+                <option value="created_at" {% if current_sort == 'created_at' %}selected{% endif %}>Oldest First</option>
+                <option value="price" {% if current_sort == 'price' %}selected{% endif %}>Price: Low to High</option>
+                <option value="-price" {% if current_sort == '-price' %}selected{% endif %}>Price: High to Low</option>
+                <option value="title" {% if current_sort == 'title' %}selected{% endif %}>Name: A to Z</option>
+                <option value="-title" {% if current_sort == '-title' %}selected{% endif %}>Name: Z to A</option>
+                <option value="condition" {% if current_sort == 'condition' %}selected{% endif %}>Condition: New First</option>
+            </select>
+        </div>
+        {% endif %}
+    </div>
 
     <div class="row g-4">
         <!-- Desktop Sidebar -->
-        <div class="col-md-3 d-none d-lg-block">
+        <div class="col-lg-3 d-none d-lg-block">
             <div class="sticky-top" style="top: 80px;">
                 {% include 'filter_sidebar.html' %}
             </div>
@@ -155,281 +180,952 @@
 
         <!-- Product Grid -->
         <div class="col-12 col-lg-9">
-            <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
+            <div class="row row-cols-2 row-cols-sm-2 row-cols-md-3 row-cols-lg-3 row-cols-xl-4 g-2 g-md-3">
                 {% for product in products %}
                     <div class="col">
                         {% include 'product_card.html' with product=product %}
                     </div>
                 {% empty %}
                     <div class="col-12">
-                        <div class="card py-5">
-                            <div class="card-body text-center">
-                                <i class="bi bi-search fs-1 text-muted mb-3"></i>
-                                <h5>No products found</h5>
-                                <p class="text-muted">Try adjusting your filters or search criteria</p>
-                            </div>
+                        <div class="empty-state">
+                            {% if selected_category_obj %}
+                                <i class="bi bi-search empty-icon"></i>
+                                <h5 class="empty-title">No products found</h5>
+                                <p class="empty-text">Try adjusting your filters or search criteria</p>
+                                <a href="{% url 'product_list' %}" class="action-btn primary">
+                                    View All Categories
+                                </a>
+                            {% else %}
+                                <i class="bi bi-grid-3x3-gap empty-icon"></i>
+                                <h5 class="empty-title">Welcome to Our Marketplace</h5>
+                                <p class="empty-text">Select a category above to start browsing products</p>
+                            {% endif %}
                         </div>
                     </div>
                 {% endfor %}
             </div>
+            
+            <!-- Pagination -->
+            {% if products %}
             <div class="mt-4">
                 {% include 'pagination.html' %}
             </div>
+            {% endif %}
         </div>
     </div>
 </div>
 
 <style>
-    /* Responsive Subcategory Navigation */
-    .subcategory-scroll-container {
+    :root {
+        /* Use your existing color variables */
+        --primary-color: var(--light-primary-color, #003366);
+        --secondary-color: var(--light-secondary-color, #004d99);
+        --accent-color: var(--light-accent-color, #ff6600);
+        --background-color: var(--light-background, #f5f5f5);
+        --card-background: var(--light-card-background, #ffffff);
+        --text-primary: var(--light-text-primary, #003366);
+        --text-secondary: var(--light-text-secondary, #666666);
+        --hover-bg: var(--light-hover-bg, #e6e6e6);
+        --shadow-color: var(--light-shadow, rgba(0, 51, 102, 0.15));
+        --muted: var(--light-muted, #8c8c8c);
+    }
+    
+    [data-bs-theme="dark"] {
+        --primary-color: var(--dark-primary-color, #4d79a4);
+        --secondary-color: var(--dark-secondary-color, #1a2a3a);
+        --accent-color: var(--dark-accent-color, #ff6600);
+        --background-color: var(--dark-background, #121212);
+        --card-background: var(--dark-card-background, #1e1e1e);
+        --text-primary: var(--dark-text-primary, #ffffff);
+        --text-secondary: var(--dark-text-secondary, #d4d4d4);
+        --hover-bg: var(--dark-hover-bg, #2a2a2a);
+        --shadow-color: var(--dark-shadow, rgba(0, 0, 0, 0.5));
+        --muted: var(--dark-muted, #6c757d);
+    }
+    
+    /* Welcome Section */
+    .welcome-section {
+        background: var(--card-background);
+        border-radius: 16px; /* Increased from 12px */
+        padding: 1rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 8px var(--shadow-color);
+    }
+    
+    .welcome-header {
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+    
+    .welcome-title {
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        font-size: 1.5rem;
+    }
+    
+    .welcome-subtitle {
+        color: var(--text-secondary);
+        margin: 0;
+        font-size: 0.95rem;
+    }
+    
+    /* Categories Scroll Container - Desktop Grid, Mobile Scroll */
+    .categories-scroll-container {
+        margin-bottom: 0rem;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
         scrollbar-width: none;
-        padding-bottom: 8px;
-        margin: 0 -0.5rem;
     }
-
-    .subcategory-scroll-container::-webkit-scrollbar {
-        display: none; 
+    
+    .categories-scroll-container::-webkit-scrollbar {
+        display: none;
     }
-
-    .subcategory-wrapper {
+    
+    .categories-pills {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+        min-width: max-content;
+    }
+    
+    .category-pill {
         display: flex;
-        flex-wrap: nowrap;
-        gap: 0.75rem;
-        padding: 0 0.5rem;
-        width: max-content;
+        align-items: center;
+        padding: 0.5rem;
+        background: var(--background-color);
+        border: 1px solid var(--text-primary);
+        border-radius: 12px; 
+        text-decoration: none;
+        color: var(--text-primary);
+        transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
+        white-space: nowrap;
+        flex-shrink: 0;
+        justify-content: space-between;
     }
-
-    .subcategory-pill {
-        display: inline-block;
-        padding: 0.5rem 1.25rem;
-        background-color: var(--card-background);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-full);
+    
+    
+    .category-pill::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 3px;
+        height: 100%;
+        background: var(--primary-color);
+        transform: scaleY(0);
+        transition: transform 0.2s ease;
+    }
+    
+    .category-pill:hover {
+        background: var(--hover-bg);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px var(--shadow-color);
         color: var(--text-primary);
         text-decoration: none;
-        white-space: nowrap;
+    }
+    
+    .category-pill:hover::before {
+        transform: scaleY(1);
+    }
+    
+    .category-name {
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: var(--text-primary);
+    }
+    
+ 
+    
+    .category-pill:hover .category-count {
+        background: var(--accent-color);
+    }
+    
+    /* Action Buttons - Desktop Grid, Mobile 2x2 */
+    .action-buttons-mobile {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 1rem;
+    }
+    
+    .action-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 12px; 
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
         transition: all 0.2s ease;
-        font-size: var(--font-size-sm);
-        font-weight: 500;
+        border: 1px solid var(--text-primary);
+        min-height: 44px; 
+    }
+    
+    .action-btn.primary {
+        background: var(--primary-color);
+        color: white;
+    }
+    
+    .action-btn.primary:hover {
+        background: var(--secondary-color);
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px var(--shadow-color);
+    }
+    
+    .action-btn.secondary {
+        background: var(--background-color);
+        color: var(--text-primary);
+        border-color: #cccccc;
     }
 
-    .subcategory-pill:hover {
-        border-color: var(--accent-color);
-        color: var(--accent-color);
-        transform: translateY(-2px);
+    
+    .action-btn.secondary:hover {
+        background: var(--hover-bg);
+        color: var(--text-primary);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px var(--shadow-color);
     }
-
-    .subcategory-pill.active {
-        background-color: var(--primary-color);
+    
+    .action-btn.outline {
+        background: transparent;
+        color: var(--text-primary);
+        border-color: #cccccc;
+    }
+    
+    
+    .action-btn.outline:hover {
+        background: var(--primary-color);
+        color: white;
         border-color: var(--primary-color);
-        color: var(--card-background);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px var(--shadow-color);
+    }
+    
+    /* Filter Section */
+    .filter-section {
+        background: var(--card-background);
+        border-radius: 16px; 
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
         box-shadow: 0 2px 8px var(--shadow-color);
     }
-
-    /* Dark mode specific styles */
-    [data-bs-theme="dark"] .subcategory-pill.active {
-        color: var(--dark-text-primary);
+    
+    .filter-header {
+        margin-bottom: 1.5rem;
+        text-align: center;
     }
-
-    [data-bs-theme="dark"] .card-subtitle {
-        color: var(--dark-text-secondary) !important;
-    }
-
-    /* Filter Sidebar Compatibility */
-    .list-group-item {
-        background-color: var(--card-background);
-        border-color: var(--border-color) !important;
+    
+    .filter-title {
         color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+        font-size: 1.1rem;
+    }
+    
+    .filter-subtitle {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+    }
+    
+    .filters-scroll-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    
+    .filters-scroll-container::-webkit-scrollbar {
+        display: none;
+    }
+    
+    .filters-wrapper {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+        justify-content: center;
+        min-width: max-content;
+        padding-bottom: 0.5rem;
+    }
+    
+    .filter-control {
+        min-width: 180px; 
+        flex: 1;
+        max-width: 220px; 
+        flex-shrink: 0;
+    }
+    
+    /* IMPROVED FILTER SELECT - Better visibility and consistent height */
+    .filter-select {
+        width: 100%;
+        padding: 0.875rem 2.5rem 0.875rem 1rem;
+        border: 1px solid var(--text-primary);
+        border-radius: 12px; /* Increased from 8px */
+        background: var(--primary-color);
+        color: #fff;
+        font-size: 0.9rem; 
+        font-weight: 500;
+        cursor: pointer;
         transition: all 0.2s ease;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%23666' viewBox='0 0 16 16'%3E%3Cpath d='M8 10.5l-4-4h8l-4 4z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 1rem center;
+        line-height: 1.4;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+        min-height: 44px; /* Ensure consistent height with action buttons */
+        box-sizing: border-box;
+        
+        /* Ensure text is visible and properly positioned */
+        display: flex;
+        align-items: center;
     }
-
-    .list-group-item.active {
-        background-color: var(--primary-color) !important;
-        border-color: var(--primary-color) !important;
-        color: white !important;
+    
+    [data-bs-theme="dark"] .filter-select {
+    
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%23d4d4d4' viewBox='0 0 16 16'%3E%3Cpath d='M8 10.5l-4-4h8l-4 4z'/%3E%3C/svg%3E");
     }
-
-    [data-bs-theme="dark"] .list-group-item.active {
-        color: var(--dark-text-primary) !important;
+    
+    .filter-select:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.1);
     }
-
-    .list-group-item a {
-        color: inherit;
-        text-decoration: none !important;
-        display: block;
-    }
-
-    .list-group-item:hover:not(.active) {
+    
+    .filter-select:hover {
+        border-color: var(--primary-color);
         background-color: var(--hover-bg);
     }
-
-    .bi-chevron-down {
-        transition: transform 0.3s ease-in-out;
+    
+    .filter-select:disabled {
+        background-color: var(--background-color);
+        color: var(--muted);
+        cursor: not-allowed;
+        opacity: 0.6;
     }
-
-    .show .bi-chevron-down {
-        transform: rotate(180deg);
+    
+    /* Option styling for better readability */
+    .filter-select option {
+        padding: 0.75rem;
+        font-size: 0.9rem;
+        color: var(--text-primary);
+        background: var(--card-background);
+        line-height: 1.4;
     }
-
-    /* Improve empty state styling */
-    .text-muted {
-        color: var(--text-secondary) !important;
+    
+    /* IMPROVED CLEAR FILTERS BUTTON - Consistent height and better visibility */
+    .clear-filters-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.875rem 1rem; 
+        background: transparent;
+        border: 1px solid var(--text-primary);
+        border-radius: 12px; /* Increased from 8px */
+        color: var(--text-secondary);
+        font-size: 0.9rem; 
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        min-width: 100px;
+        white-space: nowrap;
+        min-height: 44px; /* Match filter select height */
+        box-sizing: border-box;
     }
+    
 
-    /* Mobile Optimization */
+    .clear-filters-btn:hover {
+        background: #dc3545;
+        border-color: #dc3545;
+        color: white;
+        transform: translateY(-1px);
+    }
+    
+    /* Results Header */
+    .results-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background: var(--card-background);
+        border-radius: 12px; 
+    }
+    
+    .results-info {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    
+    .sort-control {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .sort-label {
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin: 0;
+        white-space: nowrap;
+    }
+    
+    .sort-select {
+        padding: 0.5rem 0.5rem;
+        border: 1px solid var(--text-primary);
+        border-radius: 12px; 
+        background: var(--card-background);
+        color: var(--text-primary);
+        font-size: 0.85rem;
+        cursor: pointer;
+        min-width: 130px;
+        min-height: 30px;
+    }
+    
+
+    
+    .sort-select:focus {
+        outline: none;
+        border-color: var(--primary-color);
+    }
+    
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1.5rem;
+        background: var(--card-background);
+        border-radius: 16px; 
+        border: 1px solid var(--text-primary);
+    }
+    
+
+    
+    .empty-icon {
+        font-size: 3rem;
+        color: var(--muted);
+        margin-bottom: 1rem;
+    }
+    
+    .empty-title {
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    
+    .empty-text {
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
+    }
+    
+    /* Mobile Responsive - UPDATED FOR BETTER FILTER VISIBILITY */
     @media (max-width: 768px) {
-        .card-subtitle {
-            margin-bottom: 0.75rem !important;
-            font-size: var(--font-size-base);
+        .welcome-section {
+            padding: 1.5rem;
+        }
+    
+        /* Categories become scrollable horizontally on mobile */
+        .categories-pills {
+            display: flex;
+            grid-template-columns: none;
+            gap: 0.75rem;
+            overflow-x: visible;
+        }
+    
+        .category-pill {
+            min-width: 200px;
+            padding: 0.75rem 1rem;
+        }
+    
+        /* Action buttons 2x2 grid on mobile */
+        .action-buttons-mobile {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+    
+        /* Filter controls become scrollable horizontally with better sizing */
+        .filters-wrapper {
+            flex-wrap: nowrap;
+            justify-content: flex-start;
+        }
+    
+        .filter-control {
+            min-width: 170px;
+            max-width: 170px;
         }
         
-        .subcategory-pill {
-            padding: 0.4rem 1rem;
-            font-size: calc(var(--font-size-sm) - 0.05rem);
+        .filter-select {
+            font-size: 0.85rem; 
+            padding: 0.8rem 2.25rem 0.8rem 0.9rem;
+            min-height: 42px;
         }
         
-        .container-fluid {
-            padding-left: var(--spacing-sm);
-            padding-right: var(--spacing-sm);
+        .clear-filters-btn {
+            min-width: 95px;
+            font-size: 0.85rem;
+            padding: 0.8rem 0.9rem;
+            min-height: 42px;
+        }
+    
+        .results-header {
+            flex-direction: column;
+            gap: 1rem;
+            align-items: stretch;
+        }
+    
+        .sort-control {
+            justify-content: space-between;
+        }
+    
+        .sort-select {
+            min-width: 140px;
         }
     }
     
     @media (max-width: 576px) {
-        .row-cols-2 > .col {
-            padding: 0.25rem;
+        .welcome-section {
+            padding: 1rem;
+        }
+    
+        .category-pill {
+            min-width: 150px;
+            padding: 0.75rem;
+        }
+    
+        .category-name {
+            font-size: 0.85rem;
+        }
+    
+        .category-count {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+        }
+    
+        .action-btn {
+            font-size: 0.85rem;
+            padding: 0.65rem 0.75rem;
+        }
+    
+        .filter-section {
+            padding: 1rem;
+        }
+    
+        .filter-control {
+            min-width: 155px; 
+            max-width: 155px;
         }
         
-        .subcategory-scroll-container {
-            margin: 0 -0.75rem;
-            padding-bottom: 4px;
+        .filter-select {
+            font-size: 0.82rem;
+            padding: 0.75rem 2rem 0.75rem 0.8rem;
+            min-height: 40px;
         }
         
-        .subcategory-wrapper {
-            gap: 0.5rem;
+        .clear-filters-btn {
+            min-width: 90px;
+            font-size: 0.82rem;
+            padding: 0.75rem 0.8rem;
+            min-height: 40px;
+        }
+    
+        .results-header {
+            padding: 0.75rem;
+        }
+    
+        .empty-state {
+            padding: 2rem 1rem;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .category-pill {
+            min-width: 140px;
+        }
+        
+        .filter-control {
+            min-width: 145px; /* Still maintaining good visibility */
+            max-width: 145px;
+        }
+        
+        .filter-select {
+            font-size: 0.8rem;
+            padding: 0.7rem 1.9rem 0.7rem 0.75rem;
+            min-height: 38px;
+        }
+        
+        .clear-filters-btn {
+            min-width: 85px;
+            padding: 0.7rem 0.75rem;
+            font-size: 0.8rem;
+            min-height: 38px;
+        }
+    }
+    
+    /* Additional improvements for very long filter option text */
+    @media (max-width: 400px) {
+        .filter-control {
+            min-width: 135px;
+            max-width: 135px;
+        }
+        
+        .filter-select {
+            font-size: 0.78rem;
+            padding: 0.65rem 1.8rem 0.65rem 0.7rem;
+            min-height: 36px;
+        }
+        
+        .clear-filters-btn {
+            min-width: 80px;
+            font-size: 0.78rem;
+            padding: 0.65rem 0.7rem;
+            min-height: 36px;
         }
     }
 </style>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Only run search filter JS if the search form exists (when no category is selected)
-        const advancedSearchForm = document.getElementById('advancedSearchForm');
-        if (advancedSearchForm) {
-            const categorySelect = document.getElementById('id_category');
-            const subcategorySelect = document.getElementById('id_subcategory');
-            const stateSelect = document.getElementById('id_state');
-            const lgaSelect = document.getElementById('id_lga');
-            const activeFiltersCount = document.getElementById('activeFiltersCount');
-        
-            // Function to update active filters count
-            function updateActiveFiltersCount() {
-                let count = 0;
-                const formElements = advancedSearchForm.elements;
+        // Dropdown Filter Form Handler (only when category is selected)
+        const dropdownFilterForm = document.getElementById('dropdownFilterForm');
+        if (dropdownFilterForm) {
+            const dropdownSubcategorySelect = document.getElementById('dropdown_subcategory');
+            const dropdownBrandSelect = document.getElementById('dropdown_brand');
+            const dropdownConditionSelect = document.getElementById('dropdown_condition');
+            const dropdownPriceRangeSelect = document.getElementById('dropdown_price_range');
+            const dropdownStateSelect = document.getElementById('dropdown_state');
+            const dropdownLgaSelect = document.getElementById('dropdown_lga');
+    
+            // Get current URL parameters for maintaining selections
+            const urlParams = new URLSearchParams(window.location.search);
+    
+            // Function to handle price range selection
+            function handlePriceRange(priceRange) {
+                // Clear any existing min_price and max_price inputs
+                const existingMinPrice = dropdownFilterForm.querySelector('input[name="min_price"]');
+                const existingMaxPrice = dropdownFilterForm.querySelector('input[name="max_price"]');
                 
-                for (let element of formElements) {
-                    if (element.type !== 'submit' && element.type !== 'button' && element.value && 
-                        element.type !== 'hidden') { // Don't count hidden inputs
-                        count++;
+                if (existingMinPrice) existingMinPrice.remove();
+                if (existingMaxPrice) existingMaxPrice.remove();
+    
+                if (priceRange) {
+                    const [minPrice, maxPrice] = priceRange.split('-');
+                    
+                    // Create hidden inputs for min and max price
+                    const minPriceInput = document.createElement('input');
+                    minPriceInput.type = 'hidden';
+                    minPriceInput.name = 'min_price';
+                    minPriceInput.value = minPrice;
+                    
+                    const maxPriceInput = document.createElement('input');
+                    maxPriceInput.type = 'hidden';
+                    maxPriceInput.name = 'max_price';
+                    maxPriceInput.value = maxPrice === '999999999' ? '' : maxPrice;
+                    
+                    dropdownFilterForm.appendChild(minPriceInput);
+                    if (maxPrice !== '999999999') {
+                        dropdownFilterForm.appendChild(maxPriceInput);
                     }
                 }
-                
-                activeFiltersCount.textContent = count;
-                activeFiltersCount.style.display = count > 0 ? 'inline-block' : 'none';
             }
-        
-            // Initialize active filters count
-            updateActiveFiltersCount();
-        
-            // Category change handler
-            categorySelect.addEventListener('change', function() {
-                const categoryId = this.value;
-                if (categoryId) {
-                    fetch(`/api/subcategories/${categoryId}/`)
-                        .then(response => response.json())
-                        .then(data => {
-                            subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
-                            data.forEach(subcategory => {
-                                const option = document.createElement('option');
-                                option.value = subcategory.slug;
-                                option.textContent = subcategory.name;
-                                subcategorySelect.appendChild(option);
-                            });
-                            subcategorySelect.disabled = false;  // Enable subcategory
-                            updateActiveFiltersCount();
-                        })
-                        .catch(error => {
-                            console.error('Error fetching subcategories:', error);
-                            subcategorySelect.disabled = true;  // Keep disabled on error
-                        });
-                } else {
-                    subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
-                    subcategorySelect.disabled = true;  // Disable when category is not selected
+    
+            // Function to safely submit form after a delay
+            function submitFormSafely(delay = 100) {
+                setTimeout(() => {
+                    dropdownFilterForm.submit();
+                }, delay);
+            }
+    
+            // Auto-submit form when filters change (EXCLUDING state until LGA is handled)
+            function handleFilterChange() {
+                // Handle price range specially
+                if (this.id === 'dropdown_price_range') {
+                    handlePriceRange(this.value);
                 }
-                updateActiveFiltersCount();
-            });
-        
-            // State change handler
-            stateSelect.addEventListener('change', function() {
-                const stateId = this.value;
-                if (stateId) {
-                    fetch(`/api/lgas/${stateId}/`)
-                        .then(response => response.json())
-                        .then(data => {
-                            lgaSelect.innerHTML = '<option value="">All LGAs</option>';
-                            data.forEach(lga => {
-                                const option = document.createElement('option');
-                                option.value = lga.id;
-                                option.textContent = lga.name;
-                                lgaSelect.appendChild(option);
-                            });
-                            lgaSelect.disabled = false;  // Enable the LGA field
-                        })
-                        .catch(error => {
-                            console.error('Error fetching LGAs:', error);
-                            lgaSelect.disabled = true;  // Keep disabled on error
-                        });
-                } else {
-                    lgaSelect.innerHTML = '<option value="">All LGAs</option>';
-                    lgaSelect.disabled = true;  // Disable when state is not selected
-                }
-                updateActiveFiltersCount();
-            });
-        
-            // Clear filters handler
-            document.getElementById('clearFilters').addEventListener('click', function() {
-                const formElements = advancedSearchForm.elements;
-                for (let element of formElements) {
-                    if (element.type !== 'submit' && element.type !== 'button' && element.type !== 'hidden') {
-                        element.value = '';
-                    }
-                }
-                subcategorySelect.disabled = true;
-                lgaSelect.disabled = true;
-                updateActiveFiltersCount();
                 
-                // Simply redirect to the base products page without parameters
-                window.location.href = window.location.pathname;
+                // Submit the form
+                submitFormSafely();
+            }
+    
+            // Subcategory change handler for dropdown filters
+            if (dropdownSubcategorySelect) {
+                dropdownSubcategorySelect.addEventListener('change', function() {
+                    const categorySlug = dropdownFilterForm.querySelector('input[name="category"]').value;
+                    const subcategorySlug = this.value;
+                    
+                    if (categorySlug) {
+                        let apiUrl = `/api/brands/${categorySlug}/`;
+                        if (subcategorySlug) {
+                            apiUrl += `?subcategory=${subcategorySlug}`;
+                        }
+                        
+                        fetch(apiUrl)
+                            .then(response => response.json())
+                            .then(data => {
+                                dropdownBrandSelect.innerHTML = '<option value="">All Brands</option>';
+                                data.forEach(brand => {
+                                    const option = document.createElement('option');
+                                    option.value = brand.slug;
+                                    option.textContent = `${brand.name}${brand.product_count ? ' (' + brand.product_count + ')' : ''}`;
+                                    dropdownBrandSelect.appendChild(option);
+                                });
+                            })
+                            .catch(error => {
+                                console.error('Error fetching brands for dropdown subcategory:', error);
+                            });
+                    }
+                    
+                    // Submit form after updating brands
+                    submitFormSafely(200);
+                });
+            }
+    
+            // FIXED State change handler - populates LGAs and maintains selection
+            if (dropdownStateSelect) {
+                dropdownStateSelect.addEventListener('change', function() {
+                    const stateId = this.value;
+                    
+                    // Clear LGA selection when state changes
+                    dropdownLgaSelect.innerHTML = '<option value="">All LGAs</option>';
+                    dropdownLgaSelect.value = '';
+                    
+                    if (stateId) {
+                        // Enable LGA dropdown and fetch LGAs
+                        dropdownLgaSelect.disabled = false;
+                        
+                        fetch(`/api/lgas/${stateId}/`)
+                            .then(response => response.json())
+                            .then(data => {
+                                data.forEach(lga => {
+                                    const option = document.createElement('option');
+                                    option.value = lga.id;
+                                    option.textContent = lga.name;
+                                    dropdownLgaSelect.appendChild(option);
+                                });
+                                
+                                // After populating LGAs, submit the form to update results
+                                submitFormSafely(100);
+                            })
+                            .catch(error => {
+                                console.error('Error fetching LGAs for dropdown:', error);
+                                dropdownLgaSelect.disabled = true;
+                                // Still submit form even if LGA fetch fails
+                                submitFormSafely(100);
+                            });
+                    } else {
+                        // No state selected, disable LGA and submit form
+                        dropdownLgaSelect.disabled = true;
+                        submitFormSafely(100);
+                    }
+                });
+            }
+    
+            // LGA change handler - submits form when LGA is selected
+            if (dropdownLgaSelect) {
+                dropdownLgaSelect.addEventListener('change', function() {
+                    // Submit form when LGA changes
+                    submitFormSafely();
+                });
+            }
+    
+            // Add change listeners to other dropdown filters (NOT state/LGA - they have their own handlers)
+            [dropdownBrandSelect, dropdownConditionSelect, dropdownPriceRangeSelect].forEach(select => {
+                if (select) {
+                    select.addEventListener('change', handleFilterChange);
+                }
             });
-        
-            // Listen for changes on all form inputs
-            advancedSearchForm.addEventListener('change', updateActiveFiltersCount);
-            advancedSearchForm.addEventListener('input', updateActiveFiltersCount);
-            
-            // Ensure the form doesn't submit with empty values
-            advancedSearchForm.addEventListener('submit', function(e) {
-                // Remove empty fields before submission to keep URL clean
-                const elements = advancedSearchForm.elements;
-                for (let element of elements) {
-                    if (element.value === '' && element.type !== 'submit' && element.type !== 'button') {
-                        // Don't include empty fields in the query string
-                        element.disabled = true;
+    
+            // FIXED Clear dropdown filters handler
+            const clearDropdownFiltersBtn = document.getElementById('clearDropdownFilters');
+            if (clearDropdownFiltersBtn) {
+                clearDropdownFiltersBtn.addEventListener('click', function() {
+                    // Reset all dropdowns except category (which is hidden)
+                    [dropdownSubcategorySelect, dropdownBrandSelect, dropdownConditionSelect, 
+                     dropdownPriceRangeSelect, dropdownStateSelect, dropdownLgaSelect].forEach(select => {
+                        if (select) {
+                            select.value = '';
+                        }
+                    });
+    
+                    // Reset LGA dropdown properly
+                    if (dropdownLgaSelect) {
+                        dropdownLgaSelect.innerHTML = '<option value="">All LGAs</option>';
+                        dropdownLgaSelect.disabled = true;
+                    }
+    
+                    // Remove hidden price inputs
+                    const existingMinPrice = dropdownFilterForm.querySelector('input[name="min_price"]');
+                    const existingMaxPrice = dropdownFilterForm.querySelector('input[name="max_price"]');
+                    if (existingMinPrice) existingMinPrice.remove();
+                    if (existingMaxPrice) existingMaxPrice.remove();
+    
+                    // Reset brands to show all for the category
+                    const categorySlug = dropdownFilterForm.querySelector('input[name="category"]').value;
+                    if (categorySlug && dropdownBrandSelect) {
+                        fetch(`/api/brands/${categorySlug}/`)
+                            .then(response => response.json())
+                            .then(data => {
+                                dropdownBrandSelect.innerHTML = '<option value="">All Brands</option>';
+                                data.forEach(brand => {
+                                    const option = document.createElement('option');
+                                    option.value = brand.slug;
+                                    option.textContent = `${brand.name}${brand.product_count ? ' (' + brand.product_count + ')' : ''}`;
+                                    dropdownBrandSelect.appendChild(option);
+                                });
+                            })
+                            .catch(error => {
+                                console.error('Error fetching brands:', error);
+                            });
+                    }
+    
+                    // Submit form to apply cleared filters
+                    submitFormSafely(200);
+                });
+            }
+    
+            // Initialize price range on page load
+            const currentPriceRange = dropdownPriceRangeSelect ? dropdownPriceRangeSelect.value : '';
+            if (currentPriceRange) {
+                handlePriceRange(currentPriceRange);
+            }
+    
+            // CRITICAL FIX: Initialize state and LGA selections on page load
+            function initializeLocationSelections() {
+                const currentStateId = urlParams.get('state');
+                const currentLgaId = urlParams.get('lga');
+                
+                // Set state selection if it exists in URL
+                if (currentStateId && dropdownStateSelect) {
+                    dropdownStateSelect.value = currentStateId;
+                    
+                    // If state is selected, populate LGAs
+                    if (dropdownLgaSelect) {
+                        dropdownLgaSelect.disabled = false;
+                        
+                        fetch(`/api/lgas/${currentStateId}/`)
+                            .then(response => response.json())
+                            .then(data => {
+                                dropdownLgaSelect.innerHTML = '<option value="">All LGAs</option>';
+                                data.forEach(lga => {
+                                    const option = document.createElement('option');
+                                    option.value = lga.id;
+                                    option.textContent = lga.name;
+                                    
+                                    // Set LGA selection if it exists in URL
+                                    if (currentLgaId && lga.id.toString() === currentLgaId) {
+                                        option.selected = true;
+                                    }
+                                    
+                                    dropdownLgaSelect.appendChild(option);
+                                });
+                            })
+                            .catch(error => {
+                                console.error('Error fetching LGAs on page load:', error);
+                                dropdownLgaSelect.disabled = true;
+                            });
+                    }
+                } else {
+                    // No state selected, ensure LGA is disabled
+                    if (dropdownLgaSelect) {
+                        dropdownLgaSelect.disabled = true;
                     }
                 }
+            }
+    
+            // Initialize location selections on page load
+            initializeLocationSelections();
+        }
+        
+        // Sort functionality - Enhanced to preserve all current filters
+        const sortSelect = document.getElementById('sortSelect');
+        if (sortSelect) {
+            sortSelect.addEventListener('change', function() {
+                const currentUrl = new URL(window.location);
+                currentUrl.searchParams.set('sort', this.value);
+                window.location.href = currentUrl.toString();
             });
         }
+    
+        // Smooth scroll for horizontal filter containers
+        const filterScrollContainers = document.querySelectorAll('.filters-scroll-container');
+        
+        filterScrollContainers.forEach(container => {
+            let isDown = false;
+            let startX;
+            let scrollLeft;
+    
+            // Mouse events
+            container.addEventListener('mousedown', (e) => {
+                isDown = true;
+                container.classList.add('scrolling');
+                startX = e.pageX - container.offsetLeft;
+                scrollLeft = container.scrollLeft;
+                container.style.cursor = 'grabbing';
+            });
+    
+            container.addEventListener('mouseleave', () => {
+                isDown = false;
+                container.classList.remove('scrolling');
+                container.style.cursor = 'grab';
+            });
+    
+            container.addEventListener('mouseup', () => {
+                isDown = false;
+                container.classList.remove('scrolling');
+                container.style.cursor = 'grab';
+            });
+    
+            container.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - container.offsetLeft;
+                const walk = (x - startX) * 2;
+                container.scrollLeft = scrollLeft - walk;
+            });
+    
+            // Touch events for mobile
+            container.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].pageX - container.offsetLeft;
+                scrollLeft = container.scrollLeft;
+            });
+    
+            container.addEventListener('touchmove', (e) => {
+                const x = e.touches[0].pageX - container.offsetLeft;
+                const walk = (x - startX) * 2;
+                container.scrollLeft = scrollLeft - walk;
+            });
+        });
+    
+        // Enhanced filter dropdown animations
+        const filterSelects = document.querySelectorAll('.filter-select');
+        filterSelects.forEach(select => {
+            select.addEventListener('focus', function() {
+                this.parentElement.classList.add('filter-focused');
+            });
+    
+            select.addEventListener('blur', function() {
+                this.parentElement.classList.remove('filter-focused');
+            });
+    
+            select.addEventListener('change', function() {
+                // Add a brief highlight effect when filter changes
+                this.style.background = 'linear-gradient(45deg, #e3f2fd, #ffffff)';
+                setTimeout(() => {
+                    this.style.background = '';
+                }, 300);
+            });
+        });
     });
 </script>
+
 {% endblock %}
+
 {% block 'Footer'%}{% endblock %}

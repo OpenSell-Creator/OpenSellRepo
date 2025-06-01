@@ -3,110 +3,653 @@
 {% load widget_tweaks %}
 
 {% block 'Body' %}
-<h2 class="text-center sm-2">Product Search</h2>
-<div class="container mt-4">
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <form method="get" action="{% url 'product_search' %}" id="advancedSearchForm">
-                <!-- Main search row with filter button -->
-                <div class="row mg-1">
-                    <div class="col">
-                        {{ form.query|add_class:"form-control form-control-md"|attr:"placeholder:Search products..." }}
-                    </div>
-                    <div class="col-auto">
-                        <button type="button" 
-                                class="btn btn-outline-secondary btn-mg d-flex align-items-center gap-1" 
-                                data-bs-toggle="collapse" 
-                                data-bs-target="#filterSection"
-                                aria-expanded="false"
-                                aria-controls="filterSection">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="21" y1="4" x2="14" y2="4"></line>
-                                <line x1="10" y1="4" x2="3" y2="4"></line>
-                                <line x1="21" y1="12" x2="12" y2="12"></line>
-                                <line x1="8" y1="12" x2="3" y2="12"></line>
-                                <line x1="21" y1="20" x2="16" y2="20"></line>
-                                <line x1="12" y1="20" x2="3" y2="20"></line>
-                                <line x1="14" y1="2" x2="14" y2="6"></line>
-                                <line x1="8" y1="10" x2="8" y2="14"></line>
-                                <line x1="16" y1="18" x2="16" y2="22"></line>
-                            </svg>
-                            
-                            <span class="badge bg-secondary" id="activeFiltersCount">0</span>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Collapsible filter section -->
-                <div class="collapse" id="filterSection">
-                    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
-                        <div class="col">
-                            <label class="form-label">Category</label>
-                            {{ form.category|add_class:"form-select" }}
-                        </div>
-                        <div class="col">
-                            <label class="form-label">Subcategory</label>
-                            {{ form.subcategory|add_class:"form-select"|attr:"aria-label:Subcategory" }}
-                        </div>
-                        <div class="col">
-                            <label class="form-label">Condition</label>
-                            {{ form.condition|add_class:"form-select"|attr:"aria-label:Condition" }}
-                        </div>
-                        <div class="col">
-                            <label class="form-label">Minimum Price</label>
-                            {{ form.min_price|add_class:"form-control"|attr:"placeholder:Enter minimum price" }}
-                        </div>
-                        <div class="col">
-                            <label class="form-label">Maximum Price</label>
-                            {{ form.max_price|add_class:"form-control"|attr:"placeholder:Enter maximum price" }}
-                        </div>
-                        <div class="col">
-                            <label class="form-label">State</label>
-                            {{ form.state|add_class:"form-select"|attr:"aria-label:State" }}
-                        </div>
-                        <div class="col">
-                            <label class="form-label">LGA</label>
-                            {{ form.lga|add_class:"form-select"|attr:"aria-label:LGA" }}
-                        </div>
-                    </div>
-                    <div class="row mt-3">
-                        <div class="col">
-                            <button type="submit" class="btn btn-primary">Apply Filters</button>
-                            <button type="button" class="btn btn-outline-secondary ms-2" id="clearFilters">Clear All</button>
-                        </div>
-                    </div>
-                </div>
-            </form>
-        </div>
+<div class="container-fluid py-3">
+    <!-- Search Header -->
+    <div class="search-header">
+        <h2 class="search-title">Find Your Perfect Product</h2>
+        <p class="search-subtitle">Search through thousands of listings with advanced filters</p>
     </div>
 
-    <h2 class="text-center mt-4">Search Results</h2>
-    <div class="mt-4">
-        <div class="row row-cols-2 row-cols-md-5 g-2">
-            {% for product in products %}
-                <div class="col-6 col-md-4 col-lg-3">
-                    {% include 'product_card.html' with product=product %}
+    <!-- Advanced Search Card -->
+    <div class="search-card">
+        <form method="get" action="{% url 'product_search' %}" id="advancedSearchForm">
+            <!-- Main search row with filter button -->
+            <div class="search-main-row">
+                <div class="search-input-wrapper">
+                    <label class="search-label">Search Products</label>
+                    {{ form.query|add_class:"search-input"|attr:"placeholder:What are you looking for?" }}
                 </div>
-            {% empty %}
-                <div class="col-12">
-                    <p class="text-center">No products found matching your criteria.</p>
+                <div class="search-buttons">
+                    <button type="submit" class="search-btn primary">
+                        <i class="bi bi-search"></i>
+                        <span>Search</span>
+                    </button>
+                    <button type="button" 
+                            class="search-btn secondary filter-toggle" 
+                            data-bs-toggle="collapse" 
+                            data-bs-target="#filterSection"
+                            aria-expanded="false"
+                            aria-controls="filterSection">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="21" y1="4" x2="14" y2="4"></line>
+                            <line x1="10" y1="4" x2="3" y2="4"></line>
+                            <line x1="21" y1="12" x2="12" y2="12"></line>
+                            <line x1="8" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="20" x2="16" y2="20"></line>
+                            <line x1="12" y1="20" x2="3" y2="20"></line>
+                            <line x1="14" y1="2" x2="14" y2="6"></line>
+                            <line x1="8" y1="10" x2="8" y2="14"></line>
+                            <line x1="16" y1="18" x2="16" y2="22"></line>
+                        </svg>
+                        <span class="filter-text">Filters</span>
+                        <span class="filter-badge" id="activeFiltersCount">0</span>
+                    </button>
                 </div>
-            {% endfor %}
+            </div>
+            
+            <!-- Collapsible filter section -->
+            <div class="collapse" id="filterSection">
+                <div class="filter-divider"></div>
+                <div class="filter-grid">
+                    <div class="filter-field">
+                        <label class="filter-label">Category</label>
+                        {{ form.category|add_class:"filter-select" }}
+                    </div>
+                    <div class="filter-field">
+                        <label class="filter-label">Subcategory</label>
+                        {{ form.subcategory|add_class:"filter-select" }}
+                    </div>
+                    <div class="filter-field">
+                        <label class="filter-label">Brand</label>
+                        {{ form.brand|add_class:"filter-select" }}
+                    </div>
+                    <div class="filter-field">
+                        <label class="filter-label">Condition</label>
+                        {{ form.condition|add_class:"filter-select" }}
+                    </div>
+                    <div class="filter-field">
+                        <label class="filter-label">Minimum Price (₦)</label>
+                        {{ form.min_price|add_class:"filter-input"|attr:"placeholder:0" }}
+                    </div>
+                    <div class="filter-field">
+                        <label class="filter-label">Maximum Price (₦)</label>
+                        {{ form.max_price|add_class:"filter-input"|attr:"placeholder:Any amount" }}
+                    </div>
+                    <div class="filter-field">
+                        <label class="filter-label">State</label>
+                        {{ form.state|add_class:"filter-select" }}
+                    </div>
+                    <div class="filter-field">
+                        <label class="filter-label">LGA</label>
+                        {{ form.lga|add_class:"filter-select" }}
+                    </div>
+                </div>
+                <div class="filter-actions">
+                    <button type="submit" class="action-btn primary">
+                        <i class="bi bi-funnel"></i>
+                        <span>Apply Filters</span>
+                    </button>
+                    <button type="button" class="action-btn outline" id="clearFilters">
+                        <i class="bi bi-arrow-clockwise"></i>
+                        <span>Clear All</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Results Summary -->
+    {% if products %}
+    <div class="results-summary">
+        <div class="results-info">
+            <h5 class="results-title">Search Results</h5>
+            <p class="results-text">
+                {% if page_obj.paginator.count == 1 %}
+                    1 product found
+                {% else %}
+                    {{ page_obj.paginator.count }} products found
+                {% endif %}
+                {% if request.GET.query %}
+                    for "<strong>{{ request.GET.query }}</strong>"
+                {% endif %}
+            </p>
         </div>
-        <div class="mt-4">
-            {% include 'pagination.html' %}
+        <div class="results-pagination-info">
+            <small class="pagination-text">
+                Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ page_obj.paginator.count }}
+            </small>
         </div>
     </div>
+    {% endif %}
+
+    <!-- Products Grid -->
+    <div class="row g-3 g-md-4">
+        {% for product in products %}
+            <div class="col-6 col-md-4 col-lg-3 col-xl-2">
+                {% include 'product_card.html' with product=product %}
+            </div>
+        {% empty %}
+            <!-- Empty State -->
+            <div class="col-12">
+                <div class="empty-state">
+                    <div class="empty-icon-wrapper">
+                        <i class="bi bi-search empty-icon"></i>
+                    </div>
+                    <h4 class="empty-title">No products found</h4>
+                    <p class="empty-text">
+                        We couldn't find any products matching your search criteria.
+                        <br class="d-none d-md-block">
+                        Try adjusting your filters or search terms.
+                    </p>
+                    <div class="empty-actions">
+                        <button type="button" class="action-btn outline" id="clearFiltersEmpty">
+                            <i class="bi bi-arrow-clockwise"></i>
+                            <span>Clear All Filters</span>
+                        </button>
+                        <a href="{% url 'product_list' %}" class="action-btn primary">
+                            <i class="bi bi-grid"></i>
+                            <span>Browse All Products</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if products %}
+    <div class="mt-5">
+        {% include 'pagination.html' %}
+    </div>
+    {% endif %}
 </div>
+
+<style>
+    :root {
+        /* Use your existing color variables */
+        --primary-color: var(--light-primary-color, #003366);
+        --secondary-color: var(--light-secondary-color, #004d99);
+        --accent-color: var(--light-accent-color, #ff6600);
+        --background-color: var(--light-background, #f5f5f5);
+        --card-background: var(--light-card-background, #ffffff);
+        --text-primary: var(--light-text-primary, #003366);
+        --text-secondary: var(--light-text-secondary, #666666);
+        --hover-bg: var(--light-hover-bg, #e6e6e6);
+        --shadow-color: var(--light-shadow, rgba(0, 51, 102, 0.15));
+        --muted: var(--light-muted, #8c8c8c);
+    }
+    
+    [data-bs-theme="dark"] {
+        --primary-color: var(--dark-primary-color, #4d79a4);
+        --secondary-color: var(--dark-secondary-color, #1a2a3a);
+        --accent-color: var(--dark-accent-color, #ff6600);
+        --background-color: var(--dark-background, #121212);
+        --card-background: var(--dark-card-background, #1e1e1e);
+        --text-primary: var(--dark-text-primary, #ffffff);
+        --text-secondary: var(--dark-text-secondary, #d4d4d4);
+        --hover-bg: var(--dark-hover-bg, #2a2a2a);
+        --shadow-color: var(--dark-shadow, rgba(0, 0, 0, 0.5));
+        --muted: var(--dark-muted, #6c757d);
+    }
+
+    /* Search Header */
+    .search-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .search-title {
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        font-size: 1.5rem;
+    }
+
+    .search-subtitle {
+        color: var(--text-secondary);
+        margin: 0;
+        font-size: 0.95rem;
+    }
+
+    /* Search Card */
+    .search-card {
+        background: var(--card-background);
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 8px var(--shadow-color);
+    }
+
+    /* Main Search Row */
+    .search-main-row {
+        display: flex;
+        gap: 1rem;
+        align-items: end;
+        margin-bottom: 1rem;
+    }
+
+    .search-input-wrapper {
+        flex: 1;
+    }
+
+    .search-label {
+        display: block;
+        color: var(--text-primary);
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .search-input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--text-primary);
+        border-radius: 8px;
+        background: var(--card-background);
+        color: var(--text-primary);
+        font-size: 1rem;
+        transition: all 0.2s ease;
+    }
+
+
+    .search-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.1);
+    }
+
+    .search-input::placeholder {
+        color: var(--muted);
+    }
+
+    .search-buttons {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+    }
+
+    /* Search Buttons */
+    .search-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.25rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .search-btn.primary {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+    }
+
+    .search-btn.primary:hover {
+        background: var(--secondary-color);
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px var(--shadow-color);
+    }
+
+    .search-btn.secondary {
+        background: var(--background-color);
+        color: var(--text-primary);
+        border-color: #cccccc;
+    }
+
+    [data-bs-theme="dark"] .search-btn.secondary {
+        border-color: #3a3a3a;
+    }
+
+    .search-btn.secondary:hover {
+        background: var(--hover-bg);
+        color: var(--text-primary);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px var(--shadow-color);
+    }
+
+    .filter-text {
+        display: none;
+    }
+
+    .filter-badge {
+        background: var(--accent-color);
+        color: white;
+        padding: 2px 6px;
+        border-radius: 10px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        min-width: 18px;
+        text-align: center;
+    }
+
+    /* Filter Section */
+    .filter-divider {
+        height: 1px;
+        background: #cccccc;
+        margin: 1.5rem 0;
+    }
+
+    [data-bs-theme="dark"] .filter-divider {
+        background: #3a3a3a;
+    }
+
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .filter-field {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .filter-label {
+        color: var(--text-primary);
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        font-size: 0.85rem;
+    }
+
+    .filter-select, .filter-input {
+        width: 100%;
+        padding: 0.6rem 0.75rem;
+        border: 1px solid var(--text-primary);
+        border-radius: 8px;
+        background: var(--card-background);
+        color: var(--text-primary);
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .filter-select {
+        padding-right: 2.25rem;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23666' viewBox='0 0 16 16'%3E%3Cpath d='M8 10.5l-4-4h8l-4 4z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+    }
+
+    [data-bs-theme="dark"] .filter-select {
+  
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23d4d4d4' viewBox='0 0 16 16'%3E%3Cpath d='M8 10.5l-4-4h8l-4 4z'/%3E%3C/svg%3E");
+    }
+
+ 
+
+    .filter-select:focus, .filter-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.1);
+    }
+
+    .filter-select:hover, .filter-input:hover {
+        border-color: var(--primary-color);
+        background-color: var(--hover-bg);
+    }
+
+    .filter-input::placeholder {
+        color: var(--muted);
+    }
+
+    /* Filter Actions */
+    .filter-actions {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .action-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+        border: 1px solid var(--text-primary);
+        cursor: pointer;
+    }
+
+    .action-btn.primary {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .action-btn.primary:hover {
+        background: var(--secondary-color);
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px var(--shadow-color);
+    }
+
+    .action-btn.outline {
+        background: transparent;
+        color: var(--text-primary);
+        border-color: var(--text-primary);
+    }
+
+
+    .action-btn.outline:hover {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px var(--shadow-color);
+    }
+
+    /* Results Summary */
+    .results-summary {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        background: var(--card-background);
+        border-radius: 8px;
+        box-shadow: 0 2px 8px var(--shadow-color);
+    }
+
+    .results-title {
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+        font-size: 1.1rem;
+    }
+
+    .results-text {
+        color: var(--text-secondary);
+        margin: 0;
+        font-size: 0.9rem;
+    }
+
+    .pagination-text {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1.5rem;
+        background: var(--card-background);
+        border-radius: 12px;
+        box-shadow: 0 2px 8px var(--shadow-color);
+    }
+
+    .empty-icon-wrapper {
+        margin-bottom: 1.5rem;
+    }
+
+    .empty-icon {
+        font-size: 4rem;
+        color: var(--muted);
+        opacity: 0.5;
+    }
+
+    .empty-title {
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+
+    .empty-text {
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+        font-size: 0.95rem;
+    }
+
+    .empty-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        justify-content: center;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+        .search-card {
+            padding: 1.5rem;
+        }
+
+        .search-main-row {
+            flex-direction: column;
+            gap: 1rem;
+            align-items: stretch;
+        }
+
+        .search-buttons {
+            justify-content: space-between;
+        }
+
+        .search-btn {
+            flex: 1;
+            justify-content: center;
+        }
+
+        .filter-grid {
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .results-summary {
+            flex-direction: column;
+            gap: 1rem;
+            align-items: stretch;
+            text-align: center;
+        }
+
+        .results-pagination-info {
+            display: none;
+        }
+
+        .empty-actions {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .action-btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .search-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .search-title {
+            font-size: 1.3rem;
+        }
+
+        .search-card {
+            padding: 1rem;
+        }
+
+        .filter-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .filter-actions {
+            flex-direction: column;
+        }
+
+        .action-btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .empty-icon {
+            font-size: 2.5rem;
+        }
+
+        .empty-state {
+            padding: 2rem 1rem;
+        }
+    }
+
+    @media (min-width: 576px) {
+        .filter-text {
+            display: inline;
+        }
+    }
+
+    /* Collapse Animation */
+    .collapse {
+        transition: height 0.35s ease;
+    }
+
+    /* Loading State */
+    .btn.loading {
+        position: relative;
+        color: transparent;
+    }
+
+    .btn.loading::after {
+        content: "";
+        position: absolute;
+        width: 1rem;
+        height: 1rem;
+        top: 50%;
+        left: 50%;
+        margin-left: -0.5rem;
+        margin-top: -0.5rem;
+        border: 2px solid transparent;
+        border-top-color: currentColor;
+        border-radius: 50%;
+        animation: spin 1s ease infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('advancedSearchForm');
         const categorySelect = document.getElementById('id_category');
         const subcategorySelect = document.getElementById('id_subcategory');
+        const brandSelect = document.getElementById('id_brand');
         const stateSelect = document.getElementById('id_state');
         const lgaSelect = document.getElementById('id_lga');
-        const form = document.getElementById('advancedSearchForm');
         const activeFiltersCount = document.getElementById('activeFiltersCount');
+        const clearFiltersBtn = document.getElementById('clearFilters');
+        const clearFiltersEmptyBtn = document.getElementById('clearFiltersEmpty');
     
         // Function to update active filters count
         function updateActiveFiltersCount() {
@@ -114,101 +657,289 @@
             const formElements = form.elements;
             
             for (let element of formElements) {
-                if (element.type !== 'submit' && element.type !== 'button' && element.value) {
-                    // Don't count the main search query
-                    if (element.name !== 'query') {
-                        count++;
-                    }
+                if (element.type !== 'submit' && 
+                    element.type !== 'button' && 
+                    element.value && 
+                    element.name !== 'query') { // Don't count main search query
+                    count++;
                 }
             }
             
             activeFiltersCount.textContent = count;
-            // Show/hide badge based on count
-            activeFiltersCount.style.display = count > 0 ? 'inline-block' : 'none';
+            activeFiltersCount.style.display = count > 0 ? 'flex' : 'none';
+        }
+    
+        // Function to show loading state
+        function showLoading(button) {
+            button.classList.add('loading');
+            button.disabled = true;
+        }
+    
+        // Function to hide loading state
+        function hideLoading(button) {
+            button.classList.remove('loading');
+            button.disabled = false;
         }
     
         // Initialize active filters count
         updateActiveFiltersCount();
     
         // Category change handler
-        // Category change handler
-        categorySelect.addEventListener('change', function() {
-            const categoryId = this.value;
-            if (categoryId) {
-                fetch(`/api/subcategories/${categoryId}/`)
-                    .then(response => response.json())
-                    .then(data => {
-                        subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
-                        data.forEach(subcategory => {
-                            const option = document.createElement('option');
-                            option.value = subcategory.id;
-                            option.textContent = subcategory.name;
-                            subcategorySelect.appendChild(option);
-                        });
-                        subcategorySelect.disabled = false;  // Enable subcategory
-                        updateActiveFiltersCount();
-                    })
-                    .catch(error => {
-                        console.error('Error fetching subcategories:', error);
-                        subcategorySelect.disabled = true;  // Keep disabled on error
-                        updateActiveFiltersCount();
-                    });
-            } else {
-                subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
-                subcategorySelect.disabled = true;  // Disable when category is not selected
+        if (categorySelect) {
+            categorySelect.addEventListener('change', function() {
+                const categoryId = this.value;
+                
+                // Reset subcategory and brand
+                if (subcategorySelect) {
+                    subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
+                    subcategorySelect.disabled = !categoryId;
+                }
+                if (brandSelect) {
+                    brandSelect.innerHTML = '<option value="">All Brands</option>';
+                    brandSelect.disabled = !categoryId;
+                }
+                
+                if (categoryId) {
+                    // Load subcategories
+                    if (subcategorySelect) {
+                        fetch(`/api/subcategories/${categoryId}/`)
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error('Network response was not ok');
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                data.forEach(subcategory => {
+                                    const option = document.createElement('option');
+                                    option.value = subcategory.id;
+                                    option.textContent = subcategory.name;
+                                    subcategorySelect.appendChild(option);
+                                });
+                                subcategorySelect.disabled = false;
+                            })
+                            .catch(error => {
+                                console.error('Error fetching subcategories:', error);
+                                subcategorySelect.disabled = false;
+                            });
+                    }
+    
+                    // Load brands for the category (if API endpoint exists)
+                    if (brandSelect) {
+                        // First try the category-specific brand endpoint
+                        fetch(`/api/brands/${categoryId}/`)
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error('Network response was not ok');
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                data.forEach(brand => {
+                                    const option = document.createElement('option');
+                                    option.value = brand.id;
+                                    option.textContent = brand.name;
+                                    if (brand.product_count) {
+                                        option.textContent += ` (${brand.product_count})`;
+                                    }
+                                    brandSelect.appendChild(option);
+                                });
+                                brandSelect.disabled = false;
+                            })
+                            .catch(error => {
+                                console.error('Error fetching brands by category:', error);
+                                // Keep brand select enabled but empty if API fails
+                                brandSelect.disabled = false;
+                            });
+                    }
+                }
+                
                 updateActiveFiltersCount();
-            }
-        });
+            });
+        }
+    
+        // Subcategory change handler
+        if (subcategorySelect) {
+            subcategorySelect.addEventListener('change', function() {
+                const subcategoryId = this.value;
+                
+                if (subcategoryId && brandSelect) {
+                    // Reset brands
+                    brandSelect.innerHTML = '<option value="">All Brands</option>';
+                    brandSelect.disabled = true;
+                    
+                    // Load brands for the subcategory using the existing endpoint
+                    fetch(`/ajax/load-brands/?subcategory=${subcategoryId}`)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            data.forEach(brand => {
+                                const option = document.createElement('option');
+                                option.value = brand.id;
+                                option.textContent = brand.name;
+                                brandSelect.appendChild(option);
+                            });
+                            brandSelect.disabled = false;
+                        })
+                        .catch(error => {
+                            console.error('Error fetching brands by subcategory:', error);
+                            brandSelect.disabled = false;
+                        });
+                } else if (brandSelect && !subcategoryId) {
+                    // If no subcategory selected, reset to category-level brands
+                    const categoryId = categorySelect ? categorySelect.value : '';
+                    if (categoryId) {
+                        brandSelect.innerHTML = '<option value="">All Brands</option>';
+                        // Reload category-level brands
+                        fetch(`/api/brands/${categoryId}/`)
+                            .then(response => response.json())
+                            .then(data => {
+                                data.forEach(brand => {
+                                    const option = document.createElement('option');
+                                    option.value = brand.id;
+                                    option.textContent = brand.name;
+                                    if (brand.product_count) {
+                                        option.textContent += ` (${brand.product_count})`;
+                                    }
+                                    brandSelect.appendChild(option);
+                                });
+                            })
+                            .catch(error => {
+                                console.error('Error reloading category brands:', error);
+                            });
+                    }
+                }
+                
+                updateActiveFiltersCount();
+            });
+        }
     
         // State change handler
-        stateSelect.addEventListener('change', function() {
-            const stateId = this.value;
-            if (stateId) {
-                fetch(`/api/lgas/${stateId}/`)
-                    .then(response => response.json())
-                    .then(data => {
-                        lgaSelect.innerHTML = '<option value="">All LGAs</option>';
-                        data.forEach(lga => {
-                            const option = document.createElement('option');
-                            option.value = lga.id;
-                            option.textContent = lga.name;
-                            lgaSelect.appendChild(option);
-                        });
-                        lgaSelect.disabled = false;  // Enable the LGA field
-                        updateActiveFiltersCount();
-                    })
-                    .catch(error => {
-                        console.error('Error fetching LGAs:', error);
-                        lgaSelect.disabled = true;  // Keep disabled on error
-                        updateActiveFiltersCount();
-                    });
-            } else {
-                lgaSelect.innerHTML = '<option value="">All LGAs</option>';
-                lgaSelect.disabled = true;  // Disable when state is not selected
+        if (stateSelect) {
+            stateSelect.addEventListener('change', function() {
+                const stateId = this.value;
+                
+                if (lgaSelect) {
+                    lgaSelect.innerHTML = '<option value="">All LGAs</option>';
+                    lgaSelect.disabled = !stateId;
+                    
+                    if (stateId) {
+                        fetch(`/api/lgas/${stateId}/`)
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error('Network response was not ok');
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                data.forEach(lga => {
+                                    const option = document.createElement('option');
+                                    option.value = lga.id;
+                                    option.textContent = lga.name;
+                                    lgaSelect.appendChild(option);
+                                });
+                                lgaSelect.disabled = false;
+                            })
+                            .catch(error => {
+                                console.error('Error fetching LGAs:', error);
+                                lgaSelect.disabled = false;
+                            });
+                    }
+                }
+                
                 updateActiveFiltersCount();
-            }
-        });
+            });
+        }
     
         // Clear filters handler
-        document.getElementById('clearFilters').addEventListener('click', function() {
+        function clearAllFilters() {
             const formElements = form.elements;
             for (let element of formElements) {
                 if (element.type !== 'submit' && element.type !== 'button') {
-                    // Preserve the main search query
-                    if (element.name !== 'query') {
+                    if (element.name !== 'query') { // Preserve search query
                         element.value = '';
                     }
                 }
             }
-            subcategorySelect.disabled = true;
-            lgaSelect.disabled = true;
+            
+            // Reset dependent fields
+            if (subcategorySelect) {
+                subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
+                subcategorySelect.disabled = true;
+            }
+            if (brandSelect) {
+                brandSelect.innerHTML = '<option value="">All Brands</option>';
+                brandSelect.disabled = true;
+            }
+            if (lgaSelect) {
+                lgaSelect.innerHTML = '<option value="">All LGAs</option>';
+                lgaSelect.disabled = true;
+            }
+            
             updateActiveFiltersCount();
-        });
+        }
+    
+        if (clearFiltersBtn) {
+            clearFiltersBtn.addEventListener('click', clearAllFilters);
+        }
+        
+        if (clearFiltersEmptyBtn) {
+            clearFiltersEmptyBtn.addEventListener('click', function() {
+                clearAllFilters();
+                // Also clear the search query for empty state
+                const queryInput = form.querySelector('[name="query"]');
+                if (queryInput) queryInput.value = '';
+            });
+        }
     
         // Listen for changes on all form inputs
         form.addEventListener('change', updateActiveFiltersCount);
         form.addEventListener('input', updateActiveFiltersCount);
+    
+        // Form submission with loading state
+        form.addEventListener('submit', function(e) {
+            const submitBtns = form.querySelectorAll('button[type="submit"]');
+            submitBtns.forEach(btn => {
+                showLoading(btn);
+            });
+            
+            // Remove empty fields to keep URL clean
+            const elements = form.elements;
+            for (let element of elements) {
+                if (element.value === '' && 
+                    element.type !== 'submit' && 
+                    element.type !== 'button') {
+                    element.disabled = true;
+                }
+            }
+        });
+    
+        // Handle brand and condition select changes for active filter count
+        if (brandSelect) {
+            brandSelect.addEventListener('change', updateActiveFiltersCount);
+        }
+        
+        const conditionSelect = document.getElementById('id_condition');
+        if (conditionSelect) {
+            conditionSelect.addEventListener('change', updateActiveFiltersCount);
+        }
+    
+        // Handle price input changes
+        const minPriceInput = document.getElementById('id_min_price');
+        const maxPriceInput = document.getElementById('id_max_price');
+        
+        if (minPriceInput) {
+            minPriceInput.addEventListener('input', updateActiveFiltersCount);
+        }
+        if (maxPriceInput) {
+            maxPriceInput.addEventListener('input', updateActiveFiltersCount);
+        }
     });
-    </script>
+</script>
 {% endblock %}
-{% block 'Footer'%}{% endblock %}
+
+{% block 'Footer' %}{% endblock %}

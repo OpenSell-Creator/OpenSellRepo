@@ -63,6 +63,16 @@ def load_brands(request):
     brands = Brand.objects.filter(subcategories=subcategory_id).values('id', 'name')
     return JsonResponse(list(brands), safe=False)
 
+def get_brands(request, category_id):
+    brands = Brand.objects.filter(
+        subcategories__category_id=category_id
+    ).distinct().values('id', 'name')
+    return JsonResponse(list(brands), safe=False)
+
+def get_lgas(request, state_id):
+    lgas = LGA.objects.filter(state_id=state_id).values('id', 'name')
+    return JsonResponse(list(lgas), safe=False)
+       
 def format_price(price):
     return '₦ {:,.0f}'.format(Decimal(price))
 
@@ -220,12 +230,14 @@ class ProductListView(ListView):
         # Get filter parameters
         category_slug = self.request.GET.get('category')
         subcategory_slug = self.request.GET.get('subcategory')
+        brand_slug = self.request.GET.get('brand')
         query = self.request.GET.get('query')
         min_price = self.request.GET.get('min_price')
         max_price = self.request.GET.get('max_price')
         condition = self.request.GET.get('condition')
         state = self.request.GET.get('state')
         lga = self.request.GET.get('lga')
+        sort_by = self.request.GET.get('sort', '-created_at')
         
         # Apply filters
         if query:
@@ -236,6 +248,9 @@ class ProductListView(ListView):
         
         if subcategory_slug:
             queryset = queryset.filter(subcategory__slug=subcategory_slug)
+        
+        if brand_slug:
+            queryset = queryset.filter(brand__slug=brand_slug)
         
         if min_price:
             queryset = queryset.filter(price__gte=min_price)
@@ -263,7 +278,20 @@ class ProductListView(ListView):
                 )
             )
         
-        return queryset.order_by('-created_at')
+        # Apply sorting
+        valid_sort_options = [
+            '-created_at', 'created_at',
+            'price', '-price', 
+            'title', '-title',
+            'condition', '-condition'
+        ]
+        
+        if sort_by in valid_sort_options:
+            queryset = queryset.order_by(sort_by)
+        else:
+            queryset = queryset.order_by('-created_at')
+        
+        return queryset
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -285,36 +313,71 @@ class ProductListView(ListView):
         
         category_slug = self.request.GET.get('category')
         subcategory_slug = self.request.GET.get('subcategory')
+        brand_slug = self.request.GET.get('brand')
         
         context['categories'] = categories
-        context['global_categories'] = categories  # For the sidebar
+        context['global_categories'] = categories
         
         # Get states for the filter
         context['states'] = State.objects.all()
+        
+        # Smart brand filtering based on selected filters
+        brand_filter_conditions = Q()
+        
+        if category_slug:
+            try:
+                selected_category = categories.get(slug=category_slug)
+                brand_filter_conditions &= Q(categories=selected_category)
+                context['selected_category'] = selected_category.slug
+                context['selected_category_obj'] = selected_category
+                context['subcategories'] = selected_category.subcategories.all()
+                
+                # If subcategory is selected, filter brands by both category and subcategory
+                if subcategory_slug:
+                    try:
+                        selected_subcategory = subcategories.get(slug=subcategory_slug)
+                        context['selected_subcategory'] = selected_subcategory.slug
+                        context['selected_subcategory_obj'] = selected_subcategory
+                        
+                        # Filter brands by products that match both category and subcategory
+                        context['brands'] = Brand.objects.filter(
+                            categories=selected_category
+                        ).annotate(
+                            product_count=Count('products', filter=Q(
+                                products__category=selected_category,
+                                products__subcategory=selected_subcategory
+                            ))
+                        ).filter(product_count__gt=0)
+                    except Subcategory.DoesNotExist:
+                        pass
+                else:
+                    # Only category selected - filter brands by category only
+                    context['brands'] = Brand.objects.filter(
+                        categories=selected_category
+                    ).annotate(
+                        product_count=Count('products', filter=Q(products__category=selected_category))
+                    ).filter(product_count__gt=0)
+                    
+            except Category.DoesNotExist:
+                context['brands'] = Brand.objects.none()
+        else:
+            # No category selected - show all brands with product counts
+            context['brands'] = Brand.objects.annotate(
+                product_count=Count('products')
+            ).filter(product_count__gt=0)
         
         # Get LGAs if state is selected
         state_id = self.request.GET.get('state')
         if state_id:
             context['lgas'] = LGA.objects.filter(state_id=state_id)
         
-        # Get selected category by slug
-        selected_category = None
-        if category_slug:
+        # Get selected brand
+        if brand_slug:
             try:
-                selected_category = categories.get(slug=category_slug)
-                context['selected_category'] = selected_category.slug
-                context['selected_category_obj'] = selected_category
-                context['subcategories'] = selected_category.subcategories.all()
-            except Category.DoesNotExist:
-                pass
-        
-        # Get selected subcategory by slug
-        selected_subcategory = None
-        if subcategory_slug and selected_category:
-            try:
-                selected_subcategory = subcategories.get(slug=subcategory_slug)
-                context['selected_subcategory'] = selected_subcategory.slug
-            except Subcategory.DoesNotExist:
+                selected_brand = Brand.objects.get(slug=brand_slug)
+                context['selected_brand'] = selected_brand.slug
+                context['selected_brand_obj'] = selected_brand
+            except Brand.DoesNotExist:
                 pass
         
         # Format price for products
@@ -325,6 +388,9 @@ class ProductListView(ListView):
         if self.request.user.is_authenticated:
             for product in context['products']:
                 product.is_saved_by_user = product.is_saved_by_user(self.request.user)
+        
+        # Add current sort to context
+        context['current_sort'] = self.request.GET.get('sort', '-created_at')
         
         return context
     
@@ -408,11 +474,20 @@ class ProductDetailView(DetailView):
         product_review_count = Review.objects.filter(product=self.object).count()
         context['product_review_count'] = product_review_count
         
-        # Calculate seller product statistics (simplified)
+        # Calculate seller product statistics - FIXED VERSION
         seller_profile = self.object.seller
         
-        # Total products ever listed (from counter field)
-        total_ever_listed = getattr(seller_profile, 'total_products_listed', 0)
+        # Get current count of existing products (for comparison only)
+        current_products_count = Product_Listing.objects.filter(seller=seller_profile).count()
+        
+        # Use the counter field, but ensure it's at least as high as current products
+        # This handles cases where the counter wasn't properly maintained initially
+        total_ever_listed = max(seller_profile.total_products_listed, current_products_count)
+        
+        # Update the counter if it was lower than current products
+        if seller_profile.total_products_listed < current_products_count:
+            seller_profile.total_products_listed = current_products_count
+            seller_profile.save(update_fields=['total_products_listed'])
         
         # Currently active products (not suspended and not expired)
         active_products = Product_Listing.objects.filter(
@@ -424,7 +499,7 @@ class ProductDetailView(DetailView):
         
         # Add seller product statistics to context
         context['seller_product_stats'] = {
-            'total_ever_listed': total_ever_listed,
+            'total_ever_listed': total_ever_listed,  # Use the counter field (corrected if needed)
             'active_products': active_products,
         }
         
@@ -489,7 +564,7 @@ class ProductDetailView(DetailView):
             'subcategory',
             'brand'
         )
-             
+        
 class AllSellerReviewsView(ListView):
     template_name = 'all_seller_reviews.html'
     context_object_name = 'reviews'
@@ -740,31 +815,40 @@ class ProductDeleteView(LoginRequiredMixin, DeleteView):
         product = self.get_object()
         return self.request.user == product.seller
 
+    def handle_no_permission(self):
+        """Custom handling for permission denied"""
+        messages.error(self.request, 'You do not have permission to delete this product.')
+        return redirect('product_detail', pk=self.get_object().pk)
+
     def delete(self, request, *args, **kwargs):
         messages.success(self.request, 'Product deleted successfully.')
         return super().delete(request, *args, **kwargs)
-       
+    
 class ProductSearchView(ListView):
     model = Product_Listing
     template_name = 'product_search.html'
     context_object_name = 'products'
     paginate_by = 12
-
+    
     def get_queryset(self):
-    # Try to delete expired listings first
+        # Try to delete expired listings first
         try:
             Product_Listing.delete_expired_listings()
         except:
             pass  # Silently fail if there's an issue
-        
+       
         form = ProductSearchForm(self.request.GET)
         queryset = Product_Listing.objects.all()
-        
+       
         if form.is_valid():
             if form.cleaned_data['query']:
                 queryset = queryset.filter(title__icontains=form.cleaned_data['query'])
             if form.cleaned_data['category']:
                 queryset = queryset.filter(category=form.cleaned_data['category'])
+            if form.cleaned_data['subcategory']:
+                queryset = queryset.filter(subcategory=form.cleaned_data['subcategory'])
+            if form.cleaned_data['brand']:  # Add brand filter
+                queryset = queryset.filter(brand=form.cleaned_data['brand'])
             if form.cleaned_data['min_price']:
                 queryset = queryset.filter(price__gte=form.cleaned_data['min_price'])
             if form.cleaned_data['max_price']:
@@ -775,24 +859,21 @@ class ProductSearchView(ListView):
                 queryset = queryset.filter(seller__location__state=form.cleaned_data['state'])
             if form.cleaned_data['lga']:
                 queryset = queryset.filter(seller__location__lga=form.cleaned_data['lga'])
-        
+       
         return queryset.order_by('-created_at')
-    
-    Product_Listing.delete_expired_listings()
-
+   
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['form'] = ProductSearchForm(self.request.GET)
-        
-        
+       
         if self.request.user.is_authenticated:
             saved_products = SavedProduct.objects.filter(
                 user=self.request.user
             ).values_list('product_id', flat=True)
-            
+           
             # Convert to set of strings for faster lookup
             saved_products = set(str(id) for id in saved_products)
-            
+           
             # Add saved status and format price for each product
             for product in context['products']:
                 product.is_saved = str(product.id) in saved_products
@@ -801,16 +882,13 @@ class ProductSearchView(ListView):
             # Just format prices if user is not authenticated
             for product in context['products']:
                 product.formatted_price = self.format_price(product.price)
-            
+           
         return context
-
+        
     def format_price(self, price):
         return '₦ {:,.0f}'.format(Decimal(price))
     
-def get_lgas(request, state_id):
-    lgas = LGA.objects.filter(state_id=state_id).values('id', 'name')
-    return JsonResponse(list(lgas), safe=False)
-       
+
 class RelatedProductsView(ListView):
     model = Product_Listing
     template_name = 'related_products.html'
