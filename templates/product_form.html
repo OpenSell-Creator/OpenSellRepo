@@ -1,509 +1,667 @@
 {% extends 'base.html' %}
 
 {% block 'Body' %}
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-lg-10">
-            <div class="card">
-                <div class="card-header bg-card-header py-3">
-                    <h3 class="mb-0">{{ title }}</h3>
-                    <p class="text-muted mb-0">Manage your product listing details</p>
-                </div>
-                <div class="card-body p-4 p-lg-5 position-relative">
-                    <!-- Enhanced Loading Overlay -->
-                    <div id="loadingOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" 
-                         style="background-color: rgba(255,255,255,0.8); z-index: 1000; display: none;">
-                        <div class="text-center">
-                            <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                            <div id="uploadProgressText" class="fw-bold">Processing your listing...</div>
-                            <div id="uploadProgressBar" class="progress mt-2" style="width: 300px; height: 10px;">
-                                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
-                            </div>
-                            <div id="uploadStatusText" class="text-muted mt-2 small">Please wait, we're submitting your product details</div>
-                        </div>
+    <!-- Enhanced Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-content">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <div id="uploadProgressText" class="fw-bold mb-2">Processing your listing...</div>
+            <div id="uploadProgressBar" class="progress mb-2">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+            </div>
+            <div id="uploadStatusText" class="text-muted small">Please wait, we're submitting your product details</div>
+        </div>
+    </div>
+    
+    </div>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card">
+                    <div class="card-header bg-card-header py-3">
+                        <h3 class="mb-0">{{ title }}</h3>
+                        <p class="text-muted mb-0">Manage your product listing details</p>
                     </div>
-                    
-                    <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate id="productForm">
-                        {% csrf_token %}
+                    <div class="card-body p-4 p-lg-5 position-relative">
                         
-                        <div class="row g-4">
-                            <!-- Left Column -->
-                            <div class="col-md-6">
-                                <!-- Basic Product Setup -->
-                                <div class="section-card mb-4">
-                                    <h4 class="section-title mb-4">Basic Product Setup</h4>
-                                    
-                                    <!-- Title Input -->
-                                    <div class="form-floating mb-3">
-                                        {{ form.title }}
-                                        <label for="id_title">Product Title</label>
-                                    </div>
-                                    
-                                    <!-- Category Input -->
-                                    <div class="form-floating mb-3">
-                                        {{ form.category }}
-                                        <label for="id_category">Category</label>
-                                    </div>
-                                    
-                                    <!-- Subcategory Input -->
-                                    <div class="form-floating mb-3">
-                                        {{ form.subcategory }}
-                                        <label for="id_subcategory">Subcategory</label>
-                                    </div>
-                                    
-                                    <!-- Brand Input -->
-                                    <div class="form-floating mb-3">
-                                        {{ form.brand }}
-                                        <label for="id_brand">Brand</label>
-                                    </div>
-                                    
-                                    <!-- Condition Input -->
-                                    <div class="form-floating mb-3">
-                                        {{ form.condition }}
-                                        <label for="id_condition">Condition</label>
-                                    </div>
-                                </div>
-
-                                <!-- Pricing & Availability -->
-                                <div class="section-card">
-                                    <h4 class="section-title mb-4">Pricing & Availability</h4>
-                                    
-                                    <!-- Price Input -->
-                                    <div class="form-floating mb-3">
-                                        <input type="text" name="formatted_price" 
-                                               class="form-control {% if form.formatted_price.errors %}is-invalid{% endif %}" 
-                                               id="id_formatted_price" 
-                                               placeholder="₦ 0" 
-                                               value="{{ form.formatted_price.value|default:'' }}">
-                                        <label for="id_formatted_price">Price</label>
-                                        {% for error in form.formatted_price.errors %}
-                                            <div class="invalid-feedback d-block">{{ error }}</div>
-                                        {% endfor %}
-                                    </div>
-                                    
-                                    <!-- Listing Type -->
-                                    <div class="form-floating mb-3">
-                                        <select name="listing_type" id="id_listing_type" class="form-select">
-                                            <option value="standard">Standard Listing (45 days) - Free</option>
-                                            {% comment %}
-                                            <!-- These options will be enabled in the future when payment functionality is ready -->
-                                            <option value="business" disabled>Business Listing (90 days) - ₦2,000</option>
-                                            <option value="urgent" disabled>Urgent Sale (30 days) - ₦1,000</option>
-                                            <option value="permanent" disabled>Permanent Retail Listing - ₦5,000/month</option>
-                                            {% endcomment %}
-                                        </select>
-                                        <label for="id_listing_type">Listing Type</label>
-                                        <small class="form-text text-muted">Additional listing options will be available soon</small>
-                                    </div>
-                                    
-                                    <!-- Quantity Input -->
-                                    <div class="form-floating mb-3">
-                                        {{ form.quantity }}
-                                        <label for="id_quantity">Quantity</label>
-                                    </div>
-                                    
-                                    <!-- Always Available -->
-                                    <div class="form-check form-switch mb-4">
-                                        {{ form.is_always_available }}
-                                        <label class="form-check-label" for="id_is_always_available">
-                                            Always Available
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Right Column -->
-                            <div class="col-md-6">
-                                <!-- Product Description -->
-                                <div class="section-card mb-4">
-                                    <h4 class="section-title mb-4">Product Description</h4>
-                                    
-                                    <!-- Description Input with AI Generator -->
-                                    <div class="mb-4">
-                                        <label class="form-label d-flex justify-content-between align-items-center">
-                                            Description
-                                            <button type="button" id="generateDescriptionBtn" class="btn btn-outline-primary btn-sm">
-                                                <i class="bi bi-magic me-1"></i>
-                                                Generate with AI
-                                            </button>
-                                        </label>
-                                        <div class="form-floating position-relative">
-                                            {{ form.description }}
-                                            <label for="id_description">Product Description</label>
-                                            
-                                            <!-- AI Generation Status -->
-                                            <div id="aiGenerationStatus" class="position-absolute top-0 end-0 me-2 mt-2 d-none">
-                                                <div class="spinner-border spinner-border-sm text-primary" role="status" style="width: 1rem; height: 1rem;">
-                                                    <span class="visually-hidden">Generating...</span>
-                                                </div>
-                                            </div>
+                        
+                        <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate id="productForm">
+                            {% csrf_token %}
+                            
+                            <div class="row g-4">
+                                <!-- Left Column -->
+                                <div class="col-md-6">
+                                    <!-- Basic Product Setup -->
+                                    <div class="section-card mb-4">
+                                        <h4 class="section-title mb-4">Basic Product Setup</h4>
+                                        
+                                        <!-- Title Input -->
+                                        <div class="form-floating mb-3">
+                                            {{ form.title }}
+                                            <label for="id_title">Product Title</label>
                                         </div>
                                         
-                                        <!-- AI Helper Text -->
-                                        <div class="form-text text-muted">
-                                            <i class="bi bi-lightbulb me-1"></i>
-                                            Tip: Fill in the product title first, then click "Generate with AI" for an automated description you can edit.
+                                        <!-- Category Input -->
+                                        <div class="form-floating mb-3">
+                                            {{ form.category }}
+                                            <label for="id_category">Category</label>
                                         </div>
                                         
-                                        <!-- AI Generation Success/Error Messages -->
-                                        <div id="aiGenerationMessage" class="mt-2 d-none">
-                                            <div class="alert alert-success alert-sm mb-0" id="aiSuccessMessage">
-                                                <i class="bi bi-check-circle me-1"></i>
-                                                AI description generated! Feel free to edit and customize it.
-                                            </div>
-                                            <div class="alert alert-warning alert-sm mb-0" id="aiErrorMessage">
-                                                <i class="bi bi-exclamation-triangle me-1"></i>
-                                                <span id="aiErrorText">Could not generate description. Please write one manually.</span>
-                                            </div>
+                                        <!-- Subcategory Input -->
+                                        <div class="form-floating mb-3">
+                                            {{ form.subcategory }}
+                                            <label for="id_subcategory">Subcategory</label>
+                                        </div>
+                                        
+                                        <!-- Brand Input -->
+                                        <div class="form-floating mb-3">
+                                            {{ form.brand }}
+                                            <label for="id_brand">Brand</label>
+                                        </div>
+                                        
+                                        <!-- Condition Input -->
+                                        <div class="form-floating mb-3">
+                                            {{ form.condition }}
+                                            <label for="id_condition">Condition</label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Pricing & Availability -->
+                                    <div class="section-card">
+                                        <h4 class="section-title mb-4">Pricing & Availability</h4>
+                                        
+                                        <!-- Price Input -->
+                                        <div class="form-floating mb-3">
+                                            <input type="text" name="formatted_price" 
+                                                class="form-control {% if form.formatted_price.errors %}is-invalid{% endif %}" 
+                                                id="id_formatted_price" 
+                                                placeholder="₦ 0" 
+                                                value="{{ form.formatted_price.value|default:'' }}">
+                                            <label for="id_formatted_price">Price</label>
+                                            {% for error in form.formatted_price.errors %}
+                                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                        
+                                        <!-- Listing Type -->
+                                        <div class="form-floating mb-3">
+                                            <select name="listing_type" id="id_listing_type" class="form-select">
+                                                <option value="standard">Standard Listing (45 days) - Free</option>
+                                                {% comment %}
+                                                <!-- These options will be enabled in the future when payment functionality is ready -->
+                                                <option value="business" disabled>Business Listing (90 days) - ₦2,000</option>
+                                                <option value="urgent" disabled>Urgent Sale (30 days) - ₦1,000</option>
+                                                <option value="permanent" disabled>Permanent Retail Listing - ₦5,000/month</option>
+                                                {% endcomment %}
+                                            </select>
+                                            <label for="id_listing_type">Listing Type</label>
+                                            <small class="form-text text-muted">Additional listing options will be available soon</small>
+                                        </div>
+                                        
+                                        <!-- Quantity Input -->
+                                        <div class="form-floating mb-3">
+                                            {{ form.quantity }}
+                                            <label for="id_quantity">Quantity</label>
+                                        </div>
+                                        
+                                        <!-- Always Available -->
+                                        <div class="form-check form-switch mb-4">
+                                            {{ form.is_always_available }}
+                                            <label class="form-check-label" for="id_is_always_available">
+                                                Always Available
+                                            </label>
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- Product Images -->
-                                <div class="section-card">
-                                    <h4 class="section-title mb-4">Product Images</h4>
-                                    
-                                    <!-- Images Upload with Enhanced Visual Feedback -->
-                                    <div class="mb-4">
-                                        <label class="form-label">Product Images</label>
-                                        <div class="file-input-wrapper border rounded p-3">
-                                            <!-- Display existing images if editing -->
-                                            {% if form.instance.pk and form.instance.images.all %}
-                                            <div class="existing-images mb-3">
-                                                <p class="form-text">Current Images:</p>
-                                                <div class="row g-2">
-                                                    {% for img in form.instance.images.all %}
-                                                    <div class="col-4 col-md-3">
-                                                        <div class="position-relative">
-                                                            <img src="{{ img.image.url }}" class="img-thumbnail" alt="Product image">
-                                                            {% if img.is_primary %}
-                                                            <span class="badge bg-primary position-absolute top-0 end-0">Primary</span>
-                                                            {% endif %}
-                                                        </div>
+                                <!-- Right Column -->
+                                <div class="col-md-6">
+                                    <!-- Product Description -->
+                                    <div class="section-card mb-4">
+                                        <h4 class="section-title mb-4">Product Description</h4>
+                                        
+                                        <!-- Description Input with AI Generator -->
+                                        <div class="mb-4">
+                                            <label class="form-label d-flex justify-content-between align-items-center">
+                                                Description
+                                                <button type="button" id="generateDescriptionBtn" class="btn btn-outline-primary btn-sm">
+                                                    <i class="bi bi-magic me-1"></i>
+                                                    Generate with AI
+                                                </button>
+                                            </label>
+                                            <div class="form-floating position-relative">
+                                                {{ form.description }}
+                                                <label for="id_description">Product Description</label>
+                                                
+                                                <!-- AI Generation Status -->
+                                                <div id="aiGenerationStatus" class="position-absolute top-0 end-0 me-2 mt-2 d-none">
+                                                    <div class="spinner-border spinner-border-sm text-primary" role="status" style="width: 1rem; height: 1rem;">
+                                                        <span class="visually-hidden">Generating...</span>
                                                     </div>
-                                                    {% endfor %}
                                                 </div>
-                                                <p class="form-text mt-2">Upload new images to replace existing ones, or leave empty to keep current images.</p>
-                                            </div>
-                                            {% endif %}
-                                            
-                                            <div class="image-preview-container mb-2" id="imagePreviewContainer">
-                                                <!-- Image previews will be added here dynamically -->
                                             </div>
                                             
-                                            {{ form.images }}
+                                            <!-- AI Helper Text -->
                                             <div class="form-text text-muted">
-                                                Upload multiple images (max 5 images, first image will be primary)
+                                                <i class="bi bi-lightbulb me-1"></i>
+                                                Tip: Fill in the product title first, then click "Generate with AI" for an automated description you can edit.
                                             </div>
-                                            <div id="imageUploadStats" class="mt-2 small text-muted d-none">
-                                                <div>Files selected: <span id="numFiles">0</span>/5</div>
-                                                <div>Total size: <span id="totalSize">0 KB</span> (Max 25MB)</div>
+                                            
+                                            <!-- AI Generation Success/Error Messages -->
+                                            <div id="aiGenerationMessage" class="mt-2 d-none">
+                                                <div class="alert alert-success alert-sm mb-0" id="aiSuccessMessage">
+                                                    <i class="bi bi-check-circle me-1"></i>
+                                                    AI description generated! Feel free to edit and customize it.
+                                                </div>
+                                                <div class="alert alert-warning alert-sm mb-0" id="aiErrorMessage">
+                                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                                    <span id="aiErrorText">Could not generate description. Please write one manually.</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Product Images -->
+                                    <div class="section-card">
+                                        <h4 class="section-title mb-4">Product Images</h4>
+                                        
+                                        <!-- Images Upload with Enhanced Visual Feedback -->
+                                        <div class="mb-4">
+                                            <label class="form-label">Product Images</label>
+                                            <div class="file-input-wrapper border rounded p-3">
+                                                <!-- Display existing images if editing -->
+                                                {% if form.instance.pk and form.instance.images.all %}
+                                                <div class="existing-images mb-3">
+                                                    <p class="form-text">Current Images:</p>
+                                                    <div class="row g-2">
+                                                        {% for img in form.instance.images.all %}
+                                                        <div class="col-4 col-md-3">
+                                                            <div class="position-relative">
+                                                                <img src="{{ img.image.url }}" class="img-thumbnail" alt="Product image">
+                                                                {% if img.is_primary %}
+                                                                <span class="badge bg-primary position-absolute top-0 end-0">Primary</span>
+                                                                {% endif %}
+                                                            </div>
+                                                        </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                    <p class="form-text mt-2">Upload new images to replace existing ones, or leave empty to keep current images.</p>
+                                                </div>
+                                                {% endif %}
+                                                
+                                                <div class="image-preview-container mb-2" id="imagePreviewContainer">
+                                                    <!-- Image previews will be added here dynamically -->
+                                                </div>
+                                                
+                                                {{ form.images }}
+                                                <div class="form-text text-muted">
+                                                    Upload multiple images (max 5 images, first image will be primary)
+                                                </div>
+                                                <div id="imageUploadStats" class="mt-2 small text-muted d-none">
+                                                    <div>Files selected: <span id="numFiles">0</span>/5</div>
+                                                    <div>Total size: <span id="totalSize">0 KB</span> (Max 25MB)</div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div class="d-grid mt-4">
-                            <button type="submit" id="submitButton" class="btn btn-primary btn-lg">{{ save }}</button>
-                        </div>
-                    </form>
+                            <div class="d-grid mt-4">
+                                <button type="submit" id="submitButton" class="btn btn-primary btn-lg">{{ save }}</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Toast Notification System -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-    <!-- Success Toast -->
-    <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-            <div class="toast-body">
-                <i class="bi bi-check-circle-fill me-2"></i>
-                <span id="successToastMessage">Product submitted successfully!</span>
+    <!-- Toast Notification System -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <!-- Success Toast -->
+        <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    <span id="successToastMessage">Product submitted successfully!</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        
+        <!-- Error Toast -->
+        <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <span id="errorToastMessage">An error occurred. Please try again.</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
         </div>
     </div>
-    
-    <!-- Error Toast -->
-    <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-            <div class="toast-body">
-                <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                <span id="errorToastMessage">An error occurred. Please try again.</span>
-            </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-    </div>
-</div>
 
-<style>
-    .form-control, .form-select {
-        border-width: 2px;
-        border-style: solid;
-        border-color: var(--border-color);
-        transition: border-color 0.3s ease, box-shadow 0.3s ease;
-    }
+    <style>
+        .form-control, .form-select {
+            border-width: 2px;
+            border-style: solid;
+            border-color: var(--border-color);
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
 
-    .form-control:focus, .form-select:focus {
-        border-color: var(--accent-color);
-        box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.2);
-    }
-
-    .form-check-input {
-        border-width: 2px;
-        border-color: var(--border-color);
-    }
-
-    .form-check-input:checked {
-        background-color: var(--primary-color);
-        border-color: var(--primary-color);
-    }
-
-    /* File Input Styling */
-    .file-input-wrapper {
-        background-color: var(--card-background);
-        border-radius: var(--radius-md);
-    }
-
-    .file-input-wrapper input[type="file"] {
-        border: none;
-        background: transparent;
-    }
-
-    /* AI Generation Button Styling */
-    #generateDescriptionBtn {
-        font-size: 0.75rem;
-        padding: 0.25rem 0.5rem;
-        border-radius: 0.375rem;
-        transition: all 0.2s ease;
-    }
-
-    #generateDescriptionBtn:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    #generateDescriptionBtn.loading {
-        position: relative;
-        color: transparent;
-    }
-
-    #generateDescriptionBtn.loading::after {
-        content: '';
-        position: absolute;
-        width: 0.75rem;
-        height: 0.75rem;
-        top: calc(50% - 0.375rem);
-        left: calc(50% - 0.375rem);
-        border: 1px solid rgba(108, 117, 125, 0.5);
-        border-radius: 50%;
-        border-top: 1px solid #6c757d;
-        animation: spin 0.8s linear infinite;
-    }
-
-    /* Alert styling for AI messages */
-    .alert-sm {
-        padding: 0.5rem 0.75rem;
-        font-size: 0.875rem;
-    }
-
-    /* Dark Theme Adjustments */
-    [data-bs-theme="dark"] {
         .form-control:focus, .form-select:focus {
-            box-shadow: 0 0 0 3px rgba(205, 127, 50, 0.2);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.2);
         }
 
+        .form-check-input {
+            border-width: 2px;
+            border-color: var(--border-color);
+        }
+
+        .form-check-input:checked {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        /* File Input Styling */
         .file-input-wrapper {
-            background-color: var(--dark-card-background);
+            background-color: var(--card-background);
+            border-radius: var(--radius-md);
         }
-        
-        #loadingOverlay {
-            background-color: rgba(33, 37, 41, 0.8);
-        }
-    }
 
-    /* Form Text */
-    .form-text {
-        font-size: 0.8rem;
-        margin-top: 0.25rem;
-        color: var(--text-secondary) !important;
-        padding-left: 0.5rem;
-    }
-    
-    /* Image Preview Styling */
-    .image-preview-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-    }
-    
-    .image-preview {
-        width: 80px;
-        height: 80px;
-        border-radius: 4px;
-        object-fit: cover;
-        border: 2px solid var(--border-color);
-        position: relative;
-    }
-    
-    .image-preview.primary {
-        border-color: var(--primary-color);
-    }
-    
-    /* Loading Overlay */
-    #loadingOverlay {
-        opacity: 0;
-        transition: opacity 0.3s ease;
-        pointer-events: none;
-    }
-    
-    #loadingOverlay.show {
-        opacity: 1;
-        display: flex !important;
-        pointer-events: all;
-    }
-    
-    /* Submit Button Loading State */
-    #submitButton.loading {
-        position: relative;
-        color: transparent;
-    }
-    
-    #submitButton.loading::after {
-        content: '';
-        position: absolute;
-        width: 1rem;
-        height: 1rem;
-        top: calc(50% - 0.5rem);
-        left: calc(50% - 0.5rem);
-        border: 2px solid rgba(255, 255, 255, 0.5);
-        border-radius: 50%;
-        border-top: 2px solid white;
-        animation: spin 0.8s linear infinite;
-    }
-    
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    
-    /* Progress animation smoothing */
-    #uploadProgressBar .progress-bar {
-        transition: width 0.5s ease;
-    }
-    /* Form sections responsive adjustments */
-    @media (max-width: 768px) {
-        .section-card {
-            margin-bottom: 1.5rem;
+        .file-input-wrapper input[type="file"] {
+            border: none;
+            background: transparent;
         }
-        
-        .card-body {
-            padding: 1rem !important;
-        }
-        
-        .card-header {
-            padding: 1rem !important;
-        }
-    }
 
-    /* AI generation button responsive */
-    @media (max-width: 576px) {
+        /* AI Generation Button Styling */
         #generateDescriptionBtn {
-            font-size: 0.7rem;
-            padding: 0.2rem 0.4rem;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            transition: all 0.2s ease;
+        }
+
+        #generateDescriptionBtn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        #generateDescriptionBtn.loading {
+            position: relative;
+            color: transparent;
+        }
+
+        #generateDescriptionBtn.loading::after {
+            content: '';
+            position: absolute;
+            width: 0.75rem;
+            height: 0.75rem;
+            top: calc(50% - 0.375rem);
+            left: calc(50% - 0.375rem);
+            border: 1px solid rgba(108, 117, 125, 0.5);
+            border-radius: 50%;
+            border-top: 1px solid #6c757d;
+            animation: spin 0.8s linear infinite;
+        }
+
+        /* Alert styling for AI messages */
+        .alert-sm {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        /* Dark Theme Adjustments */
+        [data-bs-theme="dark"] {
+            .form-control:focus, .form-select:focus {
+                box-shadow: 0 0 0 3px rgba(205, 127, 50, 0.2);
+            }
+
+            .file-input-wrapper {
+                background-color: var(--dark-card-background);
+            }
+            
+            #loadingOverlay {
+                background-color: rgba(33, 37, 41, 0.8);
+            }
+        }
+
+        /* Form Text */
+        .form-text {
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+            color: var(--text-secondary) !important;
+            padding-left: 0.5rem;
         }
         
-        .form-label .d-flex {
-            flex-direction: column;
-            align-items: flex-start !important;
-            gap: 0.5rem;
-        }
-    }
-
-    /* Image preview container responsive */
-    @media (max-width: 576px) {
+        /* Image Preview Styling */
         .image-preview-container {
-            gap: 5px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
         }
         
         .image-preview {
-            width: 60px;
-            height: 60px;
+            width: 80px;
+            height: 80px;
+            border-radius: 4px;
+            object-fit: cover;
+            border: 2px solid var(--border-color);
+            position: relative;
         }
         
-        .existing-images .col-4 {
-            max-width: 50%;
+        .image-preview.primary {
+            border-color: var(--primary-color);
         }
-    }
-
-    /* Loading overlay responsive text */
-    @media (max-width: 576px) {
-        #loadingOverlay .text-center {
-            padding: 0 1rem;
+        
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(2px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+        
+        .loading-overlay.show {
+            opacity: 1;
+            display: flex !important;
+        }
+        
+        .loading-content {
+            text-align: center;
+            padding: 2rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            max-width: 90vw;
+            width: 100%;
+            max-width: 400px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .loading-content .spinner-border {
+            width: 3rem;
+            height: 3rem;
         }
         
         #uploadProgressBar {
-            width: 250px !important;
+            height: 8px;
+            border-radius: 4px;
+            background-color: #e9ecef;
+            overflow: hidden;
+        }
+        
+        #uploadProgressBar .progress-bar {
+            transition: width 0.5s ease;
+            border-radius: 4px;
         }
         
         #uploadProgressText {
-            font-size: 0.9rem;
-        }
-    }
-
-    /* Toast notifications responsive positioning */
-    @media (max-width: 576px) {
-        .position-fixed.bottom-0.end-0 {
-            bottom: 1rem !important;
-            right: 1rem !important;
-            left: 1rem !important;
+            color: #212529;
+            font-size: 1.1rem;
         }
         
-        .toast {
+        #uploadStatusText {
+            color: #6c757d;
+            font-size: 0.9rem;
+            line-height: 1.3;
+        }
+        
+        /* Dark theme support */
+        [data-bs-theme="dark"] .loading-overlay {
+            background-color: rgba(33, 37, 41, 0.95);
+        }
+        
+        [data-bs-theme="dark"] .loading-content {
+            background: #2d3748;
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        [data-bs-theme="dark"] #uploadProgressText {
+            color: #fff;
+        }
+        
+        [data-bs-theme="dark"] #uploadStatusText {
+            color: #a0aec0;
+        }
+        
+        [data-bs-theme="dark"] #uploadProgressBar {
+            background-color: #4a5568;
+        }
+        
+        /* Mobile specific adjustments */
+        @media (max-width: 576px) {
+            .loading-content {
+                padding: 1.5rem;
+                margin: 1rem;
+                max-width: calc(100vw - 2rem);
+            }
+            
+            .loading-content .spinner-border {
+                width: 2.5rem;
+                height: 2.5rem;
+            }
+            
+            #uploadProgressText {
+                font-size: 1rem;
+            }
+            
+            #uploadStatusText {
+                font-size: 0.8rem;
+            }
+            
+            #uploadProgressBar {
+                height: 6px;
+            }
+        }
+        
+        /* Tablet adjustments */
+        @media (min-width: 577px) and (max-width: 768px) {
+            .loading-content {
+                max-width: 350px;
+                padding: 1.75rem;
+            }
+        }
+        
+        /* Prevent body scroll when overlay is active */
+        body.loading-active {
+            overflow: hidden;
+            position: fixed;
             width: 100%;
         }
-    }
-
-    /* Modal responsive adjustments */
-    @media (max-width: 768px) {
-        .modal-lg {
-            margin: 0.5rem;
+        
+        /* Animation for smooth appearance */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         
-        .modal-body .row .col-md-6 {
-            margin-bottom: 1rem;
-        }
-    }
-
-    /* Form validation responsive */
-    @media (max-width: 576px) {
-        .invalid-feedback {
-            font-size: 0.8rem;
-        }
-    }
-
-    /* AI helper and template helper responsive */
-    @media (max-width: 576px) {
-        #templateHelper .d-flex.gap-2 {
-            flex-direction: column;
-            gap: 0.5rem !important;
+        .loading-overlay.show .loading-content {
+            animation: fadeInUp 0.3s ease-out;
         }
         
-        #templateHelper .btn-sm {
-            font-size: 0.8rem;
+        /* Ensure overlay is above Bootstrap modals */
+        .loading-overlay {
+            z-index: 1060;
         }
         
-        .alert-heading {
-            font-size: 1rem;
+        /* Additional mobile viewport fixes */
+        @media (max-width: 480px) {
+            .loading-overlay {
+                padding: 1rem;
+            }
+            
+            .loading-content {
+                padding: 1.25rem;
+                border-radius: 8px;
+            }
+            
+            #uploadProgressText {
+                font-size: 0.95rem;
+                margin-bottom: 0.75rem;
+            }
+            
+            #uploadStatusText {
+                font-size: 0.75rem;
+                margin-top: 0.75rem;
+            }
         }
-    }
-</style>
+        
+        /* Submit Button Loading State */
+        #submitButton.loading {
+            position: relative;
+            color: transparent;
+        }
+        
+        #submitButton.loading::after {
+            content: '';
+            position: absolute;
+            width: 1rem;
+            height: 1rem;
+            top: calc(50% - 0.5rem);
+            left: calc(50% - 0.5rem);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            border-top: 2px solid white;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Progress animation smoothing */
+        #uploadProgressBar .progress-bar {
+            transition: width 0.5s ease;
+        }
+        /* Form sections responsive adjustments */
+        @media (max-width: 768px) {
+            .section-card {
+                margin-bottom: 1.5rem;
+            }
+            
+            .card-body {
+                padding: 1rem !important;
+            }
+            
+            .card-header {
+                padding: 1rem !important;
+            }
+        }
+
+        /* AI generation button responsive */
+        @media (max-width: 576px) {
+            #generateDescriptionBtn {
+                font-size: 0.7rem;
+                padding: 0.2rem 0.4rem;
+            }
+            
+            .form-label .d-flex {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 0.5rem;
+            }
+        }
+
+        /* Image preview container responsive */
+        @media (max-width: 576px) {
+            .image-preview-container {
+                gap: 5px;
+            }
+            
+            .image-preview {
+                width: 60px;
+                height: 60px;
+            }
+            
+            .existing-images .col-4 {
+                max-width: 50%;
+            }
+        }
+
+        /* Loading overlay responsive text */
+        @media (max-width: 576px) {
+            #loadingOverlay .text-center {
+                padding: 0 1rem;
+            }
+            
+            #uploadProgressBar {
+                width: 250px !important;
+            }
+            
+            #uploadProgressText {
+                font-size: 0.9rem;
+            }
+        }
+
+        /* Toast notifications responsive positioning */
+        @media (max-width: 576px) {
+            .position-fixed.bottom-0.end-0 {
+                bottom: 1rem !important;
+                right: 1rem !important;
+                left: 1rem !important;
+            }
+            
+            .toast {
+                width: 100%;
+            }
+        }
+
+        /* Modal responsive adjustments */
+        @media (max-width: 768px) {
+            .modal-lg {
+                margin: 0.5rem;
+            }
+            
+            .modal-body .row .col-md-6 {
+                margin-bottom: 1rem;
+            }
+        }
+
+        /* Form validation responsive */
+        @media (max-width: 576px) {
+            .invalid-feedback {
+                font-size: 0.8rem;
+            }
+        }
+
+        /* AI helper and template helper responsive */
+        @media (max-width: 576px) {
+            #templateHelper .d-flex.gap-2 {
+                flex-direction: column;
+                gap: 0.5rem !important;
+            }
+            
+            #templateHelper .btn-sm {
+                font-size: 0.8rem;
+            }
+            
+            .alert-heading {
+                font-size: 1rem;
+            }
+        }
+    </style>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -1222,7 +1380,7 @@
                 // Show loading overlay and disable submit button
                 submitButton.disabled = true;
                 submitButton.classList.add('loading');
-                loadingOverlay.classList.add('show');
+                showLoadingOverlay();
                 
                 // Determine if we have images to upload and their total size
                 const hasImages = imageField && imageField.files.length > 0;
@@ -1337,18 +1495,43 @@
                         showErrorToast('Failed to create product listing. Please try again.');
                         
                         setTimeout(() => {
-                            loadingOverlay.classList.remove('show');
+                            hideLoadingOverlay();
                             submitButton.disabled = false;
                             submitButton.classList.remove('loading');
-                            progressBar.classList.remove('bg-danger');
-                            progressBar.classList.add('bg-primary');
-                            progressBar.style.width = '0%';
+                            
+                            const progressBar = document.querySelector('#uploadProgressBar .progress-bar');
+                            if (progressBar) {
+                                progressBar.classList.remove('bg-danger');
+                                progressBar.classList.add('bg-primary');
+                                progressBar.style.width = '0%';
+                            }
                         }, 3000);
                     });
                 }
             });
         }
+
+        function showLoadingOverlay() {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            document.body.classList.add('loading-active');
+            loadingOverlay.classList.add('show');
+            
+            // Prevent scrolling on mobile
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            document.body.style.top = `-${scrollTop}px`;
+        }
+        
+        function hideLoadingOverlay() {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            document.body.classList.remove('loading-active');
+            loadingOverlay.classList.remove('show');
+            
+            // Restore scroll position
+            const scrollTop = parseInt(document.body.style.top || '0') * -1;
+            document.body.style.top = '';
+            window.scrollTo(0, scrollTop);
+        }
     });
     </script>
-    {% endblock %}
+{% endblock %}
 {% block 'Footer'%}{% endblock %}

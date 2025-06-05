@@ -888,7 +888,6 @@ class ProductSearchView(ListView):
     def format_price(self, price):
         return '₦ {:,.0f}'.format(Decimal(price))
     
-
 class RelatedProductsView(ListView):
     model = Product_Listing
     template_name = 'related_products.html'

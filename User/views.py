@@ -33,6 +33,13 @@ class CustomSignupView(SignupView):
 custom_signup_view = CustomSignupView.as_view()
 
 def loginview(request):
+    # Redirect if user is already authenticated
+    if request.user.is_authenticated:
+        next_url = request.GET.get('next', '')
+        if next_url:
+            return redirect(next_url)
+        return redirect('home')  # or your preferred default page
+    
     next_url = request.GET.get('next', '')
     
     if request.method == 'POST':

@@ -71,7 +71,6 @@ class NotificationListView(LoginRequiredMixin, ListView):
         context['editable_notifications'] = editable_notifications
         return context
     
-    
 class NotificationDetailView(LoginRequiredMixin, DetailView):
     model = Notification
     template_name = 'notifications/notification_detail.html'

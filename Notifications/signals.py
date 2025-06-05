@@ -109,8 +109,7 @@ def notify_on_review(sender, instance, created, **kwargs):
         except ObjectDoesNotExist:
             # Handle case where product or seller might not exist
             pass
-        
-        
+          
 # Review Reply Signal
 @receiver(post_save, sender=ReviewReply)
 def notify_on_review_reply(sender, instance, created, **kwargs):
@@ -144,6 +143,7 @@ def notify_on_review_reply(sender, instance, created, **kwargs):
                     category=NotificationCategory.NEWS,
                     content_object=instance
                 )
+
 # View Milestone Signal
 @receiver(pre_save, sender=Product_Listing)
 def notify_on_view_milestone(sender, instance, **kwargs):
@@ -156,7 +156,7 @@ def notify_on_view_milestone(sender, instance, **kwargs):
     except Product_Listing.DoesNotExist:
         return
 
-    milestones = [2, 100, 500, 1000, 5000, 10000]
+    milestones = [10, 100, 500, 1000, 5000, 10000]
     
     # Get the last milestone that was crossed
     last_milestone = max((m for m in milestones if original.view_count >= m), default=0)
