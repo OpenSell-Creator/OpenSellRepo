@@ -343,6 +343,28 @@ LOGGING = {
         },
     },
 }
+if DEBUG:
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+            },
+        },
+        'loggers': {
+            'Home.views': {
+                'handlers': ['console'],
+                'level': 'DEBUG',
+                'propagate': True,
+            },
+            'django.request': {
+                'handlers': ['console'],
+                'level': 'DEBUG',
+                'propagate': True,
+            },
+        },
+    }
 
 # Email settings
 if not DEBUG:
@@ -365,9 +387,6 @@ else:
 
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.0/howto/static-files/
-# Static files (CSS, JavaScript, Images)
-
 # Base directories
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -392,9 +411,10 @@ if DEBUG:
             "location": MEDIA_ROOT,
         },
     }
+
 # Production Settings (When DEBUG = False)
 else:
-    # AWS S3 Configuration
+    # AWS S3 Configuration for media files only
     AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
     AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME')
     AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
@@ -402,24 +422,20 @@ else:
     AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
     AWS_DEFAULT_ACL = None
     AWS_S3_FILE_OVERWRITE = False
-    AWS_S3_VERIFY = True  # Important for SSL verification
+    AWS_S3_VERIFY = True
     AWS_QUERYSTRING_AUTH = False
 
-    # Static files configuration
-    STATIC_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/static/"
-    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Needed for collectstatic
-
-    # Media files configuration
+    # Production: Local static files + S3 media files (recommended for PWA)
+    STATIC_URL = '/static/'
+    STATIC_ROOT = '/home/ubuntu/OpenSellRepo/staticfiles/'
+    
+    # Media files on S3
     MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/media/"
 
-    # Storage backends (AWS S3)
+    # Storage backends: Local static + S3 media
     STORAGES = {
         "staticfiles": {
-            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-            "AWS_LOCATION": "static",
-            "AWS_S3_OBJECT_PARAMETERS": {
-                "CacheControl": "public, max-age=31536000",  # 1 year cache
-            },
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
         },
         "default": {
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
@@ -430,6 +446,10 @@ else:
         },
     }
 
+# PWA specific MIME types
+import mimetypes
+mimetypes.add_type("application/manifest+json", ".webmanifest", True)
+mimetypes.add_type("application/manifest+json", ".json", True)
 # Increase Django's file upload limits
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB 

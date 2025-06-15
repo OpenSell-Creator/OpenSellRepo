@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}You're Offline - OpenSell{% endblock %}
+
+{% block content %}
+<div class="offline-page">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 text-center py-5">
+                <!-- OpenSell Logo -->
+                <div class="mb-4">
+                    <img src="{% static 'images/logoicon.png' %}" alt="OpenSell" class="offline-logo" width="120" height="120">
+                </div>
+                
+                <!-- Offline Message -->
+                <h1 class="h2 mb-3 text-muted">You're Currently Offline</h1>
+                <p class="lead mb-4 text-muted">
+                    It looks like you've lost your internet connection. Don't worry, you can still browse some cached content!
+                </p>
+                
+                <!-- Action Buttons -->
+                <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
+                    <button onclick="window.location.reload()" class="btn btn-primary btn-lg">
+                        <i class="fas fa-sync-alt me-2"></i>
+                        Try Again
+                    </button>
+                    <a href="/" class="btn btn-outline-secondary btn-lg">
+                        <i class="fas fa-home me-2"></i>
+                        Go to Homepage
+                    </a>
+                </div>
+                
+                <!-- Helpful Tips -->
+                <div class="mt-5 p-4 bg-light rounded">
+                    <h5 class="mb-3">While you're offline, you can:</h5>
+                    <ul class="list-unstyled text-start">
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            View previously loaded product pages
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Browse cached search results
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Access your saved products
+                        </li>
+                    </ul>
+                </div>
+                
+                <!-- Connection Status -->
+                <div class="mt-4">
+                    <small class="text-muted">
+                        <i class="fas fa-wifi me-1"></i>
+                        <span id="connection-status">Checking connection...</span>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.offline-page {
+    min-height: 60vh;
+    display: flex;
+    align-items: center;
+}
+
+.offline-logo {
+    opacity: 0.8;
+    filter: grayscale(20%);
+}
+
+.btn-lg {
+    padding: 12px 30px;
+    font-size: 1.1rem;
+}
+
+@media (max-width: 576px) {
+    .offline-page .container {
+        padding: 20px 15px;
+    }
+    
+    .btn-lg {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+}
+
+/* Pulse animation for connection status */
+#connection-status {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+</style>
+
+<script>
+// Check connection status
+function updateConnectionStatus() {
+    const statusElement = document.getElementById('connection-status');
+    if (navigator.onLine) {
+        statusElement.innerHTML = '<span class="text-success">Connection restored!</span>';
+        statusElement.style.animation = 'none';
+        
+        // Show reconnection message
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
+    } else {
+        statusElement.innerHTML = 'No internet connection';
+    }
+}
+
+// Listen for connection changes
+window.addEventListener('online', updateConnectionStatus);
+window.addEventListener('offline', updateConnectionStatus);
+
+// Initial check
+updateConnectionStatus();
+
+// Periodic connection check
+setInterval(updateConnectionStatus, 5000);
+</script>
+{% endblock %}

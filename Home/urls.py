@@ -39,4 +39,10 @@ urlpatterns = [
     path('ajax/load-subcategories/', views.load_subcategories, name='ajax_load_subcategories'),
     path('api/lgas/<int:state_id>/', views.get_lgas, name='get_lgas'),
     path('cookie-policy/', views.cookie_policy_view, name='cookie_policy'),
+    
+    
+    #PWA
+    path('manifest.json', views.manifest_view, name='manifest'),
+    path('sw.js', views.service_worker_view, name='service_worker'),
+    path('offline/', views.offline_view, name='offline'),
     ]

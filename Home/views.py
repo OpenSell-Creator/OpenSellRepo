@@ -42,6 +42,38 @@ import uuid
 
 logger = logging.getLogger(__name__)
 
+from django.shortcuts import render
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.cache import cache_control
+from django.views.decorators.http import require_GET
+import json
+#PWA Implementation
+@require_GET
+@cache_control(max_age=60*60*24*7)  # Cache for 1 week
+def manifest_view(request):
+    """Serve the manifest.json file"""
+    with open('static/manifest.json', 'r') as f:
+        manifest_data = json.load(f)
+    
+    return JsonResponse(manifest_data, content_type='application/manifest+json')
+
+@require_GET
+@cache_control(max_age=60*60*24)  # Cache for 1 day
+def service_worker_view(request):
+    """Serve the service worker file"""
+    with open('static/sw.js', 'r') as f:
+        sw_content = f.read()
+    
+    return HttpResponse(sw_content, content_type='application/javascript')
+
+def offline_view(request):
+    """Offline fallback page"""
+    context = {
+        'title': 'You are offline',
+        'message': 'Please check your internet connection and try again.'
+    }
+    return render(request, 'offline.html', context)
+
 # Create your views here.
 def load_subcategories(request):
     category_id = request.GET.get('category')

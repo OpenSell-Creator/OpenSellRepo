@@ -41,9 +41,9 @@ urlpatterns = [
     path('accounts/', include('allauth.urls')),
     path('robots.txt', robots_txt),
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps},
-         name='django.contrib.sitemaps.views.sitemap'),
+        name='django.contrib.sitemaps.views.sitemap'),
     
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, 
-                          document_root=settings.MEDIA_ROOT)
+                        document_root=settings.MEDIA_ROOT)
