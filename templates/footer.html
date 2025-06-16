@@ -162,48 +162,26 @@
     <!-- Bottom Footer -->
     <div class="footer-bottom">
       <div class="footer-copyright">
-        &copy; 2025 OpenSell. All rights reserved.
+          &copy; 2025 OpenSell. All rights reserved.
       </div>
       <div class="footer-app-links">
-        <!-- PWA Install Link (shows when installable, hides when installed) -->
-        <a href="#" class="app-link pwa-install-link" id="footer-install-btn" style="display: none;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
-            <line x1="12" y1="18" x2="12.01" y2="18"></line>
-          </svg>
-          <span class="install-text">Install App</span>
-        </a>
-    
-        <!-- App Store Links (shows when PWA not available) -->
-        <a href="#" class="app-link store-link" id="app-store-link" style="display: none;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18.71 19.5C16.88 20.74 15 21 12 21s-4.88-.26-6.71-1.5"></path>
-            <path d="M12 16v5"></path>
-            <path d="M8 12l4-4 4 4"></path>
-            <path d="M8 8h8"></path>
-          </svg>
-          <span class="store-text">App Store</span>
-        </a>
-    
-        <a href="#" class="app-link store-link" id="play-store-link" style="display: none;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M2 12L7 7l5 5-5 5-5-5z"></path>
-            <path d="M7 7L22 2l-5 15L7 7z"></path>
-          </svg>
-          <span class="store-text">Play Store</span>
-        </a>
-    
-        <!-- Help Center Link (always visible) -->
-        <a href="/help/" class="app-link">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-            <line x1="12" y1="17" x2="12.01" y2="17"></line>
-          </svg>
-          Help Center
-        </a>
+          <a href="#" class="app-link pwa-install-link" id="footer-install-btn" style="display: none;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                  <line x1="12" y1="18" x2="12.01" y2="18"></line>
+              </svg>
+              Install App
+          </a>
+          <a href="/help/" class="app-link">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              Help Center
+          </a>
       </div>
-    </div>
+  </div>
   </div>
 </footer>
 
@@ -494,174 +472,4 @@
       document.body.classList.add('user-authenticated');
     }
   });
-  class FooterPWAManager {
-    constructor() {
-        this.deferredPrompt = null;
-        this.installBtn = document.getElementById('footer-install-btn');
-        this.appStoreLink = document.getElementById('app-store-link');
-        this.playStoreLink = document.getElementById('play-store-link');
-        this.statusIndicator = document.getElementById('pwa-status');
-        
-        this.init();
-    }
-
-    init() {
-        this.checkPlatform();
-        this.setupInstallPrompt();
-        this.checkInstallStatus();
-    }
-
-    checkPlatform() {
-        const userAgent = navigator.userAgent.toLowerCase();
-        
-        // Show appropriate store links based on platform
-        if (/iphone|ipad|ipod/.test(userAgent)) {
-            // iOS - show App Store link
-            if (this.appStoreLink) {
-                this.appStoreLink.style.display = 'flex';
-                this.appStoreLink.href = '#'; // Replace with actual App Store link when available
-            }
-        } else if (/android/.test(userAgent)) {
-            // Android - show Play Store link
-            if (this.playStoreLink) {
-                this.playStoreLink.style.display = 'flex';
-                this.playStoreLink.href = '#'; // Replace with actual Play Store link when available
-            }
-        }
-    }
-
-    setupInstallPrompt() {
-        // Listen for PWA install prompt
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            this.deferredPrompt = e;
-            this.showInstallButton();
-        });
-
-        // Handle install button click
-        if (this.installBtn) {
-            this.installBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.promptInstall();
-            });
-        }
-
-        // Handle successful installation
-        window.addEventListener('appinstalled', () => {
-            this.hideInstallButton();
-            this.showInstallSuccess();
-        });
-    }
-
-    checkInstallStatus() {
-        // Check if already installed/running as PWA
-        if (window.matchMedia('(display-mode: standalone)').matches || 
-            window.navigator.standalone === true) {
-            this.hideInstallButton();
-            this.hideStoreLinks();
-        }
-    }
-
-    showInstallButton() {
-        if (this.installBtn) {
-            this.installBtn.style.display = 'flex';
-        }
-        this.hideStoreLinks();
-    }
-
-    hideInstallButton() {
-        if (this.installBtn) {
-            this.installBtn.style.display = 'none';
-        }
-    }
-
-    hideStoreLinks() {
-        if (this.appStoreLink) this.appStoreLink.style.display = 'none';
-        if (this.playStoreLink) this.playStoreLink.style.display = 'none';
-    }
-
-    async promptInstall() {
-        if (!this.deferredPrompt) {
-            this.showInstallInstructions();
-            return;
-        }
-
-        // Show install prompt
-        this.deferredPrompt.prompt();
-        
-        // Wait for user response
-        const { outcome } = await this.deferredPrompt.userChoice;
-        console.log(`Install prompt outcome: ${outcome}`);
-        
-        // Reset deferred prompt
-        this.deferredPrompt = null;
-        
-        if (outcome === 'accepted') {
-            this.hideInstallButton();
-        }
-    }
-
-    showInstallInstructions() {
-        const userAgent = navigator.userAgent.toLowerCase();
-        let instructions = '';
-
-        if (/iphone|ipad|ipod/.test(userAgent)) {
-            instructions = 'To install: Tap the Share button (⎋) and select "Add to Home Screen"';
-        } else if (/android/.test(userAgent)) {
-            instructions = 'To install: Tap the menu (⋮) and select "Add to Home Screen" or "Install App"';
-        } else {
-            instructions = 'To install: Look for the install icon (⊕) in your browser\'s address bar';
-        }
-
-        // Create and show toast notification
-        this.showToast(instructions, 'info', 5000);
-    }
-
-    showInstallSuccess() {
-        this.showToast('OpenSell app installed successfully! 🎉', 'success', 3000);
-        
-        // Show status indicator briefly
-        if (this.statusIndicator) {
-            this.statusIndicator.style.display = 'block';
-            setTimeout(() => {
-                this.statusIndicator.style.display = 'none';
-            }, 5000);
-        }
-    }
-
-    showToast(message, type = 'info', duration = 3000) {
-        // Create toast element
-        const toast = document.createElement('div');
-        toast.className = `footer-toast footer-toast-${type}`;
-        toast.innerHTML = `
-            <div class="toast-content">
-                <span>${message}</span>
-                <button class="toast-close">&times;</button>
-            </div>
-        `;
-
-        // Add to page
-        document.body.appendChild(toast);
-
-        // Show toast
-        setTimeout(() => toast.classList.add('show'), 100);
-
-        // Auto hide
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
-        }, duration);
-
-        // Handle close button
-        toast.querySelector('.toast-close').addEventListener('click', () => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
-        });
-    }
-}
-
-// Initialize footer PWA manager when DOM loads
-document.addEventListener('DOMContentLoaded', () => {
-    new FooterPWAManager();
-});
 </script>

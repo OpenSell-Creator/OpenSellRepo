@@ -1,4 +1,3 @@
-// PWA Installation and Service Worker Registration
 class PWAManager {
     constructor() {
         this.deferredPrompt = null;
@@ -7,26 +6,18 @@ class PWAManager {
     }
 
     async init() {
-        // Register service worker
         await this.registerServiceWorker();
-        
-        // Setup install prompt
         this.setupInstallPrompt();
-        
-        // Check if already installed
         this.checkInstallStatus();
-        
-        // Setup UI updates
         this.setupUIUpdates();
     }
 
     async registerServiceWorker() {
         if ('serviceWorker' in navigator) {
             try {
-                const registration = await navigator.serviceWorker.register('/static/sw.js');
+                const registration = await navigator.serviceWorker.register('/sw.js');
                 console.log('Service Worker registered successfully:', registration.scope);
                 
-                // Update available
                 registration.addEventListener('updatefound', () => {
                     const newWorker = registration.installing;
                     newWorker.addEventListener('statechange', () => {
@@ -42,7 +33,6 @@ class PWAManager {
     }
 
     setupInstallPrompt() {
-        // Listen for install prompt
         window.addEventListener('beforeinstallprompt', (e) => {
             console.log('Install prompt available');
             e.preventDefault();
@@ -50,7 +40,6 @@ class PWAManager {
             this.showInstallButton();
         });
 
-        // Handle successful installation
         window.addEventListener('appinstalled', () => {
             console.log('PWA was installed');
             this.deferredPrompt = null;
@@ -60,7 +49,6 @@ class PWAManager {
     }
 
     checkInstallStatus() {
-        // Check if app is running in standalone mode
         if (window.matchMedia('(display-mode: standalone)').matches || 
             window.navigator.standalone === true) {
             this.isInstalled = true;
@@ -74,35 +62,41 @@ class PWAManager {
             return;
         }
 
-        // Show install prompt
         this.deferredPrompt.prompt();
-        
-        // Wait for user response
         const { outcome } = await this.deferredPrompt.userChoice;
         console.log(`User response to install prompt: ${outcome}`);
         
-        // Reset deferred prompt
         this.deferredPrompt = null;
         this.hideInstallButton();
     }
 
     showInstallButton() {
         const installBtn = document.getElementById('pwa-install-btn');
+        const footerInstallBtn = document.getElementById('footer-install-btn');
+        
         if (installBtn) {
             installBtn.style.display = 'block';
             installBtn.addEventListener('click', () => this.promptInstall());
+        }
+        
+        if (footerInstallBtn) {
+            footerInstallBtn.style.display = 'flex';
+            footerInstallBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.promptInstall();
+            });
         }
     }
 
     hideInstallButton() {
         const installBtn = document.getElementById('pwa-install-btn');
-        if (installBtn) {
-            installBtn.style.display = 'none';
-        }
+        const footerInstallBtn = document.getElementById('footer-install-btn');
+        
+        if (installBtn) installBtn.style.display = 'none';
+        if (footerInstallBtn) footerInstallBtn.style.display = 'none';
     }
 
     showInstallInstructions() {
-        // Show platform-specific install instructions
         const userAgent = navigator.userAgent.toLowerCase();
         let instructions = '';
 
@@ -128,7 +122,6 @@ class PWAManager {
     }
 
     showToast(message, type = 'info', duration = 3000, action = null) {
-        // Create toast notification
         const toast = document.createElement('div');
         toast.className = `pwa-toast pwa-toast-${type}`;
         toast.innerHTML = `
@@ -140,21 +133,16 @@ class PWAManager {
         `;
 
         document.body.appendChild(toast);
-
-        // Show toast
         setTimeout(() => toast.classList.add('pwa-toast-show'), 100);
 
-        // Auto hide
         if (duration > 0) {
             setTimeout(() => this.hideToast(toast), duration);
         }
 
-        // Handle close button
         toast.querySelector('.pwa-toast-close').addEventListener('click', () => {
             this.hideToast(toast);
         });
 
-        // Handle action button
         if (action) {
             toast.querySelector('.pwa-toast-action').addEventListener('click', () => {
                 action();
@@ -169,7 +157,6 @@ class PWAManager {
     }
 
     setupUIUpdates() {
-        // Add offline/online indicators
         window.addEventListener('online', () => {
             this.showToast('You are back online!', 'success');
         });
@@ -180,7 +167,6 @@ class PWAManager {
     }
 }
 
-// Initialize PWA when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     new PWAManager();
 });
