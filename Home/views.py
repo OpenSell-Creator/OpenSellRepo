@@ -42,29 +42,100 @@ import uuid
 
 logger = logging.getLogger(__name__)
 
+import os
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.cache import cache_control
 from django.views.decorators.http import require_GET
 import json
-#PWA Implementation
-@require_GET
-@cache_control(max_age=60*60*24*7)  # Cache for 1 week
-def manifest_view(request):
-    """Serve the manifest.json file"""
-    with open('static/manifest.json', 'r') as f:
-        manifest_data = json.load(f)
-    
-    return JsonResponse(manifest_data, content_type='application/manifest+json')
 
-@require_GET
-@cache_control(max_age=60*60*24)  # Cache for 1 day
+#PWA Implementation
+@csrf_exempt
+@cache_control(max_age=0)
 def service_worker_view(request):
     """Serve the service worker file"""
-    with open('static/sw.js', 'r') as f:
-        sw_content = f.read()
+    if request.method not in ['GET', 'HEAD']:
+        return HttpResponse(status=405)
     
-    return HttpResponse(sw_content, content_type='application/javascript')
+    try:
+        if settings.DEBUG:
+            sw_path = os.path.join(settings.BASE_DIR, 'static', 'sw.js')
+        else:
+            sw_path = os.path.join(settings.STATIC_ROOT, 'sw.js')
+        
+        with open(sw_path, 'r', encoding='utf-8') as f:
+            sw_content = f.read()
+        
+        response = HttpResponse(sw_content, content_type='application/javascript')
+        response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response['Pragma'] = 'no-cache'
+        response['Expires'] = '0'
+        return response
+        
+    except FileNotFoundError:
+        basic_sw = '''
+        const CACHE_NAME = 'opensell-basic-v1';
+        
+        self.addEventListener('install', event => {
+            console.log('Service Worker installing...');
+            self.skipWaiting();
+        });
+        
+        self.addEventListener('activate', event => {
+            console.log('Service Worker activating...');
+            self.clients.claim();
+        });
+        
+        self.addEventListener('fetch', event => {
+            event.respondWith(fetch(event.request));
+        });
+        '''
+        response = HttpResponse(basic_sw, content_type='application/javascript')
+        response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response['Pragma'] = 'no-cache'
+        response['Expires'] = '0'
+        return response
+
+@csrf_exempt
+@cache_control(max_age=0)
+def manifest_view(request):
+    """Serve the manifest.json file"""
+    if request.method not in ['GET', 'HEAD']:
+        return HttpResponse(status=405)
+    
+    manifest_data = {
+        "name": "OpenSell MarketPlace",
+        "short_name": "OpenSell",
+        "description": "Buy and sell products on OpenSell marketplace",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#ffffff",
+        "theme_color": "#003366",
+        "scope": "/",
+        "orientation": "portrait-primary",
+        "lang": "en",
+        "dir": "ltr",
+        "categories": ["shopping", "marketplace", "business"],
+        "prefer_related_applications": False,
+        "icons": [
+            {
+                "src": "/static/images/logoicon.png",
+                "sizes": "192x192",
+                "type": "image/png",
+                "purpose": "any maskable"
+            },
+            {
+                "src": "/static/images/logoicon.png", 
+                "sizes": "512x512",
+                "type": "image/png",
+                "purpose": "any maskable"
+            }
+        ]
+    }
+    
+    response = JsonResponse(manifest_data, content_type='application/manifest+json')
+    response['Cache-Control'] = 'no-cache'
+    return response
 
 def offline_view(request):
     """Offline fallback page"""
