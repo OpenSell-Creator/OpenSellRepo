@@ -1906,19 +1906,31 @@ def delete_reply(request, pk, reply_id):
     return render(request, 'delete_reply_confirm.html', context)
 
 @login_required
-def my_store(request):  # Remove username=None parameter
-    # Get store owner profile with related location data
-    store_owner = get_object_or_404(
-        User.objects.select_related(
-            'profile',
-            'profile__location',
-            'profile__location__state',
-            'profile__location__lga'
-        ),
-        username=request.user.username  # Always use current user
-    )
+def my_store(request, username=None):  # Accept username parameter
+    # If username is provided in URL, get that user's store
+    # Otherwise, show current user's store
+    if username:
+        store_owner = get_object_or_404(
+            User.objects.select_related(
+                'profile',
+                'profile__location',
+                'profile__location__state',
+                'profile__location__lga'
+            ),
+            username=username
+        )
+    else:
+        store_owner = get_object_or_404(
+            User.objects.select_related(
+                'profile',
+                'profile__location',
+                'profile__location__state',
+                'profile__location__lga'
+            ),
+            username=request.user.username
+        )
     
-    # Get products with prefetched saved status
+    # Rest of your code remains the same...
     user_products = Product_Listing.objects.filter(seller=store_owner.profile)
     
     # Handle saved products for authenticated users
@@ -1953,16 +1965,18 @@ def my_store(request):  # Remove username=None parameter
         'total_products': user_products.count(),
         'location_display': location_display,
     }
-    # Since this is always the current user's store, this condition is always true
-    try:
-        context['account'] = request.user.account
-        context['boost_count'] = ProductBoost.objects.filter(
-            product__seller=store_owner.profile,
-            is_active=True,
-            end_date__gt=timezone.now()
-        ).count()
-    except AttributeError:
-        pass
+    
+    # Only show account details if viewing own store
+    if store_owner == request.user:
+        try:
+            context['account'] = request.user.account
+            context['boost_count'] = ProductBoost.objects.filter(
+                product__seller=store_owner.profile,
+                is_active=True,
+                end_date__gt=timezone.now()
+            ).count()
+        except AttributeError:
+            pass
         
     return render(request, 'my_store.html', context)
 
