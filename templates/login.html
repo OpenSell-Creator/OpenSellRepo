@@ -8,24 +8,56 @@
         <div class="col-md-8 col-lg-6 col-xl-5">
             <div class="card">
                 <div class="card-body p-4 p-lg-5">
-                    <h2 class="text-center mb-4">Login</h2>
+                    <!-- Logo Section -->
+                    <div class="text-center mb-4">
+                        <div class="logo-container">
+                            <img src="{% static 'images/logoicon.png' %}" alt="OpenSell Logo" class="logo-img">
+                        </div>
+                        <h2 class="mt-3 mb-0">Welcome Back</h2>
+                        <p class="text-muted">Sign in to your account</p>
+                    </div>
                     
-                    <form method="post" action="{% url 'login' %}">
+                    <form method="post" action="{% url 'login' %}" class="needs-validation" novalidate>
                         {% csrf_token %}
                         <input type="hidden" name="next" value="{{ next }}">
                         
                         <div class="form-floating mb-3">
-                            <input type="text" class="form-control" id="floatingInput" placeholder="Username" name="username" required>
+                            <input type="text" 
+                                   class="form-control {% if login_form.username.errors %}is-invalid{% endif %}" 
+                                   id="floatingInput" 
+                                   placeholder="Username" 
+                                   name="username" 
+                                   value="{{ login_form.username.value|default:'' }}"
+                                   required>
                             <label for="floatingInput">Username</label>
+                            {% if login_form.username.errors %}
+                                <div class="invalid-feedback">
+                                    {{ login_form.username.errors.0 }}
+                                </div>
+                            {% endif %}
                         </div>
                         
                         <div class="form-floating mb-3 position-relative">
-                            <input type="password" class="form-control password-input" id="floatingPassword" 
-                                   placeholder="Password" name="password" required>
+                            <input type="password" 
+                                   class="form-control password-input {% if login_form.password.errors %}is-invalid{% endif %}" 
+                                   id="floatingPassword" 
+                                   placeholder="Password" 
+                                   name="password" 
+                                   required>
                             <label for="floatingPassword">Password</label>
                             <button type="button" class="btn btn-link btn-toggle-password" aria-label="Toggle password visibility">
                                 <i class="bi bi-eye-slash"></i>
                             </button>
+                            {% if login_form.password.errors %}
+                                <div class="invalid-feedback">
+                                    {{ login_form.password.errors.0 }}
+                                </div>
+                            {% endif %}
+                            {% if login_form.non_field_errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ login_form.non_field_errors.0 }}
+                                </div>
+                            {% endif %}
                         </div>
                         
                         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -69,6 +101,26 @@
 </div>
 
 <style>
+    /* Logo styling */
+    .logo-container {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto;
+        background-color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        border: 2px solid var(--border-color);
+    }
+
+    .logo-img {
+        width: 50px;
+        height: 50px;
+        object-fit: contain;
+    }
+
     /* Form control styling */
     .form-control {
         border-width: 2px;
@@ -82,6 +134,24 @@
         box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.2);
     }
 
+    .form-control.is-invalid {
+        border-color: #dc3545;
+        box-shadow: none;
+    }
+
+    .form-control.is-invalid:focus {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.2);
+    }
+
+    .invalid-feedback {
+        display: block;
+        width: 100%;
+        margin-top: 0.25rem;
+        font-size: 0.875rem;
+        color: #dc3545;
+    }
+
     /* Password toggle styling */
     .btn-toggle-password {
         position: absolute;
@@ -90,13 +160,16 @@
         transform: translateY(-50%);
         color: var(--text-secondary);
         z-index: 5;
+        padding: 0.25rem;
+        border: none;
+        background: none;
     }
 
     .btn-toggle-password:hover {
         color: var(--accent-color);
     }
 
-    /* Google Button - From signup template */
+    /* Google Button */
     .btn-google {
         position: relative;
         display: flex;
@@ -120,6 +193,7 @@
         box-shadow: 0 4px 12px var(--shadow-color);
         background-color: #f8f9fa;
         text-decoration: none;
+        color: #3c4043;
     }
 
     /* Google icon styling */
@@ -134,8 +208,6 @@
         height: 20px;
     }
 
- 
-
     /* Or divider */
     .position-relative .bg-card-background {
         background-color: var(--card-bg);
@@ -143,6 +215,11 @@
     }
 
     /* Dark theme adjustments */
+    [data-bs-theme="dark"] .logo-container {
+        background-color: white;
+        border-color: var(--border-color);
+    }
+
     [data-bs-theme="dark"] .btn-google {
         background-color: #2d2d2d;
         border-color: #444;
@@ -151,26 +228,11 @@
 
     [data-bs-theme="dark"] .btn-google:hover {
         background-color: #383838;
+        color: #e8eaed;
     }
 
     [data-bs-theme="dark"] .form-control:focus {
         box-shadow: 0 0 0 3px rgba(205, 127, 50, 0.2);
-    }
-
-    /* Animation */
-    @keyframes buttonEntry {
-        from {
-            opacity: 0;
-            transform: translateY(10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    .btn-google {
-        animation: buttonEntry 0.6s ease-out;
     }
 
     /* Custom form check */
@@ -187,6 +249,16 @@
         
         .btn-google {
             padding: 0.75rem 1rem;
+        }
+
+        .logo-container {
+            width: 60px;
+            height: 60px;
+        }
+
+        .logo-img {
+            width: 35px;
+            height: 35px;
         }
     }
 </style>
@@ -210,9 +282,37 @@
             });
         }
 
-        // Add theme class to body for better transition handling
-        document.body.classList.add('theme-transition');
-        document.documentElement.style.setProperty('--theme-transition', 'all 0.3s ease');
+        // Form validation
+        const form = document.querySelector('.needs-validation');
+        if (form) {
+            form.addEventListener('submit', function(event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        }
+
+        // Real-time validation feedback
+        const inputs = document.querySelectorAll('.form-control');
+        inputs.forEach(input => {
+            input.addEventListener('blur', function() {
+                if (this.value.trim() && this.checkValidity()) {
+                    this.classList.remove('is-invalid');
+                    this.classList.add('is-valid');
+                } else if (this.value.trim()) {
+                    this.classList.remove('is-valid');
+                    this.classList.add('is-invalid');
+                }
+            });
+
+            input.addEventListener('input', function() {
+                if (this.classList.contains('is-invalid') && this.checkValidity()) {
+                    this.classList.remove('is-invalid');
+                }
+            });
+        });
     });
 </script>
 {% endblock %}

@@ -178,6 +178,7 @@
 </section>
 {% endif %}
 
+
 <!-- Categories Section -->
 <section class="categories-section ">
     <div class="container">
@@ -220,7 +221,6 @@
         </div>
     </div>
 </section>
-
 
 <!-- Recent Activity/Live Feed Section 
 <section class="live-activity-section py-5">
@@ -280,8 +280,8 @@
 <!-- Featured Products -->
 <section class="featured-products">
     <div class="container">
-        <div class="d-flex justify-content-between align-items-center mb-1">
-            <h2 class="section-title text-center">Featured Products</h2>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="section-title">Featured Products</h2>
             <a href="{% url 'product_list' %}" class="text-primary text-decoration-none text-muted">
                 See More <i class="bi bi-arrow-up-right"></i>
             </a>
@@ -294,18 +294,67 @@
                 </div>
             {% endfor %}
         </div>
-
-        {% if featured_products.has_other_pages %}
-            {% include "pagination.html" with page_obj=featured_products %}
-        {% endif %}
     </div>
 </section>
 
+<!-- First Position Banner -->
+{% if first_position_banners %}
+    {% include 'banner.html' with banners=first_position_banners %}
+{% endif %}
 
-{% if user.is_authenticated %}
-        {% include 'banner.html' %}
-{% else %}
+<!-- Local Products Section -->
+{% if user.is_authenticated and local_products %}
+<section class="local-products">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h2 class="section-title">
+                    <i class="bi bi-geo-alt text-primary me-2"></i>
+                    Amazing Deals 
+                    {% if location_name %}
+                        in {{ location_name }}
+                    {% else %}
+                        Near You
+                    {% endif %}
+                </h2>
+                <p class="text-muted small mb-0">
+                    Products from sellers in your area
+                </p>
+            </div>
+            <a href="{% url 'product_list' %}{% if location_name %}?location={{ location_name }}{% endif %}" 
+               class="text-primary text-decoration-none text-muted">
+                View All <i class="bi bi-arrow-up-right"></i>
+            </a>
+        </div>
 
+        <div class="row g-4">
+            {% for product in local_products %}
+                <div class="col-6 col-md-4 col-lg-3">
+                    {% include 'product_card.html' with product=product %}
+                </div>
+            {% endfor %}
+        </div>
+        
+        {% if not local_products %}
+        <div class="text-center py-5">
+            <div class="local-products-empty">
+                <i class="bi bi-geo-alt-fill text-muted mb-3" style="font-size: 3rem;"></i>
+                <h4 class="text-muted">No local products found</h4>
+                <p class="text-muted">Try updating your location in your profile to see products near you.</p>
+                <a href="{% url 'profile_edit' %}" class="btn btn-outline-primary">Update Location</a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Second Position Banner -->
+{% if second_position_banners %}
+    {% include 'banner.html' with banners=second_position_banners %}
+{% endif %}
+
+{% if not user.is_authenticated %}
 <section class="how-it-works-section bg-light">
     <div class="container">
         <h2 class="section-title text-center">How It Works</h2>
@@ -547,8 +596,8 @@
         </div>
     </div>
 </section>
-
 {% endif %}
+
 
 
 {% if user.is_authenticated %}
@@ -1224,15 +1273,17 @@
         bottom: 80px; 
         width: 3.5rem;
         height: 3.5rem;
-        z-index: 1030;
+        z-index: 1060;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+        border: 3px solid rgba(255, 255, 255, 0.9);
         transition: all 0.3s ease;
         background-color: var(--accent-color);
         color: white;
+        backdrop-filter: blur(10px);
     }
 
     #create-listing-btn i {
@@ -1777,6 +1828,73 @@
     [data-bs-theme="dark"] .cta-btn-secondary:focus {
         outline-color: var(--bs-light);
     }
+
+}
+
+/* Enhanced grid spacing */
+.row.g-4 {
+    --bs-gutter-x: 1.5rem;
+    --bs-gutter-y: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .row.g-4 {
+        --bs-gutter-x: 1rem;
+        --bs-gutter-y: 1rem;
+    }
+}
+
+/* Section spacing */
+.featured-products,
+.local-products,
+.trending-products {
+    position: relative;
+}
+
+/* Add subtle animations */
+.featured-products,
+.local-products,
+.trending-products {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Stagger animation for product cards */
+.col-6:nth-child(1) { animation-delay: 0.1s; }
+.col-6:nth-child(2) { animation-delay: 0.2s; }
+.col-6:nth-child(3) { animation-delay: 0.3s; }
+.col-6:nth-child(4) { animation-delay: 0.4s; }
+.col-6:nth-child(5) { animation-delay: 0.5s; }
+.col-6:nth-child(6) { animation-delay: 0.6s; }
+.col-6:nth-child(7) { animation-delay: 0.7s; }
+.col-6:nth-child(8) { animation-delay: 0.8s; }
+
+/* Product card enhancements */
+.col-6 {
+    animation: slideInUp 0.6s ease-out;
+    animation-fill-mode: both;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 </style>
 {% endblock %}
 

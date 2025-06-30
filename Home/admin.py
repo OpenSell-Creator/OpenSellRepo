@@ -184,9 +184,54 @@ class ProductReportAdmin(admin.ModelAdmin):
     
 @admin.register(Banner)
 class BannerAdmin(admin.ModelAdmin):
-    list_display = ('id', 'url', 'is_active', 'updated_at')
-    list_filter = ('is_active',)
-    search_fields = ('url',)
+    list_display = ('id', 'get_display_name', 'display_location', 'is_active', 'priority', 'start_date', 'end_date')
+    list_filter = ('is_active', 'display_location', 'created_at')
+    list_editable = ('is_active', 'priority')
+    search_fields = ('url', 'id')
+    ordering = ('-priority', '-updated_at')
+    
+    fieldsets = (
+        ('Banner Content', {
+            'fields': ('image', 'mobile_image', 'url')
+        }),
+        ('Display Settings', {
+            'fields': ('display_location', 'is_active', 'priority', 'background_color')
+        }),
+        ('Schedule (Optional)', {
+            'fields': ('start_date', 'end_date'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    readonly_fields = ('created_at', 'updated_at')
+    
+    def get_display_name(self, obj):
+        """Show a more readable display name"""
+        return obj.get_display_location_display()
+    get_display_name.short_description = 'Location'
+    get_display_name.admin_order_field = 'display_location'
+    
+    def get_queryset(self, request):
+        """Optimize database queries"""
+        return super().get_queryset(request).select_related()
+    
+    class Media:
+        css = {
+            'all': ('admin/css/banner_admin.css',)  # Optional: if you want custom admin CSS
+        }
+
+    # Optional: Add custom actions
+    actions = ['make_active', 'make_inactive']
+    
+    def make_active(self, request, queryset):
+        updated = queryset.update(is_active=True)
+        self.message_user(request, f'{updated} banners were successfully activated.')
+    make_active.short_description = "Mark selected banners as active"
+    
+    def make_inactive(self, request, queryset):
+        updated = queryset.update(is_active=False)
+        self.message_user(request, f'{updated} banners were successfully deactivated.')
+    make_inactive.short_description = "Mark selected banners as inactive"
     
 class ReviewReplyInline(admin.TabularInline):
     model = ReviewReply

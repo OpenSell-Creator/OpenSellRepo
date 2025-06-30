@@ -3,22 +3,51 @@
 
 {% block 'Body'%}
 <div class="dashboard-container">
-    <!-- Dashboard Header -->
+    <!-- Enhanced Dashboard Header -->
     <div class="dashboard-header">
         <div class="container">
             <div class="row align-items-center py-4 py-md-5">
                 <div class="col-12 col-md-6">
-                    <h1 class="dashboard-title">Dashboard</h1>
-                    <p class="dashboard-subtitle">Manage your account, funds, and listings</p>
+                    <div class="header-content">
+                        <h1 class="dashboard-title">
+                            <i class="bi bi-speedometer2 me-3"></i>Dashboard
+                        </h1>
+                        <p class="dashboard-subtitle">Manage your account, funds, and listings</p>
+                        
+                        <!-- Status Badge -->
+                        {% if effective_status %}
+                        <div class="status-container mt-3">
+                            <span class="status-badge {{ effective_status.tier_type }}">
+                                <i class="bi {% if effective_status.tier_type == 'pro' %}bi-star-fill{% else %}bi-person-fill{% endif %} me-2"></i>
+                                {{ effective_status.name }}
+                            </span>
+                            {% if subscription_info.active %}
+                                <span class="subscription-expiry">
+                                    <i class="bi bi-calendar-check me-1"></i>
+                                    Valid until {{ subscription_info.end_date|date:"M d, Y" }}
+                                </span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
                 <div class="col-12 col-md-6 text-md-end mt-3 mt-md-0">
-                    <div class="balance-display">
-                        <span class="balance-label">Account Balance</span>
-                        <h2 class="balance-amount">₦{{ account.balance }}</h2>
+                    <div class="balance-display-container">
+                        <div class="balance-display">
+                            <span class="balance-label">Account Balance</span>
+                            <h2 class="balance-amount">₦{{ account.balance|floatformat:0 }}</h2>
+                        </div>
+                        <div class="header-actions mt-3">
+                            <a href="{% url 'deposit_funds' %}" class="btn btn-deposit">
+                                <i class="bi bi-plus-circle me-2"></i>Add Funds
+                            </a>
+                            {% if not account.is_subscription_active %}
+                            <a href="{% url 'subscription_management' %}" class="btn btn-upgrade ms-2">
+                                <i class="bi bi-star-fill me-2"></i>Upgrade
+                            </a>
+                            {% endif %}
+                        </div>
                     </div>
-                    <a href="{% url 'deposit_funds' %}" class="btn btn-deposit mt-2">
-                        <i class="bi bi-plus-circle me-2"></i>Add Funds
-                    </a>
                 </div>
             </div>
         </div>
@@ -26,159 +55,427 @@
 
     <!-- Dashboard Content -->
     <div class="container mt-4">
-        <div class="row g-4">
+        <!-- Stats Overview Row -->
+        <div class="row g-4 mb-4">
             <!-- Account Status Card -->
             <div class="col-12 col-md-6 col-lg-3">
-                <div class="dashboard-card">
-                    <div class="card-header">
-                        <h5 class="card-title">Account Status</h5>
-                    </div>
-                    <div class="card-body text-center">
-                        <div class="status-badge {{ account.status.name|lower }}">
-                            {{ account.status.name }}
-                        </div>
-                        <div class="status-progress mt-3">
-                            {% if next_status %}
-                            <div class="progress">
-                                <div class="progress-bar" style="width: {{ progress_percentage }}%"></div>
+                <a href="{% url 'account_status' %}" class="text-decoration-none">
+                    <div class="dashboard-card stats-card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="icon-container status-icon">
+                                    <i class="bi {% if effective_status.tier_type == 'pro' %}bi-star-fill{% else %}bi-person-fill{% endif %}"></i>
+                                </div>
+                                <div class="stats-content">
+                                    <h6 class="stats-label">Account Status</h6>
+                                    <h4 class="stats-value">{{ effective_status.name }}</h4>
+                                </div>
                             </div>
-                            <p>{{ progress_percentage }}% towards {{ next_status.name }}</p>
-                            {% else %}
-                                <p>You've reached the highest status!</p>
+                            {% if next_tier %}
+                            <div class="progress-container mt-3">
+                                <div class="progress">
+                                    <div class="progress-bar" style="width: 60%"></div>
+                                </div>
+                                <small class="text-muted">Upgrade to {{ next_tier.name }}</small>
+                            </div>
                             {% endif %}
                         </div>
-                        <a href="{% url 'account_status' %}" class="btn btn-sm btn-outline-primary mt-3">View Benefits</a>
                     </div>
-                </div>
+                </a>
             </div>
 
-            <!-- Listings Stats Card -->
+            <!-- Total Listings Card -->
             <div class="col-12 col-md-6 col-lg-3">
-                <div class="dashboard-card">
-                    <div class="card-header">
-                        <h5 class="card-title">Your Listings</h5>
-                    </div>
+                <div class="dashboard-card stats-card">
                     <div class="card-body">
-                        <div class="stat-item">
-                            <span class="stat-label">Total Listings</span>
-                            <span class="stat-value">{{ listings_count }}</span>
+                        <div class="d-flex align-items-center">
+                            <div class="icon-container listings-icon">
+                                <i class="bi bi-box-seam"></i>
+                            </div>
+                            <div class="stats-content">
+                                <h6 class="stats-label">Total Listings</h6>
+                                <h4 class="stats-value">{{ listings_count }}</h4>
+                            </div>
                         </div>
-                        <div class="stat-item">
-                            <span class="stat-label">Active Boosts</span>
-                            <span class="stat-value">{{ active_boosts }}</span>
+                        <div class="stats-footer mt-2">
+                            <small class="text-muted">
+                                {% if effective_status.max_listings %}
+                                    {{ listings_count }}/{{ effective_status.max_listings }} used
+                                {% else %}
+                                    Unlimited listings
+                                {% endif %}
+                            </small>
                         </div>
-                        <div class="stat-item">
-                            <span class="stat-label">Max Listings</span>
-                            <span class="stat-value">{{ account.status.max_listings }}</span>
-                        </div>
-                        <a href="{% url 'my_store' %}" class="btn btn-sm btn-outline-primary mt-3 w-100">Manage Listings</a>
                     </div>
                 </div>
             </div>
 
-            <!-- Recent Transactions Card -->
-            <div class="col-12 col-lg-6">
-                <div class="dashboard-card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="card-title">Recent Transactions</h5>
-                        <a href="{% url 'transaction_history' %}" class="card-link">View All</a>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="transaction-list">
-                            {% if recent_transactions %}
-                                {% for transaction in recent_transactions %}
-                                <div class="transaction-item">
-                                    <div class="transaction-icon 
-                                        {% if transaction.amount > 0 %}text-success{% else %}text-danger{% endif %}">
-                                        {% if transaction.amount > 0 %}
-                                            <i class="bi bi-arrow-down-circle-fill"></i>
-                                        {% else %}
-                                            <i class="bi bi-arrow-up-circle-fill"></i>
-                                        {% endif %}
-                                    </div>
-                                    <div class="transaction-details">
-                                        <div class="transaction-title">{{ transaction.description }}</div>
-                                        <div class="transaction-date">{{ transaction.created_at|date:"M d, Y" }}</div>
-                                    </div>
-                                    <div class="transaction-amount 
-                                        {% if transaction.amount > 0 %}text-success{% else %}text-danger{% endif %}">
-                                        {% if transaction.amount > 0 %}+{% endif %}₦{{ transaction.amount }}
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            {% else %}
-                                <div class="transaction-empty">
-                                    <p class="text-center py-4">No recent transactions</p>
-                                </div>
-                            {% endif %}
+            <!-- Active Boosts Card -->
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="dashboard-card stats-card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="icon-container boosts-icon">
+                                <i class="bi bi-rocket-takeoff"></i>
+                            </div>
+                            <div class="stats-content">
+                                <h6 class="stats-label">Active Boosts</h6>
+                                <h4 class="stats-value">{{ active_boosts_count }}</h4>
+                            </div>
                         </div>
+                        <div class="stats-footer mt-2">
+                            <small class="text-muted">{{ boost_stats.total_boosts }} total boosts</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Spent Card -->
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="dashboard-card stats-card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="icon-container spent-icon">
+                                <i class="bi bi-graph-up"></i>
+                            </div>
+                            <div class="stats-content">
+                                <h6 class="stats-label">Total Spent</h6>
+                                <h4 class="stats-value">₦{{ total_spent|floatformat:0 }}</h4>
+                            </div>
+                        </div>
+                        {% if potential_savings > 0 %}
+                        <div class="stats-footer mt-2">
+                            <small class="text-warning">
+                                <i class="bi bi-lightbulb me-1"></i>
+                                Could save ₦{{ potential_savings|floatformat:0 }} with Pro
+                            </small>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Recent Listings -->
+        <!-- Upgrade Banner (if not Pro) -->
+        {% if not account.is_subscription_active %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="upgrade-banner">
+                    <div class="upgrade-content">
+                        <div class="row align-items-center">
+                            <div class="col-12 col-md-8">
+                                <h4 class="upgrade-title">
+                                    <i class="bi bi-star-fill me-2"></i>
+                                    Unlock the full potential of your store
+                                </h4>
+                                <p class="upgrade-description">
+                                    Get unlimited listings, 30% boost discounts, priority support, and more with OpenSell Pro.
+                                    {% if potential_savings > 0 %}
+                                    You could have saved ₦{{ potential_savings|floatformat:0 }} on boosts already!
+                                    {% endif %}
+                                </p>
+                            </div>
+                            <div class="col-12 col-md-4 text-md-end mt-3 mt-md-0">
+                                <a href="{% url 'subscription_management' %}" class="btn btn-upgrade-banner">
+                                    Upgrade Now
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="row g-4">
+            <!-- Quick Actions Card -->
+            <div class="col-12 col-lg-4">
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h5 class="card-title">
+                            <i class="bi bi-lightning-fill me-2"></i>Quick Actions
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="quick-actions">
+                            <a href="{% url 'product_create' %}" class="quick-action-item">
+                                <div class="action-icon create-icon">
+                                    <i class="bi bi-plus-circle"></i>
+                                </div>
+                                <div class="action-content">
+                                    <h6>Create New Listing</h6>
+                                    <p>Add a new product to your store</p>
+                                </div>
+                                <i class="bi bi-chevron-right action-arrow"></i>
+                            </a>
+                            
+                            <a href="{% url 'my_store' %}" class="quick-action-item">
+                                <div class="action-icon store-icon">
+                                    <i class="bi bi-shop"></i>
+                                </div>
+                                <div class="action-content">
+                                    <h6>View My Store</h6>
+                                    <p>Manage your listings and store</p>
+                                </div>
+                                <i class="bi bi-chevron-right action-arrow"></i>
+                            </a>
+                            
+                            <a href="{% url 'deposit_funds' %}" class="quick-action-item">
+                                <div class="action-icon funds-icon">
+                                    <i class="bi bi-wallet2"></i>
+                                </div>
+                                <div class="action-content">
+                                    <h6>Add Funds</h6>
+                                    <p>Top up your account balance</p>
+                                </div>
+                                <i class="bi bi-chevron-right action-arrow"></i>
+                            </a>
+                            
+                            <a href="{% url 'account_status' %}" class="quick-action-item">
+                                <div class="action-icon history-icon">
+                                    <i class="bi bi-person-badge"></i>
+                                </div>
+                                <div class="action-content">
+                                    <h6>Account Status</h6>
+                                    <p>View account details and tier info</p>
+                                </div>
+                                <i class="bi bi-chevron-right action-arrow"></i>
+                            </a>
+                            
+                            <a href="{% url 'transaction_history' %}" class="quick-action-item">
+                                <div class="action-icon history-icon">
+                                    <i class="bi bi-clock-history"></i>
+                                </div>
+                                <div class="action-content">
+                                    <h6>Transaction History</h6>
+                                    <p>View your payment history</p>
+                                </div>
+                                <i class="bi bi-chevron-right action-arrow"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Listings Card -->
+            <div class="col-12 col-lg-8">
+                <div class="dashboard-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title">
+                            <i class="bi bi-box-seam me-2"></i>Recent Listings
+                        </h5>
+                        <a href="{% url 'my_store' %}" class="btn btn-sm btn-outline-primary">
+                            View All
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        {% if user_listings %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Price</th>
+                                        <th>Status</th>
+                                        <th>Views</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for listing in user_listings %}
+                                    <tr>
+                                        <td>
+                                            <div class="product-info">
+                                                {% with primary_image=listing.images.first %}
+                                                    {% if primary_image %}
+                                                        <img src="{{ primary_image.image.url }}" 
+                                                             alt="{{ listing.title }}" 
+                                                             class="product-thumb">
+                                                    {% else %}
+                                                        <div class="product-thumb-placeholder">
+                                                            <i class="bi bi-image"></i>
+                                                        </div>
+                                                    {% endif %}
+                                                {% endwith %}
+                                                <div class="product-details">
+                                                    <h6 class="product-title">{{ listing.title|truncatechars:30 }}</h6>
+                                                    {% if listing.current_boost %}
+                                                        <span class="boost-badge {{ listing.current_boost.boost_type }}">
+                                                            <i class="bi bi-rocket"></i> {{ listing.current_boost.get_boost_type_display }}
+                                                        </span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="price-display">₦{{ listing.price|floatformat:0 }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="status-badge {{ listing.stock_status }}">
+                                                {{ listing.stock_status|title|default:"In Stock" }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="view-count">
+                                                <i class="bi bi-eye me-1"></i>{{ listing.view_count }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <a href="{% url 'boost_product' listing.id %}" 
+                                                   class="btn btn-sm btn-outline-success"
+                                                   data-bs-toggle="tooltip" title="Boost this product">
+                                                    <i class="bi bi-rocket"></i>
+                                                </a>
+                                                <a href="{% url 'product_detail' listing.id %}" 
+                                                   class="btn btn-sm btn-outline-primary"
+                                                   data-bs-toggle="tooltip" title="View product">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <i class="bi bi-box-seam"></i>
+                            </div>
+                            <h5>No listings yet</h5>
+                            <p>Create your first listing to start selling</p>
+                            <a href="{% url 'product_create' %}" class="btn btn-primary">
+                                <i class="bi bi-plus-circle me-2"></i>Create Listing
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Boosts Section -->
+        {% if active_boosts %}
         <div class="row mt-4">
             <div class="col-12">
                 <div class="dashboard-card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="card-title">Your Recent Listings</h5>
-                        <a href="{% url 'my_store' %}" class="card-link">View All</a>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="listing-list">
-                            {% if user_listings %}
-                                <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Product</th>
-                                                <th>Price</th>
-                                                <th>Status</th>
-                                                <th>Views</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for listing in user_listings %}
-                                            <tr>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        {% if listing.primary_image %}
-                                                            <img src="{{ listing.primary_image.thumbnail.url }}" 
-                                                                 class="listing-thumbnail me-2" alt="{{ listing.title }}">
-                                                        {% else %}
-                                                            <div class="listing-no-image me-2">
-                                                                <i class="bi bi-image"></i>
-                                                            </div>
-                                                        {% endif %}
-                                                        <div class="listing-title">{{ listing.title|truncatechars:30 }}</div>
-                                                    </div>
-                                                </td>
-                                                <td>₦{{ listing.price }}</td>
-                                                <td>
-                                                    <span class="status-badge {{ listing.stock_status }}">
-                                                        {{ listing.stock_status|title|default:"In Stock" }}
-                                                    </span>
-                                                </td>
-                                                <td>{{ listing.view_count }}</td>
-                                                <td>
-                                                    <div class="btn-group">
-                                                        <a href="{% url 'boost_product' listing.id %}" 
-                                                           class="btn btn-sm btn-outline-success">
-                                                            <i class="bi bi-rocket"></i> Boost
-                                                        </a>
-                                                      
-                                                        </a>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            {% endif %}
+                        <h5 class="card-title">
+                            <i class="bi bi-rocket-takeoff me-2"></i>Active Boosts
+                        </h5>
+                        <div class="header-actions">
+                            <a href="{% url 'product_boost_status' %}" class="btn btn-sm btn-outline-primary me-2">
+                                <i class="bi bi-graph-up me-1"></i>View All Boosts
+                            </a>
+                            <span class="badge bg-success">{{ active_boosts_count }} Active</span>
                         </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Boost Type</th>
+                                        <th>Started</th>
+                                        <th>Expires</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for boost in active_boosts %}
+                                    <tr>
+                                        <td>
+                                            <a href="{% url 'product_detail' boost.product.id %}" 
+                                               class="text-decoration-none">
+                                                {{ boost.product.title|truncatechars:30 }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <span class="boost-type-badge {{ boost.boost_type }}">
+                                                <i class="bi {% if boost.boost_type == 'featured' %}bi-star-fill{% elif boost.boost_type == 'urgent' %}bi-clock-fill{% elif boost.boost_type == 'spotlight' %}bi-lightning-fill{% else %}bi-gem{% endif %}"></i>
+                                                {{ boost.get_boost_type_display }}
+                                            </span>
+                                        </td>
+                                        <td>{{ boost.start_date|date:"M d" }}</td>
+                                        <td>{{ boost.end_date|date:"M d, Y" }}</td>
+                                        <td>
+                                            {% if boost.days_remaining <= 1 %}
+                                                <span class="status-badge expiring">
+                                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                                    Expires today
+                                                </span>
+                                            {% elif boost.days_remaining <= 3 %}
+                                                <span class="status-badge warning">
+                                                    <i class="bi bi-clock me-1"></i>
+                                                    {{ boost.days_remaining }} days left
+                                                </span>
+                                            {% else %}
+                                                <span class="status-badge active">
+                                                    <i class="bi bi-check-circle me-1"></i>
+                                                    {{ boost.days_remaining }} days left
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'product_detail' boost.product.id %}" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                View Product
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Recent Transactions -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="dashboard-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title">
+                            <i class="bi bi-clock-history me-2"></i>Recent Transactions
+                        </h5>
+                        <a href="{% url 'transaction_history' %}" class="btn btn-sm btn-outline-primary">
+                            View All
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        {% if recent_transactions %}
+                        <div class="transaction-list">
+                            {% for transaction in recent_transactions %}
+                            <div class="transaction-item">
+                                <div class="transaction-icon {{ transaction.transaction_type }}">
+                                    <i class="bi {% if transaction.amount > 0 %}bi-plus-circle{% else %}bi-dash-circle{% endif %}"></i>
+                                </div>
+                                <div class="transaction-details">
+                                    <h6 class="transaction-title">{{ transaction.get_transaction_type_display }}</h6>
+                                    <p class="transaction-date">{{ transaction.created_at|date:"M d, Y \a\t H:i" }}</p>
+                                </div>
+                                <div class="transaction-amount {% if transaction.amount > 0 %}positive{% else %}negative{% endif %}">
+                                    {% if transaction.amount > 0 %}+{% endif %}₦{{ transaction.amount|floatformat:0 }}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <i class="bi bi-clock-history"></i>
+                            </div>
+                            <h5>No transactions yet</h5>
+                            <p>Your transaction history will appear here</p>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -187,251 +484,793 @@
 </div>
 
 <style>
+    /* Enhanced Dashboard Styles */
     .dashboard-container {
         background-color: var(--background-color);
         min-height: 100vh;
     }
 
     .dashboard-header {
-        background-color: var(--primary-color);
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
         margin: -2rem -1rem 2rem -1rem;
         border-radius: 0 0 var(--radius-xl) var(--radius-xl);
-        color: var(--light-hover-bg);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .dashboard-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="40" r="3" fill="rgba(255,255,255,0.05)"/><circle cx="40" cy="80" r="1" fill="rgba(255,255,255,0.1)"/></svg>');
+        opacity: 0.3;
     }
 
     .dashboard-title {
-        font-weight: 600;
-        font-size: 2rem;
-        margin-bottom: 0.25rem;
+        color: var(--card-background);
+        font-weight: 700;
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
     }
 
     .dashboard-subtitle {
+        color: rgba(255, 255, 255, 0.8);
         font-size: 1.1rem;
-        opacity: 0.8;
+        margin-bottom: 0;
+    }
+
+    .status-container {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .status-badge {
+        background-color: rgba(255, 255, 255, 0.2);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius-full);
+        font-size: 0.9rem;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .status-badge.pro {
+        background-color: var(--accent-color);
+        border-color: var(--accent-color);
+    }
+
+    .subscription-expiry {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 0.85rem;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .balance-display-container {
+        position: relative;
+        z-index: 2;
     }
 
     .balance-display {
-        background: rgba(255, 255, 255, 0.1);
+        background-color: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
         border-radius: var(--radius-lg);
-        padding: 1rem;
-        display: inline-block;
+        padding: 1.5rem;
+        text-align: center;
+        margin-bottom: 1rem;
     }
 
     .balance-label {
-        display: block;
+        color: rgba(255, 255, 255, 0.8);
         font-size: 0.9rem;
-        opacity: 0.8;
+        display: block;
+        margin-bottom: 0.5rem;
     }
 
     .balance-amount {
-        font-size: 1.8rem;
+        color: white;
+        font-size: 2.5rem;
         font-weight: 700;
-        margin: 0;
+        margin-bottom: 0;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
     }
 
     .btn-deposit {
-        background-color: var(--secondary-color);
+        background-color: var(--accent-color);
         color: white;
         border: none;
-        padding: 0.5rem 1.5rem;
+        padding: 0.75rem 1.5rem;
         border-radius: var(--radius-md);
         font-weight: 500;
         transition: all 0.3s ease;
     }
 
     .btn-deposit:hover {
+        background-color: var(--accent-hover);
         transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
 
+    .btn-upgrade {
+        background-color: transparent;
+        color: white;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        padding: 0.75rem 1.5rem;
+        border-radius: var(--radius-md);
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .btn-upgrade:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.5);
+        color: white;
+    }
+
+    /* Stats Cards */
+    .stats-card {
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+
+    .stats-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        border-color: var(--primary-color);
+    }
+
+    .icon-container {
+        width: 50px;
+        height: 50px;
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+        font-size: 1.5rem;
+    }
+
+    .status-icon {
+        background-color: rgba(var(--primary-rgb), 0.1);
+        color: var(--primary-color);
+    }
+
+    .listings-icon {
+        background-color: rgba(52, 152, 219, 0.1);
+        color: #3498db;
+    }
+
+    .boosts-icon {
+        background-color: rgba(155, 89, 182, 0.1);
+        color: #9b59b6;
+    }
+
+    .spent-icon {
+        background-color: rgba(46, 204, 113, 0.1);
+        color: #2ecc71;
+    }
+
+    .stats-content h6 {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        margin-bottom: 0.25rem;
+        font-weight: 500;
+    }
+
+    .stats-value {
+        color: var(--text-primary);
+        font-weight: 700;
+        font-size: 1.5rem;
+        margin-bottom: 0;
+    }
+
+    .progress-container {
+        margin-top: 1rem;
+    }
+
+    .progress {
+        height: 6px;
+        border-radius: var(--radius-full);
+        background-color: var(--hover-bg);
+    }
+
+    .progress-bar {
+        background-color: var(--primary-color);
+        border-radius: var(--radius-full);
+    }
+
+    /* Upgrade Banner */
+    .upgrade-banner {
+        background: linear-gradient(135deg, var(--accent-color) 0%, var(--primary-color) 100%);
+        border-radius: var(--radius-lg);
+        padding: 2rem;
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .upgrade-banner::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20px;
+        width: 100px;
+        height: 200%;
+        background: rgba(255, 255, 255, 0.1);
+        transform: rotate(15deg);
+    }
+
+    .upgrade-title {
+        font-weight: 700;
+        margin-bottom: 1rem;
+    }
+
+    .upgrade-description {
+        margin-bottom: 0;
+        font-size: 1rem;
+        opacity: 0.9;
+    }
+
+    .btn-upgrade-banner {
+        background-color: white;
+        color: var(--primary-color);
+        border: none;
+        padding: 0.875rem 2rem;
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-upgrade-banner:hover {
+        background-color: rgba(255, 255, 255, 0.9);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Dashboard Cards */
     .dashboard-card {
         background-color: var(--card-background);
+        border: 1px solid var(--border-color);
         border-radius: var(--radius-lg);
-        box-shadow: 0 2px 10px var(--shadow-color);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
         height: 100%;
-        overflow: hidden;
-        border: none;
     }
 
-    .dashboard-card .card-header {
+    .dashboard-card:hover {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-header {
         background-color: transparent;
         border-bottom: 1px solid var(--border-color);
-        padding: 1rem 1.5rem;
+        padding: 1.25rem;
     }
 
-    .dashboard-card .card-title {
-        margin-bottom: 0;
-        font-weight: 600;
+    .card-title {
         color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 0;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
     }
 
-    .status-badge {
-        display: inline-block;
-        padding: 0.5rem 1.5rem;
-        border-radius: var(--radius-full);
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 1px;
+    .card-body {
+        padding: 1.25rem;
     }
 
-    .status-badge.basic {
-        background-color: #e9ecef;
-        color: #495057;
+    /* Quick Actions */
+    .quick-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
     }
 
-    .status-badge.silver {
-        background: linear-gradient(135deg, #c0c0c0, #e6e6e6);
-        color: #333;
+    .quick-action-item {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        border-radius: var(--radius-md);
+        background-color: var(--hover-bg);
+        text-decoration: none;
+        color: var(--text-primary);
+        transition: all 0.3s ease;
+        border: 1px solid transparent;
     }
 
-    .status-badge.gold {
-        background: linear-gradient(135deg, #FFD700, #FFC107);
-        color: #333;
-    }
-
-    .status-badge.platinum {
-        background: linear-gradient(135deg, #B2DFDB, #80CBC4);
-        color: #004D40;
-    }
-
-    .status-badge.always_available {
-        background-color: #28a745;
+    .quick-action-item:hover {
+        background-color: var(--primary-color);
         color: white;
+        transform: translateX(8px);
+        border-color: var(--primary-color);
+    }
+
+    .action-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+        font-size: 1.2rem;
+        transition: all 0.3s ease;
+    }
+
+    .create-icon {
+        background-color: rgba(46, 204, 113, 0.1);
+        color: #2ecc71;
+    }
+
+    .store-icon {
+        background-color: rgba(52, 152, 219, 0.1);
+        color: #3498db;
+    }
+
+    .funds-icon {
+        background-color: rgba(155, 89, 182, 0.1);
+        color: #9b59b6;
+    }
+
+    .history-icon {
+        background-color: rgba(241, 196, 15, 0.1);
+        color: #f1c40f;
+    }
+
+    .quick-action-item:hover .action-icon {
+        background-color: rgba(255, 255, 255, 0.2);
+        color: white;
+    }
+
+    .action-content h6 {
+        margin-bottom: 0.25rem;
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    .action-content p {
+        margin-bottom: 0;
+        font-size: 0.85rem;
+        opacity: 0.8;
+    }
+
+    .action-arrow {
+        margin-left: auto;
+        font-size: 1rem;
+        opacity: 0.6;
+        transition: all 0.3s ease;
+    }
+
+    .quick-action-item:hover .action-arrow {
+        opacity: 1;
+        transform: translateX(4px);
+    }
+
+    /* Product Table */
+    .product-info {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .product-thumb {
+        width: 50px;
+        height: 50px;
+        object-fit: cover;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-color);
+    }
+
+    .product-thumb-placeholder {
+        width: 50px;
+        height: 50px;
+        background-color: var(--hover-bg);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+    }
+
+    .product-details {
+        flex: 1;
+    }
+
+    .product-title {
+        margin-bottom: 0.25rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .boost-badge {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: var(--radius-sm);
+        font-weight: 500;
+    }
+
+    .boost-badge.featured {
+        background-color: rgba(241, 196, 15, 0.1);
+        color: #f1c40f;
+    }
+
+    .boost-badge.urgent {
+        background-color: rgba(231, 76, 60, 0.1);
+        color: #e74c3c;
+    }
+
+    .boost-badge.spotlight {
+        background-color: rgba(52, 152, 219, 0.1);
+        color: #3498db;
+    }
+
+    .boost-badge.premium {
+        background-color: rgba(155, 89, 182, 0.1);
+        color: #9b59b6;
+    }
+
+    .price-display {
+        font-weight: 600;
+        color: var(--accent-color);
+        font-size: 0.95rem;
+    }
+
+    .view-count {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.25rem;
+    }
+
+    .action-buttons .btn {
+        padding: 0.375rem 0.5rem;
+    }
+
+    /* Boost Type Badges */
+    .boost-type-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.375rem 0.75rem;
+        border-radius: var(--radius-full);
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .boost-type-badge.featured {
+        background-color: rgba(241, 196, 15, 0.1);
+        color: #f1c40f;
+        border: 1px solid rgba(241, 196, 15, 0.2);
+    }
+
+    .boost-type-badge.urgent {
+        background-color: rgba(231, 76, 60, 0.1);
+        color: #e74c3c;
+        border: 1px solid rgba(231, 76, 60, 0.2);
+    }
+
+    .boost-type-badge.spotlight {
+        background-color: rgba(52, 152, 219, 0.1);
+        color: #3498db;
+        border: 1px solid rgba(52, 152, 219, 0.2);
+    }
+
+    .boost-type-badge.premium {
+        background-color: rgba(155, 89, 182, 0.1);
+        color: #9b59b6;
+        border: 1px solid rgba(155, 89, 182, 0.2);
+    }
+
+    /* Status Badges */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.375rem 0.75rem;
+        border-radius: var(--radius-full);
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .status-badge.active {
+        background-color: rgba(46, 204, 113, 0.1);
+        color: #2ecc71;
+        border: 1px solid rgba(46, 204, 113, 0.2);
+    }
+
+    .status-badge.warning {
+        background-color: rgba(241, 196, 15, 0.1);
+        color: #f1c40f;
+        border: 1px solid rgba(241, 196, 15, 0.2);
+    }
+
+    .status-badge.expiring {
+        background-color: rgba(231, 76, 60, 0.1);
+        color: #e74c3c;
+        border: 1px solid rgba(231, 76, 60, 0.2);
     }
 
     .status-badge.in_stock {
-        background-color: #17a2b8;
-        color: white;
+        background-color: rgba(46, 204, 113, 0.1);
+        color: #2ecc71;
+        border: 1px solid rgba(46, 204, 113, 0.2);
     }
 
     .status-badge.low_stock {
-        background-color: #ffc107;
-        color: #333;
+        background-color: rgba(241, 196, 15, 0.1);
+        color: #f1c40f;
+        border: 1px solid rgba(241, 196, 15, 0.2);
     }
 
     .status-badge.out_of_stock {
-        background-color: #dc3545;
-        color: white;
+        background-color: rgba(231, 76, 60, 0.1);
+        color: #e74c3c;
+        border: 1px solid rgba(231, 76, 60, 0.2);
     }
 
-    .stat-item {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 1rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 1px dashed var(--border-color);
-    }
-
-    .stat-item:last-child {
-        border-bottom: none;
-    }
-
-    .stat-label {
-        color: var(--text-secondary);
-    }
-
-    .stat-value {
-        font-weight: 600;
-        color: var(--text-primary);
-    }
-
+    /* Transaction List */
     .transaction-list {
-        max-height: 300px;
-        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
     }
 
     .transaction-item {
         display: flex;
         align-items: center;
-        padding: 1rem 1.5rem;
-        border-bottom: 1px solid var(--border-color);
-    }
-
-    .transaction-item:last-child {
-        border-bottom: none;
+        padding: 1rem;
+        background-color: var(--hover-bg);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-color);
     }
 
     .transaction-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
         margin-right: 1rem;
-        font-size: 1.5rem;
+        font-size: 1.2rem;
+    }
+
+    .transaction-icon.deposit {
+        background-color: rgba(46, 204, 113, 0.1);
+        color: #2ecc71;
+    }
+
+    .transaction-icon.boost_fee {
+        background-color: rgba(155, 89, 182, 0.1);
+        color: #9b59b6;
+    }
+
+    .transaction-icon.subscription {
+        background-color: rgba(52, 152, 219, 0.1);
+        color: #3498db;
     }
 
     .transaction-details {
-        flex-grow: 1;
+        flex: 1;
     }
 
     .transaction-title {
-        font-weight: 500;
+        margin-bottom: 0.25rem;
+        font-weight: 600;
+        font-size: 0.95rem;
     }
 
     .transaction-date {
-        font-size: 0.8rem;
-        color: var(--text-secondary);
+        margin-bottom: 0;
+        color: var(--text-muted);
+        font-size: 0.85rem;
     }
 
     .transaction-amount {
         font-weight: 600;
-        font-size: 1.1rem;
+        font-size: 1rem;
     }
 
-    .listing-thumbnail {
-        width: 40px;
-        height: 40px;
-        object-fit: cover;
-        border-radius: var(--radius-sm);
+    .transaction-amount.positive {
+        color: #2ecc71;
     }
 
-    .listing-no-image {
-        width: 40px;
-        height: 40px;
-        background-color: var(--border-color);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: var(--radius-sm);
+    .transaction-amount.negative {
+        color: #e74c3c;
     }
 
-    .listing-title {
-        font-weight: 500;
+    /* Empty States */
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--text-muted);
     }
 
-    .listing-empty,
-    .transaction-empty {
-        color: var(--text-secondary);
+    .empty-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
     }
 
-    .status-progress {
-        padding: 0 1rem;
-    }
-
-    .status-next {
-        font-size: 0.85rem;
-        color: var(--text-secondary);
+    .empty-state h5 {
         margin-bottom: 0.5rem;
+        color: var(--text-secondary);
     }
 
-    .status-max {
-        color: var(--success);
-        font-weight: 500;
+    .empty-state p {
+        margin-bottom: 1.5rem;
     }
 
-    /* Custom filter for templates */
+    /* Responsive Design */
     @media (max-width: 768px) {
-        .dashboard-card {
+        .dashboard-title {
+            font-size: 2rem;
+        }
+
+        .balance-amount {
+            font-size: 2rem;
+        }
+
+        .header-actions {
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .btn-deposit,
+        .btn-upgrade {
+            width: 100%;
+            text-align: center;
+        }
+
+        .stats-card {
             margin-bottom: 1rem;
         }
-        
-        .transaction-item {
-            padding: 0.75rem 1rem;
+
+        .quick-action-item {
+            padding: 0.875rem;
         }
-        
-        .transaction-title {
-            font-size: 0.9rem;
-        }
-        
-        .transaction-amount {
+
+        .action-icon {
+            width: 35px;
+            height: 35px;
             font-size: 1rem;
+        }
+
+        .product-info {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .product-thumb,
+        .product-thumb-placeholder {
+            width: 40px;
+            height: 40px;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .action-buttons .btn {
+            width: 100%;
+            margin-bottom: 0.25rem;
+        }
+
+        .transaction-item {
+            padding: 0.875rem;
+        }
+
+        .transaction-icon {
+            width: 35px;
+            height: 35px;
+            font-size: 1rem;
+        }
+
+        .upgrade-banner {
+            padding: 1.5rem;
+        }
+
+        .upgrade-title {
+            font-size: 1.25rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .dashboard-header {
+            margin: -1rem -0.5rem 1.5rem -0.5rem;
+        }
+
+        .dashboard-title {
+            font-size: 1.75rem;
+        }
+
+        .balance-amount {
+            font-size: 1.75rem;
+        }
+
+        .stats-value {
+            font-size: 1.25rem;
+        }
+
+        .card-header,
+        .card-body {
+            padding: 1rem;
+        }
+
+        .quick-action-item {
+            padding: 0.75rem;
+        }
+
+        .empty-state {
+            padding: 2rem 0.5rem;
+        }
+
+        .empty-icon {
+            font-size: 2.5rem;
         }
     }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Add smooth scroll behavior for internal links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+
+    // Add loading states for action buttons
+    document.querySelectorAll('.quick-action-item, .btn').forEach(button => {
+        button.addEventListener('click', function() {
+            // Add loading state if it's a form submission or major action
+            if (this.closest('form') || this.classList.contains('btn-upgrade-banner')) {
+                const icon = this.querySelector('i');
+                if (icon) {
+                    const originalClass = icon.className;
+                    icon.className = 'bi bi-arrow-repeat spinner-border spinner-border-sm';
+                    
+                    // Restore original icon after delay (for better UX)
+                    setTimeout(() => {
+                        icon.className = originalClass;
+                    }, 2000);
+                }
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

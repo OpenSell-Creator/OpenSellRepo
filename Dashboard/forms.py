@@ -15,6 +15,7 @@ class DepositForm(forms.Form):
 class BoostProductForm(forms.Form):
     BOOST_CHOICES = ProductBoost.BOOST_TYPES
     DURATION_CHOICES = [
+        (1, '1 Day'),
         (3, '3 Days'),
         (7, '7 Days'),
         (14, '14 Days'),
@@ -32,4 +33,15 @@ class BoostProductForm(forms.Form):
     )
     
     def clean_duration(self):
-        return int(self.cleaned_data['duration'])
+        duration = self.cleaned_data.get('duration')
+        try:
+            return int(duration)
+        except (ValueError, TypeError):
+            raise forms.ValidationError("Invalid duration selected")
+    
+    def clean_boost_type(self):
+        boost_type = self.cleaned_data.get('boost_type')
+        valid_types = [choice[0] for choice in self.BOOST_CHOICES]
+        if boost_type not in valid_types:
+            raise forms.ValidationError("Invalid boost type selected")
+        return boost_type

@@ -176,6 +176,7 @@ def send_verification_otp(request):
         else:
             messages.error(request, "Failed to send verification code. Please try again.")
     
+    # Fix: Remove username parameter since your URL pattern doesn't accept it
     return redirect('my_store')
 
 @login_required

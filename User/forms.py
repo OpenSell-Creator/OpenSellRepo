@@ -1,13 +1,37 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Location,Profile, LGA
+from .models import Location, Profile, LGA
+import re
 
 
 class SignUpForm(UserCreationForm):
-    email = forms.EmailField(label="", required=False, widget=forms.TextInput(attrs={'class':'form-control', 'placeholder':'Email Address (Optional)'}))
-    first_name = forms.CharField(label="", max_length=100, required=False, widget=forms.TextInput(attrs={'class':'form-control', 'placeholder':'First Name (Optional)'}))
-    last_name = forms.CharField(label="", max_length=100, required=False, widget=forms.TextInput(attrs={'class':'form-control', 'placeholder':'Last Name (Optional)'}))
+    email = forms.EmailField(
+        label="", 
+        required=False, 
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control', 
+            'placeholder': 'Email Address (Optional)'
+        })
+    )
+    first_name = forms.CharField(
+        label="", 
+        max_length=100, 
+        required=False, 
+        widget=forms.TextInput(attrs={
+            'class': 'form-control', 
+            'placeholder': 'First Name (Optional)'
+        })
+    )
+    last_name = forms.CharField(
+        label="", 
+        max_length=100, 
+        required=False, 
+        widget=forms.TextInput(attrs={
+            'class': 'form-control', 
+            'placeholder': 'Last Name (Optional)'
+        })
+    )
 
     class Meta:
         model = User
@@ -24,18 +48,56 @@ class SignUpForm(UserCreationForm):
         self.fields['password1'].widget.attrs['class'] = 'form-control'
         self.fields['password1'].widget.attrs['placeholder'] = 'Password'
         self.fields['password1'].label = ''
-        self.fields['password1'].help_text = 'Your password must contain at least 6 characters.'
+        self.fields['password1'].help_text = 'Choose any password - minimum 6 characters.'
 
         self.fields['password2'].widget.attrs['class'] = 'form-control'
         self.fields['password2'].widget.attrs['placeholder'] = 'Confirm Password'
         self.fields['password2'].label = ''
-        self.fields['password2'].help_text = 'Enter the same password as before, for verification.'
+        self.fields['password2'].help_text = 'Enter the same password for confirmation.'
 
     def clean_password1(self):
         password1 = self.cleaned_data.get("password1")
-        if len(password1) < 6:
+        if password1 and len(password1) < 6:
             raise forms.ValidationError("Password must be at least 6 characters long.")
         return password1
+
+    def clean_password2(self):
+        password1 = self.cleaned_data.get("password1")
+        password2 = self.cleaned_data.get("password2")
+        
+        if password1 and password2 and password1 != password2:
+            raise forms.ValidationError("The two password fields didn't match.")
+        
+        return password2
+
+    def clean_username(self):
+        username = self.cleaned_data.get('username')
+        if not username:
+            raise forms.ValidationError("Username is required.")
+        
+        # Check for valid characters
+        if not re.match(r'^[a-zA-Z0-9@.+\-_]+$', username):
+            raise forms.ValidationError("Username can only contain letters, digits and @/./+/-/_ characters.")
+        
+        # Check if username already exists
+        if User.objects.filter(username=username).exists():
+            raise forms.ValidationError("A user with this username already exists.")
+        
+        return username
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if email and User.objects.filter(email=email).exists():
+            raise forms.ValidationError("A user with this email already exists.")
+        return email
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.set_password(self.cleaned_data["password1"])
+        if commit:
+            user.save()
+        return user
+
     
 class LocationForm(forms.ModelForm):
     class Meta:
@@ -55,12 +117,14 @@ class LocationForm(forms.ModelForm):
         elif self.instance and hasattr(self.instance, 'pk') and self.instance.pk and self.instance.state:
             self.fields['lga'].queryset = self.instance.state.lgas.all()
         
+
 class UserUpdateForm(forms.ModelForm):
     email = forms.EmailField()
 
     class Meta:
         model = User
-        fields = ['last_name','first_name','username', 'email']
+        fields = ['last_name', 'first_name', 'username', 'email']
+
 
 class ProfileUpdateForm(forms.ModelForm):
     first_name = forms.CharField(max_length=150)
@@ -102,5 +166,3 @@ class ProfileUpdateForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
-    
-        

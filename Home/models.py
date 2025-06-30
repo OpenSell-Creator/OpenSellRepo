@@ -39,7 +39,7 @@ class Subcategory(models.Model):
     class Meta:
         unique_together = ('category', 'name')
         verbose_name_plural = "Subcategories"
-           
+
 class Brand(models.Model):
     categories = models.ManyToManyField(Category, related_name='brands')
     subcategories = models.ManyToManyField(Subcategory, related_name='brands')
@@ -91,6 +91,12 @@ class Product_Listing(models.Model):
         null=True, 
         blank=True, 
         related_name='suspended_listings'
+    )
+    boost_score = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        default=0,
+        help_text="Combined score for sorting (boost + pro status)"
     )
     
     def suspend(self, admin_user, reason=None):
@@ -241,6 +247,67 @@ class Product_Listing(models.Model):
             'total_seconds': delta.total_seconds()
         }
         
+    @property
+    def is_boosted(self):
+        """Check if product has active boost"""
+        return self.boosts.filter(
+            is_active=True,
+            end_date__gt=timezone.now()
+        ).exists()
+    
+    @property
+    def active_boost(self):
+        """Get active boost if exists"""
+        return self.boosts.filter(
+            is_active=True,
+            end_date__gt=timezone.now()
+        ).first()
+    
+    @property
+    def is_pro_seller(self):
+        """Check if seller has active Pro subscription"""
+        try:
+            return self.seller.user.account.is_subscription_active
+        except:
+            return False
+    
+    @property
+    def boost_type_display(self):
+        """Get boost type for display"""
+        boost = self.active_boost
+        return boost.get_boost_type_display() if boost else None
+    
+    def calculate_boost_score(self):
+        """Calculate boost score for sorting"""
+        score = 0
+        
+        # Base score for pro users
+        if self.is_pro_seller:
+            score += 50  # Pro user base score
+        
+        # Add boost scores
+        if self.is_boosted:
+            boost = self.active_boost
+            boost_scores = {
+                'featured': 100,
+                'urgent': 75,
+                'spotlight': 150,
+                'premium': 200
+            }
+            score += boost_scores.get(boost.boost_type, 50)
+        
+        # Add time decay factor (newer products score slightly higher)
+        # FIX: Check if created_at exists before calculating
+        if self.created_at:
+            days_old = (timezone.now() - self.created_at).days
+            time_score = max(0, 10 - (days_old * 0.1))  # Decreases over 100 days
+            score += time_score
+        else:
+            # For new products without created_at, give them the maximum time score
+            score += 10
+        
+        return score
+    
     def reset_expiration(self):
         """Reset the expiration date based on listing type"""
         if self.listing_type == 'permanent':
@@ -259,6 +326,16 @@ class Product_Listing(models.Model):
     def save(self, *args, **kwargs):
         is_new = self.pk is None  # Check if this is a new product
         
+        # Set expiration date for new products
+        if is_new and self.listing_type != 'permanent':
+            duration = {
+                'standard': 45,
+                'business': 90,
+                'urgent': 30
+            }.get(self.listing_type, 45)
+            self.expiration_date = timezone.now() + timedelta(days=duration)
+        
+        # Handle existing products
         if self.pk:  # Only for existing instances
             try:
                 original = Product_Listing.objects.get(pk=self.pk)
@@ -290,20 +367,20 @@ class Product_Listing(models.Model):
                         
             except Product_Listing.DoesNotExist:
                 pass
-        else:  # New instance
-            if self.listing_type != 'permanent':
-                duration = {
-                    'standard': 45,
-                    'business': 90,
-                    'urgent': 30
-                }.get(self.listing_type, 45)
-                self.expiration_date = timezone.now() + timedelta(days=duration)
-                print(f"Setting expiration date to: {self.expiration_date}")  # Debug line
 
+        # IMPORTANT: Save first, then calculate boost score
+        # This ensures created_at is set before calculating boost score
         super().save(*args, **kwargs)
         
+        # Update boost score AFTER saving (when created_at is available)
+        calculated_score = self.calculate_boost_score()
+        if self.boost_score != calculated_score:
+            # Use update to avoid recursion
+            Product_Listing.objects.filter(pk=self.pk).update(boost_score=calculated_score)
+            # Update the instance to reflect the change
+            self.boost_score = calculated_score
+        
         # Increment seller's total products counter for new products only
-        # This counter should ONLY increase, never decrease
         if is_new:
             # Use F() expression to avoid race conditions
             from django.db.models import F
@@ -510,64 +587,83 @@ class ProductReport(models.Model):
         self.save()
         
 class Banner(models.Model):
-    BANNER_TYPES = [
-        ('hero', 'Hero Banner'),
-        ('promotional', 'Promotional Banner'),
-        ('announcement', 'Announcement Banner'),
-    ]
-    
+    # Simplified - only one banner type since they work the same way
     DISPLAY_LOCATIONS = [
-        ('home_top', 'Home Page Top'),
-        ('home_middle', 'Home Page Middle'),
-        ('category', 'Category Pages'),
-        ('global', 'Global'),
+        ('first', 'Homepage - First Position'),
+        ('second', 'Homepage - Second Position'), 
+        ('global', 'Global - Top of Pages'),
     ]
 
-    title = models.CharField(max_length=100, default="Advertisement Banner")  # Added default
-    subtitle = models.CharField(max_length=200, blank=True, null=True)  # Made nullable
+    # ONLY IMAGE FIELDS - removed title and subtitle
     image = models.ImageField(
         upload_to='banners/',
-        validators=[FileExtensionValidator(['jpg', 'jpeg', 'png', 'webp'])]
+        validators=[FileExtensionValidator(['jpg', 'jpeg', 'png', 'webp'])],
+        help_text="Advertisement image: 1200x200px (desktop). All banner positions use same dimensions."
     )
     mobile_image = models.ImageField(
         upload_to='banners/mobile/',
         validators=[FileExtensionValidator(['jpg', 'jpeg', 'png', 'webp'])],
-        help_text="Optimized image for mobile devices",
+        help_text="Mobile-optimized version: 800x200px. Same dimensions for all positions.",
         blank=True,
-        null=True  # Made nullable
+        null=True
     )
-    url = models.URLField()
-    banner_type = models.CharField(
-        max_length=20, 
-        choices=BANNER_TYPES, 
-        default='promotional'
-    )
+    url = models.URLField(help_text="Destination URL when banner is clicked")
+    
     display_location = models.CharField(
         max_length=20, 
         choices=DISPLAY_LOCATIONS, 
-        default='home_top'
+        default='global'
     )
     is_active = models.BooleanField(default=True)
-    priority = models.IntegerField(default=0, help_text="Higher number means higher priority")
-    start_date = models.DateTimeField(null=True, blank=True)
-    end_date = models.DateTimeField(null=True, blank=True)
+    priority = models.IntegerField(
+        default=0, 
+        help_text="Higher number means higher priority in display order"
+    )
+    start_date = models.DateTimeField(
+        null=True, 
+        blank=True,
+        help_text="Optional: When to start showing this banner"
+    )
+    end_date = models.DateTimeField(
+        null=True, 
+        blank=True,
+        help_text="Optional: When to stop showing this banner"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    # Optional background color (rarely needed for image-only banners)
+    background_color = models.CharField(
+        max_length=7, 
+        blank=True, 
+        null=True,
+        help_text="Optional: Hex color code for banner background (e.g., #FF5733)"
+    )
 
     class Meta:
         ordering = ['-priority', '-updated_at']
         indexes = [
             models.Index(fields=['is_active', 'display_location']),
+            models.Index(fields=['priority', 'updated_at']),
         ]
 
     def __str__(self):
-        return self.title
+        return f"Banner #{self.id} - {self.get_display_location_display()}"
 
-    def save(self, *args, **kwargs):
-        # Set default title if none provided
-        if not self.title:
-            self.title = f"Advertisement Banner {Banner.objects.count() + 1}"
-        super().save(*args, **kwargs)
+    @property
+    def is_section_banner(self):
+        """Check if this is a section banner (first/second position)"""
+        return self.display_location in ['first', 'second']
+    
+    @property 
+    def is_global_banner(self):
+        """Check if this is a global banner"""
+        return self.display_location == 'global'
+
+    def get_alt_text(self):
+        """Generate appropriate alt text for accessibility"""
+        location_display = self.get_display_location_display()
+        return f"Advertisement - {location_display}"
 
 class Review(models.Model):
     REVIEW_TYPES = (

@@ -6,27 +6,25 @@
     <!-- Store Header Section -->
     <div class="store-header">
         <div class="container">
-            <div class="row align-items-center py-3 py-md-5">
-                <div class="col-12 col-md-4 text-center mb-4 mb-md-0">
+            <div class="row align-items-center py-4 py-md-5">
+                <div class="col-12 text-center">
                     {% if store_owner.profile.photo %}
                         <img src="{{ store_owner.profile.photo.url }}" 
                              alt="Profile Photo" 
                              class="store-profile-photo">
                     {% else %}
-                        <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="store-profile-photo">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="150" height="150" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="store-profile-photo">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                             <circle cx="12" cy="7" r="4"></circle>
                         </svg>
                     {% endif %}
-                </div>
-                <div class="col-12 col-md-8 text-center text-md-start">
-                    <h1 class="profile-username mb-2 h3 h-md-1">{{ store_owner.username }}'s Store </h1>
+                    <h1 class="profile-username mt-3">{{ store_owner.username }}'s Store</h1>
                     {% if store_owner.profile.bio %}
                         <p class="store-bio mb-3">{{ store_owner.profile.bio }}</p>
                     {% endif %}
         
                     {% if request.user == store_owner %}
-                        <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-md-start">
+                        <div class="profile-actions mt-4">
                             <a href="{% url 'product_create' %}" class="btn btn-add-product">
                                 <span class="btn-icon">
                                     <i class="bi bi-plus-lg"></i>
@@ -56,81 +54,112 @@
                 <div class="col-12">
                     <div class="card store-info-card">
                         <div class="card-body">
-                            <h5 class=" mb-0 fw-bold">My Information</h5>
+                            <h5 class="info-section-title mb-4">
+                                <i class="bi bi-person-lines-fill me-2"></i>
+                                My Information
+                            </h5>
                             
-                            <div class="row">
-                                <div class="col-md-4 mb-3 mb-md-0">
-                                    <div class="store-info-item">
-                                        <i class="bi bi-person-circle me-2"></i>
-                                        <span class="text-break">{{ store_owner.get_full_name }}</span>
+                            <!-- Personal & Contact Information Grid -->
+                            <div class="info-grid">
+                                <!-- Full Name Card -->
+                                <div class="info-item-card">
+                                    <div class="info-item-header">
+                                        <i class="bi bi-person-circle"></i>
+                                        <span class="info-label">Full Name</span>
+                                    </div>
+                                    <div class="info-content">
+                                        {{ store_owner.get_full_name|default:"Not provided" }}
                                     </div>
                                 </div>
-                                
-                                <div class="col-md-4 mb-3 mb-md-0">
-                                    <div class="store-info-item">
-                                        <div class="d-flex align-items-center w-100">
-                                            <div class="email-container">
-                                                <i class="bi bi-envelope me-2"></i>
-                                                <span class="text-break email-text">{{ store_owner.email }}</span>
-                                            </div>
-                                            
-                                            <div class="verification-container ms-2">
+
+                                <!-- Email Card -->
+                                <div class="info-item-card">
+                                    <div class="info-item-header">
+                                        <i class="bi bi-envelope"></i>
+                                        <span class="info-label">Email Address</span>
+                                    </div>
+                                    <div class="info-content">
+                                        <div class="email-wrapper">
+                                            <span class="email-text">{{ store_owner.email }}</span>
+                                            <div class="verification-status">
                                                 {% if request.user.profile.email_verified %}
                                                     <span class="verification-badge verified" data-bs-toggle="tooltip" data-bs-placement="top" title="Email Verified">
                                                         <i class="bi bi-patch-check-fill"></i>
+                                                        <span class="badge-text">Verified</span>
                                                     </span>
                                                 {% else %}
-                                                    <span class="verification-badge unverified" data-bs-toggle="tooltip" data-bs-placement="top" title="Email Not Verified">
-                                                        <i class="bi bi-patch-exclamation-fill"></i>
-                                                    </span>
-                                                    <form class="verify-form d-inline-block ms-1" method="post" action="{% url 'send_verification_otp' %}">
-                                                        {% csrf_token %}
-                                                        <button type="submit" class="btn btn-verify">Verify</button>
-                                                    </form>
+                                                    <div class="unverified-section">
+                                                        <span class="verification-badge unverified" data-bs-toggle="tooltip" data-bs-placement="top" title="Email Not Verified">
+                                                            <i class="bi bi-patch-exclamation-fill"></i>
+                                                            <span class="badge-text">Unverified</span>
+                                                        </span>
+                                                        <form class="verify-form" method="post" action="{% url 'send_verification_otp' %}">
+                                                            {% csrf_token %}
+                                                            <button type="submit" class="btn btn-verify">
+                                                                <i class="bi bi-shield-check me-1"></i>
+                                                                Verify Now
+                                                            </button>
+                                                        </form>
+                                                    </div>
                                                 {% endif %}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                                
-                                <div class="col-md-4">
-                                    {% if store_owner.profile.phone_number %}
-                                    <div class="store-info-item">
-                                        <i class="bi bi-telephone me-2"></i>
-                                        <span>{{ store_owner.profile.phone_number }}</span>
+
+                                <!-- Phone Number Card -->
+                                <div class="info-item-card">
+                                    <div class="info-item-header">
+                                        <i class="bi bi-telephone"></i>
+                                        <span class="info-label">Phone Number</span>
                                     </div>
-                                    {% endif %}
+                                    <div class="info-content">
+                                        {{ store_owner.profile.phone_number|default:"Not provided" }}
+                                    </div>
                                 </div>
-                            </div>
-                            
-                            {% if store_owner.profile.location %}
-                            <div class="row mt-3">
-                                <div class="col-12">
-                                    <div class="store-info-item">
-                                        <i class="bi bi-geo-alt me-2"></i>
-                                        <span class="location-text">
+
+                                <!-- Location Card -->
+                                {% if store_owner.profile.location %}
+                                <div class="info-item-card location-card">
+                                    <div class="info-item-header">
+                                        <i class="bi bi-geo-alt"></i>
+                                        <span class="info-label">Location</span>
+                                    </div>
+                                    <div class="info-content">
+                                        <div class="location-details">
                                             {% if store_owner.profile.location.address %}
-                                                {{ store_owner.profile.location.address }},
+                                                <div class="location-line">{{ store_owner.profile.location.address }}</div>
                                             {% endif %}
                                             {% if store_owner.profile.location.address_2 %}
-                                                {{ store_owner.profile.location.address_2 }},
+                                                <div class="location-line">{{ store_owner.profile.location.address_2 }}</div>
                                             {% endif %}
-                                            {% if store_owner.profile.location.city %}
-                                                {{ store_owner.profile.location.city }},
-                                            {% endif %}
-                                            {% if store_owner.profile.location.lga %}
-                                                {{ store_owner.profile.location.lga.name }}
-                                            {% if store_owner.profile.location.state %},
-                                            {% endif %}
-                                            {% endif %}
+                                            <div class="location-line">
+                                                {% if store_owner.profile.location.city %}
+                                                    {{ store_owner.profile.location.city }}
+                                                    {% if store_owner.profile.location.lga %}, {% endif %}
+                                                {% endif %}
+                                                {% if store_owner.profile.location.lga %}
+                                                    {{ store_owner.profile.location.lga.name }}
+                                                {% endif %}
+                                            </div>
                                             {% if store_owner.profile.location.state %}
-                                                {{ store_owner.profile.location.state.name }}.
+                                                <div class="location-line">{{ store_owner.profile.location.state.name }}</div>
                                             {% endif %}
-                                        </span>
+                                        </div>
                                     </div>
                                 </div>
+                                {% else %}
+                                <div class="info-item-card">
+                                    <div class="info-item-header">
+                                        <i class="bi bi-geo-alt"></i>
+                                        <span class="info-label">Location</span>
+                                    </div>
+                                    <div class="info-content">
+                                        Not provided
+                                    </div>
+                                </div>
+                                {% endif %}
                             </div>
-                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -193,105 +222,185 @@
     }
 
     .store-profile-photo {
-        width: 120px;
-        height: 120px;
+        width: 150px;
+        height: 150px;
         object-fit: cover;
         border-radius: var(--radius-full);
-        border: 3px solid var(--card-background);
+        border: 4px solid var(--card-background);
         box-shadow: 0 4px 20px var(--shadow-color);
     }
 
+    /* Improved Information Section Styling */
     .store-info-card {
         background-color: var(--card-background);
         border: 1px solid var(--border-color);
         border-radius: var(--radius-lg);
         margin-top: 1rem;
-        padding: 0.5rem;
+        padding: 0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
-    .store-info-item {
+    .info-section-title {
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 1.25rem;
         display: flex;
         align-items: center;
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid var(--border-color);
-        color: var(--text-secondary);
-        font-size: 0.95rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid var(--border-color);
     }
 
-    .store-info-item:last-child {
-        border-bottom: none;
-    }
-
-    .store-info-item i {
+    .info-section-title i {
         color: var(--accent-color);
-        width: 24px;
-        font-size: 1.1rem;
+        font-size: 1.3rem;
     }
 
-    /* Email and verification styling */
-    .email-container {
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.25rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .info-item-card {
+        background: var(--hover-bg);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 1.25rem;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .info-item-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        border-color: var(--accent-color);
+    }
+
+    .info-item-header {
         display: flex;
         align-items: center;
-        flex-wrap: nowrap;
-        max-width: 70%;
+        margin-bottom: 0.75rem;
+        gap: 0.5rem;
+    }
+
+    .info-item-header i {
+        color: var(--accent-color);
+        font-size: 1.1rem;
+        width: 20px;
+        text-align: center;
+    }
+
+    .info-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .info-content {
+        color: var(--text-primary);
+        font-size: 0.95rem;
+        font-weight: 500;
+        line-height: 1.5;
+        word-break: break-word;
+    }
+
+    /* Email specific styling */
+    .email-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
     }
 
     .email-text {
-        word-break: break-all;
+        font-family: 'Courier New', monospace;
+        background: var(--card-background);
+        padding: 0.5rem;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-color);
     }
 
-    .verification-container {
+    .verification-status {
         display: flex;
         align-items: center;
-        flex-shrink: 0;
+        gap: 0.75rem;
+    }
+
+    .unverified-section {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: nowrap;
     }
 
     .verification-badge {
-        display: inline-flex;
+        display: flex;
         align-items: center;
-        justify-content: center;
-        width: 24px;
-        height: 24px;
+        gap: 0.4rem;
+        font-size: 0.8rem;
+        font-weight: 500;
+        padding: 0.25rem 0.6rem;
+        border-radius: var(--radius-full);
+    }
+
+    .verification-badge.verified {
+        background: rgba(25, 135, 84, 0.1);
+        color: #198754;
+        border: 1px solid rgba(25, 135, 84, 0.2);
+    }
+
+    .verification-badge.unverified {
+        background: rgba(255, 193, 7, 0.1);
+        color: #ffc107;
+        border: 1px solid rgba(255, 193, 7, 0.2);
     }
 
     .verification-badge i {
-        font-size: 18px;
+        font-size: 0.9rem;
         width: auto;
-    }
-
-    .verification-badge.verified i {
-        color: #198754;
-    }
-
-    .verification-badge.unverified i {
-        color: #ffc107;
     }
 
     .btn-verify {
         font-size: 0.8rem;
-        padding: 0.2rem 0.5rem;
+        padding: 0.4rem 0.8rem;
         background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
         color: white;
         border: none;
         border-radius: var(--radius-md);
         font-weight: 500;
         transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
     }
 
     .btn-verify:hover {
         transform: translateY(-1px);
-        box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+        box-shadow: 0 3px 6px rgba(0,0,0,0.15);
     }
 
-    /* Location text styling */
-    .location-text {
-        line-height: 1.4;
-        word-break: break-word;
+    /* Location specific styling */
+    .location-card {
+        grid-column: 1 / -1;
     }
-    
-    .store-info-item .bi-geo-alt {
-        align-self: flex-start;
-        margin-top: 0.2rem;
+
+    .location-details {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+    }
+
+    .location-line {
+        padding: 0.2rem 0;
+        font-size: 0.9rem;
+    }
+
+    .location-line:not(:last-child) {
+        border-bottom: 1px dotted var(--border-color);
+        padding-bottom: 0.4rem;
     }
 
     /* Empty products card styling */
@@ -302,6 +411,8 @@
         padding: 3rem 1.5rem;
         text-align: center;
         color: var(--text-primary);
+        margin: 0 auto;
+        max-width: 500px;
     }
 
     .empty-products-icon {
@@ -431,6 +542,16 @@
         line-height: 1.5;
         color: var(--text-secondary);
         max-width: 600px;
+        margin: 0 auto;
+    }
+
+    /* Profile Actions */
+    .profile-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        justify-content: center;
+        align-items: center;
     }
 
     /* Button Glow Effect */
@@ -459,8 +580,13 @@
 
     /* Responsive styles */
     @media (max-width: 992px) {
-        .email-container {
-            max-width: 60%;
+        .info-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+        
+        .location-card {
+            grid-column: 1;
         }
     }
 
@@ -483,26 +609,26 @@
             margin-top: 0;
         }
 
-        .store-info-item {
-            padding: 0.5rem 0.75rem;
-            font-size: 0.85rem;
+        .info-grid {
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
         }
 
-        .store-info-item i {
-            font-size: 1rem;
+        .info-item-card {
+            padding: 1rem;
         }
-        
-        .email-container {
-            max-width: 55%;
+
+        .info-section-title {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
         }
-        
-        .verification-badge i {
-            font-size: 16px;
+
+        .email-wrapper {
+            gap: 0.5rem;
         }
-        
-        .btn-verify {
-            font-size: 0.75rem;
-            padding: 0.2rem 0.4rem;
+
+        .unverified-section {
+            gap: 0.5rem;
         }
         
         .store-bio {
@@ -518,10 +644,6 @@
         
         .btn-icon {
             font-size: 1.1rem;
-        }
-        
-        .location-text {
-            font-size: 0.85rem;
         }
         
         .empty-products-icon {
@@ -544,8 +666,8 @@
 
     @media (max-width: 576px) {
         .store-profile-photo {
-            width: 90px;
-            height: 90px;
+            width: 100px;
+            height: 100px;
         }
         
         .profile-username {
@@ -556,13 +678,21 @@
             padding: 2rem 1rem;
         }
         
-        .email-container {
-            max-width: 100%;
-            margin-bottom: 0.5rem;
+        .info-item-card {
+            padding: 0.875rem;
         }
         
-        .verification-container {
-            margin-left: 2rem !important;
+        .info-grid {
+            gap: 0.5rem;
+        }
+
+        .unverified-section {
+            gap: 0.4rem;
+        }
+
+        .btn-verify {
+            font-size: 0.75rem;
+            padding: 0.3rem 0.6rem;
         }
     }
 
@@ -570,6 +700,25 @@
         .store-profile-photo {
             width: 160px;
             height: 160px;
+        }
+
+        .info-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        .location-card {
+            grid-column: 1 / -1;
+        }
+    }
+
+    @media (min-width: 1200px) {
+        .info-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+        
+        .location-card {
+            grid-column: 1 / -1;
         }
     }
 </style>

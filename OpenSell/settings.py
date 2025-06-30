@@ -82,6 +82,7 @@ INSTALLED_APPS = [
     'django_countries',
     'widget_tweaks',
     'crispy_forms',
+    'django_q',
 
     # All Auths
     'allauth',
@@ -167,20 +168,7 @@ else:
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
-]
+AUTH_PASSWORD_VALIDATORS = []
 
 
 # Internationalization
@@ -392,16 +380,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Development Settings (When DEBUG = True)
 if DEBUG:
-    # Static files configuration
     STATIC_URL = '/static/'
     STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
     STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
-    # Media files configuration
     MEDIA_URL = '/media/'
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
-    # Storage backends (local filesystem)
+    
     STORAGES = {
         "staticfiles": {
             "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
@@ -425,14 +409,11 @@ else:
     AWS_S3_VERIFY = True
     AWS_QUERYSTRING_AUTH = False
 
-    # Production: Local static files + S3 media files (recommended for PWA)
+    # Production: Local static files + S3 media files
     STATIC_URL = '/static/'
     STATIC_ROOT = '/home/ubuntu/OpenSellRepo/staticfiles/'
-    
-    # Media files on S3
     MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/media/"
 
-    # Storage backends: Local static + S3 media
     STORAGES = {
         "staticfiles": {
             "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
@@ -441,7 +422,7 @@ else:
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
             "AWS_LOCATION": "media",
             "AWS_S3_OBJECT_PARAMETERS": {
-                "CacheControl": "public, max-age=86400",  # 1 day cache
+                "CacheControl": "public, max-age=86400",
             },
         },
     }
@@ -450,6 +431,8 @@ else:
 import mimetypes
 mimetypes.add_type("application/manifest+json", ".webmanifest", True)
 mimetypes.add_type("application/manifest+json", ".json", True)
+
+
 # Increase Django's file upload limits
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB 
@@ -458,4 +441,42 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
 # Free API Keys (get from respective platforms)
 HUGGINGFACE_API_TOKEN = os.environ.get('HUGGINGFACE_API_TOKEN')
 
-
+if DEBUG:
+    # Development configuration - using SQLite
+    Q_CLUSTER = {
+        'name': 'opensell-dev',
+        'workers': 2,
+        'recycle': 500,
+        'timeout': 90,
+        'compress': True,
+        'save_limit': 250,
+        'queue_limit': 500,
+        'cpu_affinity': 1,
+        'label': 'OpenSell Dev',
+        'sync': True,
+        'orm': 'default',  # Uses SQLite in development
+        'catch_up': True,  # Process old tasks on startup
+        'max_attempts': 3,
+        'retry': 120,
+    }
+else:
+    # Production configuration
+    # Option 1: Using your PostgreSQL database (simplest)
+    Q_CLUSTER = {
+        'name': 'opensell-prod',
+        'workers': 4,
+        'recycle': 500,
+        'timeout': 120,
+        'compress': True,
+        'save_limit': 250,
+        'queue_limit': 500,
+        'cpu_affinity': 1,
+        'label': 'OpenSell Prod',
+        'orm': 'default',  
+        'catch_up': False,
+        'max_attempts': 3,
+        'retry': 180,
+        'ack_failures': True,
+        'bulk': 10,
+    }
+    

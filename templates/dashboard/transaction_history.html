@@ -3,70 +3,451 @@
 
 {% block 'Body'%}
 <div class="dashboard-container">
-    <!-- Dashboard Header -->
+    <!-- Transaction History Header -->
     <div class="dashboard-header">
         <div class="container">
-            <div class="row align-items-center py-4">
-                <div class="col-12">
-                    <h1 class="dashboard-title">Transaction History</h1>
-                    <p class="dashboard-subtitle">View all your account transactions</p>
+            <div class="row align-items-center py-4 py-md-5">
+                <div class="col-12 col-md-8">
+                    <div class="header-content">
+                        <h1 class="dashboard-title">
+                            <i class="bi bi-clock-history me-3"></i>Transaction History
+                        </h1>
+                        <p class="dashboard-subtitle">View and manage all your account transactions</p>
+                        
+                        <!-- Quick Stats -->
+                        <div class="quick-stats mt-4">
+                            <div class="row g-3">
+                                <div class="col-6 col-md-3">
+                                    <div class="stat-item">
+                                        <div class="stat-icon deposits">
+                                            <i class="bi bi-arrow-down-circle"></i>
+                                        </div>
+                                        <div class="stat-content">
+                                            <span class="stat-label">Total Deposits</span>
+                                            <span class="stat-value">₦{{ total_deposits|default:0|floatformat:0 }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="stat-item">
+                                        <div class="stat-icon spending">
+                                            <i class="bi bi-arrow-up-circle"></i>
+                                        </div>
+                                        <div class="stat-content">
+                                            <span class="stat-label">Total Spent</span>
+                                            <span class="stat-value">₦{{ total_spent|default:0|floatformat:0 }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="stat-item">
+                                        <div class="stat-icon transactions">
+                                            <i class="bi bi-list-ul"></i>
+                                        </div>
+                                        <div class="stat-content">
+                                            <span class="stat-label">Total Transactions</span>
+                                            <span class="stat-value">{{ total_transactions|default:0 }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="stat-item">
+                                        <div class="stat-icon balance">
+                                            <i class="bi bi-wallet2"></i>
+                                        </div>
+                                        <div class="stat-content">
+                                            <span class="stat-label">Current Balance</span>
+                                            <span class="stat-value">₦{{ request.user.account.balance|floatformat:0 }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4 text-md-end mt-3 mt-md-0">
+                    <div class="header-actions">
+                        <a href="{% url 'deposit_funds' %}" class="btn btn-add-funds mb-2">
+                            <i class="bi bi-plus-circle me-2"></i>Add Funds
+                        </a>
+                        <a href="{% url 'dashboard_home' %}" class="btn btn-back">
+                            <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Transactions Content -->
+    <!-- Transaction History Content -->
     <div class="container mt-4">
+        <!-- Filters and Search -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="filters-card">
+                    <div class="card-header">
+                        <h5 class="card-title">
+                            <i class="bi bi-funnel me-2"></i>Filter Transactions
+                        </h5>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="clearFilters">
+                            <i class="bi bi-x-lg me-1"></i>Clear All
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <form method="get" id="filterForm">
+                            <div class="row g-3">
+                                <!-- Search -->
+                                <div class="col-12 col-md-6 col-lg-3">
+                                    <div class="filter-group">
+                                        <label class="filter-label">
+                                            <i class="bi bi-search me-1"></i>Search
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               name="search" 
+                                               placeholder="Search transactions..."
+                                               value="{{ request.GET.search }}">
+                                    </div>
+                                </div>
+
+                                <!-- Transaction Type -->
+                                <div class="col-12 col-md-6 col-lg-3">
+                                    <div class="filter-group">
+                                        <label class="filter-label">
+                                            <i class="bi bi-tag me-1"></i>Type
+                                        </label>
+                                        <select class="form-select" name="type">
+                                            <option value="">All Types</option>
+                                            <option value="deposit" {% if request.GET.type == 'deposit' %}selected{% endif %}>Deposits</option>
+                                            <option value="boost_fee" {% if request.GET.type == 'boost_fee' %}selected{% endif %}>Boost Fees</option>
+                                            <option value="subscription" {% if request.GET.type == 'subscription' %}selected{% endif %}>Subscriptions</option>
+                                            <option value="refund" {% if request.GET.type == 'refund' %}selected{% endif %}>Refunds</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Date Range -->
+                                <div class="col-12 col-md-6 col-lg-3">
+                                    <div class="filter-group">
+                                        <label class="filter-label">
+                                            <i class="bi bi-calendar-range me-1"></i>Date Range
+                                        </label>
+                                        <select class="form-select" name="date_range" id="dateRangeSelect">
+                                            <option value="">All Time</option>
+                                            <option value="today" {% if request.GET.date_range == 'today' %}selected{% endif %}>Today</option>
+                                            <option value="week" {% if request.GET.date_range == 'week' %}selected{% endif %}>This Week</option>
+                                            <option value="month" {% if request.GET.date_range == 'month' %}selected{% endif %}>This Month</option>
+                                            <option value="quarter" {% if request.GET.date_range == 'quarter' %}selected{% endif %}>This Quarter</option>
+                                            <option value="year" {% if request.GET.date_range == 'year' %}selected{% endif %}>This Year</option>
+                                            <option value="custom" {% if request.GET.date_range == 'custom' %}selected{% endif %}>Custom Range</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Amount Range -->
+                                <div class="col-12 col-md-6 col-lg-3">
+                                    <div class="filter-group">
+                                        <label class="filter-label">
+                                            <i class="bi bi-currency-exchange me-1"></i>Amount Range
+                                        </label>
+                                        <select class="form-select" name="amount_range">
+                                            <option value="">Any Amount</option>
+                                            <option value="0-1000" {% if request.GET.amount_range == '0-1000' %}selected{% endif %}>₦0 - ₦1,000</option>
+                                            <option value="1000-5000" {% if request.GET.amount_range == '1000-5000' %}selected{% endif %}>₦1,000 - ₦5,000</option>
+                                            <option value="5000-10000" {% if request.GET.amount_range == '5000-10000' %}selected{% endif %}>₦5,000 - ₦10,000</option>
+                                            <option value="10000-50000" {% if request.GET.amount_range == '10000-50000' %}selected{% endif %}>₦10,000 - ₦50,000</option>
+                                            <option value="50000+" {% if request.GET.amount_range == '50000+' %}selected{% endif %}>₦50,000+</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Custom Date Range -->
+                            <div class="row g-3 mt-2 custom-date-range {% if request.GET.date_range != 'custom' %}d-none{% endif %}">
+                                <div class="col-12 col-md-6">
+                                    <div class="filter-group">
+                                        <label class="filter-label">From Date</label>
+                                        <input type="date" 
+                                               class="form-control" 
+                                               name="date_from" 
+                                               value="{{ request.GET.date_from }}">
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <div class="filter-group">
+                                        <label class="filter-label">To Date</label>
+                                        <input type="date" 
+                                               class="form-control" 
+                                               name="date_to" 
+                                               value="{{ request.GET.date_to }}">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Filter Actions -->
+                            <div class="filter-actions mt-3">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-search me-2"></i>Apply Filters
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary ms-2" id="exportBtn">
+                                    <i class="bi bi-download me-2"></i>Export CSV
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transactions Table -->
         <div class="row">
             <div class="col-12">
-                <div class="dashboard-card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="card-title">All Transactions</h5>
-                        <a href="{% url 'dashboard_home' %}" class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
-                        </a>
+                <div class="transactions-card">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="card-title">
+                                <i class="bi bi-list-ul me-2"></i>
+                                Transactions 
+                                {% if transactions %}
+                                    <span class="badge bg-primary ms-2">{{ transactions|length }} results</span>
+                                {% endif %}
+                            </h5>
+                            <div class="view-toggle">
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary active" data-view="table">
+                                        <i class="bi bi-table"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" data-view="cards">
+                                        <i class="bi bi-grid"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="card-body p-0">
                         {% if transactions %}
+                        <!-- Table View -->
+                        <div class="table-view">
                             <div class="table-responsive">
-                                <table class="table table-hover">
+                                <table class="table table-hover mb-0">
                                     <thead>
                                         <tr>
-                                            <th>Date</th>
-                                            <th>Description</th>
+                                            <th>
+                                                <a href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}{% if request.GET.type %}type={{ request.GET.type }}&{% endif %}{% if request.GET.date_range %}date_range={{ request.GET.date_range }}&{% endif %}{% if request.GET.amount_range %}amount_range={{ request.GET.amount_range }}&{% endif %}sort={% if request.GET.sort == 'date' %}-date{% else %}date{% endif %}" 
+                                                   class="sort-link">
+                                                    Date
+                                                    <i class="bi bi-arrow-{% if request.GET.sort == 'date' %}up{% else %}down{% endif %}-short ms-1"></i>
+                                                </a>
+                                            </th>
                                             <th>Type</th>
-                                            <th>Reference</th>
-                                            <th class="text-end">Amount</th>
+                                            <th>Description</th>
+                                            <th>
+                                                <a href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}{% if request.GET.type %}type={{ request.GET.type }}&{% endif %}{% if request.GET.date_range %}date_range={{ request.GET.date_range }}&{% endif %}{% if request.GET.amount_range %}amount_range={{ request.GET.amount_range }}&{% endif %}sort={% if request.GET.sort == 'amount' %}-amount{% else %}amount{% endif %}" 
+                                                   class="sort-link">
+                                                    Amount
+                                                    <i class="bi bi-arrow-{% if request.GET.sort == 'amount' %}up{% else %}down{% endif %}-short ms-1"></i>
+                                                </a>
+                                            </th>
+                                            <th>Balance After</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {% for transaction in transactions %}
-                                        <tr>
-                                            <td>{{ transaction.created_at|date:"M d, Y H:i" }}</td>
-                                            <td>{{ transaction.description }}</td>
+                                        <tr class="transaction-row">
                                             <td>
-                                                <span class="transaction-type-badge {{ transaction.transaction_type }}">
-                                                    {{ transaction.transaction_type|title }}
+                                                <div class="transaction-date">
+                                                    <div class="date-primary">{{ transaction.created_at|date:"M d, Y" }}</div>
+                                                    <div class="date-secondary">{{ transaction.created_at|date:"H:i" }}</div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="transaction-type">
+                                                    <div class="type-icon {{ transaction.transaction_type }}">
+                                                        <i class="bi {% if transaction.transaction_type == 'deposit' %}bi-arrow-down-circle{% elif transaction.transaction_type == 'boost_fee' %}bi-rocket{% elif transaction.transaction_type == 'subscription' %}bi-star{% else %}bi-arrow-repeat{% endif %}"></i>
+                                                    </div>
+                                                    <span class="type-name">{{ transaction.get_transaction_type_display }}</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="transaction-description">
+                                                    {% if transaction.transaction_type == 'deposit' %}
+                                                        Fund deposit to account
+                                                    {% elif transaction.transaction_type == 'boost_fee' %}
+                                                        Product boost fee
+                                                    {% elif transaction.transaction_type == 'subscription' %}
+                                                        Pro subscription {% if transaction.amount < 0 %}purchase{% else %}refund{% endif %}
+                                                    {% else %}
+                                                        {{ transaction.get_transaction_type_display }}
+                                                    {% endif %}
+                                                    {% if transaction.reference %}
+                                                        <div class="transaction-reference">
+                                                            <small class="text-muted">Ref: {{ transaction.reference|truncatechars:20 }}</small>
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="transaction-amount {% if transaction.amount > 0 %}positive{% else %}negative{% endif %}">
+                                                    {% if transaction.amount > 0 %}+{% endif %}₦{{ transaction.amount|floatformat:0 }}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="balance-after">
+                                                    ₦{{ transaction.balance_after|default:0|floatformat:0 }}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="status-badge {{ transaction.status|default:'completed' }}">
+                                                    <i class="bi {% if transaction.status == 'completed' or not transaction.status %}bi-check-circle-fill{% elif transaction.status == 'pending' %}bi-clock-fill{% else %}bi-x-circle-fill{% endif %}"></i>
+                                                    {{ transaction.status|default:'Completed'|title }}
                                                 </span>
                                             </td>
-                                            <td>{{ transaction.reference_id|default:"-" }}</td>
-                                            <td class="text-end {% if transaction.amount > 0 %}text-success{% else %}text-danger{% endif %}">
-                                                {% if transaction.amount > 0 %}+{% endif %}
-                                                ₦{{ transaction.amount }}
+                                            <td>
+                                                <div class="transaction-actions">
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-outline-primary" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#transactionModal"
+                                                            data-transaction="{{ transaction.id }}"
+                                                            onclick="loadTransactionDetails({{ transaction.id }})">
+                                                        <i class="bi bi-eye"></i>
+                                                    </button>
+                                                    {% if transaction.transaction_type == 'deposit' %}
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary ms-1">
+                                                        <i class="bi bi-receipt"></i>
+                                                    </button>
+                                                    {% endif %}
+                                                </div>
                                             </td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>
                                 </table>
                             </div>
-                        {% else %}
-                            <div class="transaction-empty text-center py-5">
-                                <i class="bi bi-receipt fs-1"></i>
-                                <p class="mt-3">No transactions found</p>
-                                <a href="{% url 'deposit_funds' %}" class="btn btn-primary mt-2">
-                                    <i class="bi bi-plus-circle me-2"></i>Add Funds
-                                </a>
+                        </div>
+
+                        <!-- Cards View -->
+                        <div class="cards-view d-none">
+                            <div class="row g-3 p-3">
+                                {% for transaction in transactions %}
+                                <div class="col-12 col-md-6 col-lg-4">
+                                    <div class="transaction-card">
+                                        <div class="transaction-card-header">
+                                            <div class="transaction-type">
+                                                <div class="type-icon {{ transaction.transaction_type }}">
+                                                    <i class="bi {% if transaction.transaction_type == 'deposit' %}bi-arrow-down-circle{% elif transaction.transaction_type == 'boost_fee' %}bi-rocket{% elif transaction.transaction_type == 'subscription' %}bi-star{% else %}bi-arrow-repeat{% endif %}"></i>
+                                                </div>
+                                                <div class="type-details">
+                                                    <h6 class="type-name">{{ transaction.get_transaction_type_display }}</h6>
+                                                    <p class="transaction-date">{{ transaction.created_at|date:"M d, Y \a\t H:i" }}</p>
+                                                </div>
+                                            </div>
+                                            <div class="transaction-amount {% if transaction.amount > 0 %}positive{% else %}negative{% endif %}">
+                                                {% if transaction.amount > 0 %}+{% endif %}₦{{ transaction.amount|floatformat:0 }}
+                                            </div>
+                                        </div>
+                                        <div class="transaction-card-body">
+                                            <div class="transaction-description">
+                                                {% if transaction.transaction_type == 'deposit' %}
+                                                    Fund deposit to account
+                                                {% elif transaction.transaction_type == 'boost_fee' %}
+                                                    Product boost fee
+                                                {% elif transaction.transaction_type == 'subscription' %}
+                                                    Pro subscription {% if transaction.amount < 0 %}purchase{% else %}refund{% endif %}
+                                                {% else %}
+                                                    {{ transaction.get_transaction_type_display }}
+                                                {% endif %}
+                                            </div>
+                                            <div class="transaction-meta">
+                                                <div class="meta-item">
+                                                    <span class="meta-label">Balance After:</span>
+                                                    <span class="meta-value">₦{{ transaction.balance_after|default:0|floatformat:0 }}</span>
+                                                </div>
+                                                <div class="meta-item">
+                                                    <span class="meta-label">Status:</span>
+                                                    <span class="status-badge {{ transaction.status|default:'completed' }}">
+                                                        {{ transaction.status|default:'Completed'|title }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="transaction-card-footer">
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-outline-primary" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#transactionModal"
+                                                    onclick="loadTransactionDetails({{ transaction.id }})">
+                                                <i class="bi bi-eye me-1"></i>View Details
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
                             </div>
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if transactions.has_other_pages %}
+                        <div class="pagination-container">
+                            <nav aria-label="Transaction pagination">
+                                <ul class="pagination justify-content-center">
+                                    {% if transactions.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ transactions.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}{% if request.GET.date_range %}&date_range={{ request.GET.date_range }}{% endif %}{% if request.GET.amount_range %}&amount_range={{ request.GET.amount_range }}{% endif %}">
+                                                <i class="bi bi-chevron-left"></i>
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                    
+                                    {% for num in transactions.paginator.page_range %}
+                                        {% if transactions.number == num %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ num }}</span>
+                                            </li>
+                                        {% elif num > transactions.number|add:'-3' and num < transactions.number|add:'3' %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}{% if request.GET.date_range %}&date_range={{ request.GET.date_range }}{% endif %}{% if request.GET.amount_range %}&amount_range={{ request.GET.amount_range }}{% endif %}">{{ num }}</a>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if transactions.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ transactions.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}{% if request.GET.date_range %}&date_range={{ request.GET.date_range }}{% endif %}{% if request.GET.amount_range %}&amount_range={{ request.GET.amount_range }}{% endif %}">
+                                                <i class="bi bi-chevron-right"></i>
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        </div>
+                        {% endif %}
+                        {% else %}
+                        <!-- Empty State -->
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <i class="bi bi-clock-history"></i>
+                            </div>
+                            <h5>No transactions found</h5>
+                            <p>
+                                {% if request.GET.search or request.GET.type or request.GET.date_range or request.GET.amount_range %}
+                                    Try adjusting your filters to see more results.
+                                {% else %}
+                                    Your transaction history will appear here after your first transaction.
+                                {% endif %}
+                            </p>
+                            {% if not request.GET.search and not request.GET.type and not request.GET.date_range and not request.GET.amount_range %}
+                            <a href="{% url 'deposit_funds' %}" class="btn btn-primary">
+                                <i class="bi bi-plus-circle me-2"></i>Add Your First Deposit
+                            </a>
+                            {% else %}
+                            <button type="button" class="btn btn-outline-primary" id="clearFiltersBtn">
+                                <i class="bi bi-x-lg me-2"></i>Clear Filters
+                            </button>
+                            {% endif %}
+                        </div>
                         {% endif %}
                     </div>
                 </div>
@@ -75,105 +456,877 @@
     </div>
 </div>
 
+<!-- Transaction Details Modal -->
+<div class="modal fade" id="transactionModal" tabindex="-1" aria-labelledby="transactionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="transactionModalLabel">
+                    <i class="bi bi-receipt me-2"></i>Transaction Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="transactionModalBody">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
+    /* Enhanced Transaction History Styles */
     .dashboard-container {
         background-color: var(--background-color);
         min-height: 100vh;
     }
 
     .dashboard-header {
-        background-color: var(--primary-color);
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
         margin: -2rem -1rem 2rem -1rem;
         border-radius: 0 0 var(--radius-xl) var(--radius-xl);
-        color: var(--light-hover-bg);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .dashboard-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="40" r="3" fill="rgba(255,255,255,0.05)"/><circle cx="40" cy="80" r="1" fill="rgba(255,255,255,0.1)"/></svg>');
+        opacity: 0.3;
     }
 
     .dashboard-title {
-        font-weight: 600;
-        font-size: 2rem;
-        margin-bottom: 0.25rem;
+        color: var(--card-background);
+        font-weight: 700;
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
     }
 
     .dashboard-subtitle {
+        color: rgba(255, 255, 255, 0.8);
         font-size: 1.1rem;
-        opacity: 0.8;
-    }
-
-    .dashboard-card {
-        background-color: var(--card-background);
-        border-radius: var(--radius-lg);
-        box-shadow: 0 2px 10px var(--shadow-color);
-        overflow: hidden;
-        border: none;
-    }
-
-    .dashboard-card .card-header {
-        background-color: transparent;
-        border-bottom: 1px solid var(--border-color);
-        padding: 1rem 1.5rem;
-    }
-
-    .dashboard-card .card-title {
         margin-bottom: 0;
+    }
+
+    /* Quick Stats */
+    .quick-stats {
+        background-color: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+    }
+
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: var(--radius-md);
+        transition: all 0.3s ease;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .stat-item:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+        transform: translateY(-2px);
+    }
+
+    .stat-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+
+    .stat-icon.deposits {
+        background-color: rgba(46, 204, 113, 0.2);
+        color: #2ecc71;
+    }
+
+    .stat-icon.spending {
+        background-color: rgba(231, 76, 60, 0.2);
+        color: #e74c3c;
+    }
+
+    .stat-icon.transactions {
+        background-color: rgba(52, 152, 219, 0.2);
+        color: #3498db;
+    }
+
+    .stat-icon.balance {
+        background-color: rgba(241, 196, 15, 0.2);
+        color: #f1c40f;
+    }
+
+    .stat-content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .stat-label {
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 0.8rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-value {
+        color: white;
+        font-weight: 700;
+        font-size: 1rem;
+    }
+
+    /* Header Actions */
+    .header-actions {
+        position: relative;
+        z-index: 2;
+    }
+
+    .btn-add-funds {
+        background-color: var(--accent-color);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: var(--radius-md);
+        font-weight: 500;
+        transition: all 0.3s ease;
+        width: 100%;
+        text-align: center;
+    }
+
+    .btn-add-funds:hover {
+        background-color: var(--accent-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        color: white;
+    }
+
+    .btn-back {
+        background-color: transparent;
+        color: white;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        padding: 0.75rem 1.5rem;
+        border-radius: var(--radius-md);
+        font-weight: 500;
+        transition: all 0.3s ease;
+        width: 100%;
+        text-align: center;
+    }
+
+    .btn-back:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.5);
+        color: white;
+    }
+
+    /* Filter Card */
+    .filters-card,
+    .transactions-card {
+        background-color: var(--card-background);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, var(--hover-bg) 0%, rgba(var(--primary-rgb), 0.05) 100%);
+        border-bottom: 1px solid var(--border-color);
+        padding: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .card-title {
+        color: var(--text-primary);
         font-weight: 600;
+        margin-bottom: 0;
+        font-size: 1.25rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    /* Filter Groups */
+    .filter-group {
+        margin-bottom: 0;
+    }
+
+    .filter-label {
+        color: var(--text-primary);
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .form-control,
+    .form-select {
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 0.75rem 1rem;
+        background-color: var(--card-background);
+        color: var(--text-primary);
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2);
+        background-color: var(--card-background);
         color: var(--text-primary);
     }
 
-    .transaction-type-badge {
-        display: inline-block;
-        padding: 0.3rem 0.7rem;
+    .filter-actions {
+        border-top: 1px solid var(--border-color);
+        padding-top: 1rem;
+        margin-top: 1rem;
+    }
+
+    /* View Toggle */
+    .view-toggle .btn-group .btn {
+        border-color: var(--border-color);
+        color: var(--text-muted);
+    }
+
+    .view-toggle .btn-group .btn.active {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+        color: white;
+    }
+
+    /* Table View */
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table th {
+        background-color: var(--hover-bg);
+        border-bottom: 2px solid var(--border-color);
+        color: var(--text-primary);
+        font-weight: 600;
+        padding: 1rem;
+        vertical-align: middle;
+    }
+
+    .table td {
+        padding: 1rem;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .table tbody tr:hover {
+        background-color: var(--hover-bg);
+    }
+
+    .sort-link {
+        color: var(--text-primary);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        transition: all 0.3s ease;
+    }
+
+    .sort-link:hover {
+        color: var(--primary-color);
+    }
+
+    /* Transaction Row Elements */
+    .transaction-date {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .date-primary {
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    .date-secondary {
+        color: var(--text-muted);
+        font-size: 0.8rem;
+    }
+
+    .transaction-type {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .type-icon {
+        width: 35px;
+        height: 35px;
         border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+    }
+
+    .type-icon.deposit {
+        background-color: rgba(46, 204, 113, 0.1);
+        color: #2ecc71;
+    }
+
+    .type-icon.boost_fee {
+        background-color: rgba(155, 89, 182, 0.1);
+        color: #9b59b6;
+    }
+
+    .type-icon.subscription {
+        background-color: rgba(241, 196, 15, 0.1);
+        color: #f1c40f;
+    }
+
+    .type-icon.refund {
+        background-color: rgba(52, 152, 219, 0.1);
+        color: #3498db;
+    }
+
+    .type-name {
+        color: var(--text-primary);
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
+
+    .transaction-description {
+        color: var(--text-secondary);
+        line-height: 1.4;
+    }
+
+    .transaction-reference {
+        margin-top: 0.25rem;
+    }
+
+    .transaction-amount {
+        font-weight: 700;
+        font-size: 1rem;
+    }
+
+    .transaction-amount.positive {
+        color: #2ecc71;
+    }
+
+    .transaction-amount.negative {
+        color: #e74c3c;
+    }
+
+    .balance-after {
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    /* Status Badge */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.375rem 0.75rem;
+        border-radius: var(--radius-full);
         font-size: 0.8rem;
         font-weight: 500;
     }
 
-    .transaction-type-badge.deposit {
-        background-color: rgba(40, 167, 69, 0.1);
-        color: #28a745;
+    .status-badge.completed {
+        background-color: rgba(46, 204, 113, 0.1);
+        color: #2ecc71;
+        border: 1px solid rgba(46, 204, 113, 0.2);
     }
 
-    .transaction-type-badge.withdrawal {
-        background-color: rgba(220, 53, 69, 0.1);
-        color: #dc3545;
+    .status-badge.pending {
+        background-color: rgba(241, 196, 15, 0.1);
+        color: #f1c40f;
+        border: 1px solid rgba(241, 196, 15, 0.2);
     }
 
-    .transaction-type-badge.listing_fee {
-        background-color: rgba(23, 162, 184, 0.1);
-        color: #17a2b8;
+    .status-badge.failed {
+        background-color: rgba(231, 76, 60, 0.1);
+        color: #e74c3c;
+        border: 1px solid rgba(231, 76, 60, 0.2);
     }
 
-    .transaction-type-badge.boost_fee {
-        background-color: rgba(255, 193, 7, 0.1);
-        color: #ffc107;
+    /* Transaction Actions */
+    .transaction-actions {
+        display: flex;
+        gap: 0.25rem;
     }
 
-    .transaction-type-badge.refund {
-        background-color: rgba(111, 66, 193, 0.1);
-        color: #6f42c1;
+    .transaction-actions .btn {
+        padding: 0.375rem 0.5rem;
     }
 
-    .transaction-type-badge.bonus {
-        background-color: rgba(13, 110, 253, 0.1);
-        color: #0d6efd;
+    /* Cards View */
+    .transaction-card {
+        background-color: var(--card-background);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        height: 100%;
+        transition: all 0.3s ease;
     }
 
-    .transaction-empty {
-        color: var(--text-secondary);
+    .transaction-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        border-color: var(--primary-color);
     }
 
-    .transaction-empty i {
+    .transaction-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .transaction-card .transaction-type {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .transaction-card .type-details h6 {
+        margin-bottom: 0.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .transaction-card .transaction-date {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        margin-bottom: 0;
+    }
+
+    .transaction-card-body {
+        margin-bottom: 1.5rem;
+    }
+
+    .transaction-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+
+    .meta-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .meta-label {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+    }
+
+    .meta-value {
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .transaction-card-footer {
+        border-top: 1px solid var(--border-color);
+        padding-top: 1rem;
+    }
+
+    /* Pagination */
+    .pagination-container {
+        padding: 1.5rem;
+        border-top: 1px solid var(--border-color);
+        background-color: var(--hover-bg);
+    }
+
+    .pagination .page-link {
+        color: var(--text-primary);
+        background-color: var(--card-background);
+        border: 1px solid var(--border-color);
+        margin: 0 0.125rem;
+        border-radius: var(--radius-md);
+    }
+
+    .pagination .page-item.active .page-link {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+        color: white;
+    }
+
+    .pagination .page-link:hover {
+        background-color: var(--hover-bg);
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--text-muted);
+    }
+
+    .empty-icon {
+        font-size: 4rem;
+        margin-bottom: 1.5rem;
         opacity: 0.5;
     }
 
+    .empty-state h5 {
+        color: var(--text-secondary);
+        margin-bottom: 1rem;
+    }
+
+    .empty-state p {
+        margin-bottom: 2rem;
+        max-width: 400px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    /* Modal Styles */
+    .modal-content {
+        border-radius: var(--radius-lg);
+        border: none;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-header {
+        background: linear-gradient(135deg, var(--hover-bg) 0%, rgba(var(--primary-rgb), 0.05) 100%);
+        border-bottom: 1px solid var(--border-color);
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+
+    .modal-title {
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+
+    /* Responsive Design */
     @media (max-width: 768px) {
+        .dashboard-title {
+            font-size: 2rem;
+        }
+
+        .quick-stats {
+            padding: 1rem;
+        }
+
+        .stat-item {
+            padding: 0.5rem;
+        }
+
+        .stat-icon {
+            width: 35px;
+            height: 35px;
+            font-size: 1rem;
+        }
+
+        .stat-value {
+            font-size: 0.9rem;
+        }
+
+        .header-actions .btn {
+            margin-bottom: 0.5rem;
+        }
+
+        .card-header,
+        .card-body {
+            padding: 1rem;
+        }
+
+        .filter-actions {
+            text-align: center;
+        }
+
+        .filter-actions .btn {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+
+        .table-responsive {
+            font-size: 0.9rem;
+        }
+
+        .table th,
+        .table td {
+            padding: 0.75rem 0.5rem;
+        }
+
+        .transaction-type {
+            flex-direction: column;
+            gap: 0.5rem;
+            text-align: center;
+        }
+
+        .type-icon {
+            width: 30px;
+            height: 30px;
+            font-size: 0.9rem;
+        }
+
+        .type-name {
+            font-size: 0.8rem;
+        }
+
+        .transaction-date {
+            align-items: center;
+        }
+
+        .pagination-container {
+            padding: 1rem;
+        }
+
+        .transaction-card {
+            padding: 1rem;
+        }
+
+        .empty-state {
+            padding: 3rem 1rem;
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+        }
+    }
+
+    @media (max-width: 576px) {
         .dashboard-header {
             margin: -1rem -0.5rem 1.5rem -0.5rem;
-            padding: 1.5rem 0;
         }
 
         .dashboard-title {
             font-size: 1.75rem;
         }
+
+        .quick-stats .row {
+            gap: 0.5rem;
+        }
+
+        .quick-stats .row > div {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+
+        .stat-item {
+            justify-content: center;
+            text-align: center;
+        }
+
+        .view-toggle {
+            margin-top: 1rem;
+        }
+
+        .transaction-actions {
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .transaction-actions .btn {
+            width: 100%;
+            margin-bottom: 0.25rem;
+        }
     }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Date range toggle
+    const dateRangeSelect = document.getElementById('dateRangeSelect');
+    const customDateRange = document.querySelector('.custom-date-range');
+    
+    dateRangeSelect.addEventListener('change', function() {
+        if (this.value === 'custom') {
+            customDateRange.classList.remove('d-none');
+        } else {
+            customDateRange.classList.add('d-none');
+        }
+    });
+    
+    // View toggle
+    const viewButtons = document.querySelectorAll('[data-view]');
+    const tableView = document.querySelector('.table-view');
+    const cardsView = document.querySelector('.cards-view');
+    
+    viewButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Remove active class from all buttons
+            viewButtons.forEach(btn => btn.classList.remove('active'));
+            
+            // Add active class to clicked button
+            this.classList.add('active');
+            
+            // Toggle views
+            if (this.dataset.view === 'table') {
+                tableView.classList.remove('d-none');
+                cardsView.classList.add('d-none');
+            } else {
+                tableView.classList.add('d-none');
+                cardsView.classList.remove('d-none');
+            }
+        });
+    });
+    
+    // Clear filters
+    document.getElementById('clearFilters').addEventListener('click', function() {
+        window.location.href = window.location.pathname;
+    });
+    
+    document.getElementById('clearFiltersBtn')?.addEventListener('click', function() {
+        window.location.href = window.location.pathname;
+    });
+    
+    // Export functionality
+    document.getElementById('exportBtn').addEventListener('click', function() {
+        // Get current URL parameters for export
+        const params = new URLSearchParams(window.location.search);
+        params.set('export', 'csv');
+        
+        // Create download link
+        const exportUrl = window.location.pathname + '?' + params.toString();
+        
+        // Trigger download
+        const link = document.createElement('a');
+        link.href = exportUrl;
+        link.download = 'transactions.csv';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Show notification
+        this.innerHTML = '<i class="bi bi-check-circle me-2"></i>Exported!';
+        setTimeout(() => {
+            this.innerHTML = '<i class="bi bi-download me-2"></i>Export CSV';
+        }, 2000);
+    });
+    
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+// Load transaction details in modal
+function loadTransactionDetails(transactionId) {
+    const modalBody = document.getElementById('transactionModalBody');
+    
+    // Show loading spinner
+    modalBody.innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">Loading transaction details...</p>
+        </div>
+    `;
+    
+    // Simulate API call (replace with actual implementation)
+    setTimeout(() => {
+        modalBody.innerHTML = `
+            <div class="transaction-details">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="detail-card">
+                            <h6 class="detail-title">Transaction Information</h6>
+                            <div class="detail-content">
+                                <div class="detail-item">
+                                    <span class="detail-label">Transaction ID:</span>
+                                    <span class="detail-value">#TXN-${transactionId}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Type:</span>
+                                    <span class="detail-value">Deposit</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Amount:</span>
+                                    <span class="detail-value text-success">+₦5,000</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Date:</span>
+                                    <span class="detail-value">${new Date().toLocaleDateString()}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Status:</span>
+                                    <span class="status-badge completed">
+                                        <i class="bi bi-check-circle-fill"></i>
+                                        Completed
+                                    </span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Reference:</span>
+                                    <span class="detail-value">REF-${Math.random().toString(36).substr(2, 9).toUpperCase()}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <style>
+                .transaction-details {
+                    padding: 1rem 0;
+                }
+                
+                .detail-card {
+                    background-color: var(--hover-bg);
+                    border: 1px solid var(--border-color);
+                    border-radius: var(--radius-md);
+                    padding: 1.5rem;
+                }
+                
+                .detail-title {
+                    color: var(--text-primary);
+                    font-weight: 600;
+                    margin-bottom: 1rem;
+                    padding-bottom: 0.5rem;
+                    border-bottom: 1px solid var(--border-color);
+                }
+                
+                .detail-item {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 0.75rem 0;
+                    border-bottom: 1px solid var(--border-color);
+                }
+                
+                .detail-item:last-child {
+                    border-bottom: none;
+                }
+                
+                .detail-label {
+                    color: var(--text-muted);
+                    font-weight: 500;
+                }
+                
+                .detail-value {
+                    color: var(--text-primary);
+                    font-weight: 600;
+                }
+            </style>
+        `;
+    }, 1000);
+}
+</script>
 {% endblock %}

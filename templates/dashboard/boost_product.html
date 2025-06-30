@@ -26,9 +26,7 @@
                     <div class="card-body p-0">
                         <div class="product-preview">
                             {% if product.primary_image %}
-                                <img src="{{ product.primary_image.image.url }}" 
-                                     alt="{{ product.title }}" 
-                                     class="product-image">
+                                <img src="{{ product.primary_image.image.url }}" alt="{{ product.title }}" class="product-image">
                             {% else %}
                                 <div class="product-no-image">
                                     <i class="bi bi-image fs-1"></i>
@@ -86,74 +84,38 @@
                             
                             <div class="boost-types mb-4">
                                 <div class="row g-3">
+                                    {% for boost_data in template_boost_data %}
                                     <div class="col-12 col-md-4">
                                         <div class="boost-option-card">
-                                            <div class="form-check card h-100 {% if form.boost_type.value == 'featured' %}selected{% endif %}">
+                                            <div class="form-check card h-100 {% if form.boost_type.value == boost_data.type %}selected{% endif %}">
                                                 <div class="card-body">
                                                     <input type="radio" name="{{ form.boost_type.name }}" 
-                                                           id="boost_featured" value="featured" 
+                                                           id="boost_{{ boost_data.type }}" value="{{ boost_data.type }}" 
                                                            class="form-check-input" 
-                                                           {% if form.boost_type.value == 'featured' %}checked{% endif %}>
-                                                    <label for="boost_featured" class="form-check-label d-block">
+                                                           {% if form.boost_type.value == boost_data.type %}checked{% endif %}>
+                                                    <label for="boost_{{ boost_data.type }}" class="form-check-label d-block">
                                                         <div class="boost-icon mb-3">
-                                                            <i class="bi bi-star-fill fs-2 text-warning"></i>
+                                                            <i class="bi {{ boost_data.icon }} fs-2 {{ boost_data.color }}"></i>
                                                         </div>
-                                                        <h5 class="boost-title">Featured</h5>
+                                                        <h5 class="boost-title">{{ boost_data.display_name }}</h5>
                                                         <p class="boost-description">
-                                                            Place your product in the featured section on homepage
+                                                            {{ boost_data.description }}
                                                         </p>
-                                                        <div class="boost-price">₦5.00 per day</div>
+                                                        <div class="boost-price">
+                                                            {% if boost_data.has_discount %}
+                                                                <s class="text-muted">₦{{ boost_data.original_price|floatformat:0 }}</s>
+                                                                <span class="text-success">₦{{ boost_data.discounted_price|floatformat:0 }} per day</span>
+                                                                <small class="text-success d-block">{{ boost_data.discount_percent|floatformat:0 }}% Pro discount!</small>
+                                                            {% else %}
+                                                                ₦{{ boost_data.original_price|floatformat:0 }} per day
+                                                            {% endif %}
+                                                        </div>
                                                     </label>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                    
-                                    <div class="col-12 col-md-4">
-                                        <div class="boost-option-card">
-                                            <div class="form-check card h-100 {% if form.boost_type.value == 'urgent' %}selected{% endif %}">
-                                                <div class="card-body">
-                                                    <input type="radio" name="{{ form.boost_type.name }}" 
-                                                           id="boost_urgent" value="urgent" 
-                                                           class="form-check-input"
-                                                           {% if form.boost_type.value == 'urgent' %}checked{% endif %}>
-                                                    <label for="boost_urgent" class="form-check-label d-block">
-                                                        <div class="boost-icon mb-3">
-                                                            <i class="bi bi-clock-fill fs-2 text-danger"></i>
-                                                        </div>
-                                                        <h5 class="boost-title">Urgent</h5>
-                                                        <p class="boost-description">
-                                                            Add an "Urgent" badge to make your listing stand out
-                                                        </p>
-                                                        <div class="boost-price">₦3.00 per day</div>
-                                                    </label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="col-12 col-md-4">
-                                        <div class="boost-option-card">
-                                            <div class="form-check card h-100 {% if form.boost_type.value == 'spotlight' %}selected{% endif %}">
-                                                <div class="card-body">
-                                                    <input type="radio" name="{{ form.boost_type.name }}" 
-                                                           id="boost_spotlight" value="spotlight" 
-                                                           class="form-check-input"
-                                                           {% if form.boost_type.value == 'spotlight' %}checked{% endif %}>
-                                                    <label for="boost_spotlight" class="form-check-label d-block">
-                                                        <div class="boost-icon mb-3">
-                                                            <i class="bi bi-lightning-fill fs-2 text-primary"></i>
-                                                        </div>
-                                                        <h5 class="boost-title">Spotlight</h5>
-                                                        <p class="boost-description">
-                                                            Premium placement at the top of search results
-                                                        </p>
-                                                        <div class="boost-price">₦7.50 per day</div>
-                                                    </label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    {% endfor %}
                                 </div>
                             </div>
                             
@@ -161,22 +123,19 @@
                                 <label class="form-label fw-bold">Boost Duration</label>
                                 <div class="duration-options">
                                     <div class="row g-2">
-                                        {% for duration_days in "37141" %}
-                                            {% with days=duration_days|make_list|first %}
-                                                <div class="col-4 col-md-2">
-                                                    <div class="form-check duration-option">
-                                                        <input type="radio" name="{{ form.duration.name }}" 
-                                                               id="duration_{{ days }}" value="{{ days }}" 
-                                                               class="form-check-input"
-                                                               {% if form.duration.value == days|add:"0" %}checked{% endif %}
-                                                               {% if forloop.first %}checked{% endif %}>
-                                                        <label for="duration_{{ days }}" class="form-check-label d-block text-center p-2">
-                                                            <span class="duration-days fw-bold">{{ days }}</span>
-                                                            <span class="duration-label d-block">day{% if days != '1' %}s{% endif %}</span>
-                                                        </label>
-                                                    </div>
+                                        {% for value, label in form.duration.field.choices %}
+                                            <div class="col-4 col-md-2">
+                                                <div class="form-check duration-option">
+                                                    <input type="radio" name="{{ form.duration.name }}" 
+                                                           id="duration_{{ value }}" value="{{ value }}" 
+                                                           class="form-check-input"
+                                                           {% if form.duration.value == value or forloop.first and not form.duration.value %}checked{% endif %}>
+                                                    <label for="duration_{{ value }}" class="form-check-label d-block text-center p-2">
+                                                        <span class="duration-days fw-bold">{{ value }}</span>
+                                                        <span class="duration-label d-block">day{% if value != 1 %}s{% endif %}</span>
+                                                    </label>
                                                 </div>
-                                            {% endwith %}
+                                            </div>
                                         {% endfor %}
                                     </div>
                                 </div>
@@ -189,14 +148,14 @@
                                         <div class="summary-details">
                                             <div class="row">
                                                 <div class="col-6">Account Balance:</div>
-                                                <div class="col-6 text-end fw-bold">₦{{ request.user.account.balance }}</div>
+                                                <div class="col-6 text-end fw-bold">₦{{ account_balance|floatformat:0 }}</div>
                                             </div>
                                             <hr>
                                             <div class="row">
                                                 <div class="col-6" id="summary-label">Estimated cost:</div>
                                                 <div class="col-6 text-end fw-bold" id="summary-cost">
-                                                    <span id="cost-calculation">₦5.00 x 3 days</span> = 
-                                                    <span id="total-cost">₦15.00</span>
+                                                    <span id="cost-calculation">₦5.00 x 1 day</span> = 
+                                                    <span id="total-cost">₦5.00</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -231,19 +190,26 @@
         const boostRadios = document.querySelectorAll('input[name="{{ form.boost_type.name }}"]');
         const durationRadios = document.querySelectorAll('input[name="{{ form.duration.name }}"]');
         
-        // Set prices based on your Django view
+        // Set prices from Django context - FIXED: Proper JavaScript object
         const boostPrices = {
-            'featured': 5.00,
-            'urgent': 3.00,
-            'spotlight': 7.50
+            {% for boost_type, pricing in boost_prices.items %}
+            '{{ boost_type }}': {{ pricing.discounted }},
+            {% endfor %}
         };
         
         // Function to update summary costs
         function updateSummary() {
-            let selectedBoost = document.querySelector('input[name="{{ form.boost_type.name }}"]:checked').value;
-            let selectedDuration = document.querySelector('input[name="{{ form.duration.name }}"]:checked').value;
+            let selectedBoostInput = document.querySelector('input[name="{{ form.boost_type.name }}"]:checked');
+            let selectedDurationInput = document.querySelector('input[name="{{ form.duration.name }}"]:checked');
             
-            let boostPrice = boostPrices[selectedBoost];
+            if (!selectedBoostInput || !selectedDurationInput) {
+                return;
+            }
+            
+            let selectedBoost = selectedBoostInput.value;
+            let selectedDuration = parseInt(selectedDurationInput.value);
+            
+            let boostPrice = boostPrices[selectedBoost] || 5.00;
             let totalCost = boostPrice * selectedDuration;
             
             document.getElementById('cost-calculation').textContent = 
@@ -275,7 +241,10 @@
         });
         
         // Initialize selected card
-        document.querySelector('input[name="{{ form.boost_type.name }}"]:checked')?.closest('.card').classList.add('selected');
+        const checkedBoost = document.querySelector('input[name="{{ form.boost_type.name }}"]:checked');
+        if (checkedBoost) {
+            checkedBoost.closest('.card').classList.add('selected');
+        }
     });
 </script>
 

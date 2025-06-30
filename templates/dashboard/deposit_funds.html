@@ -3,13 +3,41 @@
 
 {% block 'Body'%}
 <div class="dashboard-container">
-    <!-- Dashboard Header -->
+    <!-- Deposit Funds Header -->
     <div class="dashboard-header">
         <div class="container">
-            <div class="row align-items-center py-4">
-                <div class="col-12">
-                    <h1 class="dashboard-title">Add Funds</h1>
-                    <p class="dashboard-subtitle">Deposit money to your account</p>
+            <div class="row align-items-center py-4 py-md-5">
+                <div class="col-12 col-md-8">
+                    <div class="header-content">
+                        <h1 class="dashboard-title">
+                            <i class="bi bi-wallet-fill me-3"></i>Add Funds
+                        </h1>
+                        <p class="dashboard-subtitle">Deposit money to your OpenSell account</p>
+                        
+                        <!-- Security Info -->
+                        <div class="security-info mt-4">
+                            <div class="d-flex align-items-center">
+                                <div class="security-icon">
+                                    <i class="bi bi-shield-check"></i>
+                                </div>
+                                <div class="security-text ms-3">
+                                    <h6>Secure & Encrypted</h6>
+                                    <p>Your payment information is protected with bank-level security</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4 text-md-end mt-3 mt-md-0">
+                    <div class="balance-info">
+                        <div class="current-balance-display">
+                            <span class="balance-label">Current Balance</span>
+                            <h3 class="balance-amount">₦{{ request.user.account.balance|floatformat:0 }}</h3>
+                        </div>
+                        <a href="{% url 'dashboard_home' %}" class="btn btn-back mt-3">
+                            <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -18,21 +46,63 @@
     <!-- Deposit Content -->
     <div class="container mt-4">
         <div class="row justify-content-center">
-            <div class="col-12 col-md-8 col-lg-6">
-                <div class="dashboard-card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="card-title">Deposit Form</h5>
-                        <a href="{% url 'dashboard_home' %}" class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-arrow-left me-1"></i> Back
-                        </a>
+            <div class="col-12 col-lg-8 col-xl-6">
+                <!-- Deposit Form Card -->
+                <div class="deposit-form-card">
+                    <div class="card-header">
+                        <h5 class="card-title">
+                            <i class="bi bi-credit-card me-2"></i>Deposit Form
+                        </h5>
+                        <p class="card-subtitle">
+                            Choose an amount to add to your account balance
+                        </p>
                     </div>
-                    <div class="card-body p-4">
-                        <div class="balance-info mb-4">
-                            <p class="text-center text-muted mb-1">Current Balance</p>
-                            <h3 class="text-center">₦{{ request.user.account.balance }}</h3>
+                    
+                    <div class="card-body">
+                        <!-- Quick Amount Selection -->
+                        <div class="quick-amounts-section mb-4">
+                            <h6 class="section-title">
+                                <i class="bi bi-lightning-fill me-2"></i>Quick Amounts
+                            </h6>
+                            <div class="quick-amounts">
+                                <div class="row g-2">
+                                    <div class="col-4">
+                                        <button type="button" class="btn-quick-amount" data-amount="1000">
+                                            ₦1,000
+                                        </button>
+                                    </div>
+                                    <div class="col-4">
+                                        <button type="button" class="btn-quick-amount" data-amount="2500">
+                                            ₦2,500
+                                        </button>
+                                    </div>
+                                    <div class="col-4">
+                                        <button type="button" class="btn-quick-amount" data-amount="5000">
+                                            ₦5,000
+                                        </button>
+                                    </div>
+                                    <div class="col-4">
+                                        <button type="button" class="btn-quick-amount" data-amount="10000">
+                                            ₦10,000
+                                        </button>
+                                    </div>
+                                    <div class="col-4">
+                                        <button type="button" class="btn-quick-amount recommended" data-amount="20000">
+                                            <span class="recommended-label">Popular</span>
+                                            ₦20,000
+                                        </button>
+                                    </div>
+                                    <div class="col-4">
+                                        <button type="button" class="btn-quick-amount" data-amount="50000">
+                                            ₦50,000
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <form method="post">
+                        <!-- Deposit Form -->
+                        <form method="post" id="depositForm">
                             {% csrf_token %}
                             
                             {% if form.non_field_errors %}
@@ -43,59 +113,320 @@
                                 </div>
                             {% endif %}
                             
-                            <div class="form-group mb-4">
-                                <label for="{{ form.amount.id_for_label }}" class="form-label">Amount (₦)</label>
-                                {{ form.amount }}
-                                {% if form.amount.errors %}
-                                    <div class="invalid-feedback d-block">
-                                        {% for error in form.amount.errors %}
-                                            {{ error }}
-                                        {% endfor %}
+                            <!-- Amount Input -->
+                            <div class="amount-section mb-4">
+                                <h6 class="section-title">
+                                    <i class="bi bi-currency-exchange me-2"></i>Custom Amount
+                                </h6>
+                                
+                                <div class="amount-input-group">
+                                    <div class="input-group">
+                                        <span class="input-group-text">₦</span>
+                                        <input type="number" 
+                                               class="form-control amount-input" 
+                                               name="{{ form.amount.name }}" 
+                                               id="id_amount"
+                                               placeholder="Enter amount (min: ₦100)"
+                                               min="100"
+                                               step="1"
+                                               value="{{ form.amount.value|default:'' }}">
+                                        <button type="button" class="btn btn-outline-secondary" id="clearAmount">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
                                     </div>
-                                {% endif %}
-                                <div class="form-text">Minimum deposit amount is ₦1.00</div>
-                            </div>
-                            
-                            <div class="quick-amounts mb-4">
-                                <p class="text-muted mb-2">Quick Select:</p>
-                                <div class="d-flex flex-wrap gap-2">
-                                    <button type="button" class="btn btn-outline-secondary quick-amount" data-amount="100">₦100</button>
-                                    <button type="button" class="btn btn-outline-secondary quick-amount" data-amount="500">₦500</button>
-                                    <button type="button" class="btn btn-outline-secondary quick-amount" data-amount="1000">₦1,000</button>
-                                    <button type="button" class="btn btn-outline-secondary quick-amount" data-amount="5000">₦5,000</button>
-                                </div>
-                            </div>
-                            
-                            <div class="payment-methods mb-4">
-                                <p class="text-muted mb-2">Payment Method:</p>
-                                <div class="payment-options">
-                                    <div class="form-check payment-option">
-                                        <input class="form-check-input" type="radio" name="paymentMethod" id="card" checked>
-                                        <label class="form-check-label" for="card">
-                                            <i class="bi bi-credit-card me-2"></i>Card Payment
-                                        </label>
-                                    </div>
-                                    <div class="form-check payment-option">
-                                        <input class="form-check-input" type="radio" name="paymentMethod" id="bank">
-                                        <label class="form-check-label" for="bank">
-                                            <i class="bi bi-bank me-2"></i>Bank Transfer
-                                        </label>
-                                    </div>
-                                    <div class="form-check payment-option">
-                                        <input class="form-check-input" type="radio" name="paymentMethod" id="ussd">
-                                        <label class="form-check-label" for="ussd">
-                                            <i class="bi bi-phone me-2"></i>USSD
-                                        </label>
+                                    {% if form.amount.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {% for error in form.amount.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    <div class="amount-suggestions mt-2">
+                                        <small class="text-muted">
+                                            <i class="bi bi-info-circle me-1"></i>
+                                            Minimum deposit: ₦100 • Maximum: ₦1,000,000
+                                        </small>
                                     </div>
                                 </div>
                             </div>
                             
-                            <div class="d-grid">
-                                <button type="submit" class="btn btn-primary btn-lg">
-                                    Proceed to Payment
-                                </button>
+                            <!-- Balance Preview -->
+                            <div class="balance-preview-section mb-4">
+                                <div class="balance-preview-card">
+                                    <div class="row align-items-center">
+                                        <div class="col-6">
+                                            <div class="balance-item">
+                                                <span class="balance-label">Current Balance</span>
+                                                <span class="balance-value current">₦{{ request.user.account.balance|floatformat:0 }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="balance-item">
+                                                <span class="balance-label">New Balance</span>
+                                                <span class="balance-value new" id="newBalance">₦{{ request.user.account.balance|floatformat:0 }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="balance-increase" id="balanceIncrease">
+                                        <i class="bi bi-arrow-up-circle-fill"></i>
+                                        <span>+₦0 increase</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Payment Method Selection -->
+                            <div class="payment-method-section mb-4">
+                                <h6 class="section-title">
+                                    <i class="bi bi-credit-card-2-front me-2"></i>Payment Method
+                                </h6>
+                                
+                                <div class="payment-methods">
+                                    <div class="row g-3">
+                                        <!-- Bank Transfer -->
+                                        <div class="col-12 col-md-6">
+                                            <div class="payment-method-option">
+                                                <input type="radio" name="payment_method" id="bank_transfer" value="bank_transfer" checked>
+                                                <label for="bank_transfer" class="payment-method-label">
+                                                    <div class="payment-icon">
+                                                        <i class="bi bi-bank"></i>
+                                                    </div>
+                                                    <div class="payment-content">
+                                                        <h6>Bank Transfer</h6>
+                                                        <p>Transfer from your bank account</p>
+                                                        <div class="payment-features">
+                                                            <span class="feature-item">
+                                                                <i class="bi bi-check-circle-fill"></i>
+                                                                Instant processing
+                                                            </span>
+                                                            <span class="feature-item">
+                                                                <i class="bi bi-check-circle-fill"></i>
+                                                                No fees
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="payment-badge recommended">
+                                                        Recommended
+                                                    </div>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Card Payment -->
+                                        <div class="col-12 col-md-6">
+                                            <div class="payment-method-option">
+                                                <input type="radio" name="payment_method" id="card_payment" value="card_payment">
+                                                <label for="card_payment" class="payment-method-label">
+                                                    <div class="payment-icon">
+                                                        <i class="bi bi-credit-card"></i>
+                                                    </div>
+                                                    <div class="payment-content">
+                                                        <h6>Debit/Credit Card</h6>
+                                                        <p>Pay with your card instantly</p>
+                                                        <div class="payment-features">
+                                                            <span class="feature-item">
+                                                                <i class="bi bi-check-circle-fill"></i>
+                                                                Instant processing
+                                                            </span>
+                                                            <span class="feature-item">
+                                                                <i class="bi bi-check-circle-fill"></i>
+                                                                Secure encryption
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Security Notice -->
+                            <div class="security-notice mb-4">
+                                <div class="notice-content">
+                                    <div class="notice-icon">
+                                        <i class="bi bi-shield-check"></i>
+                                    </div>
+                                    <div class="notice-text">
+                                        <h6>Your Security is Our Priority</h6>
+                                        <p>All transactions are encrypted with SSL technology and processed through secure payment gateways. Your financial information is never stored on our servers.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Submit Section -->
+                            <div class="submit-section">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="terms-info">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="agreeTerms" required>
+                                            <label class="form-check-label" for="agreeTerms">
+                                                <small>I agree to the <a href="#" class="text-primary">Terms of Service</a> and <a href="#" class="text-primary">Privacy Policy</a></small>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="submit-actions">
+                                        <a href="{% url 'dashboard_home' %}" class="btn btn-outline-secondary me-3">
+                                            Cancel
+                                        </a>
+                                        <button type="submit" class="btn btn-deposit" id="submitDeposit" disabled>
+                                            <i class="bi bi-wallet-fill me-2"></i>
+                                            <span class="btn-text">Add ₦<span id="depositAmount">0</span></span>
+                                            <div class="btn-loader d-none">
+                                                <div class="spinner-border spinner-border-sm me-2"></div>
+                                                Processing...
+                                            </div>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </form>
+                    </div>
+                </div>
+
+                <!-- Deposit History -->
+                <div class="deposit-history-card mt-4">
+                    <div class="card-header">
+                        <h5 class="card-title">
+                            <i class="bi bi-clock-history me-2"></i>Recent Deposits
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if recent_deposits %}
+                        <div class="deposits-list">
+                            {% for deposit in recent_deposits %}
+                            <div class="deposit-item">
+                                <div class="deposit-icon">
+                                    <i class="bi bi-arrow-down-circle-fill"></i>
+                                </div>
+                                <div class="deposit-details">
+                                    <h6 class="deposit-title">Deposit</h6>
+                                    <p class="deposit-date">{{ deposit.created_at|date:"M d, Y \a\t H:i" }}</p>
+                                </div>
+                                <div class="deposit-amount">
+                                    +₦{{ deposit.amount|floatformat:0 }}
+                                </div>
+                                <div class="deposit-status">
+                                    <span class="status-badge success">
+                                        <i class="bi bi-check-circle-fill"></i>
+                                        Completed
+                                    </span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="text-center mt-3">
+                            <a href="{% url 'transaction_history' %}" class="btn btn-outline-primary btn-sm">
+                                View All Transactions
+                            </a>
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <i class="bi bi-wallet"></i>
+                            </div>
+                            <h6>No deposits yet</h6>
+                            <p>Your deposit history will appear here after your first deposit.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Help Section -->
+            <div class="col-12 col-lg-4">
+                <div class="help-section">
+                    <!-- FAQ Card -->
+                    <div class="help-card">
+                        <div class="card-header">
+                            <h6 class="card-title">
+                                <i class="bi bi-question-circle me-2"></i>Frequently Asked Questions
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="faq-list">
+                                <div class="faq-item">
+                                    <div class="faq-question" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                        <span>How long does it take to process deposits?</span>
+                                        <i class="bi bi-chevron-down"></i>
+                                    </div>
+                                    <div class="faq-answer collapse" id="faq1">
+                                        <p>Bank transfers are usually processed instantly. Card payments are processed immediately upon successful verification.</p>
+                                    </div>
+                                </div>
+
+                                <div class="faq-item">
+                                    <div class="faq-question" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                        <span>Are there any fees for deposits?</span>
+                                        <i class="bi bi-chevron-down"></i>
+                                    </div>
+                                    <div class="faq-answer collapse" id="faq2">
+                                        <p>We don't charge any fees for deposits. However, your bank or card provider may charge their own transaction fees.</p>
+                                    </div>
+                                </div>
+
+                                <div class="faq-item">
+                                    <div class="faq-question" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                        <span>What is the minimum deposit amount?</span>
+                                        <i class="bi bi-chevron-down"></i>
+                                    </div>
+                                    <div class="faq-answer collapse" id="faq3">
+                                        <p>The minimum deposit amount is ₦100. There's no maximum limit, but deposits over ₦1,000,000 may require additional verification.</p>
+                                    </div>
+                                </div>
+
+                                <div class="faq-item">
+                                    <div class="faq-question" data-bs-toggle="collapse" data-bs-target="#faq4">
+                                        <span>Can I get a refund for my deposit?</span>
+                                        <i class="bi bi-chevron-down"></i>
+                                    </div>
+                                    <div class="faq-answer collapse" id="faq4">
+                                        <p>Deposits can be withdrawn back to your bank account. Please contact support for withdrawal requests.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Support Card -->
+                    <div class="help-card mt-4">
+                        <div class="card-header">
+                            <h6 class="card-title">
+                                <i class="bi bi-headset me-2"></i>Need Help?
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="support-options">
+                                <a href="#" class="support-option">
+                                    <div class="support-icon">
+                                        <i class="bi bi-chat-dots"></i>
+                                    </div>
+                                    <div class="support-content">
+                                        <h6>Live Chat</h6>
+                                        <p>Get instant help from our support team</p>
+                                    </div>
+                                </a>
+
+                                <a href="mailto:support@opensell.online" class="support-option">
+                                    <div class="support-icon">
+                                        <i class="bi bi-envelope"></i>
+                                    </div>
+                                    <div class="support-content">
+                                        <h6>Email Support</h6>
+                                        <p>Send us an email and we'll respond within 24 hours</p>
+                                    </div>
+                                </a>
+
+                                <a href="tel:+2341234567890" class="support-option">
+                                    <div class="support-icon">
+                                        <i class="bi bi-telephone"></i>
+                                    </div>
+                                    <div class="support-content">
+                                        <h6>Phone Support</h6>
+                                        <p>Call us during business hours (9 AM - 6 PM)</p>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -104,125 +435,941 @@
 </div>
 
 <style>
+    /* Enhanced Deposit Funds Styles */
     .dashboard-container {
         background-color: var(--background-color);
         min-height: 100vh;
     }
 
     .dashboard-header {
-        background-color: var(--primary-color);
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
         margin: -2rem -1rem 2rem -1rem;
         border-radius: 0 0 var(--radius-xl) var(--radius-xl);
-        color: var(--light-hover-bg);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .dashboard-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="40" r="3" fill="rgba(255,255,255,0.05)"/><circle cx="40" cy="80" r="1" fill="rgba(255,255,255,0.1)"/></svg>');
+        opacity: 0.3;
     }
 
     .dashboard-title {
-        font-weight: 600;
-        font-size: 2rem;
-        margin-bottom: 0.25rem;
+        color: var(--card-background);
+        font-weight: 700;
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
     }
 
     .dashboard-subtitle {
+        color: rgba(255, 255, 255, 0.8);
         font-size: 1.1rem;
-        opacity: 0.8;
-    }
-
-    .dashboard-card {
-        background-color: var(--card-background);
-        border-radius: var(--radius-lg);
-        box-shadow: 0 2px 10px var(--shadow-color);
-        overflow: hidden;
-        border: none;
-    }
-
-    .dashboard-card .card-header {
-        background-color: transparent;
-        border-bottom: 1px solid var(--border-color);
-        padding: 1rem 1.5rem;
-    }
-
-    .dashboard-card .card-title {
         margin-bottom: 0;
+    }
+
+    /* Security Info */
+    .security-info {
+        background-color: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+    }
+
+    .security-icon {
+        width: 50px;
+        height: 50px;
+        background-color: rgba(46, 204, 113, 0.2);
+        color: #2ecc71;
+        border-radius: var(--radius-full);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .security-text h6 {
+        color: white;
         font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+
+    .security-text p {
+        color: rgba(255, 255, 255, 0.8);
+        margin-bottom: 0;
+        font-size: 0.9rem;
+    }
+
+    /* Balance Info */
+    .balance-info {
+        position: relative;
+        z-index: 2;
+    }
+
+    .current-balance-display {
+        background-color: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        text-align: center;
+    }
+
+    .balance-label {
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 0.9rem;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    .balance-amount {
+        color: white;
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0;
+    }
+
+    .btn-back {
+        background-color: transparent;
+        color: white;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        padding: 0.75rem 1.5rem;
+        border-radius: var(--radius-md);
+        font-weight: 500;
+        transition: all 0.3s ease;
+        width: 100%;
+        text-align: center;
+    }
+
+    .btn-back:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.5);
+        color: white;
+    }
+
+    /* Deposit Form Card */
+    .deposit-form-card,
+    .deposit-history-card,
+    .help-card {
+        background-color: var(--card-background);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, var(--hover-bg) 0%, rgba(var(--primary-rgb), 0.05) 100%);
+        border-bottom: 1px solid var(--border-color);
+        padding: 1.5rem;
+    }
+
+    .card-title {
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        font-size: 1.25rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .card-subtitle {
+        color: var(--text-muted);
+        margin-bottom: 0;
+        font-size: 0.95rem;
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    /* Section Titles */
+    .section-title {
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 1rem;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        border-bottom: 2px solid var(--border-color);
+        padding-bottom: 0.5rem;
+    }
+
+    /* Quick Amounts */
+    .btn-quick-amount {
+        width: 100%;
+        padding: 1rem 0.5rem;
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius-md);
+        background-color: var(--card-background);
+        color: var(--text-primary);
+        font-weight: 600;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-quick-amount:hover {
+        border-color: var(--primary-color);
+        background-color: var(--hover-bg);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-quick-amount.selected {
+        border-color: var(--primary-color);
+        background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.1) 0%, rgba(var(--accent-rgb), 0.05) 100%);
+        color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2);
+    }
+
+    .btn-quick-amount.recommended {
+        border-color: var(--accent-color);
+        position: relative;
+    }
+
+    .btn-quick-amount.recommended::before {
+        content: 'Popular';
+        position: absolute;
+        top: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: var(--accent-color);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: var(--radius-full);
+        font-size: 0.7rem;
+        font-weight: 600;
+        z-index: 2;
+    }
+
+    .recommended-label {
+        position: absolute;
+        top: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: var(--accent-color);
+        color: white;
+        padding: 0.2rem 0.6rem;
+        border-radius: var(--radius-full);
+        font-size: 0.65rem;
+        font-weight: 600;
+    }
+
+    /* Amount Input */
+    .amount-input-group {
+        position: relative;
+    }
+
+    .input-group {
+        border-radius: var(--radius-md);
+        overflow: hidden;
+    }
+
+    .input-group-text {
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .amount-input {
+        border: 2px solid var(--border-color);
+        border-left: none;
+        border-right: none;
+        padding: 0.875rem 1rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        background-color: var(--card-background);
         color: var(--text-primary);
     }
 
-    .balance-info {
+    .amount-input:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2);
+        background-color: var(--card-background);
+        color: var(--text-primary);
+    }
+
+    .amount-suggestions {
+        margin-top: 0.5rem;
+    }
+
+    /* Balance Preview */
+    .balance-preview-card {
+        background: linear-gradient(135deg, var(--hover-bg) 0%, rgba(var(--accent-rgb), 0.05) 100%);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .balance-preview-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20px;
+        width: 100px;
+        height: 200%;
+        background: linear-gradient(45deg, transparent, rgba(var(--accent-rgb), 0.1), transparent);
+        transform: rotate(15deg);
+    }
+
+    .balance-item {
+        text-align: center;
+        position: relative;
+        z-index: 2;
+    }
+
+    .balance-item .balance-label {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    .balance-item .balance-value {
+        color: var(--text-primary);
+        font-weight: 700;
+        font-size: 1.5rem;
+        display: block;
+    }
+
+    .balance-item .balance-value.new {
+        color: var(--accent-color);
+    }
+
+    .balance-increase {
+        text-align: center;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+        color: var(--accent-color);
+        font-weight: 600;
+        position: relative;
+        z-index: 2;
+    }
+
+    .balance-increase i {
+        font-size: 1.2rem;
+        margin-right: 0.5rem;
+    }
+
+    /* Payment Methods */
+    .payment-method-option {
+        height: 100%;
+    }
+
+    .payment-method-label {
+        display: block;
+        padding: 1.5rem;
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        height: 100%;
+        margin: 0;
+        position: relative;
+        background-color: var(--card-background);
+    }
+
+    .payment-method-label:hover {
+        border-color: var(--primary-color);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    input[type="radio"]:checked + .payment-method-label {
+        border-color: var(--primary-color);
+        background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.1) 0%, rgba(var(--accent-rgb), 0.05) 100%);
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2);
+    }
+
+    .payment-icon {
+        width: 50px;
+        height: 50px;
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+        color: white;
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .payment-content h6 {
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .payment-content p {
+        color: var(--text-muted);
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+    }
+
+    .payment-features {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .feature-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+
+    .feature-item i {
+        color: var(--accent-color);
+        font-size: 0.9rem;
+    }
+
+    .payment-badge {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        background: linear-gradient(135deg, var(--accent-color) 0%, var(--primary-color) 100%);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: var(--radius-full);
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+
+    /* Security Notice */
+    .security-notice {
+        background: linear-gradient(135deg, rgba(46, 204, 113, 0.1) 0%, rgba(39, 174, 96, 0.05) 100%);
+        border: 1px solid rgba(46, 204, 113, 0.2);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+    }
+
+    .notice-content {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .notice-icon {
+        width: 50px;
+        height: 50px;
+        background-color: rgba(46, 204, 113, 0.2);
+        color: #2ecc71;
+        border-radius: var(--radius-full);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .notice-text h6 {
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .notice-text p {
+        color: var(--text-secondary);
+        margin-bottom: 0;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+
+    /* Submit Section */
+    .submit-section {
+        background-color: var(--hover-bg);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .form-check-input:checked {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+
+    .btn-deposit {
+        background: linear-gradient(135deg, var(--accent-color) 0%, var(--primary-color) 100%);
+        color: white;
+        border: none;
+        padding: 0.875rem 2rem;
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-deposit:hover:not(:disabled) {
+        background: linear-gradient(135deg, var(--accent-hover) 0%, var(--primary-hover) 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.3);
+        color: white;
+    }
+
+    .btn-deposit:disabled {
+        opacity: 0.6;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .btn-deposit .btn-loader {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        display: flex;
+        align-items: center;
+    }
+
+    /* Deposit History */
+    .deposits-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .deposit-item {
+        display: flex;
+        align-items: center;
         padding: 1rem;
         background-color: var(--hover-bg);
         border-radius: var(--radius-md);
+        border: 1px solid var(--border-color);
+        transition: all 0.3s ease;
     }
 
-    .balance-info h3 {
+    .deposit-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .deposit-icon {
+        width: 40px;
+        height: 40px;
+        background-color: rgba(46, 204, 113, 0.1);
+        color: #2ecc71;
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        margin-right: 1rem;
+    }
+
+    .deposit-details {
+        flex: 1;
+    }
+
+    .deposit-title {
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+        font-size: 0.95rem;
+    }
+
+    .deposit-date {
+        color: var(--text-muted);
+        margin-bottom: 0;
+        font-size: 0.85rem;
+    }
+
+    .deposit-amount {
+        color: #2ecc71;
         font-weight: 700;
-        color: var(--primary-color);
+        font-size: 1.1rem;
+        margin-right: 1rem;
     }
 
-    .payment-options {
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.375rem 0.75rem;
+        border-radius: var(--radius-full);
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .status-badge.success {
+        background-color: rgba(46, 204, 113, 0.1);
+        color: #2ecc71;
+        border: 1px solid rgba(46, 204, 113, 0.2);
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--text-muted);
+    }
+
+    .empty-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    .empty-state h6 {
+        margin-bottom: 0.5rem;
+        color: var(--text-secondary);
+    }
+
+    .empty-state p {
+        margin-bottom: 0;
+    }
+
+    /* FAQ Section */
+    .faq-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .faq-item {
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+    }
+
+    .faq-question {
+        padding: 1rem;
+        background-color: var(--hover-bg);
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.3s ease;
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    .faq-question:hover {
+        background-color: var(--primary-color);
+        color: white;
+    }
+
+    .faq-question i {
+        transition: transform 0.3s ease;
+    }
+
+    .faq-question[aria-expanded="true"] i {
+        transform: rotate(180deg);
+    }
+
+    .faq-answer {
+        padding: 0 1rem 1rem 1rem;
+        background-color: var(--card-background);
+    }
+
+    .faq-answer p {
+        color: var(--text-secondary);
+        margin-bottom: 0;
+        line-height: 1.5;
+    }
+
+    /* Support Options */
+    .support-options {
         display: flex;
         flex-direction: column;
         gap: 1rem;
     }
 
-    .payment-option {
-        padding: 0.75rem;
+    .support-option {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        background-color: var(--hover-bg);
         border: 1px solid var(--border-color);
         border-radius: var(--radius-md);
+        text-decoration: none;
+        color: var(--text-primary);
         transition: all 0.3s ease;
     }
 
-    .payment-option:hover {
-        border-color: var(--primary-color);
-        background-color: var(--hover-bg);
+    .support-option:hover {
+        background-color: var(--primary-color);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     }
 
-    .form-check-input:checked + .form-check-label {
-        font-weight: 500;
+    .support-icon {
+        width: 40px;
+        height: 40px;
+        background-color: var(--primary-color);
+        color: white;
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        margin-right: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .support-option:hover .support-icon {
+        background-color: white;
         color: var(--primary-color);
     }
 
-    .btn-primary {
-        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-        border: none;
-        padding: 0.8rem 1.5rem;
-        font-weight: 500;
-        transition: all 0.3s ease;
+    .support-content h6 {
+        margin-bottom: 0.25rem;
+        font-weight: 600;
+        font-size: 0.95rem;
     }
 
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    .support-content p {
+        margin-bottom: 0;
+        font-size: 0.85rem;
+        opacity: 0.8;
     }
 
+    /* Responsive Design */
     @media (max-width: 768px) {
+        .dashboard-title {
+            font-size: 2rem;
+        }
+
+        .security-info .d-flex {
+            flex-direction: column;
+            text-align: center;
+            gap: 1rem;
+        }
+
+        .balance-amount {
+            font-size: 1.75rem;
+        }
+
+        .card-header,
+        .card-body {
+            padding: 1rem;
+        }
+
+        .btn-quick-amount {
+            padding: 0.875rem 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .balance-preview-card {
+            padding: 1rem;
+        }
+
+        .balance-item .balance-value {
+            font-size: 1.25rem;
+        }
+
+        .payment-method-label {
+            padding: 1rem;
+        }
+
+        .payment-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 1.2rem;
+        }
+
+        .submit-section .d-flex {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .btn-deposit {
+            width: 100%;
+        }
+
+        .deposit-item {
+            padding: 0.875rem;
+        }
+
+        .notice-content {
+            flex-direction: column;
+            text-align: center;
+            gap: 1rem;
+        }
+
+        .faq-question {
+            padding: 0.875rem;
+        }
+
+        .support-option {
+            padding: 0.875rem;
+        }
+    }
+
+    @media (max-width: 576px) {
         .dashboard-header {
             margin: -1rem -0.5rem 1.5rem -0.5rem;
-            padding: 1.5rem 0;
         }
 
         .dashboard-title {
             font-size: 1.75rem;
         }
+
+        .balance-amount {
+            font-size: 1.5rem;
+        }
+
+        .btn-quick-amount {
+            padding: 0.75rem 0.25rem;
+            font-size: 0.8rem;
+        }
+
+        .recommended-label {
+            font-size: 0.6rem;
+            padding: 0.15rem 0.5rem;
+        }
     }
 </style>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Quick amount selection
-        const quickAmounts = document.querySelectorAll('.quick-amount');
-        const amountInput = document.getElementById('{{ form.amount.id_for_label }}');
-        
-        quickAmounts.forEach(button => {
-            button.addEventListener('click', function() {
-                const amount = this.getAttribute('data-amount');
-                amountInput.value = amount;
-                
-                // Reset all buttons
-                quickAmounts.forEach(btn => btn.classList.remove('active'));
-                // Highlight selected button
-                this.classList.add('active');
-            });
+document.addEventListener('DOMContentLoaded', function() {
+    const currentBalance = {{ request.user.account.balance }};
+    
+    // Elements
+    const quickAmountBtns = document.querySelectorAll('.btn-quick-amount');
+    const amountInput = document.getElementById('id_amount');
+    const clearBtn = document.getElementById('clearAmount');
+    const newBalanceEl = document.getElementById('newBalance');
+    const balanceIncreaseEl = document.getElementById('balanceIncrease');
+    const depositAmountEl = document.getElementById('depositAmount');
+    const submitBtn = document.getElementById('submitDeposit');
+    const agreeTerms = document.getElementById('agreeTerms');
+    
+    // Quick amount selection
+    quickAmountBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Remove selected class from all buttons
+            quickAmountBtns.forEach(b => b.classList.remove('selected'));
+            
+            // Add selected class to clicked button
+            this.classList.add('selected');
+            
+            // Set amount in input
+            const amount = this.dataset.amount;
+            amountInput.value = parseInt(amount).toLocaleString();
+            
+            // Update preview
+            updateBalancePreview(parseInt(amount));
         });
     });
+    
+    // Amount input changes
+    amountInput.addEventListener('input', function() {
+        // Remove selected class from quick amount buttons
+        quickAmountBtns.forEach(btn => btn.classList.remove('selected'));
+        
+        // Parse amount (remove commas)
+        const amount = parseInt(this.value.replace(/,/g, '')) || 0;
+        
+        // Format input value
+        if (amount > 0) {
+            this.value = amount.toLocaleString();
+        }
+        
+        // Update preview
+        updateBalancePreview(amount);
+    });
+    
+    // Clear amount button
+    clearBtn.addEventListener('click', function() {
+        amountInput.value = '';
+        quickAmountBtns.forEach(btn => btn.classList.remove('selected'));
+        updateBalancePreview(0);
+    });
+    
+    // Terms checkbox
+    agreeTerms.addEventListener('change', function() {
+        updateSubmitButton();
+    });
+    
+    function updateBalancePreview(amount) {
+        const newBalance = currentBalance + amount;
+        
+        // Update new balance
+        newBalanceEl.textContent = '₦' + newBalance.toLocaleString();
+        
+        // Update balance increase
+        if (amount > 0) {
+            balanceIncreaseEl.innerHTML = `
+                <i class="bi bi-arrow-up-circle-fill"></i>
+                <span>+₦${amount.toLocaleString()} increase</span>
+            `;
+            balanceIncreaseEl.style.display = 'block';
+        } else {
+            balanceIncreaseEl.style.display = 'none';
+        }
+        
+        // Update submit button
+        depositAmountEl.textContent = amount.toLocaleString();
+        updateSubmitButton();
+    }
+    
+    function updateSubmitButton() {
+        const amount = parseInt(amountInput.value.replace(/,/g, '')) || 0;
+        const termsChecked = agreeTerms.checked;
+        
+        if (amount >= 100 && termsChecked) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `
+                <i class="bi bi-wallet-fill me-2"></i>
+                <span class="btn-text">Add ₦${amount.toLocaleString()}</span>
+                <div class="btn-loader d-none">
+                    <div class="spinner-border spinner-border-sm me-2"></div>
+                    Processing...
+                </div>
+            `;
+        } else {
+            submitBtn.disabled = true;
+            let buttonText = 'Add Funds';
+            if (amount < 100) {
+                buttonText = 'Minimum ₦100 required';
+            } else if (!termsChecked) {
+                buttonText = 'Please agree to terms';
+            }
+            submitBtn.innerHTML = `
+                <i class="bi bi-wallet-fill me-2"></i>
+                <span class="btn-text">${buttonText}</span>
+            `;
+        }
+    }
+    
+    // Form submission
+    document.getElementById('depositForm').addEventListener('submit', function(e) {
+        const btnText = submitBtn.querySelector('.btn-text');
+        const btnLoader = submitBtn.querySelector('.btn-loader');
+        
+        btnText.classList.add('d-none');
+        btnLoader.classList.remove('d-none');
+        submitBtn.disabled = true;
+    });
+    
+    // Initialize
+    updateBalancePreview(0);
+    
+    // Initialize tooltips and collapses
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
 </script>
 {% endblock %}

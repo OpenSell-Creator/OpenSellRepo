@@ -1,79 +1,110 @@
-<div class="card product-card h-100">
+<!-- Enhanced Product Card Template -->
+<div class="card product-card h-100 {% if product.is_boosted %}boosted{% endif %} {% if product.is_pro_seller %}pro-seller{% endif %}">
+    <!-- Boost Badge -->
+    {% if product.is_boosted %}
+        <div class="boost-badge {{ product.active_boost.boost_type }}">
+            {% if product.active_boost.boost_type == 'featured' %}
+                <i class="bi bi-star-fill"></i> Featured
+            {% elif product.active_boost.boost_type == 'urgent' %}
+                <i class="bi bi-clock-fill"></i> Urgent
+            {% elif product.active_boost.boost_type == 'spotlight' %}
+                <i class="bi bi-lightning-fill"></i> Spotlight
+            {% elif product.active_boost.boost_type == 'premium' %}
+                <i class="bi bi-gem"></i> Premium
+            {% endif %}
+        </div>
+    {% endif %}
+    
+    <!-- Pro Seller Badge -->
+    {% if product.is_pro_seller %}
+        <div class="pro-badge" data-bs-toggle="tooltip" data-bs-placement="top" title="Verified Pro Seller">
+            <i class="bi bi-patch-check-fill"></i>
+        </div>
+    {% endif %}
+
     <div class="product-image-container">
         <a href="{% url 'product_detail' pk=product.id %}">
             {% with primary_image=product.images.filter.first %}
                 {% if primary_image %}
-                    <img src="{{ primary_image.image.url }}" class="product-image" alt="{{ product.title }}">
+                    <img src="{{ primary_image.image.url }}" class="product-image" alt="{{ product.title }}" loading="lazy">
                 {% else %}
-                    <img src="" class="product-image" alt="{{ product.title }}">
+                    <div class="no-image-placeholder">
+                        <i class="bi bi-image"></i>
+                    </div>
                 {% endif %}
             {% endwith %}
         </a>
+        
         {% if user.is_authenticated %}
             <button class="save-button btn-icon {% if product.is_saved %}saved{% endif %}"
                 data-product-id="{{ product.id }}"
                 onclick="toggleSaveProduct(event, '{{ product.id }}')">
-                <i class="bi bi-heart-fill"></i>
+                <i class="bi {% if product.is_saved %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
             </button>
         {% endif %}
     </div>
+    
     <div class="card-body">
         <a href="{% url 'product_detail' pk=product.id %}" class="product-title-link">
-            <h3 class="product-title-card">{{ product.title }}</h3>
+            <h3 class="product-title-card">{{ product.title|truncatechars:50 }}</h3>
         </a>
+        
         <div class="product-info">
-            <div class="info-wrapper">
-                <div class="info-main">
-                    <div class="price-seller-wrapper">
-                        <div class="product-price">{{ product.formatted_price }}</div>
-                        <div class="seller-info">
-                            {% if product.seller.user.profile.photo %}
-                                <img src="{{ product.seller.user.profile.photo.url }}" 
-                                     alt="{{ product.seller.username }}" 
-                                     class="seller-avatar">
-                            {% else %}
-                                <div class="seller-avatar-placeholder rounded-circle d-flex align-items-center justify-content-center"
-                                     style="width: 28px; height: 28px; background-color: var(--primary-color); color: white;">
-                                    {{ product.seller.user.username|first|upper }}
-                                </div>
-                            {% endif %}
-                            <span class="seller-name">{{ product.seller.user.username }}</span>
-                        </div>
-                    </div>
+            <!-- Price and Condition Row -->
+            <div class="price-condition-row">
+                <div class="product-price">{{ product.formatted_price }}</div>
+                <div class="product-condition condition-{{ product.condition|lower }}">{{ product.get_condition_display }}</div>
+            </div>
+            
+            <!-- Seller Info and Location Row -->
+            <div class="seller-location-row">
+                <div class="seller-info">
+                    <a href="{% url 'user_store' product.seller.user.username %}" class="seller-link">
+                        {% if product.is_pro_seller %}
+                            <i class="bi bi-patch-check-fill pro-icon"></i>
+                        {% endif %}
+                        {% if product.seller.user.profile.photo %}
+                            <img src="{{ product.seller.user.profile.photo.url }}" 
+                                 alt="{{ product.seller.username }}" 
+                                 class="seller-avatar">
+                        {% else %}
+                            <div class="seller-avatar-placeholder">
+                                {{ product.seller.user.username|first|upper }}
+                            </div>
+                        {% endif %}
+                        <span class="seller-name">{{ product.seller.user.username }}</span>
+                    </a>
                 </div>
-                <div class="condition-date-wrapper">
-                    <div class="product-condition condition-{{ product.condition|lower }}">{{ product.get_condition_display }}</div>
-                    <div class="product-location">
-                        <i class="bi bi-geo-alt-fill location-icon"></i>
-                        <span class="location-text">
-                            {% if product.seller.user.profile.location %}
-                                {% with location=product.seller.user.profile.location %}
-                                    {% if location.city and location.state %}
-                                        {{ location.city }}, {{ location.state.name }}
-                                    {% elif location.city %}
-                                        {{ location.city }}
-                                    {% elif location.lga and location.state %}
-                                        {{ location.lga.name }}, {{ location.state.name }}
-                                    {% elif location.state %}
-                                        {{ location.state.name }}
-                                    {% else %}
-                                        Location N/A
-                                    {% endif %}
-                                {% endwith %}
-                            {% else %}
-                                Location N/A
-                            {% endif %}
-                        </span>
-                    </div>
+                
+                <div class="product-location">
+                    <i class="bi bi-geo-alt-fill location-icon"></i>
+                    <span class="location-text">
+                        {% if product.seller.user.profile.location %}
+                            {% with location=product.seller.user.profile.location %}
+                                {% if location.city and location.state %}
+                                    {{ location.city }}, {{ location.state.name }}
+                                {% elif location.city %}
+                                    {{ location.city }}
+                                {% elif location.lga and location.state %}
+                                    {{ location.lga.name }}, {{ location.state.name }}
+                                {% elif location.state %}
+                                    {{ location.state.name }}
+                                {% else %}
+                                    Location N/A
+                                {% endif %}
+                            {% endwith %}
+                        {% else %}
+                            Location N/A
+                        {% endif %}
+                    </span>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-
 <style>
-    /* Product Card Styles */
+    /* Enhanced Product Card Styles */
     .product-card {
         transition: all 0.3s ease;
         height: 100%;
@@ -84,11 +115,78 @@
         display: flex;
         flex-direction: column;
         overflow: hidden;
+        position: relative;
+    }
+    
+    .product-card.boosted {
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 1px var(--accent-color), 0 4px 12px var(--shadow-color);
+    }
+    
+    .product-card.pro-seller {
+        background: linear-gradient(135deg, var(--card-background) 0%, rgba(var(--primary-rgb), 0.05) 100%);
     }
     
     .product-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 8px 20px var(--shadow-color);
+    }
+    
+    /* Boost Badge */
+    .boost-badge {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        backdrop-filter: blur(10px);
+    }
+    
+    .boost-badge.featured {
+        background: rgba(255, 193, 7, 0.9);
+        color: #fff;
+    }
+    
+    .boost-badge.urgent {
+        background: rgba(220, 53, 69, 0.9);
+        color: #fff;
+    }
+    
+    .boost-badge.spotlight {
+        background: rgba(13, 110, 253, 0.9);
+        color: #fff;
+    }
+    
+    .boost-badge.premium {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+    }
+    
+    /* Pro Badge */
+    .pro-badge {
+        position: absolute;
+        top: 10px;
+        right: 50px;
+        width: 28px;
+        height: 28px;
+        background: #fff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        z-index: 10;
+    }
+    
+    .pro-badge i {
+        color: #0d6efd;
+        font-size: 18px;
     }
     
     .product-image-container {
@@ -111,11 +209,30 @@
         transform: scale(1.05);
     }
     
+    .no-image-placeholder {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--background-color);
+        color: var(--text-secondary);
+    }
+    
+    .no-image-placeholder i {
+        font-size: 3rem;
+        opacity: 0.3;
+    }
+    
     .card-body {
         display: flex;
         flex-direction: column;
-        padding: var(--spacing-md);
+        padding: 16px;
         flex-grow: 1;
+        gap: 8px;
     }
     
     .product-title-link {
@@ -126,82 +243,46 @@
     .product-title-card {
         font-weight: 600;
         line-height: 1.3;
-        margin: 0 0 var(--spacing-sm) 0;
+        margin: 0;
         overflow: hidden;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         min-height: 2.4em;
         color: var(--text-primary);
+        font-size: 1rem;
     }
     
     .product-info {
         margin-top: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
     }
     
-    .info-wrapper {
+    /* Price and Condition Row */
+    .price-condition-row {
         display: flex;
         justify-content: space-between;
-        align-items: flex-end;
-        gap: var(--spacing-sm);
-        min-width: 0;
-    }
-    
-    .info-main {
-        flex: 1;
-        min-width: 0;
-    }
-    
-    .price-seller-wrapper {
-        min-width: 0;
+        align-items: center;
+        gap: 8px;
     }
     
     .product-price {
-        font-size: var(--font-size-lg);
+        font-size: 1.125rem;
         font-weight: 600;
         color: var(--accent-color);
-        margin-bottom: var(--spacing-xs);
         white-space: nowrap;
-    }
-    
-    .seller-info {
-        display: flex;
-        align-items: center;
-        gap: var(--spacing-xs);
-        min-width: 0;
-    }
-    
-    .seller-avatar {
-        width: 20px;
-        height: 20px;
-        border-radius: var(--radius-full);
-        object-fit: cover;
-        border: 2px solid var(--border-color);
-        flex-shrink: 0;
-    }
-    
-    .seller-name {
-        font-size: var(--font-size-sm);
-        color: var(--text-secondary);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        min-width: 0;
-    }
-    
-    .condition-date-wrapper {
-        text-align: right;
         flex-shrink: 0;
     }
     
     .product-condition {
-        font-size: var(--font-size-xs);
+        font-size: 0.75rem;
         color: var(--light-card-background);
-        padding: var(--spacing-xs) var(--spacing-sm);
-        border-radius: var(--radius-sm);
-        display: inline-block;
-        margin-bottom: var(--spacing-xs);
+        padding: 4px 8px;
+        border-radius: 4px;
         white-space: nowrap;
+        flex-shrink: 0;
     }
     
     .condition-new { 
@@ -214,39 +295,109 @@
         border: 1px solid var(--light-border-color);
     }
     
-    /* Updated: Replaced product-date with product-location */
-    .product-location {
-        font-size: var(--font-size-xs);
+    /* Seller and Location Row */
+    .seller-location-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+    }
+    
+    /* Seller Info */
+    .seller-info {
+        display: flex;
+        align-items: center;
+        min-width: 0;
+        flex: 1;
+    }
+    
+    .seller-link {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        text-decoration: none;
+        color: var(--text-secondary);
+        min-width: 0;
+        flex: 1;
+    }
+    
+    .seller-link:hover {
+        color: var(--primary-color);
+    }
+    
+    .pro-icon {
+        color: #0d6efd;
+        font-size: 14px;
+        flex-shrink: 0;
+    }
+    
+    .seller-avatar {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid var(--border-color);
+        flex-shrink: 0;
+    }
+    
+    .seller-avatar-placeholder {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background-color: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 600;
+        flex-shrink: 0;
+        border: 2px solid var(--border-color);
+    }
+    
+    .seller-name {
+        font-size: 0.875rem;
         color: var(--text-secondary);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 120px;
+        min-width: 0;
+    }
+    
+    /* Location */
+    .product-location {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
         display: flex;
         align-items: center;
-        justify-content: flex-end;
-        gap: 3px;
+        gap: 4px;
+        min-width: 0;
+        flex-shrink: 0;
+        text-align: right;
+        max-width: 120px;
     }
     
     .location-icon {
         color: var(--accent-color);
-        font-size: var(--font-size-xs);
+        font-size: 0.75rem;
         flex-shrink: 0;
     }
     
     .location-text {
         overflow: hidden;
         text-overflow: ellipsis;
+        white-space: nowrap;
     }
     
-    /* Save Button (Standardized) */
+    /* Save Button */
     .save-button {
         position: absolute;
-        top: var(--spacing-sm);
-        right: var(--spacing-sm);
-        background: var(--card-background);
+        top: 12px;
+        right: 12px;
+        background: rgba(255, 255, 255, 0.9);
         border: 1px solid var(--border-color);
-        border-radius: var(--radius-full);
+        border-radius: 50%;
         width: 36px;
         height: 36px;
         display: flex;
@@ -254,19 +405,20 @@
         justify-content: center;
         cursor: pointer;
         transition: all 0.2s ease;
-        z-index: 1;
+        z-index: 10;
         box-shadow: 0 2px 4px var(--shadow-color);
+        backdrop-filter: blur(10px);
     }
     
     .save-button:hover {
         transform: scale(1.05);
-        background: var(--hover-bg);
+        background: #fff;
         border-color: var(--primary-color);
     }
     
     .save-button i {
         color: var(--text-secondary);
-        font-size: var(--font-size-lg);
+        font-size: 1.125rem;
         transition: color 0.2s ease;
     }
     
@@ -274,47 +426,81 @@
         color: var(--accent-color);
     }
     
+    /* Dark Mode Support */
+    [data-bs-theme="dark"] .product-card {
+        background: var(--card-background);
+        border-color: var(--border-color);
+    }
+    
+    [data-bs-theme="dark"] .pro-badge {
+        background: var(--card-background);
+    }
+    
+    [data-bs-theme="dark"] .save-button {
+        background: rgba(var(--card-background-rgb), 0.9);
+    }
+    
     /* Responsive Adjustments */
     @media (max-width: 1199.98px) {
         .card-body {
-            padding: var(--spacing-sm);
+            padding: 14px;
+            gap: 6px;
         }
     
         .product-title-card {
-            font-size: var(--font-size-base);
+            font-size: 0.9rem;
             min-height: 2em;
         }
         
         .product-price {
-            font-size: var(--font-size-lg);
+            font-size: 1rem;
         }
     }
     
     @media (max-width: 767.98px) {
+        .card-body {
+            padding: 12px;
+            gap: 6px;
+        }
+        
         .product-title-card {
-            padding-left: var(--spacing-md);
-            padding-top: var(--spacing-sm);
-            font-size: var(--font-size-base);
-
-            min-height: 0.5rem;
+            font-size: 0.875rem;
+            min-height: 1.8em;
         }
     
-        .seller-avatar {
-            width: 15px;
-            height: 15px;
+        .seller-avatar, .seller-avatar-placeholder {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .seller-avatar-placeholder {
+            font-size: 0.65rem;
         }
     
         .seller-name {
-            font-size: var(--font-size-xs);
+            font-size: 0.8rem;
         }
     
         .product-price {
-            font-size: var(--font-size-base);
+            font-size: 0.95rem;
         }
-    
-        .info-wrapper {
-            padding: var(--spacing-md);
-            gap: var(--spacing-xs);
+        
+        .product-condition {
+            font-size: 0.7rem;
+            padding: 3px 6px;
+        }
+        
+        .boost-badge {
+            font-size: 0.7rem;
+            padding: 3px 8px;
+        }
+        
+        .price-condition-row {
+            gap: 6px;
+        }
+        
+        .seller-location-row {
+            gap: 6px;
         }
         
         .product-location {
@@ -326,14 +512,51 @@
         .save-button {
             width: 32px;
             height: 32px;
+            top: 10px;
+            right: 10px;
         }
     
         .save-button i {
-            font-size: var(--font-size-base);
+            font-size: 1rem;
         }
-    
+
         .card-body {
-            padding: var(--spacing-xs);
+            padding: 10px;
+            gap: 5px;
+        }
+        
+        .product-title-card {
+            font-size: 0.8rem;
+        }
+        
+        .product-price {
+            font-size: 0.9rem;
+        }
+        
+        .seller-avatar, .seller-avatar-placeholder {
+            width: 16px;
+            height: 16px;
+        }
+        
+        .seller-avatar-placeholder {
+            font-size: 0.6rem;
+        }
+        
+        .seller-name {
+            font-size: 0.75rem;
+        }
+        
+        .product-location {
+            font-size: 0.7rem;
+        }
+        
+        .product-condition {
+            font-size: 0.65rem;
+            padding: 2px 5px;
+        }
+        
+        .seller-location-row {
+            gap: 4px;
         }
         
         .product-location {
@@ -390,10 +613,13 @@
             // Update all instances of this product's save button on the page
             const buttons = document.querySelectorAll(`[data-product-id="${productId}"]`);
             buttons.forEach(btn => {
+                const icon = btn.querySelector('i');
                 if (data.status === 'saved') {
                     btn.classList.add('saved');
+                    icon.className = 'bi bi-heart-fill';
                 } else if (data.status === 'removed') {
                     btn.classList.remove('saved');
+                    icon.className = 'bi bi-heart';
                 }
             });
             
@@ -432,4 +658,12 @@
             toast.remove();
         }, 3000);
     }
-    </script>
+    
+    // Initialize Bootstrap tooltips
+    document.addEventListener('DOMContentLoaded', function() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>

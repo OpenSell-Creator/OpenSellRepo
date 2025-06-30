@@ -1,0 +1,285 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block 'Body'%}
+<div class="dashboard-container">
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="row align-items-center py-4">
+                <div class="col-12">
+                    <h1 class="dashboard-title">Subscription Management</h1>
+                    <p class="dashboard-subtitle">Manage your Pro subscription</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subscription Content -->
+    <div class="container mt-4">
+        {% if account.is_pro %}
+            <!-- Current Pro User -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="dashboard-card pro-status-card">
+                        <div class="card-body text-center">
+                            <div class="pro-badge mb-3">
+                                <i class="bi bi-star-fill"></i> PRO USER
+                            </div>
+                            <h3>You're currently on the Pro plan!</h3>
+                            <p class="text-muted">Enjoy all premium benefits</p>
+                            
+                            <div class="subscription-details mt-4">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="detail-item">
+                                            <i class="bi bi-calendar-check fs-1 text-primary mb-2"></i>
+                                            <h5>Plan Type</h5>
+                                            <p>{{ account.subscription_type|title }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="detail-item">
+                                            <i class="bi bi-clock-history fs-1 text-primary mb-2"></i>
+                                            <h5>Days Remaining</h5>
+                                            <p>{{ days_remaining }} days</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="detail-item">
+                                            <i class="bi bi-arrow-repeat fs-1 text-primary mb-2"></i>
+                                            <h5>Auto-Renewal</h5>
+                                            <p>{{ account.auto_renew|yesno:"Enabled,Disabled" }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4">
+                                {% if account.auto_renew %}
+                                    <form method="post" class="d-inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="cancel_auto_renew">
+                                        <button type="submit" class="btn btn-outline-danger">
+                                            Cancel Auto-Renewal
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <form method="post" class="d-inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="enable_auto_renew">
+                                        <button type="submit" class="btn btn-outline-success">
+                                            Enable Auto-Renewal
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <!-- Free User - Show upgrade options -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="text-center mb-4">
+                        <h2>Upgrade to Pro</h2>
+                        <p class="lead">Unlock premium features and grow your business faster</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row g-4">
+                <!-- Monthly Plan -->
+                <div class="col-md-6">
+                    <div class="dashboard-card h-100">
+                        <div class="card-body text-center">
+                            <h3>Monthly Plan</h3>
+                            <div class="price-display my-4">
+                                <h1>₦{{ pro_status.monthly_price|floatformat:0 }}</h1>
+                                <p class="text-muted">/month</p>
+                            </div>
+                            
+                            <ul class="list-unstyled text-start mb-4">
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Cancel anytime</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>All Pro benefits</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>No commitment</li>
+                            </ul>
+                            
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="subscribe">
+                                <input type="hidden" name="tier_type" value="pro">
+                                <input type="hidden" name="subscription_type" value="monthly">
+                                <button type="submit" class="btn btn-primary btn-lg w-100"
+                                        {% if account.balance < pro_tier.monthly_price %}disabled{% endif %}>
+                                    {% if account.balance < pro_tier.monthly_price %}
+                                        Insufficient Funds
+                                    {% else %}
+                                        Subscribe Monthly
+                                    {% endif %}
+                                </button>
+                            </form>
+                            
+                            {% if account.balance < pro_status.monthly_price %}
+                                <a href="{% url 'deposit_funds' %}" class="btn btn-link mt-2">Add Funds</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Yearly Plan -->
+                <div class="col-md-6">
+                    <div class="dashboard-card h-100 recommended">
+                        <div class="recommended-badge">BEST VALUE</div>
+                        <div class="card-body text-center">
+                            <h3>Yearly Plan</h3>
+                            <div class="price-display my-4">
+                                <h1>₦{{ pro_status.yearly_price|floatformat:0 }}</h1>
+                                <p class="text-muted">/year</p>
+                                <p class="savings-text">Save ₦{{ yearly_savings|floatformat:0 }} (2 months free!)</p>
+                            </div>
+                            
+                            <ul class="list-unstyled text-start mb-4">
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Best value</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>All Pro benefits</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>2 months free</li>
+                            </ul>
+                            
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="subscribe">
+                                <input type="hidden" name="tier_type" value="pro">
+                                <input type="hidden" name="subscription_type" value="yearly">
+                                <button type="submit" class="btn btn-primary btn-lg w-100"
+                                        {% if account.balance < pro_tier.yearly_price %}disabled{% endif %}>
+                                    {% if account.balance < pro_tier.yearly_price %}
+                                        Insufficient Funds
+                                    {% else %}
+                                        Subscribe Yearly
+                                    {% endif %}
+                                </button>
+                            </form>
+                            
+                            {% if account.balance < pro_status.yearly_price %}
+                                <a href="{% url 'deposit_funds' %}" class="btn btn-link mt-2">Add Funds</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+        
+        <!-- Benefits Section -->
+        <div class="row mt-5">
+            <div class="col-12">
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h5 class="card-title">Pro Benefits</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="benefit-item">
+                                    <i class="bi bi-infinity text-primary fs-1"></i>
+                                    <h5>Unlimited Listings</h5>
+                                    <p>List as many products as you want without restrictions</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="benefit-item">
+                                    <i class="bi bi-percent text-primary fs-1"></i>
+                                    <h5>30% Boost Discount</h5>
+                                    <p>Save on all product boosts (save ~₦{{ monthly_boost_savings|floatformat:0 }}/month)</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="benefit-item">
+                                    <i class="bi bi-star text-primary fs-1"></i>
+                                    <h5>Featured Listings</h5>
+                                    <p>Get 2 free featured listings every month</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="benefit-item">
+                                    <i class="bi bi-headset text-primary fs-1"></i>
+                                    <h5>Priority Support</h5>
+                                    <p>Get faster responses from our support team</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="benefit-item">
+                                    <i class="bi bi-graph-up text-primary fs-1"></i>
+                                    <h5>Advanced Analytics</h5>
+                                    <p>Track your sales performance with detailed insights</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="benefit-item">
+                                    <i class="bi bi-patch-check text-primary fs-1"></i>
+                                    <h5>Verified Badge</h5>
+                                    <p>Build trust with a verified seller badge</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .pro-status-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .pro-badge {
+        display: inline-block;
+        padding: 0.5rem 1.5rem;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50px;
+        font-weight: bold;
+    }
+    
+    .recommended {
+        position: relative;
+        border: 2px solid var(--primary-color);
+    }
+    
+    .recommended-badge {
+        position: absolute;
+        top: -12px;
+        right: 20px;
+        background: var(--primary-color);
+        color: white;
+        padding: 0.25rem 1rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: bold;
+    }
+    
+    .price-display h1 {
+        font-size: 3rem;
+        font-weight: bold;
+        color: var(--primary-color);
+    }
+    
+    .savings-text {
+        color: #28a745;
+        font-weight: bold;
+    }
+    
+    .benefit-item {
+        text-align: center;
+        padding: 2rem;
+    }
+    
+    .detail-item {
+        padding: 1.5rem;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+    }
+</style>
+{% endblock %}
