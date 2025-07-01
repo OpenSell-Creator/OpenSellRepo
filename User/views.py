@@ -22,6 +22,8 @@ from .forms import SignUpForm, ProfileUpdateForm, LocationForm
 from .models import Profile,LGA,State,Location
 from django.views.decorators.http import require_GET
 from .utils import send_otp_email
+from django.utils import timezone
+import random
 
 
 class CustomSignupView(SignupView):
@@ -145,7 +147,8 @@ class ProfileUpdateView(LoginRequiredMixin, UpdateView):
             print(f"Location form errors: {location_form.errors}")
         
         return super().form_valid(form)
-       
+
+
 @require_GET
 def load_lgas(request, state_id):
     try:
@@ -156,7 +159,8 @@ def load_lgas(request, state_id):
         return JsonResponse(list(lgas), safe=False)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
-       
+
+
 class ProfileDetailView(LoginRequiredMixin, DetailView):
     model = Profile
     template_name = 'profile_detail.html'

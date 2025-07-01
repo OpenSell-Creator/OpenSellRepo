@@ -36,7 +36,7 @@ def send_otp_email(user):
         send_mail(
             subject,
             message,
-            settings.NO_REPLY_EMAIL,
+            settings.DEFAULT_FROM_EMAIL,
             [user.email],
             html_message=html_message,
             fail_silently=False,

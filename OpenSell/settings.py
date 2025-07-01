@@ -108,13 +108,15 @@ MIDDLEWARE = [
 SITE_ID = 1
 
 if DEBUG:
-    # For local development
-    SITE_NAME = 'OpenSell Development'
-    SITE_DOMAIN = '127.0.0.1:8000'
+    # Development configuration
+    SITE_NAME = 'OpenSell Marketplace'
+    SITE_DOMAIN = os.environ.get('SITE_DOMAIN', '127.0.0.1:8000')
+    SITE_URL = os.environ.get('SITE_URL', 'http://127.0.0.1:8000')
 else:
-    # For production
+    # Production configuration
     SITE_NAME = 'OpenSell'
     SITE_DOMAIN = os.environ.get('SITE_DOMAIN')
+    SITE_URL = os.environ.get('SITE_URL')
 
 ROOT_URLCONF = 'OpenSell.urls'
 
