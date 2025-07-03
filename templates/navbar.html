@@ -98,25 +98,58 @@
 
 <!-- Hamburger Menu Button (Right-aligned) -->
     <button class="navbar-toggler d-lg-none ms-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#mainSidebar" aria-controls="mainSidebar" aria-label="Toggle navigation">
-      <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="4" x2="20" y1="12" y2="12"/>
-        <line x1="4" x2="20" y1="6" y2="6"/>
-        <line x1="4" x2="20" y1="18" y2="18"/>
-      </svg>
+      <span class="hamburger-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="4" x2="20" y1="12" y2="12"/>
+          <line x1="4" x2="20" y1="6" y2="6"/>
+          <line x1="4" x2="20" y1="18" y2="18"/>
+        </svg>
+      </span>
+      <span class="close-icon" style="display: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </span>
     </button>
   </div>
 </nav>
 
-<!-- Off-canvas Sidebar -->
+<!-- Enhanced Off-canvas Sidebar -->
 <div class="offcanvas offcanvas-end custom-sidebar" tabindex="-1" id="mainSidebar" aria-labelledby="mainSidebarLabel">
-  <div class="offcanvas-body">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="mainSidebarLabel">Menu</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
   
-    <!-- Search in Sidebar - Updated with unique classes -->
-    <div class="sidebar-search-container mb-4">
+  <div class="offcanvas-body">
+    {% if user.is_authenticated %}
+    <!-- User Profile Section -->
+    <div class="user-profile-section">
+      <div class="user-profile-content">
+        <div class="user-avatar">
+          {% if user.profile.photo %}
+            <img src="{{ user.profile.photo.url }}" alt="{{ user.get_full_name|default:user.username }}" class="avatar-img">
+          {% else %}
+            <div class="avatar-placeholder">
+              <span>{{ user.get_full_name|default:user.username|slice:":1"|upper }}</span>
+            </div>
+          {% endif %}
+        </div>
+        <div class="user-info">
+          <h6 class="user-greeting">Hello, {{ user.username }}!</h6>
+          <p class="user-email">{{ user.email }}</p>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Enhanced Search Section -->
+    <div class="sidebar-search-section">
       <form class="sidebar-search-form" action="{% url 'product_search' %}" method="get">
-        <div class="input-group">
-          <input type="text" class="form-control sidebar-search-input rounded-pill" placeholder="Find anything on OpenSell" aria-label="Search" name="query">
-          <button class="btn sidebar-search-button rounded-pill" type="submit">
+        <div class="search-input-wrapper">
+          <input type="text" class="form-control sidebar-search-input" placeholder="Search OpenSell..." aria-label="Search" name="query">
+          <button class="btn sidebar-search-btn" type="submit">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11" cy="11" r="8"></circle>
               <path d="m21 21-4.3-4.3"></path>
@@ -125,252 +158,225 @@
         </div>
       </form>
     </div>
+
+    <!-- PWA Install Button -->
+    <div class="pwa-install-section" id="pwaInstallSection" style="display: none;">
+      <button class="btn btn-primary w-100 pwa-install-btn" id="pwaInstallBtn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        Install OpenSell PWApp
+      </button>
+    </div>
     
     {% if user.is_authenticated %}
-      <!-- Browse Section -->
-      <div class="mb-4">
-        <h6 class="sidebar-heading text-uppercase">Browse</h6>
-        <div class="list-group list-group-flush browse-list">
-          <a href="{% url 'product_list' %}" class="list-group-item border-0 d-flex align-items-center">
-            <div class="category-icon2 me-2 rounded-circle1 d-flex align-items-center justify-content-center">
-              <i class="bi bi-grid-fill text-white"></i>
-            </div>
-            <span class="browse-item-text">All Products</span>
-          </a>
-          
-          <!-- Browse Categories Dropdown -->
-          <div class="list-group-item border-0">
-            <div class="d-flex justify-content-between align-items-center dropdown-toggle1" data-bs-toggle="collapse" data-bs-target="#categoriesDropdown" aria-expanded="false">
-              <div class="d-flex align-items-center">
-                <div class="category-icon2 me-2 rounded-circle1 d-flex align-items-center justify-content-center">
-                  <i class="bi bi-list text-white"></i>
-                </div>
-                <span class="browse-item-text">Browse Categories</span>
-              </div>
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="m6 9 6 6 6-6"/>
+      <!-- Quick Actions for Authenticated Users -->
+      <div class="quick-actions-section">
+        <h6 class="section-label">Quick Actions</h6>
+        <div class="quick-actions-grid">
+          <a href="{% url 'product_create' %}" class="quick-action-btn">
+            <div class="action-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
             </div>
-            
-            <!-- Categories Dropdown Content -->
-            <div class="collapse" id="categoriesDropdown">
-              <div class="categories-list mt-2">
-                {% for category in global_categories %}
-                  <div class="list-group-item border-0 ps-3 py-1 {% if category.id == selected_category %}active{% endif %}">
-                    <div class="d-flex justify-content-between align-items-center">
-                      <a href="{% url 'product_list' %}?category={{ category.slug }}"
-                         class="text-decoration-none category-link d-flex align-items-center">
-                         {% if category.image %}
-                          <img src="{{ category.image.url }}" alt="{{ category.name }}" class="category-image me-2 rounded-circle">
-                        {% else %}
-                          <div class="category-icon me-2 rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="bi bi-folder-fill text-white"></i>
-                          </div>
-                        {% endif %}
-                        <span class="category-name">{{ category.name }}</span>
-                        <span class="category-count small ms-2 mb-0">
-                          ({{ category.product_count }})
-                        </span>
-                      </a>
-                      {% if category.subcategories.all %}
-                        <button class="btn btn-link p-0 category-toggle"
-                                data-bs-toggle="collapse"
-                                data-bs-target="#category{{ category.id }}">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="m6 9 6 6 6-6"/>
+            <span>List Now</span>
+          </a>
+          <a href="{% url 'saved_products' %}" class="quick-action-btn">
+            <div class="action-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+              </svg>
+            </div>
+            <span>Saved</span>
+          </a>
+          <a href="{% url 'inbox' %}" class="quick-action-btn position-relative">
+            <div class="action-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </div>
+            {% if unread_messages_count > 0 %}
+            <span class="quick-action-badge">{{ unread_messages_count }}</span>
+            {% endif %}
+            <span>Messages</span>
+          </a>
+          <a href="{% url 'my_store' %}" class="quick-action-btn">
+            <div class="action-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+              </svg>
+            </div>
+            <span>My Store</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Browse Categories -->
+      <div class="sidebar-section">
+        <h6 class="section-label">Browse</h6>
+        <div class="browse-list">
+          <a href="{% url 'product_list' %}" class="browse-item">
+            <div class="browse-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+            </div>
+            <span>All Products</span>
+          </a>
+          
+          <div class="browse-item" data-bs-toggle="collapse" data-bs-target="#categoriesCollapse" aria-expanded="false">
+            <div class="browse-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path>
+              </svg>
+            </div>
+            <span>Categories</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="chevron-icon ms-auto">
+              <path d="m6 9 6 6 6-6"/>
+            </svg>
+          </div>
+          
+          <div class="collapse" id="categoriesCollapse">
+            <div class="categories-container">
+              {% for category in global_categories %}
+                <div class="sidebar-category-wrapper">
+                  <div class="sidebar-category-item {% if category.subcategories.all %}has-subcategories{% endif %}">
+                    <a href="{% url 'product_list' %}?category={{ category.slug }}" class="sidebar-category-link">
+                      {% if category.image %}
+                        <img src="{{ category.image.url }}" alt="{{ category.name }}" class="sidebar-category-img">
+                      {% else %}
+                        <div class="sidebar-category-placeholder">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                           </svg>
-                        </button>
-                      {% endif %}
-                    </div>
-                    
-                    {% if category.subcategories.all %}
-                      <div class="collapse {% if category.id == selected_category %}show{% endif %}" id="category{{ category.id }}">
-                        <div class="ps-3 mt-1">
-                          {% for subcategory in category.subcategories.all %}
-                            <a href="{% url 'product_list' %}?category={{ category.slug }}&subcategory={{ subcategory.slug }}"
-                               class="d-block text-decoration-none subcategory-link py-1 d-flex align-items-center {% if subcategory.id == selected_subcategory %}active-subcategory{% endif %}">
-                              <span class="subcategory-name">{{ subcategory.name }}</span>
-                              <span class="category-count small ms-2 mb-0">
-                                ({{ subcategory.product_count }})
-                              </span>
-                            </a>
-                          {% endfor %}
                         </div>
-                      </div>
+                      {% endif %}
+                      <span>{{ category.name }}</span>
+                      <span class="sidebar-category-count">({{ category.product_count }}) items</span>
+                    </a>
+                    {% if category.subcategories.all %}
+                      <button class="sidebar-subcategory-toggle" data-bs-toggle="collapse" data-bs-target="#subcategory{{ category.id }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="m6 9 6 6 6-6"/>
+                        </svg>
+                      </button>
                     {% endif %}
                   </div>
-                {% endfor %}
-              </div>
+                  
+                  {% if category.subcategories.all %}
+                    <div class="collapse" id="subcategory{{ category.id }}">
+                      <div class="subcategories-list">
+                        {% for subcategory in category.subcategories.all %}
+                          <a href="{% url 'product_list' %}?category={{ category.slug }}&subcategory={{ subcategory.slug }}" 
+                             class="sidebar-subcategory-item">
+                            <span>{{ subcategory.name }}</span>
+                            <span class="sidebar-category-count">({{ subcategory.product_count }}) items</span>
+                          </a>
+                        {% endfor %}
+                      </div>
+                    </div>
+                  {% endif %}
+                </div>
+              {% endfor %}
             </div>
           </div>
         </div>
       </div>
-      
-      <!-- Help & Info Section with Icons -->
-      <div class="mb-4">
-        <h6 class="sidebar-heading text-uppercase">Help & Info</h6>
-        <div class="list-group list-group-flush help-links">
-          <a href="/about/" class="list-group-item border-0 py-2">
-            <span class="help-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                <path d="M12 17h.01"></path>
-              </svg>
-            </span>
-            <span class="help-item-text">About Us</span>
-          </a>
-          <a href="/contact/" class="list-group-item border-0 py-2">
-            <span class="help-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-              </svg>
-            </span>
-            <span class="help-item-text">Contact Us</span>
-          </a>
-          <a href="/faq/" class="list-group-item border-0 py-2">
-            <span class="help-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-              </svg>
-            </span>
-            <span class="help-item-text">FAQ</span>
-          </a>
-          <a href="/terms/" class="list-group-item border-0 py-2">
-            <span class="help-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 11.08V8l-6-6H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h6"></path>
-                <path d="M14 3v5h5M18 21v-6M15 18h6"></path>
-              </svg>
-            </span>
-            <span class="help-item-text">Terms & Conditions</span>
-          </a>
-          <a href="/privacy/" class="list-group-item border-0 py-2">
-            <span class="help-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-              </svg>
-            </span>
-            <span class="help-item-text">Privacy Policy</span>
-          </a>
-          <a href="/safety/" class="list-group-item border-0 py-2">
-            <span class="help-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-              </svg>
-            </span>
-            <span class="help-item-text">Safety</span>
-          </a>
-          <a href="/support/" class="list-group-item border-0 py-2">
-            <span class="help-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-              </svg>
-            </span>
-            <span class="help-item-text">Support</span>
-          </a>
-        </div>
-      </div>
     {% else %}
-      <!-- Authentication Section -->
-      <div class="auth-section text-center p-4">
-        <h6 class="mb-4">Join Our Marketplace</h6>
-        <div class="d-grid gap-3">
-          <a href="/login" class="btn btn-outline-primary btn-lg">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2">
-              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-              <polyline points="10 17 15 12 10 7"/>
-              <line x1="15" y1="12" x2="3" y2="12"/>
-            </svg>
-            Sign In
-          </a>
-          <a href="/register" class="btn btn-primary btn-lg">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <line x1="19" y1="8" x2="19" y2="14"/>
-              <line x1="16" y1="11" x2="22" y2="11"/>
-            </svg>
-            Sign Up
-          </a>
+      <!-- Authentication CTA for Non-authenticated Users -->
+      <div class="auth-cta-section">
+        <div class="auth-cta-card">
+          <h5>Join OpenSell Today</h5>
+          <p>Buy and sell anything in your local community</p>
+          <div class="auth-buttons">
+            <a href="/signup" class="btn btn-primary w-100 mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-2">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <line x1="19" y1="8" x2="19" y2="14"/>
+                <line x1="16" y1="11" x2="22" y2="11"/>
+              </svg>
+              Create Account
+            </a>
+            <a href="/login" class="btn btn-outline-primary w-100">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-2">
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                <polyline points="10 17 15 12 10 7"/>
+                <line x1="15" y1="12" x2="3" y2="12"/>
+              </svg>
+              Sign In
+            </a>
+          </div>
         </div>
       </div>
-      
-      <!-- Help & Info Section for non-authenticated users -->
-      <div class="mb-4">
-        <h6 class="sidebar-heading text-uppercase">Help & Info</h6>
-        <div class="list-group list-group-flush help-links">
-          <a href="/about/" class="list-group-item border-0 py-2">
-            <span class="help-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                <path d="M12 17h.01"></path>
-              </svg>
-            </span>
-            <span class="help-item-text">About Us</span>
-          </a>
-          <a href="/contact/" class="list-group-item border-0 py-2">
-            <span class="help-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-              </svg>
-            </span>
-            <span class="help-item-text">Contact Us</span>
-          </a>
-          <a href="/faq/" class="list-group-item border-0 py-2">
-            <span class="help-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-              </svg>
-            </span>
-            <span class="help-item-text">FAQ</span>
-          </a>
-          <a href="/terms/" class="list-group-item border-0 py-2">
-            <span class="help-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 11.08V8l-6-6H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h6"></path>
-                <path d="M14 3v5h5M18 21v-6M15 18h6"></path>
-              </svg>
-            </span>
-            <span class="help-item-text">Terms & Conditions</span>
-          </a>
-          <a href="/privacy/" class="list-group-item border-0 py-2">
-            <span class="help-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-              </svg>
-            </span>
-            <span class="help-item-text">Privacy Policy</span>
-          </a>
-          <a href="/safety/" class="list-group-item border-0 py-2">
-            <span class="help-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-              </svg>
-            </span>
-            <span class="help-item-text">Safety</span>
-          </a>
-          <a href="/support/" class="list-group-item border-0 py-2">
-            <span class="help-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-              </svg>
-            </span>
-            <span class="help-item-text">Support</span>
-          </a>
-        </div>
+    {% endif %}
+
+    <!-- Enhanced Help & Support Section -->
+    <div class="sidebar-section">
+      <h6 class="section-label">Help & Support</h6>
+      <div class="help-grid">
+        <a href="/about/" class="help-item">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M12 16v-4"></path>
+            <path d="M12 8h.01"></path>
+          </svg>
+          <span>About</span>
+        </a>
+        <a href="/faq/" class="help-item">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <span>FAQ</span>
+        </a>
+        <a href="/contact/" class="help-item">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+          </svg>
+          <span>Contact</span>
+        </a>
+        <a href="/support/" class="help-item">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
+            <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>
+          </svg>
+          <span>Support</span>
+        </a>
       </div>
+    </div>
+
+    <!-- Legal Links -->
+    <div class="sidebar-section">
+      <h6 class="section-label">Legal</h6>
+      <div class="legal-links">
+        <a href="/terms/" class="legal-link">Terms & Conditions</a>
+        <a href="/privacy/" class="legal-link">Privacy Policy</a>
+        <a href="/safety/" class="legal-link">Safety Guidelines</a>
+      </div>
+    </div>
+
+    {% if user.is_authenticated %}
+    <!-- User Actions -->
+    <div class="sidebar-section border-top pt-2">
+      <a href="{% url 'logout' %}" class="btn btn-outline-danger w-100">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+        Sign Out
+      </a>
+    </div>
     {% endif %}
   </div>
 </div>
@@ -438,7 +444,8 @@
 
 {% block CSS %}
 <style>
-  /* Theme Colors */
+/* Keep all existing navbar styles - NO CHANGES */
+/* Theme Colors */
 :root {
   --navbar-bg: var(--primary-color);
   --text-color: var(--card-background);
@@ -450,6 +457,7 @@
   --badge-bg: var(--accent-color);
   --navbar-height: 75px;
   --navbar-height-mobile: 65px;
+  --bottom-nav-height: 70px;
 }
 
 /* Navbar Styles */
@@ -525,11 +533,6 @@ body {
   
   body {
     padding-bottom: 70px;
-  }
-  
-  .custom-sidebar {
-    top: var(--navbar-height-mobile) !important;
-    height: calc(100% - var(--navbar-height-mobile) - var(--bottom-nav-height)) !important;
   }
   
   body.sidebar-open {
@@ -661,379 +664,712 @@ body {
   }
 }
 
-/* Navbar Toggler */
+/* Navbar Toggler with Animation */
 .navbar-toggler {
   z-index: 1030;
   position: relative;
   border: none;
   padding: 0.25rem;
   color: var(--text-color);
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .navbar-toggler:focus {
   box-shadow: none;
 }
 
-.navbar-toggler svg {
+.hamburger-icon,
+.close-icon {
+  position: absolute;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.hamburger-icon svg,
+.close-icon svg {
   stroke: #FFFFFF;
 }
 
-/* Offcanvas Sidebar Styling */
+/* ========== ENHANCED SIDEBAR STYLES ========== */
+
+/* Smooth animations */
+.offcanvas.custom-sidebar {
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.offcanvas-backdrop {
+  transition: opacity 0.3s ease;
+}
+
+/* Full screen coverage for mobile only (not tablets) */
+@media (max-width: 767px) {
+  .custom-sidebar {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* Sidebar base styles */
 .custom-sidebar {
-  min-width: 300px;
-  width: 100%;
-  padding-bottom: 40px;
-  border-left: 1px solid var(--border-color);
-  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.05);
+  width: 320px;
+  max-width: 85vw;
   background-color: var(--card-background);
+  box-shadow: -5px 0 25px rgba(0, 0, 0, 0.1);
   z-index: 1045;
-  /* Position below navbar */
-  top: calc(var(--navbar-height-mobile) + env(safe-area-inset-top));
-  height: calc(100% - var(--navbar-height-mobile) - var(--bottom-nav-height));
-  border-top: 1px solid var(--border-color);
 }
 
-.custom-sidebar .offcanvas-body {
-  padding: 1.5rem;
+/* Tablet specific width */
+@media (min-width: 768px) and (max-width: 991px) {
+  .custom-sidebar {
+    width: 400px;
+    max-width: 50vw;
+  }
 }
 
-/* Sidebar Header Styling */
-.sidebar-heading {
-  font-size: 14px;
+/* Enhanced Sidebar Header */
+.custom-sidebar .offcanvas-header {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 1rem 1.5rem;
+  border-bottom: none;
+  min-height: var(--navbar-height-mobile);
+}
+
+.custom-sidebar .offcanvas-title {
+  font-size: 1.25rem;
   font-weight: 600;
+  margin: 0;
+}
+
+.custom-sidebar .btn-close {
+  filter: brightness(0) invert(1);
+  opacity: 0.8;
+}
+
+.custom-sidebar .btn-close:hover {
+  opacity: 1;
+}
+
+/* Sidebar Body with proper spacing */
+.custom-sidebar .offcanvas-body {
+  padding: 0;
+  height: 100%;
+  overflow-y: auto;
+  background-color: var(--background-color);
+  /* Add top and bottom padding for navbar clearance */
+  padding-top: 0.5rem;
+  padding-bottom: calc(var(--bottom-nav-height) + 1rem);
+}
+
+/* User Profile Section */
+.user-profile-section {
+  padding: 1rem;
+  background-color: var(--card-background);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.user-profile-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-avatar {
+  flex-shrink: 0;
+}
+
+.avatar-img {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--primary-color);
+}
+
+.avatar-placeholder {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 1.25rem;
+}
+
+.user-info {
+  flex: 1;
+  overflow: hidden;
+}
+
+.user-greeting {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.25rem 0;
+}
+
+.user-email {
+  font-size: 0.875rem;
   color: var(--text-secondary);
-  margin-top: 0.5rem;
-  margin-bottom: 0.75rem;
-  padding-left: 0.5rem;
-  letter-spacing: 0.05rem;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Search Bar Styling for Sidebar */
-.sidebar-search-container {
-  position: relative;
+/* Search Section */
+.sidebar-search-section {
+  padding: 0.75rem 1rem;
+  background-color: var(--card-background);
+  border-bottom: 1px solid var(--border-color);
 }
 
-.sidebar-search-form {
+.search-input-wrapper {
   position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .sidebar-search-input {
-  background-color: var(--card-background);
-  color: var(--text-primary);
-  border: 2px solid #6c757d;
-  padding: 8px 10px;
+  height: 44px;
+  padding: 0 44px 0 16px;
+  border: 2px solid var(--border-color);
+  border-radius: 22px;
+  font-size: 0.9375rem;
+  background-color: var(--background-color);
   transition: all 0.3s ease;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-  font-size: 0.75rem;
-  height: auto; 
 }
 
 .sidebar-search-input:focus {
-  border-color: #6c757d;
-  box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.15);
+  border-color: var(--primary-color);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.1);
 }
 
-.sidebar-search-input::placeholder {
-  font-size: 0.85rem;
-}
-
-.sidebar-search-button {
+.sidebar-search-btn {
   color: #6c757d;
   height: 40px; 
   border-color: #6c757d;
   transition: all 0.3s ease;
   padding: 0 12px; 
-}
-
-.sidebar-search-button:hover {
+  height: 36px;
+  width: 36px;
+  border-radius: 50%;
+  border: none;
   background-color: var(--primary-color);
-  color: #ffffff;
-}
-
-/* Common styles for list items */
-.browse-list .list-group-item,
-.help-links .list-group-item,
-.categories-list .list-group-item {
-  background-color: transparent;  
-  transition: background-color 0.2s ease, background-color 0.3s ease;
-  border-radius: var(--radius-md);
-  margin-bottom: 0.15rem;
-  padding: 0.5rem;
-}
-
-.browse-list .list-group-item:hover,
-.help-links .list-group-item:hover,
-.categories-list .list-group-item:hover {
-  background-color: var(--hover-bg);
-}
-
-.browse-item-text,
-.help-item-text {
-  font-size: 1rem;
-  color: var(--text-primary);
-}
-
-.help-links .list-group-item {
-  padding-left: 0.75rem;
-}
-
-/* Categories styling */
-.categories-list {
-  margin-left: -0.5rem;
-  margin-right: -0.5rem;
-}
-
-.categories-list .list-group-item.active {
-  background-color: var(--primary-color) !important;
-  color: #ffffff !important;
-  border-color: var(--primary-color);
-}
-
-/* Smaller text for categories and subcategories */
-.categories-list .category-name {
-  font-size: 0.9rem;
-  font-weight: 400;
-}
-
-.subcategory-name {
-  font-size: 0.8rem;
-}
-
-.category-count {
-  font-size: 0.8rem !important;
-  color: var(--text-secondary);
-  transition: color 0.3s ease;
-}
-
-.list-group-item.active .category-count {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-/* Remove margins from category icons */
-.categories-list .category-link {
-  padding: 0.25rem 0;
-}
-
-.subcategory-link {
-  padding: 0.5rem 0 !important;
-  margin-bottom: 0.1rem !important;
-  color: var(--text-secondary);
-  font-size: 0.9rem;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.3s ease;
-  text-decoration: none;
 }
 
-.subcategory-link.active-subcategory {
-  color: var(--primary-color);
+.sidebar-search-btn svg {
+  width: 24px;
+  height: 24px;
+}
+
+.sidebar-search-btn:hover {
+  background-color: var(--secondary-color);
+  transform: scale(1.05);
+}
+
+/* PWA Install Section */
+.pwa-install-section {
+  padding: 0 1rem 0.75rem;
+  background-color: var(--card-background);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.pwa-install-btn {
+  height: 44px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.pwa-install-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.3);
+}
+
+/* Quick Actions Grid */
+.quick-actions-section {
+  padding: 1rem;
+  background-color: var(--card-background);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.section-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+  padding-left: 0.25rem;
+}
+
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.625rem;
+}
+
+.quick-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.625rem 0.375rem;
+  background-color: var(--background-color);
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.quick-action-btn:hover {
   background-color: var(--hover-bg);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+}
+
+.action-icon {
+  width: 36px;
+  height: 36px;
+  background-color: var(--primary-color);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.375rem;
+  transition: all 0.3s ease;
+}
+
+.action-icon svg {
+  stroke: white;
+  width: 20px;
+  height: 20px;
+}
+
+.quick-action-btn:hover .action-icon {
+  background-color: var(--secondary-color);
+}
+
+.quick-action-btn span {
+  font-size: 0.6875rem;
   font-weight: 500;
 }
 
-/* Fix for subcategory text color when parent category is active */
-.list-group-item.active .subcategory-link {
-  color: rgba(255, 255, 255, 0.9);
+.quick-action-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background-color: var(--accent-color);
+  color: white;
+  font-size: 0.625rem;
+  padding: 2px 5px;
+  border-radius: 10px;
+  font-weight: 600;
+  min-width: 18px;
+  text-align: center;
 }
 
-.list-group-item.active .subcategory-link:hover,
-.list-group-item.active .subcategory-link.active-subcategory {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
+/* Browse Section */
+.sidebar-section {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
 }
 
-.list-group-item.active .subcategory-link.active-subcategory {
-  background-color: rgba(255, 255, 255, 0.3);
-  border-left: 2px solid #ffffff;
+.browse-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
 }
 
-/* Fix for subcategory count when parent category is active */
-.list-group-item.active .subcategory-link .category-count {
-  color: rgba(255, 255, 255, 0.7);
-}
-
-/* Category Link Styling */
-.category-link {
-  color: var(--text-primary);
+.browse-item {
+  display: flex;
+  align-items: center;
+  padding: 0.625rem 0.875rem;
+  background-color: var(--card-background);
+  border-radius: 10px;
   text-decoration: none;
-  display: flex;
-  align-items: center;
-  font-weight: 400;
-  transition: color 0.3s ease;
-}
-
-.list-group-item.active .category-link {
-  color: #ffffff;
-}
-
-.category-link:hover {
-  color: var(--primary-color);
-}
-
-.list-group-item.active .category-link:hover {
-  color: #ffffff;
-}
-
-/* Category toggle */
-.category-toggle {
   color: var(--text-primary);
-  transition: transform 0.3s ease, color 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border-radius: 50%;
-}
-
-.category-toggle:hover {
-  background-color: var(--hover-bg);
-  color: var(--text-secondary);
-}
-
-.list-group-item.active .category-toggle {
-  color: #ffffff;
-}
-
-.dropdown-toggle1, .dropdown-toggle {
-  cursor: pointer;
-}
-
-.dropdown-toggle1 svg,
-.category-toggle svg {
-  transition: transform 0.3s ease, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.dropdown-toggle1[aria-expanded="true"] svg,
-.category-toggle[aria-expanded="true"] svg {
-  transform: rotate(180deg);
-}
-
-/* Category Icon */
-.category-icon2 {
-  width: 30px;
-  height: 30px;
-  background-color: var(--primary-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  margin-right: 0.75rem;
   transition: all 0.3s ease;
+  cursor: pointer;
+  font-size: 0.9375rem;
 }
 
-.category-icon2 i {
-  color: #ffffff;
-  font-size: 0.875rem;
+.browse-item:hover {
+  background-color: var(--hover-bg);
+  transform: translateX(2px);
 }
 
-.category-image {
+.browse-icon {
+  width: 32px;
+  height: 32px;
+  background-color: var(--primary-color);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 0.75rem;
+}
+
+.browse-icon svg {
+  stroke: white;
   width: 18px;
   height: 18px;
-  object-fit: cover;
-  border-radius: 50%;
-  margin-right: 0.75rem;
+}
+
+.chevron-icon {
   transition: transform 0.3s ease;
 }
 
-.category-image:hover,
-.subcategory-image:hover {
-  transform: scale(1.1);
+.browse-item[aria-expanded="true"] .chevron-icon {
+  transform: rotate(180deg);
 }
 
-/* Subcategory Icons */
-.subcategory-icon {
+/* Categories Container with Subcategories */
+.categories-container {
+  padding: 0.375rem 0;
+  max-height: 350px;
+  overflow-y: auto;
+}
+
+.sidebar-category-wrapper {
+  margin-bottom: 0.25rem;
+}
+
+.sidebar-category-item {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.sidebar-category-item.has-subcategories .sidebar-category-link {
+  padding-right: 40px;
+}
+
+.sidebar-category-link {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  margin: 0.125rem 0;
+  background-color: var(--background-color);
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+  font-size: 0.875rem;
+}
+
+.sidebar-category-link:hover {
+  background-color: var(--hover-bg);
+  transform: translateX(2px);
+}
+
+.sidebar-category-img,
+.sidebar-category-placeholder {
   width: 20px;
   height: 20px;
+  margin-right: 0.625rem;
+  flex-shrink: 0;
+}
+
+.sidebar-category-img {
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.sidebar-category-placeholder {
   background-color: var(--primary-color);
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  margin-right: 0.75rem;
+}
+
+.sidebar-category-placeholder svg {
+  width: 12px;
+  height: 12px;
+  stroke: white;
+}
+
+.sidebar-category-count {
+  margin-left: auto;
+  font-size: 0.6875rem;
+  color: var(--text-secondary);
+  background-color: var(--background-color);
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.sidebar-subcategory-toggle {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border: none;
+  background-color: transparent;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: var(--text-secondary);
+}
+
+.sidebar-subcategory-toggle:hover {
+  background-color: var(--hover-bg);
+}
+
+.sidebar-subcategory-toggle svg {
+  transition: transform 0.3s ease;
+}
+
+.sidebar-subcategory-toggle[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+.subcategories-list {
+  padding-left: 2rem;
+  padding-top: 0.25rem;
+}
+
+.sidebar-subcategory-item {
+  display: flex;
+  align-items: center;
+  padding: 0.375rem 0.625rem;
+  margin: 0.125rem 0;
+  background-color: var(--background-color);
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
   transition: all 0.3s ease;
 }
 
-.subcategory-icon i {
-  color: #ffffff;
-  font-size: 0.75rem;
-}
-
-.subcategory-image {
-  width: 20px;
-  height: 20px;
-  object-fit: cover;
-  border-radius: 50%;
-  margin-right: 0.75rem;
-}
-
-/* Fix for subcategory icons when parent is active */
-.list-group-item.active .subcategory-icon {
-  background-color: rgba(255, 255, 255, 0.3);
-}
-
-.list-group-item.active .subcategory-icon i {
-  color: #ffffff;
-}
-
-/* Help & Info section improvements */
-.help-links .list-group-item {
-  padding: 0.35rem 0.6rem; /* Reduced padding vertically and horizontally */
-  display: flex;
-  align-items: center;
-  gap: 0.5rem; /* Space between icon and text */
-}
-
-.help-item-text {
-  font-size: 0.8rem; /* Smaller text */
-  color: var(--text-primary);
-}
-
-.help-icon {
-  color: var(--accent-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px; 
-}
-
-/* Auth Section */
-.auth-section {
+.sidebar-subcategory-item:hover {
   background-color: var(--hover-bg);
-  border-radius: var(--radius-lg);
-  margin-top: 1rem;
+  color: var(--text-primary);
+  transform: translateX(2px);
+}
+
+/* Auth CTA Section */
+.auth-cta-section {
+  padding: 1rem;
+  background-color: var(--card-background);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.auth-cta-card {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  color: white;
+  padding: 1.25rem;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.auth-cta-card h5 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.375rem;
+}
+
+.auth-cta-card p {
+  font-size: 0.8125rem;
+  opacity: 0.9;
   margin-bottom: 1rem;
 }
 
-.auth-section h6 {
-  color: var(--text-primary);
+.auth-buttons .btn {
+  height: 44px;
+  border-radius: 10px;
   font-weight: 600;
-}
-
-.auth-section .btn {
+  font-size: 0.9375rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.75rem 1.5rem;
 }
 
-.auth-section .btn svg {
-  margin-right: 0.5rem;
+/* Help Grid */
+.help-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
 }
 
-/* Animation for dropdown */
-@media (prefers-reduced-motion: no-preference) {
-  .collapse {
-    transition: height 0.3s ease;
+.help-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.75rem;
+  background-color: var(--card-background);
+  border-radius: 10px;
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+}
+
+.help-item:hover {
+  background-color: var(--hover-bg);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+}
+
+.help-item svg {
+  stroke: var(--primary-color);
+  margin-bottom: 0.375rem;
+  width: 20px;
+  height: 20px;
+}
+
+.help-item span {
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+/* Legal Links */
+.legal-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.legal-link {
+  padding: 0.375rem 0.75rem;
+  background-color: var(--card-background);
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  transition: all 0.3s ease;
+}
+
+.legal-link:hover {
+  background-color: var(--hover-bg);
+  color: var(--text-primary);
+  transform: translateX(2px);
+}
+
+/* Dark Theme Adjustments */
+[data-bs-theme="dark"] .custom-sidebar {
+  background-color: var(--dark-card-background);
+}
+
+[data-bs-theme="dark"] .custom-sidebar .offcanvas-header {
+  background-color: var(--dark-secondary-color);
+  border-bottom: 1px solid var(--dark-border-color);
+}
+
+[data-bs-theme="dark"] .sidebar-search-input {
+  background-color: var(--dark-background);
+  border-color: var(--dark-border-color);
+  color: var(--dark-text-primary);
+}
+
+[data-bs-theme="dark"] .quick-action-btn,
+[data-bs-theme="dark"] .browse-item,
+[data-bs-theme="dark"] .help-item,
+[data-bs-theme="dark"] .sidebar-category-link,
+[data-bs-theme="dark"] .sidebar-subcategory-item {
+  background-color: var(--dark-background);
+  color: var(--dark-text-primary);
+}
+
+[data-bs-theme="dark"] .quick-action-btn:hover,
+[data-bs-theme="dark"] .browse-item:hover,
+[data-bs-theme="dark"] .help-item:hover,
+[data-bs-theme="dark"] .sidebar-category-link:hover,
+[data-bs-theme="dark"] .sidebar-subcategory-item:hover,
+[data-bs-theme="dark"] .legal-link:hover {
+  background-color: var(--dark-hover-bg);
+}
+
+/* Scrollbar styling for categories */
+.categories-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.categories-container::-webkit-scrollbar-track {
+  background: var(--background-color);
+}
+
+.categories-container::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 2px;
+}
+
+.categories-container::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Responsive adjustments */
+@media (max-width: 380px) {
+  .quick-actions-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
+  
+  .help-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .sidebar-search-input {
+    font-size: 0.875rem;
+  }
+}
+
+/* Remove any conflicting styles */
+.category-card,
+.category-icon,
+.category-image,
+.category-title,
+.category-count {
+  /* These remain unchanged to avoid conflicts with home.html */
+}
+
+/* Ensure sidebar-specific styles use unique class names */
+.sidebar-category-wrapper,
+.sidebar-category-item,
+.sidebar-category-link,
+.sidebar-category-img,
+.sidebar-category-placeholder,
+.sidebar-category-count,
+.sidebar-subcategory-toggle,
+.sidebar-subcategory-item {
+  /* Unique classes to avoid conflicts */
 }
 </style>
 {% endblock %}
 
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
+// Keep all existing navbar JavaScript
+document.addEventListener('DOMContentLoaded', function() {
     // Get DOM elements
     const mainNavbar = document.getElementById('mainNavbar');
     const bottomNav = document.getElementById('bottomNav');
+    const mainSidebar = document.getElementById('mainSidebar');
+    const hamburgerBtn = document.querySelector('.navbar-toggler');
+    const hamburgerIcon = hamburgerBtn.querySelector('.hamburger-icon');
+    const closeIcon = hamburgerBtn.querySelector('.close-icon');
     
     // Get current URL path for active links
     const path = window.location.pathname;
@@ -1046,14 +1382,25 @@ body {
       }
     });
     
-    // Category toggles animation
-    const toggles = document.querySelectorAll('.category-toggle');
-    toggles.forEach(toggle => {
-      toggle.addEventListener('click', function(e) {
-        // Don't prevent default as it would break the collapse functionality
-        const icon = this.querySelector('svg');
-        // Animation is handled by CSS
-      });
+    // Handle hamburger to X animation
+    mainSidebar.addEventListener('show.bs.offcanvas', function () {
+      hamburgerIcon.style.opacity = '0';
+      hamburgerIcon.style.transform = 'rotate(180deg)';
+      closeIcon.style.display = 'block';
+      closeIcon.style.opacity = '1';
+      closeIcon.style.transform = 'rotate(0)';
+      document.body.classList.add('sidebar-open');
+    });
+    
+    mainSidebar.addEventListener('hide.bs.offcanvas', function () {
+      closeIcon.style.opacity = '0';
+      closeIcon.style.transform = 'rotate(-180deg)';
+      setTimeout(() => {
+        closeIcon.style.display = 'none';
+        hamburgerIcon.style.opacity = '1';
+        hamburgerIcon.style.transform = 'rotate(0)';
+      }, 300);
+      document.body.classList.remove('sidebar-open');
     });
   
     // Enhanced scroll behavior for navbar hiding - Mobile Only
@@ -1079,7 +1426,7 @@ body {
     }
     
     // Handle search form submissions
-    const searchForms = document.querySelectorAll('.search-form');
+    const searchForms = document.querySelectorAll('.search-form, .sidebar-search-form');
     searchForms.forEach(form => {
       form.addEventListener('submit', function(e) {
         const input = this.querySelector('input[name="query"]');
@@ -1090,9 +1437,53 @@ body {
       });
     });
     
+    // PWA Install functionality
+    let deferredPrompt;
+    const pwaInstallSection = document.getElementById('pwaInstallSection');
+    const pwaInstallBtn = document.getElementById('pwaInstallBtn');
+    
+    // Check if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+      // Already installed, hide the install button
+      if (pwaInstallSection) {
+        pwaInstallSection.style.display = 'none';
+      }
+    }
+    
+    window.addEventListener('beforeinstallprompt', (e) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later
+      deferredPrompt = e;
+      // Show the install button
+      if (pwaInstallSection) {
+        pwaInstallSection.style.display = 'block';
+      }
+    });
+    
+    if (pwaInstallBtn) {
+      pwaInstallBtn.addEventListener('click', async () => {
+        if (deferredPrompt) {
+          // Show the install prompt
+          deferredPrompt.prompt();
+          // Wait for the user to respond to the prompt
+          const { outcome } = await deferredPrompt.userChoice;
+          
+          if (outcome === 'accepted') {
+            console.log('User accepted the install prompt');
+            // Hide the install button
+            pwaInstallSection.style.display = 'none';
+          }
+          
+          // Clear the deferred prompt
+          deferredPrompt = null;
+        }
+      });
+    }
+    
     // Close sidebar when clicking on a link (mobile)
     if (window.innerWidth < 992) {
-      const sidebarLinks = document.querySelectorAll('#mainSidebar a:not(.dropdown-toggle)');
+      const sidebarLinks = document.querySelectorAll('#mainSidebar a:not([data-bs-toggle])');
       const sidebar = document.getElementById('mainSidebar');
       
       sidebarLinks.forEach(link => {
@@ -1112,20 +1503,12 @@ body {
       return new bootstrap.Tooltip(tooltipTriggerEl);
     });
     
-    // Popovers
-    const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
-    popoverTriggerList.map(function(popoverTriggerEl) {
-      return new bootstrap.Popover(popoverTriggerEl);
-    });
-    
     // Handle notifications badge visibility
     function updateNotificationsBadges() {
-      const notificationBadges = document.querySelectorAll('.notification-badge');
+      const notificationBadges = document.querySelectorAll('.notification-badge, .quick-action-badge');
       notificationBadges.forEach(badge => {
-        // Get the count value and parse it as an integer
         const count = parseInt(badge.textContent.trim());
         
-        // Only hide if count is 0 or NaN (not a number)
         if (isNaN(count) || count === 0) {
           badge.style.display = 'none';
         } else {
@@ -1134,179 +1517,42 @@ body {
       });
     }
     
-    // Call initially
     updateNotificationsBadges();
     
-    // Add a MutationObserver to watch for changes in notification badges
-    // This ensures badges update if counts change dynamically
-    const notificationBadges = document.querySelectorAll('.notification-badge');
-    if (notificationBadges.length > 0) {
-      const observer = new MutationObserver(updateNotificationsBadges);
-      
-      notificationBadges.forEach(badge => {
-        observer.observe(badge, { 
-          childList: true, 
-          characterData: true,
-          subtree: true 
-        });
-      });
-    }
-    
-    // Theme toggle functionality (if implemented)
-    const themeToggle = document.getElementById('themeToggle');
-    if (themeToggle) {
-      themeToggle.addEventListener('click', function() {
-        const currentTheme = document.documentElement.getAttribute('data-bs-theme');
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-bs-theme', newTheme);
-        localStorage.setItem('preferredTheme', newTheme);
-        
-        // Update toggle icon if needed
-        const themeIcon = this.querySelector('svg.theme-icon');
-        if (themeIcon) {
-          if (newTheme === 'dark') {
-            themeIcon.innerHTML = `<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>`;
-          } else {
-            themeIcon.innerHTML = `<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>`;
-          }
-        }
-      });
-      
-      // Set initial theme based on user preference
-      const savedTheme = localStorage.getItem('preferredTheme');
-      if (savedTheme) {
-        document.documentElement.setAttribute('data-bs-theme', savedTheme);
-        // Update toggle icon
-        const themeIcon = themeToggle.querySelector('svg.theme-icon');
-        if (themeIcon) {
-          if (savedTheme === 'dark') {
-            themeIcon.innerHTML = `<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>`;
-          } else {
-            themeIcon.innerHTML = `<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>`;
-          }
-        }
-      }
-    }
-    
-    // Handle dropdown menu positioning
-    const dropdownMenus = document.querySelectorAll('.dropdown-menu');
-    dropdownMenus.forEach(menu => {
-      const dropdown = menu.closest('.dropdown');
-      if (dropdown) {
-        dropdown.addEventListener('show.bs.dropdown', function() {
-          // Adjust position for dropdowns near screen edges
-          const rect = menu.getBoundingClientRect();
-          if (rect.right > window.innerWidth) {
-            menu.classList.add('dropdown-menu-end');
-          }
-        });
-      }
-
-      // Function to update the close button color based on the theme
-      function updateCloseButtonColor() {
-        const closeButton = document.querySelector('.offcanvas-header .btn-close');
-        if (closeButton) {
-          const theme = document.documentElement.getAttribute('data-bs-theme');
-          if (theme === 'dark') {
-            closeButton.style.filter = 'invert(1) grayscale(100%) brightness(200%)';
-          } else {
-            closeButton.style.filter = 'none';
-            closeButton.style.color = 'var(--primary-color)';
-          }
-        }
-      }
-
-      // Call the function when the page loads and when the theme changes
-      document.addEventListener('DOMContentLoaded', updateCloseButtonColor);
-      document.addEventListener('change', updateCloseButtonColor);
-    });
-
-    document.addEventListener('DOMContentLoaded', function() {
-      // Get sidebar element
-      const sidebar = document.getElementById('mainSidebar');
-      
-      // Add event listeners for sidebar state
-      sidebar.addEventListener('show.bs.offcanvas', function() {
-        document.body.classList.add('sidebar-open');
-      });
-      
-      sidebar.addEventListener('hide.bs.offcanvas', function() {
-        document.body.classList.remove('sidebar-open');
-      });
-      
-      // Make sure sidebar height adjusts if window is resized
-      window.addEventListener('resize', function() {
-        if (window.innerWidth >= 992) {
-          // Reset any mobile-specific styles when switching to desktop
-          sidebar.style.bottom = 'auto';
-        }
-      });
-    });
-
-    const mainSidebar = document.getElementById('mainSidebar');
-    const hamburgerButton = document.querySelector('.navbar-toggler');
-    
-    // Toggle hamburger to X when sidebar opens/closes
-    mainSidebar.addEventListener('show.bs.offcanvas', function () {
-      hamburgerButton.classList.add('is-active');
-      document.body.classList.add('sidebar-open');
-    });
-    
-    mainSidebar.addEventListener('hide.bs.offcanvas', function () {
-      hamburgerButton.classList.remove('is-active');
-      document.body.classList.remove('sidebar-open');
-    });
-    
-    // Handle chevron rotation for collapsible elements
+    // Handle collapsible animations
     const collapsibles = document.querySelectorAll('[data-bs-toggle="collapse"]');
     collapsibles.forEach(element => {
       element.addEventListener('click', function() {
-        const expanded = this.getAttribute('aria-expanded') === 'true';
-        // Chevron animation is handled by CSS
+        // Animation handled by CSS
       });
     });
     
-    // Close sidebar when a non-collapsible link is clicked
-    const sidebarLinks = document.querySelectorAll('.sidebar-link:not([data-bs-toggle]), .sidebar-sublink');
-    sidebarLinks.forEach(link => {
-      link.addEventListener('click', function() {
-        const bsOffcanvas = bootstrap.Offcanvas.getInstance(mainSidebar);
-        if (bsOffcanvas) {
-          bsOffcanvas.hide();
-        }
-      });
-    });
+    // Smooth sidebar opening
+    const offcanvasConfig = {
+      backdrop: true,
+      keyboard: true,
+      scroll: false
+    };
     
-    // Update navbar toggler styles
-    function updateTogglerStyles() {
-      const sidebarOpen = document.body.classList.contains('sidebar-open');
-      if (sidebarOpen) {
-        // Apply X style when sidebar is open
-        hamburgerButton.innerHTML = `
-          <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        `;
-      } else {
-        // Apply hamburger style when sidebar is closed
-        hamburgerButton.innerHTML = `
-          <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="4" x2="20" y1="12" y2="12"/>
-            <line x1="4" x2="20" y1="6" y2="6"/>
-            <line x1="4" x2="20" y1="18" y2="18"/>
-          </svg>
-        `;
-      }
-    }
+    const bsOffcanvas = new bootstrap.Offcanvas(mainSidebar, offcanvasConfig);
     
-    // Initial setup
-    updateTogglerStyles();
+    // Override the default show/hide to make it smoother
+    const originalShow = bsOffcanvas.show;
+    const originalHide = bsOffcanvas.hide;
     
-    // Update when sidebar is shown/hidden
-    mainSidebar.addEventListener('shown.bs.offcanvas', updateTogglerStyles);
-    mainSidebar.addEventListener('hidden.bs.offcanvas', updateTogglerStyles);
+    bsOffcanvas.show = function() {
+      mainSidebar.style.transform = 'translateX(100%)';
+      originalShow.call(this);
+      setTimeout(() => {
+        mainSidebar.style.transform = 'translateX(0)';
+      }, 10);
+    };
+    
+    bsOffcanvas.hide = function() {
+      mainSidebar.style.transform = 'translateX(100%)';
+      setTimeout(() => {
+        originalHide.call(this);
+      }, 300);
+    };
 });
 </script>
-
-<body>
