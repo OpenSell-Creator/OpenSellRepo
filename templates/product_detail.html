@@ -301,8 +301,6 @@
     </div>
 </div>
 
-
-
 <!-- Seller Information Card -->
 {% if user != product.seller.user %}
 <div class="card seller-card mt-3 mb-4">
@@ -311,11 +309,51 @@
             <i class="fas fa-user-circle me-2" style="color: var(--accent-color)"></i>
             Seller Information
         </h5>
+        {% if product.seller_is_verified_business %}
+            <span class="verification-status verified">
+                <i class="bi bi-patch-check-fill"></i>
+                Verified Business
+            </span>
+        {% elif product.seller.has_pending_verification %}
+            <span class="verification-status pending">
+                <i class="bi bi-clock"></i>
+                Verification Pending
+            </span>
+        {% endif %}
     </div>
+    {% if product.seller_is_verified_business %}
+        <div class="business-info text-center">
+            {% if product.seller.business_description %}
+                <p class="text-muted small mb-2">{{ product.seller.business_description|truncatechars:100 }}</p>
+            {% endif %}
+            
+            <div class="business-details">
+                {% if product.seller.business_email %}
+                    <div class="contact-item">
+                        <i class="bi bi-envelope me-1"></i>
+                        <small>{{ product.seller.business_email }}</small>
+                    </div>
+                {% endif %}
+                {% if product.seller.business_phone %}
+                    <div class="contact-item">
+                        <i class="bi bi-telephone me-1"></i>
+                        <small>{{ product.seller.business_phone }}</small>
+                    </div>
+                {% endif %}
+                {% if product.seller.business_website %}
+                    <div class="contact-item">
+                        <i class="bi bi-globe me-1"></i>
+                        <a href="{{ product.seller.business_website }}" target="_blank" class="small">
+                            Visit Website
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
     <div class="card-body py-3">
         <!-- Seller Profile Section -->
         <div class="d-flex flex-column align-items-center gap-2 mb-3">
-            <!-- Avatar -->
             <div class="seller-avatar-wrapper">
                 {% if product.seller.user.profile.photo %}
                     <img src="{{ product.seller.user.profile.photo.url }}" 
@@ -1209,6 +1247,55 @@
 
     [data-bs-theme="dark"] .pro-seller-icon {
         color: #60a5fa;
+    }
+    /* Enhanced Seller Card Styles */
+    .verification-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .verification-status.verified {
+        background: #e8f5e8;
+        color: #2e7d32;
+        border: 1px solid #4caf50;
+    }
+
+    .verification-status.pending {
+        background: #fff3e0;
+        color: #f57c00;
+        border: 1px solid #ff9800;
+    }
+
+    .business-info {
+        margin-top: 10px;
+    }
+
+    .business-details {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .contact-item {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        color: var(--text-secondary);
+    }
+
+    .contact-item a {
+        color: var(--accent-color);
+        text-decoration: none;
+    }
+
+    .contact-item a:hover {
+        text-decoration: underline;
     }
 </style>
 <script>

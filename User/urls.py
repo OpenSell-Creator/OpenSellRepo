@@ -21,20 +21,20 @@ urlpatterns = [
     name='password_reset'),
     
     path('password-reset/done/', auth_views.PasswordResetDoneView.as_view(
-             template_name='password_reset_done.html'
-         ),  name='password_reset_done'),
+            template_name='password_reset_done.html'
+        ),  name='password_reset_done'),
     
     path('password-reset-confirm/<uidb64>/<token>/', 
-         auth_views.PasswordResetConfirmView.as_view(
-             template_name='password_reset_confirm.html'
-         ), 
-         name='password_reset_confirm'),
+        auth_views.PasswordResetConfirmView.as_view(
+            template_name='password_reset_confirm.html'
+        ), 
+        name='password_reset_confirm'),
     
     path('password-reset-complete/', 
-         auth_views.PasswordResetCompleteView.as_view(
-             template_name='password_reset_complete.html'
-         ), 
-         name='password_reset_complete'),
+        auth_views.PasswordResetCompleteView.as_view(
+            template_name='password_reset_complete.html'
+        ), 
+        name='password_reset_complete'),
     
     path('email-preferences/', views.email_preferences, name='email_preferences'),
     path('unsubscribe/', views.unsubscribe_all, name='unsubscribe_all'),
@@ -44,6 +44,14 @@ urlpatterns = [
     
     path('send-verification-otp/', views.send_verification_otp, name='send_verification_otp'),
     path('verify-email/', views.verify_email_form, name='verify_email_form'),
+    
+    path('business/status/', views.business_verification_status, name='business_verification_status'),
+    path('business/upload-document/', views.upload_business_document, name='upload_business_document'),
+    
+    # Admin URLs
+    path('admin/business-verifications/', views.admin_business_verifications, name='admin_business_verifications'),
+    path('admin/verify-business/<int:profile_id>/', views.admin_verify_business, name='admin_verify_business'),
+    path('business/verify/', views.business_verification_form, name='business_verification_form'),
     
     path('api/lgas/<int:state_id>/', views.load_lgas, name='load_lgas'),
 ]

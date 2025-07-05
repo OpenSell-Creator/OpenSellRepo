@@ -13,7 +13,7 @@ class ListingFilterForm(forms.Form):
         
         super(ListingFilterForm, self).__init__(*args, **kwargs)
         self.fields['category'].widget.attrs.update({'class': 'form-select'})
-               
+
 class MultipleFileInput(forms.ClearableFileInput):
     allow_multiple_selected = True
     
@@ -41,10 +41,9 @@ class ListingForm(forms.ModelForm):
     formatted_price = forms.CharField(label='Price', required=True)
     
     LISTING_TYPE_CHOICES = [
-        ('standard', 'Standard Listing (45 days) - Free'),
-        ('business', 'Business Listing (90 days) - ₦2,000'),
-        ('urgent', 'Urgent Sale (30 days) - ₦1,000'),
-        ('permanent', 'Permanent Retail Listing - ₦5,000/month'),
+        ('standard', 'Standard Listing (45 days)'),
+        ('urgent', 'Urgent Sale (30 days)'),
+        ('permanent', 'Permanent Retail Listing'),
     ]
     
     listing_type = forms.ChoiceField(
@@ -71,8 +70,8 @@ class ListingForm(forms.ModelForm):
     class Meta:
         model = Product_Listing
         fields = ['title', 'description', 'formatted_price', 'condition', 
-                 'category', 'subcategory', 'brand', 'images', 'listing_type', 
-                 'quantity', 'is_always_available']
+                'category', 'subcategory', 'brand', 'images', 'listing_type', 
+                'quantity', 'is_always_available']
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
@@ -162,7 +161,7 @@ class ListingForm(forms.ModelForm):
         instance = super().save(commit=False)
         instance.price = self.cleaned_data.get('price')
         if commit:
-           instance.save()
+            instance.save()
         return instance
         
 class ProductSearchForm(forms.Form):
@@ -175,16 +174,17 @@ class ProductSearchForm(forms.Form):
     condition = forms.ChoiceField(choices=[('', 'Any')] + Product_Listing.CONDITION_CHOICES, required=False)
     state = forms.ModelChoiceField(queryset=State.objects.all(), required=False, empty_label="States")
     lga = forms.ModelChoiceField(queryset=LGA.objects.none(), required=False, empty_label="LGAs")
+    verified_business = forms.BooleanField(required=False, label="Verified Businesses Only",
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        # Initialize empty querysets
         self.fields['subcategory'].queryset = Subcategory.objects.none()
-        self.fields['brand'].queryset = Brand.objects.none()  # Initialize brand queryset
+        self.fields['brand'].queryset = Brand.objects.none()
         self.fields['lga'].queryset = LGA.objects.none()
 
-        # Set subcategories and brands based on category
         category_id = self.data.get('category', None)
         if category_id:
             try:
@@ -194,13 +194,14 @@ class ProductSearchForm(forms.Form):
             except Category.DoesNotExist:
                 pass
         else:
-            # Show all brands if no category is selected
             self.fields['brand'].queryset = Brand.objects.all()
 
-        # Set LGAs based on state
         state_id = self.data.get('state', None)
         if state_id:
             self.fields['lga'].queryset = LGA.objects.filter(state_id=state_id)
+        
+        if 'verified_business' in self.data and self.data['verified_business'] == '1':
+            self.fields['verified_business'].initial = True
     
 class ReviewForm(forms.ModelForm):
     class Meta:

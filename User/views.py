@@ -1,14 +1,19 @@
 from django.shortcuts import render, HttpResponse, redirect
 from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.mail import send_mail
+from django.db import transaction
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User
 from django.http import Http404
 from django.views.decorators.http import require_http_methods
+from django.db.models import Q, Avg, Exists, OuterRef, Count
 from .models import EmailPreferences, Profile
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
+from django.db import models
+from django.core.paginator import Paginator
 from allauth.socialaccount.views import SignupView
 from django.views.generic.edit import UpdateView
 from django.views.generic.detail import DetailView
@@ -18,13 +23,15 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from .forms import SignUpForm, ProfileUpdateForm, LocationForm
-from .models import Profile,LGA,State,Location
+from .forms import SignUpForm, ProfileUpdateForm, LocationForm, BusinessVerificationForm, BusinessDocumentForm
+from .models import Profile,LGA,State,Location, BusinessVerificationDocument
 from django.views.decorators.http import require_GET
-from .utils import send_otp_email
+from .utils import send_otp_email, send_business_verification_approved_email, send_business_verification_rejected_email, send_business_verification_submitted_email
 from django.utils import timezone
+from django.conf import settings
+import logging
+logger = logging.getLogger(__name__)
 import random
-
 
 class CustomSignupView(SignupView):
     def dispatch(self, request, *args, **kwargs):
@@ -125,21 +132,18 @@ class ProfileUpdateView(LoginRequiredMixin, UpdateView):
         user.first_name = self.request.POST.get('first_name')
         user.last_name = self.request.POST.get('last_name')
         user.save()
-        
-        # If email changed, reset verification status
+
         if old_email != user.email:
             self.object.email_verified = False
             self.object.email_otp = None
             self.object.save()
             messages.info(self.request, "Email address changed. Please verify your new email.")
         
-        # Create location if it doesn't exist
         if not self.object.location:
             location = Location.objects.create()
             self.object.location = location
             self.object.save()
         
-        # Handle Location updates
         location_form = LocationForm(self.request.POST, instance=self.object.location)
         if location_form.is_valid():
             location_form.save()
@@ -147,7 +151,6 @@ class ProfileUpdateView(LoginRequiredMixin, UpdateView):
             print(f"Location form errors: {location_form.errors}")
         
         return super().form_valid(form)
-
 
 @require_GET
 def load_lgas(request, state_id):
@@ -160,7 +163,6 @@ def load_lgas(request, state_id):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
-
 class ProfileDetailView(LoginRequiredMixin, DetailView):
     model = Profile
     template_name = 'profile_detail.html'
@@ -168,6 +170,188 @@ class ProfileDetailView(LoginRequiredMixin, DetailView):
 
     def get_object(self, queryset=None):
         return self.request.user.profile
+
+@login_required
+def business_verification_form(request):
+    profile = request.user.profile
+    
+    # Check if user already has verified status
+    if profile.is_verified_business:
+        messages.info(request, "Your business is already verified!")
+        return redirect('my_store', username=request.user.username)
+    
+    # Check if user has pending verification
+    if profile.has_pending_verification:
+        messages.info(request, "Your business verification is currently under review.")
+        return redirect('business_verification_status')
+    
+    if request.method == 'POST':
+        form = BusinessVerificationForm(request.POST, instance=profile)
+        document_form = BusinessDocumentForm(request.POST, request.FILES)
+        
+        if form.is_valid():
+            with transaction.atomic():
+                # Save business information
+                profile = form.save(commit=False)
+                profile.business_verification_status = 'pending'
+                profile.save()
+                
+                # Save documents if provided
+                if document_form.is_valid() and request.FILES.get('document'):
+                    document = document_form.save(commit=False)
+                    document.profile = profile
+                    document.save()
+                
+                # Send confirmation email
+                if send_business_verification_submitted_email(request.user):
+                    messages.success(request, 
+                        "Business verification submitted successfully! "
+                        "We'll review your application within 2-3 business days. "
+                        "You'll receive an email confirmation shortly."
+                    )
+                else:
+                    messages.success(request, 
+                        "Business verification submitted successfully! "
+                        "We'll review your application within 2-3 business days."
+                    )
+                    
+                return redirect('business_verification_status')
+    else:
+        form = BusinessVerificationForm(instance=profile)
+        document_form = BusinessDocumentForm()
+    
+    context = {
+        'form': form,
+        'document_form': document_form,
+        'profile': profile,
+    }
+    return render(request, 'business_verification_form.html', context)
+
+def send_admin_new_verification_notification(profile):
+    """Send notification to admins when new verification is submitted"""
+    try:
+        # Get all staff users
+        admin_emails = User.objects.filter(is_staff=True).values_list('email', flat=True)
+        
+        if not admin_emails:
+            return False
+        
+        subject = f"New Business Verification: {profile.business_name}"
+        
+        message = f"""
+New business verification application submitted:
+
+Business: {profile.business_name}
+User: {profile.user.username} ({profile.user.get_full_name()})
+Email: {profile.user.email}
+Submitted: {timezone.now().strftime('%Y-%m-%d %H:%M')}
+
+Review at: {settings.SITE_URL}/controlroom/user/profile/?business_verification_status=pending
+
+Regards,
+OpenSell System
+"""
+        
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=['support@opensell.online'],
+            fail_silently=True,
+        )
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to send admin notification: {str(e)}")
+        return False
+    
+@login_required
+def business_verification_status(request):
+    """View to show business verification status"""
+    profile = request.user.profile
+    documents = BusinessVerificationDocument.objects.filter(profile=profile)
+    
+    context = {
+        'profile': profile,
+        'documents': documents,
+    }
+    return render(request, 'business_verification_status.html', context)
+
+@login_required
+def upload_business_document(request):
+    """AJAX view for uploading additional business documents"""
+    if request.method == 'POST':
+        form = BusinessDocumentForm(request.POST, request.FILES)
+        if form.is_valid():
+            document = form.save(commit=False)
+            document.profile = request.user.profile
+            document.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Document uploaded successfully!',
+                'document_id': document.id,
+                'document_name': document.get_document_type_display()
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'errors': form.errors
+            })
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request method'})
+
+@user_passes_test(lambda u: u.is_staff)
+def admin_business_verifications(request):
+    """Admin view to manage business verifications"""
+    # For now, just render a simple template
+    return render(request, 'admin/business_verifications.html', {
+        'message': 'Admin business verifications - coming soon!',
+        'page_obj': [],
+        'status_filter': 'pending',
+        'search_query': ''
+    })
+    
+@user_passes_test(lambda u: u.is_staff)
+def admin_verify_business(request, profile_id):
+    """Admin view to verify/reject a business"""
+    profile = get_object_or_404(Profile, id=profile_id)
+    documents = BusinessVerificationDocument.objects.filter(profile=profile)
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        admin_notes = request.POST.get('admin_notes', '')
+        
+        if action == 'verify':
+            profile.business_verification_status = 'verified'
+            profile.business_verified_at = timezone.now()
+            profile.business_verified_by = request.user
+            profile.save()
+            
+            # Send approval email
+            if send_business_verification_approved_email(profile.user, request.user):
+                messages.success(request, f"Business {profile.business_name} has been verified! Approval email sent.")
+            else:
+                messages.success(request, f"Business {profile.business_name} has been verified!")
+            
+        elif action == 'reject':
+            profile.business_verification_status = 'rejected'
+            profile.save()
+            
+            # Send rejection email
+            if send_business_verification_rejected_email(profile.user, admin_notes):
+                messages.success(request, f"Business {profile.business_name} has been rejected. Rejection email sent.")
+            else:
+                messages.success(request, f"Business {profile.business_name} has been rejected.")
+        
+        return redirect('admin_business_verifications')
+    
+    context = {
+        'profile': profile,
+        'documents': documents,
+    }
+    return render(request, 'admin/verify_business_detail.html', context)
 
 @login_required
 def send_verification_otp(request):
@@ -208,7 +392,7 @@ def verify_email_form(request):
             messages.error(request, "Invalid or expired verification code. Please try again.")
     
     return render(request, 'verify_email_form.html')
-    
+
 def email_preferences(request):
     """
     View for managing email preferences

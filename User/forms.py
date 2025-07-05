@@ -1,9 +1,8 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Location, Profile, LGA
+from .models import Location, Profile, LGA, BusinessVerificationDocument
 import re
-
 
 class SignUpForm(UserCreationForm):
     email = forms.EmailField(
@@ -98,7 +97,6 @@ class SignUpForm(UserCreationForm):
             user.save()
         return user
 
-    
 class LocationForm(forms.ModelForm):
     class Meta:
         model = Location
@@ -116,7 +114,6 @@ class LocationForm(forms.ModelForm):
                 pass
         elif self.instance and hasattr(self.instance, 'pk') and self.instance.pk and self.instance.state:
             self.fields['lga'].queryset = self.instance.state.lgas.all()
-        
 
 class UserUpdateForm(forms.ModelForm):
     email = forms.EmailField()
@@ -124,7 +121,6 @@ class UserUpdateForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ['last_name', 'first_name', 'username', 'email']
-
 
 class ProfileUpdateForm(forms.ModelForm):
     first_name = forms.CharField(max_length=150)
@@ -166,3 +162,66 @@ class ProfileUpdateForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+
+class BusinessVerificationForm(forms.ModelForm):
+    class Meta:
+        model = Profile
+        fields = [
+            'business_name', 'business_registration_number', 'business_type',
+            'business_description', 'business_website', 'business_email', 
+            'business_phone', 'business_address_visible'
+        ]
+        widgets = {
+            'business_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter your business name'
+            }),
+            'business_registration_number': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter registration number (optional)'
+            }),
+            'business_type': forms.Select(attrs={'class': 'form-select'}),
+            'business_description': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'Brief description of your business'
+            }),
+            'business_website': forms.URLInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'https://your-website.com'
+            }),
+            'business_email': forms.EmailInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'business@example.com'
+            }),
+            'business_phone': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': '+234 xxx xxx xxxx'
+            }),
+            'business_address_visible': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            }),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['business_name'].required = True
+        self.fields['business_email'].required = True
+        self.fields['business_phone'].required = True
+        self.fields['business_description'].required = True
+
+class BusinessDocumentForm(forms.ModelForm):
+    class Meta:
+        model = BusinessVerificationDocument
+        fields = ['document_type', 'document', 'description']
+        widgets = {
+            'document_type': forms.Select(attrs={'class': 'form-select'}),
+            'document': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': '.pdf,.jpg,.jpeg,.png,.doc,.docx'
+            }),
+            'description': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Brief description of this document'
+            }),
+        }

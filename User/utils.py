@@ -6,6 +6,7 @@ from django.template.loader import render_to_string
 import hashlib
 from django.conf import settings
 import time
+from django.utils.html import strip_tags
 import logging
 logger = logging.getLogger(__name__)
 
@@ -44,4 +45,110 @@ def send_otp_email(user):
         return True
     except Exception as e:
         logger.error(f"Failed to send OTP email: {str(e)}")
+        return False
+    
+def send_business_verification_submitted_email(user):
+    """Send confirmation email when business verification is submitted"""
+    try:
+        subject = "Business Verification Application Submitted - OpenSell"
+        
+        email_context = {
+            'user': user,
+            'business_name': user.profile.business_name,
+            'site_url': settings.SITE_URL,
+            'site_name': settings.SITE_NAME,
+            'status_url': settings.SITE_URL + reverse('business_verification_status'),
+        }
+        
+        html_message = render_to_string('emails/business_verification_submitted.html', email_context)
+        plain_message = strip_tags(html_message)
+        
+        send_mail(
+            subject=subject,
+            message=plain_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        
+        logger.info(f"Business verification submitted email sent to {user.email}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to send business verification submitted email to {user.email}: {str(e)}")
+        return False
+
+def send_business_verification_approved_email(user, verified_by_admin):
+    try:
+        subject = "🎉 Your Business Has Been Verified - OpenSell"
+        
+        email_context = {
+            'user': user,
+            'business_name': user.profile.business_name,
+            'verified_date': user.profile.business_verified_at,
+            'site_url': settings.SITE_URL,
+            'site_name': settings.SITE_NAME,
+            'store_url': settings.SITE_URL + reverse('user_store', kwargs={'username': user.username}),
+            'benefits': [
+                'Verified business badge on all your products',
+                'Access to permanent retail listings',
+                'Enhanced business profile visibility',
+                'Display business address and contact info',
+                'Priority in search results',
+                'Access to business-only filters'
+            ]
+        }
+        
+        html_message = render_to_string('emails/business_verification_approved.html', email_context)
+        plain_message = strip_tags(html_message)
+        
+        send_mail(
+            subject=subject,
+            message=plain_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        
+        logger.info(f"Business verification approved email sent to {user.email}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to send business verification approved email to {user.email}: {str(e)}")
+        return False
+
+def send_business_verification_rejected_email(user, rejection_reason=None):
+    """Send email when business verification is rejected"""
+    try:
+        subject = "Business Verification Update - OpenSell"
+        
+        email_context = {
+            'user': user,
+            'business_name': user.profile.business_name,
+            'rejection_reason': rejection_reason,
+            'site_url': settings.SITE_URL,
+            'site_name': settings.SITE_NAME,
+            'reapply_url': settings.SITE_URL + reverse('business_verification_form'),
+            'support_email': settings.DEFAULT_FROM_EMAIL,
+        }
+        
+        html_message = render_to_string('emails/business_verification_rejected.html', email_context)
+        plain_message = strip_tags(html_message)
+        
+        send_mail(
+            subject=subject,
+            message=plain_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        
+        logger.info(f"Business verification rejected email sent to {user.email}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to send business verification rejected email to {user.email}: {str(e)}")
         return False

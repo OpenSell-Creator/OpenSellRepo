@@ -1,5 +1,4 @@
-<!-- Enhanced Product Card Template -->
-<div class="card product-card h-100 {% if product.is_boosted %}boosted{% endif %} {% if product.is_pro_seller %}pro-seller{% endif %}">
+<div class="card product-card h-100 {% if product.is_boosted %}boosted{% endif %} {% if product.is_pro_seller %}pro-seller{% endif %} {% if product.seller_is_verified_business %}verified-business{% endif %}">
     <!-- Boost Badge -->
     {% if product.is_boosted %}
         <div class="boost-badge {{ product.active_boost.boost_type }}">
@@ -15,10 +14,22 @@
         </div>
     {% endif %}
     
-    <!-- Pro Seller Badge -->
-    {% if product.is_pro_seller %}
+    <!-- Verified Business Badge - Priority over Pro Badge -->
+    {% if product.seller_is_verified_business %}
+        <div class="verified-business-badge" data-bs-toggle="tooltip" data-bs-placement="top" title="Verified Business - {{ product.seller_business_name }}">
+            <i class="bi bi-patch-check-fill"></i>
+            <span class="badge-text">Verified</span>
+        </div>
+    {% elif product.is_pro_seller %}
         <div class="pro-badge" data-bs-toggle="tooltip" data-bs-placement="top" title="Verified Pro Seller">
             <i class="bi bi-patch-check-fill"></i>
+        </div>
+    {% endif %}
+
+    <!-- Permanent Listing Badge -->
+    {% if product.listing_type == 'permanent' and product.seller_is_verified_business %}
+        <div class="permanent-listing-badge" data-bs-toggle="tooltip" data-bs-placement="top" title="Permanent Listing">
+            <i class="bi bi-infinity"></i>
         </div>
     {% endif %}
 
@@ -60,19 +71,33 @@
             <div class="seller-location-row">
                 <div class="seller-info">
                     <a href="{% url 'user_store' product.seller.user.username %}" class="seller-link">
-                        {% if product.is_pro_seller %}
+                        <!-- Business/Pro Icon -->
+                        {% if product.seller_is_verified_business %}
+                            <i class="bi bi-building-fill verified-business-icon" 
+                                title="Verified Business" data-bs-toggle="tooltip"></i>
+                        {% elif product.is_pro_seller %}
                             <i class="bi bi-patch-check-fill pro-icon"></i>
                         {% endif %}
+                        
+                        <!-- Seller Avatar -->
                         {% if product.seller.user.profile.photo %}
                             <img src="{{ product.seller.user.profile.photo.url }}" 
-                                 alt="{{ product.seller.username }}" 
-                                 class="seller-avatar">
+                                alt="{{ product.seller.username }}" 
+                                class="seller-avatar">
                         {% else %}
                             <div class="seller-avatar-placeholder">
                                 {{ product.seller.user.username|first|upper }}
                             </div>
                         {% endif %}
-                        <span class="seller-name">{{ product.seller.user.username }}</span>
+                        
+                        <!-- Seller Name -->
+                        <span class="seller-name">
+                            {% if product.seller_is_verified_business and product.seller_business_name %}
+                                {{ product.seller_business_name|truncatechars:20 }}
+                            {% else %}
+                                {{ product.seller.user.username }}
+                            {% endif %}
+                        </span>
                     </a>
                 </div>
                 
@@ -99,13 +124,36 @@
                     </span>
                 </div>
             </div>
+            
+            <!-- Verified Business Info Row -->
+            {% if product.seller_is_verified_business %}
+                <div class="verified-business-info">
+                    <div class="business-verification-tag">
+                        <i class="bi bi-shield-check"></i>
+                        <span>Verified Business</span>
+                    </div>
+                    {% if product.seller.business_verification_status == 'verified' and product.seller.business_address_visible and product.seller.user.profile.location %}
+                        <div class="business-address">
+                            <i class="bi bi-geo-alt"></i>
+                            <span class="address-text">
+                                {% with location=product.seller.user.profile.location %}
+                                    {% if location.address %}
+                                        {{ location.address|truncatechars:30 }}
+                                    {% elif location.city %}
+                                        {{ location.city }}
+                                    {% endif %}
+                                {% endwith %}
+                            </span>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
         </div>
     </div>
 </div>
 
-<style>/* Optimized CSS for product_card.html - Faster Loading */
+<style>
 
-    /* Enhanced Product Card Styles - Simplified */
     .product-card {
         transition: transform var(--transition-fast), box-shadow var(--transition-fast);
         height: 100%;
@@ -302,6 +350,147 @@
         align-items: center;
         gap: 8px;
         min-width: 0;
+    }
+    * Verified Business Product Card */
+    .product-card.verified-business {
+        background: linear-gradient(135deg, var(--card-background) 0%, rgba(34, 139, 34, 0.02) 100%);
+        border-color: rgba(34, 139, 34, 0.2);
+    }
+
+    .product-card.verified-business:hover {
+        border-color: rgba(34, 139, 34, 0.4);
+        box-shadow: 0 4px 16px rgba(34, 139, 34, 0.1);
+    }
+
+    /* Verified Business Badge */
+    .verified-business-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .verified-business-badge i {
+        font-size: 0.8rem;
+    }
+
+    /* Permanent Listing Badge */
+    .permanent-listing-badge {
+        position: absolute;
+        top: 45px;
+        right: 10px;
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        color: white;
+        padding: 3px 6px;
+        border-radius: 8px;
+        font-size: 0.65rem;
+        font-weight: 600;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Verified Business Icon in Seller Info */
+    .verified-business-icon {
+        color: #22c55e !important;
+        font-size: 0.9rem;
+        margin-right: 3px;
+    }
+
+    /* Verified Business Info Section */
+    .verified-business-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(34, 139, 34, 0.1);
+    }
+
+    .business-verification-tag {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        color: #22c55e;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .business-verification-tag i {
+        font-size: 0.8rem;
+    }
+
+    .business-address {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        color: var(--text-secondary);
+        font-size: 0.7rem;
+    }
+
+    .business-address i {
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
+
+    .address-text {
+        line-height: 1.2;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .verified-business-badge {
+            padding: 3px 6px;
+            font-size: 0.65rem;
+        }
+        
+        .permanent-listing-badge {
+            top: 35px;
+            padding: 2px 5px;
+            font-size: 0.6rem;
+        }
+        
+        .verified-business-info {
+            margin-top: 6px;
+            padding-top: 6px;
+        }
+        
+        .business-verification-tag {
+            font-size: 0.7rem;
+        }
+        
+        .business-address {
+            font-size: 0.65rem;
+        }
+    }
+
+    /* Dark mode support */
+    [data-bs-theme="dark"] .product-card.verified-business {
+        background: linear-gradient(135deg, var(--card-background) 0%, rgba(34, 139, 34, 0.05) 100%);
+    }
+
+    [data-bs-theme="dark"] .verified-business-info {
+        border-top-color: rgba(34, 139, 34, 0.2);
+    }
+
+    [data-bs-theme="dark"] .business-address {
+        color: var(--text-secondary);
+    }
+
+    [data-bs-theme="dark"] .business-address i {
+        color: #9ca3af;
     }
     
     /* Seller Info */
@@ -609,6 +798,7 @@
             transform: none;
         }
     }
+    
 </style>
 
 <script>

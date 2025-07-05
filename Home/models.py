@@ -58,7 +58,6 @@ class Product_Listing(models.Model):
     ]
     LISTING_TYPES = [
         ('standard', 'Standard Listing (45 days)'),
-        ('business', 'Business Listing (90 days)'),
         ('urgent', 'Urgent Sale (30 days)'),
         ('permanent', 'Permanent Retail Listing'),
     ]
@@ -100,7 +99,6 @@ class Product_Listing(models.Model):
     )
     
     def suspend(self, admin_user, reason=None):
-        """Suspend a product listing"""
         self.is_suspended = True
         self.suspended_at = timezone.now()
         self.suspended_by = admin_user
@@ -135,7 +133,6 @@ class Product_Listing(models.Model):
             logging.error(f"Error sending suspension email: {e}")
             
     def unsuspend(self):
-        """Unsuspend a product listing"""
         self.is_suspended = False
         self.save()
         
@@ -175,12 +172,56 @@ class Product_Listing(models.Model):
         return self.title
     
     def get_absolute_url(self):
-        """
-        Returns the URL to access a detailed record for this product.
-        This is required for sitemap generation.
-        """
         from django.urls import reverse
         return reverse('product_detail', kwargs={'pk': self.id})
+    
+    @property
+    def seller_is_verified_business(self):
+        """Check if the seller is a verified business"""
+        try:
+            return self.seller.business_verification_status == 'verified'
+        except AttributeError:
+            return False
+    
+    @property
+    def seller_business_name(self):
+        """Get seller's business name if verified"""
+        try:
+            if self.seller_is_verified_business:
+                return self.seller.business_name
+        except AttributeError:
+            pass
+        return None
+    
+    @property
+    def seller_business_info(self):
+        if self.seller_is_verified_business:
+            try:
+                return {
+                    'name': self.seller.business_name,
+                    'email': self.seller.business_email,
+                    'phone': self.seller.business_phone,
+                    'website': self.seller.business_website,
+                    'address_visible': self.seller.business_address_visible,
+                }
+            except AttributeError:
+                pass
+        return None
+    
+    @property
+    def verification_tier_level(self):
+        if self.is_boosted:
+            boost = self.active_boost
+            if boost:
+                tier_map = {'premium': 1, 'spotlight': 2, 'featured': 3, 'urgent': 4}
+                return tier_map.get(boost.boost_type, 5)
+            return 5
+        elif self.seller_is_verified_business:
+            return 6
+        elif self.is_pro_seller:
+            return 7
+        else:
+            return 8
     
     @property
     def average_rating(self):
@@ -249,7 +290,6 @@ class Product_Listing(models.Model):
         
     @property
     def is_boosted(self):
-        """Check if product has active boost"""
         return self.boosts.filter(
             is_active=True,
             end_date__gt=timezone.now()
@@ -257,7 +297,6 @@ class Product_Listing(models.Model):
     
     @property
     def active_boost(self):
-        """Get active boost if exists"""
         return self.boosts.filter(
             is_active=True,
             end_date__gt=timezone.now()
@@ -265,7 +304,6 @@ class Product_Listing(models.Model):
     
     @property
     def is_pro_seller(self):
-        """Check if seller has active Pro subscription"""
         try:
             return self.seller.user.account.is_subscription_active
         except:
@@ -273,12 +311,10 @@ class Product_Listing(models.Model):
     
     @property
     def boost_type_display(self):
-        """Get boost type for display"""
         boost = self.active_boost
         return boost.get_boost_type_display() if boost else None
     
     def calculate_boost_score(self):
-        """Calculate boost score for sorting"""
         score = 0
         
         # Base score for pro users
@@ -296,14 +332,11 @@ class Product_Listing(models.Model):
             }
             score += boost_scores.get(boost.boost_type, 50)
         
-        # Add time decay factor (newer products score slightly higher)
-        # FIX: Check if created_at exists before calculating
         if self.created_at:
             days_old = (timezone.now() - self.created_at).days
-            time_score = max(0, 10 - (days_old * 0.1))  # Decreases over 100 days
+            time_score = max(0, 10 - (days_old * 0.1))
             score += time_score
         else:
-            # For new products without created_at, give them the maximum time score
             score += 10
         
         return score
@@ -324,23 +357,19 @@ class Product_Listing(models.Model):
         self.save()
 
     def save(self, *args, **kwargs):
-        is_new = self.pk is None  # Check if this is a new product
+        is_new = self.pk is None 
         
-        # Set expiration date for new products
         if is_new and self.listing_type != 'permanent':
             duration = {
                 'standard': 45,
-                'business': 90,
                 'urgent': 30
             }.get(self.listing_type, 45)
             self.expiration_date = timezone.now() + timedelta(days=duration)
         
-        # Handle existing products
-        if self.pk:  # Only for existing instances
+        if self.pk: 
             try:
                 original = Product_Listing.objects.get(pk=self.pk)
         
-                # Reset expiration date if listing type changes
                 if original.listing_type != self.listing_type:
                     self.deletion_warning_sent = False
                     if self.listing_type == 'permanent':
@@ -348,7 +377,6 @@ class Product_Listing(models.Model):
                     else:
                         duration = {
                             'standard': 45,
-                            'business': 90,
                             'urgent': 30
                         }.get(self.listing_type, 45)
                         self.expiration_date = timezone.now() + timedelta(days=duration)
@@ -359,7 +387,6 @@ class Product_Listing(models.Model):
                     if any(getattr(original, field) != getattr(self, field) for field in significant_fields):
                         duration = {
                             'standard': 45,
-                            'business': 90,
                             'urgent': 30
                         }.get(self.listing_type, 45)
                         self.expiration_date = timezone.now() + timedelta(days=duration)
@@ -367,20 +394,20 @@ class Product_Listing(models.Model):
                         
             except Product_Listing.DoesNotExist:
                 pass
-
-        # IMPORTANT: Save first, then calculate boost score
-        # This ensures created_at is set before calculating boost score
+            
+        if self.seller.is_verified_business and self.listing_type == 'standard':
+            if not self.pk: 
+                self.listing_type = 'permanent'
+        
         super().save(*args, **kwargs)
         
-        # Update boost score AFTER saving (when created_at is available)
         calculated_score = self.calculate_boost_score()
         if self.boost_score != calculated_score:
             # Use update to avoid recursion
             Product_Listing.objects.filter(pk=self.pk).update(boost_score=calculated_score)
             # Update the instance to reflect the change
             self.boost_score = calculated_score
-        
-        # Increment seller's total products counter for new products only
+
         if is_new:
             # Use F() expression to avoid race conditions
             from django.db.models import F
@@ -391,11 +418,9 @@ class Product_Listing(models.Model):
             self.seller.refresh_from_db(fields=['total_products_listed'])
             
     def delete(self, *args, **kwargs):
-        # Delete all images first
+
         for image in self.images.all():
             image.delete()
-        
-        # Delete the product's image directory if it exists
         product_path = f'product_images/{self.seller.user.username}/{self.title}/'
         if default_storage.exists(product_path):
             default_storage.delete(product_path)
@@ -410,43 +435,35 @@ class Product_Listing(models.Model):
             
     @property
     def seller_average_rating(self):
-        """Get the seller's overall average rating"""
         return self.seller.seller_average_rating
     
     @property
     def seller_total_reviews(self):
-        """Get the seller's total review count"""
         return self.seller.total_seller_reviews
     
     @classmethod
     def delete_expired_listings(cls):
-        """Delete all expired listings and their associated images"""
         from django.db import ProgrammingError, OperationalError, connection
         
         try:
-            # First check if we can connect to the database
             connection.ensure_connection()
             
-            # Find expired listings
             expired = cls.objects.filter(
                 expiration_date__lte=timezone.now(),
-                listing_type__in=['standard', 'business', 'urgent']
+                listing_type__in=['standard','urgent']
             )
             
             count = expired.count()
             
-            # Process in batches to prevent memory issues
             batch_size = 50
             total = 0
             
-            # Get IDs first to avoid holding all objects in memory
             expired_ids = list(expired.values_list('id', flat=True))
             
             for i in range(0, len(expired_ids), batch_size):
                 batch_ids = expired_ids[i:i+batch_size]
                 batch = cls.objects.filter(id__in=batch_ids)
                 
-                # For each product in the batch
                 for product in batch:
                     try:
                         # Clean up images manually first
@@ -472,12 +489,10 @@ class Product_Listing(models.Model):
                         import logging
                         logging.warning(f"Error processing product {product.id}: {prod_error}")
                 
-                # After cleaning up files, do a bulk delete on this batch
                 batch.delete()
                 
             return total
         except ProgrammingError:
-            # Handle case when table doesn't exist yet
             return 0
         except OperationalError as e:
             # Specifically handle connection issues
@@ -492,11 +507,9 @@ class Product_Listing(models.Model):
             return 0
         
     def get_boost_status(self):
-        """Return active boosts for this product"""
         return self.boosts.filter(is_active=True, end_date__gt=timezone.now()).first()
     
     def can_be_boosted(self, user):
-        """Check if user can boost this product"""
         if not user.is_authenticated:
             return False
         return self.seller.user == user and user.account.balance > 0

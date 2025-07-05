@@ -187,30 +187,31 @@ def get_sorted_products(base_queryset, user=None, limit=None):
     """
     Hybrid sorting approach that prioritizes:
     1. Boosted products (with boost type hierarchy)
-    2. Pro user products
-    3. Regular products
+    2. Verified business products
+    3. Pro user products
+    4. Regular products
     With randomization within each tier
     """
     
     if not base_queryset.exists():
         return []
     
-    # Update boost scores for all products
     for product in base_queryset:
         product.boost_score = product.calculate_boost_score()
         product.save(update_fields=['boost_score'])
     
-    # Separate products into tiers
-    premium_boosted = []  # Premium boost
-    spotlight_boosted = []  # Spotlight boost
-    featured_boosted = []  # Featured boost
-    urgent_boosted = []  # Urgent boost
-    pro_products = []  # Non-boosted pro products
-    regular_products = []  # Regular products
-    
-    # Fetch all products with necessary relationships
+
+    premium_boosted = [] 
+    spotlight_boosted = []
+    featured_boosted = [] 
+    urgent_boosted = []
+    pro_products = []
+    regular_products = []
+    verified_business_products = []
+
     products = base_queryset.select_related(
         'seller__user__account',
+        'seller',
         'category',
         'subcategory',
         'brand'
@@ -231,26 +232,23 @@ def get_sorted_products(base_queryset, user=None, limit=None):
                     featured_boosted.append(product)
                 elif boost and boost.boost_type == 'urgent':
                     urgent_boosted.append(product)
+            elif hasattr(product.seller, 'business_verification_status') and product.seller.business_verification_status == 'verified':
+                verified_business_products.append(product)
             elif product.is_pro_seller:
                 pro_products.append(product)
             else:
                 regular_products.append(product)
         except Exception as e:
-            # If there's any error with a product, treat it as regular
             regular_products.append(product)
-    
-    # Randomize within each tier using the random module correctly
+
     for tier in [premium_boosted, spotlight_boosted, featured_boosted, 
                 urgent_boosted, pro_products, regular_products]:
         shuffle(tier)
-    
-    # Combine with weighted distribution
+
     final_products = []
-    
-    # Add all premium boosted products first
+
     final_products.extend(premium_boosted)
-    
-    # Mix spotlight and featured (80% spotlight, 20% featured)
+
     mixed_spotlight_featured = []
     while spotlight_boosted or featured_boosted:
         if spotlight_boosted and (not featured_boosted or random.random() < 0.8):
@@ -259,27 +257,24 @@ def get_sorted_products(base_queryset, user=None, limit=None):
             mixed_spotlight_featured.append(featured_boosted.pop(0))
     final_products.extend(mixed_spotlight_featured)
     
-    # Mix urgent and pro (60% urgent, 40% pro)
-    mixed_urgent_pro = []
-    while urgent_boosted or pro_products:
-        if urgent_boosted and (not pro_products or random.random() < 0.6):
-            mixed_urgent_pro.append(urgent_boosted.pop(0))
-        elif pro_products:
-            mixed_urgent_pro.append(pro_products.pop(0))
-    
-    # Add some regular products in between (20% chance)
-    mixed_with_regular = []
-    for product in mixed_urgent_pro:
-        mixed_with_regular.append(product)
+    mixed_urgent_verified = []
+    while urgent_boosted or verified_business_products:
+        if urgent_boosted and (not verified_business_products or random.random() < 0.7):
+            mixed_urgent_verified.append(urgent_boosted.pop(0))
+        elif verified_business_products:
+            mixed_urgent_verified.append(verified_business_products.pop(0))
+    final_products.extend(mixed_urgent_verified)
+
+    mixed_pro_regular = []
+    while pro_products:
+        mixed_pro_regular.append(pro_products.pop(0))
         if regular_products and random.random() < 0.2:
-            mixed_with_regular.append(regular_products.pop(0))
+            mixed_pro_regular.append(regular_products.pop(0))
     
-    final_products.extend(mixed_with_regular)
+    final_products.extend(mixed_pro_regular)
     
-    # Add remaining regular products
     final_products.extend(regular_products)
     
-    # Apply limit if specified
     if limit:
         final_products = final_products[:limit]
     
@@ -287,8 +282,7 @@ def get_sorted_products(base_queryset, user=None, limit=None):
 
 def home(request):
     context = {}
-    
-    # Create a unique seed for each user to ensure different random selections
+
     if request.user.is_authenticated:
         seed_string = f"{request.user.id}_{timezone.now().date()}"
         user_seed = int(hashlib.md5(seed_string.encode()).hexdigest()[:8], 16)
@@ -296,30 +290,24 @@ def home(request):
         session_key = request.session.session_key or request.META.get('REMOTE_ADDR', 'anonymous')
         seed_string = f"{session_key}_{timezone.now().date()}"
         user_seed = int(hashlib.md5(seed_string.encode()).hexdigest()[:8], 16)
-    
-    # Set seed for reproducible randomness per user per day
+
     random.seed(user_seed)
-    
-    # Get quality products for hybrid sorting
+
     quality_products = Product_Listing.objects.filter(
         is_suspended=False,
         expiration_date__gt=timezone.now(),
         price__gt=0,
     )
-    
-    # Use hybrid sorting for featured products (limit to 20, no pagination)
+
     featured_products = get_sorted_products(quality_products, request.user, limit=20)
-    
-    # Get location-based products for authenticated users
+
     local_products = []
     location_filter_params = {}
     if request.user.is_authenticated and hasattr(request.user, 'profile') and request.user.profile.location:
         user_location = request.user.profile.location
-        
-        # Build location filter based on available data
+
         location_filters = Q()
-        
-        # Priority order: City > LGA > State
+
         if user_location.city:
             location_filters |= Q(seller__location__city__iexact=user_location.city)
             location_filter_params['city'] = user_location.city
@@ -337,59 +325,53 @@ def home(request):
                 id__in=[p.id for p in featured_products[:10]]  # Exclude first 10 featured products
             )
             local_products = get_sorted_products(local_quality_products, request.user, limit=10)
-    
-    # Get trending products (different criteria)
+        
+
     trending_products = []
     trending_quality_products = quality_products.filter(
-        created_at__gte=timezone.now() - timedelta(days=7),  # Last 7 days
-        view_count__gte=5  # At least 5 views
+        created_at__gte=timezone.now() - timedelta(days=7),
+        view_count__gte=5  
     ).exclude(
         id__in=[p.id for p in featured_products[:10]] + [p.id for p in local_products[:5]]
     ).order_by('-view_count', '-created_at')
     
     trending_products = get_sorted_products(trending_quality_products, request.user, limit=10)
-    
-    # Reset random seed
+
     random.seed()
-    
-    # Handle saved products for authenticated users
+
     if request.user.is_authenticated:
         saved_products = SavedProduct.objects.filter(
             user=request.user
         ).values_list('product_id', flat=True)
         saved_products_set = set(str(id) for id in saved_products)
-        
-        # Apply saved status and format prices to all product lists
+
         for product_list in [featured_products, local_products, trending_products]:
             for product in product_list:
                 product.is_saved = str(product.id) in saved_products_set
                 product.formatted_price = format_price(product.price)
+                product.verification_status = get_product_verification_status(product)
     else:
         # Format prices for non-authenticated users
         for product_list in [featured_products, local_products, trending_products]:
             for product in product_list:
                 product.formatted_price = format_price(product.price)
-    
-    # Clean up expired listings
+                product.verification_status = get_product_verification_status(product)
+
     try:
         Product_Listing.delete_expired_listings()
     except:
         pass
-    
-    # Get categories with product count
+
     categories = Category.objects.annotate(
         product_count=Count('product_listing')
     ).order_by('-product_count')[:6]
     
-    # UPDATED: Get section banners for each location separately using simplified banner system
-    first_position_banners = get_active_banners('first')      # Between Featured & Local Products
-    second_position_banners = get_active_banners('second')    # Between Local & Trending Products
+    first_position_banners = get_active_banners('first')
+    second_position_banners = get_active_banners('second')  
+    global_banners = get_active_banners('global')
+
     global_banners = get_active_banners('global')
     
-    # Get global banners for main carousel (if you want to add that later)
-    global_banners = get_active_banners('global')
-    
-    # Determine location display name for local products section
     location_name = None
     if request.user.is_authenticated and hasattr(request.user, 'profile') and request.user.profile.location:
         user_location = request.user.profile.location
@@ -399,8 +381,7 @@ def home(request):
             location_name = user_location.lga.name
         elif user_location.state:
             location_name = user_location.state.name
-    
-    # Update context with all required data
+
     context.update({
         'categories': categories,
         'featured_products': featured_products,
@@ -430,7 +411,6 @@ def get_active_banners(location='global'):
     ).filter(
         Q(end_date__isnull=True) | Q(end_date__gte=now)
     ).order_by('-priority', '-updated_at')
-
 
 def get_random_featured_products():
     """Get cached random featured products that refresh every 30 minutes"""
@@ -479,7 +459,6 @@ def category_list(request):
     }
     return render(request, 'category_list.html', context)
 
-
 class ProductListView(ListView):
     model = Product_Listing
     template_name = 'product_list.html'
@@ -487,8 +466,6 @@ class ProductListView(ListView):
     paginate_by = 12
     
     def get_queryset(self):
-        # Keep your existing get_queryset logic exactly as is
-        # [Your existing get_queryset method remains unchanged]
         try:
             Product_Listing.delete_expired_listings()
         except:
@@ -500,7 +477,6 @@ class ProductListView(ListView):
             expiration_date__lte=timezone.now()
         )
         
-        # [Rest of your filtering logic remains the same]
         category_slug = self.request.GET.get('category')
         subcategory_slug = self.request.GET.get('subcategory')
         brand_slug = self.request.GET.get('brand')
@@ -511,6 +487,7 @@ class ProductListView(ListView):
         state = self.request.GET.get('state')
         lga = self.request.GET.get('lga')
         sort_by = self.request.GET.get('sort', 'smart')
+        verified_business = self.request.GET.get('verified_business')
         
         # Apply all your existing filters
         if query:
@@ -554,6 +531,9 @@ class ProductListView(ListView):
                 queryset = queryset.filter(seller__location__lga=lga)
             except (ValueError, TypeError):
                 pass
+            
+        if verified_business:
+            queryset = queryset.filter(seller__business_verification_status='verified')
         
         # Apply sorting
         if sort_by == 'smart':
@@ -732,7 +712,8 @@ class ProductListView(ListView):
         global_banners = get_active_banners('global')
         context['global_banners'] = global_banners
         
-        # [Rest of your existing context logic...]
+        context['verified_only'] = self.request.GET.get('verified_business')
+        
         if category_slug:
             try:
                 selected_category = categories.get(slug=category_slug)
@@ -809,13 +790,11 @@ class ProductDetailView(DetailView):
 
     def get(self, request, *args, **kwargs):
         response = super().get(request, *args, **kwargs)
-        
-        # Get or create a session key for the user
+
         if not request.session.session_key:
             request.session.save()
         session_key = request.session.session_key
-        
-        # Check if this session has viewed this product before
+
         if f'viewed_product_{self.object.id}' not in request.session:
             self.object.increase_view_count()
             request.session[f'viewed_product_{self.object.id}'] = True
@@ -838,7 +817,7 @@ class ProductDetailView(DetailView):
             context['time_remaining'] = time_remaining
             
         if self.request.user.is_authenticated:
-            from .models import SavedProduct  # Import if not already imported
+            from .models import SavedProduct
             context['product'].is_saved = SavedProduct.objects.filter(
                 user=self.request.user,
                 product=self.object
@@ -846,29 +825,23 @@ class ProductDetailView(DetailView):
         else:
             context['product'].is_saved = False   
             
-        # Format the price
         context['formatted_price'] = self.format_price(self.object.price)
-        
-        # Get images
+
         context['images'] = self.object.images.all()
         context['primary_image'] = self.object.images.filter(is_primary=True).first() or self.object.images.first()
-        
-        # Get ALL reviews for this seller across ALL their products
+
         seller_products = Product_Listing.objects.filter(seller=self.object.seller)
         all_seller_reviews = Review.objects.filter(
             product__in=seller_products
         ).select_related('reviewer').prefetch_related(
             Prefetch('replies', queryset=ReviewReply.objects.select_related('reviewer').order_by('created_at'))
         ).order_by('-created_at')
-        
-        # Get only reviews for this specific product (for display)
+
         product_reviews = all_seller_reviews.filter(product=self.object)[:2]  # Only show 2 reviews
-        
-        # Calculate seller's overall statistics from ALL reviews
+
         total_seller_reviews = all_seller_reviews.count()
         seller_avg_rating = all_seller_reviews.aggregate(avg_rating=Avg('rating'))['avg_rating'] or 0
-        
-        # Calculate star distribution for seller (from all reviews)
+
         seller_star_percentages = {
             '5': all_seller_reviews.filter(rating=5).count() / total_seller_reviews * 100 if total_seller_reviews else 0,
             '4': all_seller_reviews.filter(rating=4).count() / total_seller_reviews * 100 if total_seller_reviews else 0,
@@ -876,33 +849,25 @@ class ProductDetailView(DetailView):
             '2': all_seller_reviews.filter(rating=2).count() / total_seller_reviews * 100 if total_seller_reviews else 0,
             '1': all_seller_reviews.filter(rating=1).count() / total_seller_reviews * 100 if total_seller_reviews else 0,
         }
-        
-        # In any view
+
         global_banners = get_active_banners('global')
         context['global_banners'] = global_banners
-        
-        # Context for reviews (only show 2 product reviews)
+
         context['reviews'] = product_reviews
         context['total_seller_reviews'] = total_seller_reviews
         context['seller_average_rating'] = seller_avg_rating
         context['seller_star_percentages'] = seller_star_percentages
         context['has_more_reviews'] = total_seller_reviews > 2
-        
-        # Product specific review count
+
         product_review_count = Review.objects.filter(product=self.object).count()
         context['product_review_count'] = product_review_count
-        
-        # Calculate seller product statistics - FIXED VERSION
+
         seller_profile = self.object.seller
-        
-        # Get current count of existing products (for comparison only)
+
         current_products_count = Product_Listing.objects.filter(seller=seller_profile).count()
-        
-        # Use the counter field, but ensure it's at least as high as current products
-        # This handles cases where the counter wasn't properly maintained initially
+
         total_ever_listed = max(seller_profile.total_products_listed, current_products_count)
-        
-        # Update the counter if it was lower than current products
+
         if seller_profile.total_products_listed < current_products_count:
             seller_profile.total_products_listed = current_products_count
             seller_profile.save(update_fields=['total_products_listed'])
@@ -917,28 +882,23 @@ class ProductDetailView(DetailView):
                 context['can_boost'] = False
                 context['active_boost'] = None
         
-        # Add share URL for social sharing
         context['share_url'] = self.request.build_absolute_uri()
-        
-        # Check if product is saved by current user
+
         if self.request.user.is_authenticated:
             context['is_saved'] = self.object.is_saved_by_user(self.request.user)
         
-        # Currently active products (not suspended and not expired)
         active_products = Product_Listing.objects.filter(
             seller=seller_profile,
             is_suspended=False
         ).exclude(
             expiration_date__lte=timezone.now()
         ).count()
-        
-        # Add seller product statistics to context
+
         context['seller_product_stats'] = {
-            'total_ever_listed': total_ever_listed,  # Use the counter field (corrected if needed)
+            'total_ever_listed': total_ever_listed,
             'active_products': active_products,
         }
-        
-        # Get related products
+
         related_products = Product_Listing.objects.filter(
             Q(category=self.object.category) | 
             Q(subcategory=self.object.subcategory)
@@ -957,8 +917,7 @@ class ProductDetailView(DetailView):
         context['related_products'] = related_products
         for product in context['related_products']:
             product.formatted_price = self.format_price(product.price)
-        
-        # Get seller details
+
         seller_user = self.object.seller.user
         seller_profile = get_object_or_404(Profile, user=seller_user)
         
@@ -966,10 +925,14 @@ class ProductDetailView(DetailView):
             'name': seller_user.username,
             'phone': seller_profile.phone_number,
             'address': str(seller_profile.location) if seller_profile.location else 'Not provided',
-            'is_active': seller_user.is_active
+            'is_active': seller_user.is_active,
+            'is_verified_business': seller_profile.is_verified_business,
+            'business_name': seller_profile.business_name if seller_profile.is_verified_business else None,
+            'business_email': seller_profile.business_email if seller_profile.is_verified_business else None,
+            'business_phone': seller_profile.business_phone if seller_profile.is_verified_business else None,
+            'business_address_visible': seller_profile.business_address_visible if seller_profile.is_verified_business else False,
         }
-        
-        # Handle timestamps
+
         context['created_at'] = self.object.created_at
         time_since_creation = timezone.now() - self.object.created_at
         
@@ -1101,7 +1064,17 @@ class ProductCreateView(LoginRequiredMixin, CreateView):
                 }.get(self.object.listing_type, 45)
                 self.object.expiration_date = timezone.now() + timedelta(days=duration)
                 self.object.save()
-            
+                
+            profile = self.request.user.profile
+            if profile.is_verified_business and profile.permanent_listing_enabled:
+                # Allow verified businesses to create permanent listings
+                if form.cleaned_data.get('listing_type') == 'permanent':
+                    form.instance.listing_type = 'permanent'
+                    form.instance.expires_at = None  # Never expires
+            else:
+                # Regular users get standard listings
+                form.instance.listing_type = 'standard'
+                
             # Handle images with improved error handling for large files
             images = self.request.FILES.getlist('images')
             for i, image in enumerate(images[:5]):  # Limit to 5 images
@@ -1152,10 +1125,18 @@ class ProductCreateView(LoginRequiredMixin, CreateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        profile = self.request.user.profile if self.request.user.is_authenticated else None
         context['title'] = 'Create New Listing'
         context['save'] = 'List Product'
         context['ai_descriptions_remaining'] = get_remaining_descriptions(self.request.user)
-        
+        context.update({
+        'can_create_permanent_listing': (
+            profile and 
+            profile.is_verified_business and 
+            profile.permanent_listing_enabled
+        ),
+        'is_verified_business': profile.is_verified_business if profile else False,
+    })
         # Add time_remaining to context if object exists
         if hasattr(self, 'object') and self.object:
             context['time_remaining'] = self.object.time_remaining
@@ -1264,8 +1245,7 @@ class ProductSearchView(ListView):
     template_name = 'product_search.html'
     context_object_name = 'products'
     paginate_by = 12
-    
-    # Use the exact same paginate_queryset and render_to_response methods as above
+
     def paginate_queryset(self, queryset, page_size):
         """Override to handle pagination errors gracefully"""
         paginator = self.get_paginator(
@@ -1377,10 +1357,8 @@ class ProductSearchView(ListView):
                 }, status=500)
         
         return super().render_to_response(context, **response_kwargs)
-    
-    # Keep your existing get_queryset and get_context_data methods unchanged
+
     def get_queryset(self):
-        # [Your existing get_queryset method remains exactly the same]
         try:
             Product_Listing.delete_expired_listings()
         except:
@@ -1421,6 +1399,9 @@ class ProductSearchView(ListView):
                 queryset = queryset.filter(seller__location__state=form.cleaned_data['state'])
             if form.cleaned_data['lga']:
                 queryset = queryset.filter(seller__location__lga=form.cleaned_data['lga'])
+                
+            if form.cleaned_data.get('verified_business'):
+                queryset = queryset.filter(seller__business_verification_status='verified')
         
         sort_by = self.request.GET.get('sort', 'smart')
         
@@ -1453,6 +1434,7 @@ class ProductSearchView(ListView):
         # [Your existing get_context_data method remains exactly the same]
         context = super().get_context_data(**kwargs)
         context['form'] = ProductSearchForm(self.request.GET)
+        context['verified_only'] = self.request.GET.get('verified_business')
 
         if self.request.user.is_authenticated:
             saved_products = SavedProduct.objects.filter(
@@ -1906,9 +1888,7 @@ def delete_reply(request, pk, reply_id):
     return render(request, 'delete_reply_confirm.html', context)
 
 @login_required
-def my_store(request, username=None):  # Accept username parameter
-    # If username is provided in URL, get that user's store
-    # Otherwise, show current user's store
+def my_store(request, username=None):
     if username:
         store_owner = get_object_or_404(
             User.objects.select_related(
@@ -1929,11 +1909,9 @@ def my_store(request, username=None):  # Accept username parameter
             ),
             username=request.user.username
         )
-    
-    # Rest of your code remains the same...
+
     user_products = Product_Listing.objects.filter(seller=store_owner.profile)
-    
-    # Handle saved products for authenticated users
+
     if request.user.is_authenticated:
         saved_products = SavedProduct.objects.filter(
             user=request.user
@@ -1942,8 +1920,7 @@ def my_store(request, username=None):  # Accept username parameter
         for product in user_products:
             product.is_saved = str(product.id) in saved_products
             product.formatted_price = format_price(product.price)
-    
-    # Format location display
+
     location_display = None
     if store_owner.profile.location:
         location_parts = []
@@ -1958,12 +1935,44 @@ def my_store(request, username=None):  # Accept username parameter
         if store_owner.profile.location.state:
             location_parts.append(store_owner.profile.location.state.name)
         location_display = ', '.join(filter(None, location_parts))
+        
+    business_location_display = None
+    if (store_owner.profile.business_verification_status == 'verified' and 
+        store_owner.profile.business_address_visible and 
+        store_owner.profile.location):
+        
+        business_parts = []
+        if store_owner.profile.location.address:
+            business_parts.append(store_owner.profile.location.address)
+        if store_owner.profile.location.address_2:
+            business_parts.append(store_owner.profile.location.address_2)
+        if store_owner.profile.location.city:
+            business_parts.append(store_owner.profile.location.city)
+        if store_owner.profile.location.lga:
+            business_parts.append(store_owner.profile.location.lga.name)
+        if store_owner.profile.location.state:
+            business_parts.append(store_owner.profile.location.state.name)
+        business_location_display = ', '.join(filter(None, business_parts))
+    
     
     context = {
         'store_owner': store_owner,
         'products': user_products,
         'total_products': user_products.count(),
         'location_display': location_display,
+        
+        'business_location_display': business_location_display,
+        'is_verified_business': store_owner.profile.business_verification_status == 'verified',
+        'has_pending_verification': store_owner.profile.business_verification_status == 'pending',
+        'business_info': {
+            'name': store_owner.profile.business_name,
+            'email': store_owner.profile.business_email,
+            'phone': store_owner.profile.business_phone,
+            'website': store_owner.profile.business_website,
+            'description': store_owner.profile.business_description,
+            'verification_status': store_owner.profile.business_verification_status,
+            'verified_at': store_owner.profile.business_verified_at,
+        } if hasattr(store_owner.profile, 'business_verification_status') else None,
     }
     
     # Only show account details if viewing own store
@@ -1980,6 +1989,14 @@ def my_store(request, username=None):  # Accept username parameter
         
     return render(request, 'my_store.html', context)
 
+def get_product_verification_status(product):
+    try:
+        if hasattr(product.seller, 'business_verification_status'):
+            return product.seller.business_verification_status
+        return 'unverified'
+    except AttributeError:
+        return 'unverified'
+    
 def handler404(request, exception):
     """
     Custom 404 handler that differentiates between product-related 404s and general 404s
