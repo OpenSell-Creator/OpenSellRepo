@@ -1,226 +1,341 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Business Verifications - OpenSell Admin</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
-</head>
-<body>
-    <div class="container-fluid">
-        <!-- Header -->
-        <div class="row">
-            <div class="col-12">
-                <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
-                    <div class="container-fluid">
-                        <a class="navbar-brand" href="/controlroom/">
-                            <i class="bi bi-gear-fill me-2"></i>OpenSell Admin
-                        </a>
-                        <div class="navbar-nav ms-auto">
-                            <a class="nav-link" href="{% url 'admin:index' %}">
-                                <i class="bi bi-house-fill me-1"></i>Admin Home
-                            </a>
-                            <a class="nav-link" href="{% url 'home' %}">
-                                <i class="bi bi-arrow-left me-1"></i>Back to Site
-                            </a>
-                        </div>
-                    </div>
-                </nav>
-            </div>
-        </div>
+{% extends 'base.html' %}
+{% load static %}
 
-        <div class="business-verifications-admin">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1><i class="bi bi-patch-check-fill me-2"></i>Business Verifications</h1>
-                <div class="badge bg-info fs-6">Total: {{ page_obj.paginator.count }}</div>
-            </div>
-            
-            <!-- Filter Tabs -->
-            <div class="verification-tabs mb-4">
-                <ul class="nav nav-tabs">
-                    <li class="nav-item">
-                        <a class="nav-link {% if status_filter == 'pending' %}active{% endif %}" 
-                           href="?status=pending">
-                            <i class="bi bi-clock-history me-1"></i>
-                            Pending 
-                            <span class="badge bg-warning text-dark ms-1">
-                                {{ page_obj.paginator.count|default:0 }}
-                            </span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if status_filter == 'verified' %}active{% endif %}" 
-                           href="?status=verified">
-                            <i class="bi bi-patch-check-fill me-1"></i>
-                            Verified
-                            <span class="badge bg-success ms-1">
-                                {% if status_filter == 'verified' %}{{ page_obj.paginator.count|default:0 }}{% else %}0{% endif %}
-                            </span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if status_filter == 'rejected' %}active{% endif %}" 
-                           href="?status=rejected">
-                            <i class="bi bi-x-circle-fill me-1"></i>
-                            Rejected
-                            <span class="badge bg-danger ms-1">
-                                {% if status_filter == 'rejected' %}{{ page_obj.paginator.count|default:0 }}{% else %}0{% endif %}
-                            </span>
-                        </a>
-                    </li>
-                </ul>
-            </div>
-            
-            <!-- Search Form -->
-            <div class="search-form mb-4">
-                <form method="get" class="d-flex">
-                    <input type="hidden" name="status" value="{{ status_filter }}">
-                    <input type="text" name="search" class="form-control me-2" 
-                           placeholder="Search by username, business name, or email" 
-                           value="{{ search_query }}">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-search me-1"></i>Search
-                    </button>
-                    {% if search_query %}
-                    <a href="?status={{ status_filter }}" class="btn btn-outline-secondary ms-2">
-                        <i class="bi bi-x-lg me-1"></i>Clear
-                    </a>
-                    {% endif %}
-                </form>
-            </div>
-            
-            <!-- Results Table -->
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th><i class="bi bi-person-fill me-1"></i>User Details</th>
-                            <th><i class="bi bi-building me-1"></i>Business Name</th>
-                            <th><i class="bi bi-envelope-fill me-1"></i>Contact</th>
-                            <th><i class="bi bi-shield-check me-1"></i>Status</th>
-                            <th><i class="bi bi-calendar-fill me-1"></i>Submitted</th>
-                            <th><i class="bi bi-gear-fill me-1"></i>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for profile in page_obj %}
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    {% if profile.user.profile.photo %}
-                                    <img src="{{ profile.user.profile.photo.url }}" 
-                                         class="rounded-circle me-2" 
-                                         width="32" height="32">
-                                    {% else %}
-                                    <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-2" 
-                                         style="width: 32px; height: 32px; font-size: 14px;">
-                                        {{ profile.user.username|first|upper }}
-                                    </div>
-                                    {% endif %}
-                                    <div>
-                                        <strong>{{ profile.user.username }}</strong>
-                                        {% if profile.user.first_name or profile.user.last_name %}
-                                        <br><small class="text-muted">{{ profile.user.get_full_name }}</small>
+{% block title %}Business Verifications - Admin{% endblock %}
+
+{% block 'Body' %}
+<div class="container-fluid my-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4><i class="bi bi-building-check me-2"></i>Business Verifications Management</h4>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Status Summary -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <a href="?status=pending&search={{ search_query }}" class="text-decoration-none">
+                                <div class="card bg-warning text-dark status-card {% if status_filter == 'pending' %}border-dark border-3{% endif %}">
+                                    <div class="card-body text-center">
+                                        <h5>{{ status_counts.pending }}</h5>
+                                        <small>Pending Review</small>
+                                        {% if status_filter == 'pending' %}
+                                        <i class="bi bi-check-circle-fill float-end"></i>
                                         {% endif %}
                                     </div>
                                 </div>
-                            </td>
-                            <td>
-                                <strong>{{ profile.business_name|default:"-" }}</strong>
-                                {% if profile.business_type %}
-                                <br><small class="text-muted">{{ profile.get_business_type_display }}</small>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <div>
-                                    <i class="bi bi-envelope me-1"></i>{{ profile.user.email }}
-                                    {% if profile.business_email and profile.business_email != profile.user.email %}
-                                    <br><i class="bi bi-building me-1"></i><small class="text-muted">{{ profile.business_email }}</small>
-                                    {% endif %}
-                                    {% if profile.business_phone %}
-                                    <br><i class="bi bi-telephone me-1"></i><small class="text-muted">{{ profile.business_phone }}</small>
-                                    {% endif %}
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="?status=verified&search={{ search_query }}" class="text-decoration-none">
+                                <div class="card bg-success text-white status-card {% if status_filter == 'verified' %}border-light border-3{% endif %}">
+                                    <div class="card-body text-center">
+                                        <h5>{{ status_counts.verified }}</h5>
+                                        <small>Verified</small>
+                                        {% if status_filter == 'verified' %}
+                                        <i class="bi bi-check-circle-fill float-end"></i>
+                                        {% endif %}
+                                    </div>
                                 </div>
-                            </td>
-                            <td>
-                                {% if profile.business_verification_status == 'pending' %}
-                                    <span class="badge bg-warning"><i class="bi bi-clock-history me-1"></i>Pending</span>
-                                {% elif profile.business_verification_status == 'verified' %}
-                                    <span class="badge bg-success"><i class="bi bi-patch-check-fill me-1"></i>Verified</span>
-                                {% elif profile.business_verification_status == 'rejected' %}
-                                    <span class="badge bg-danger"><i class="bi bi-x-circle-fill me-1"></i>Rejected</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <small>{{ profile.user.date_joined|date:"M d, Y" }}</small>
-                                <br><small class="text-muted">{{ profile.user.date_joined|timesince }} ago</small>
-                            </td>
-                            <td>
-                                <a href="{% url 'admin_verify_business' profile.id %}" 
-                                   class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-eye-fill me-1"></i>Review
-                                </a>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="6" class="text-center text-muted py-4">
-                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-                                <p>No business verifications found.</p>
-                                {% if search_query %}
-                                <a href="?status={{ status_filter }}" class="btn btn-sm btn-outline-primary">
-                                    Clear search
-                                </a>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="?status=rejected&search={{ search_query }}" class="text-decoration-none">
+                                <div class="card bg-danger text-white status-card {% if status_filter == 'rejected' %}border-light border-3{% endif %}">
+                                    <div class="card-body text-center">
+                                        <h5>{{ status_counts.rejected }}</h5>
+                                        <small>Rejected</small>
+                                        {% if status_filter == 'rejected' %}
+                                        <i class="bi bi-check-circle-fill float-end"></i>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="?status=all&search={{ search_query }}" class="text-decoration-none">
+                                <div class="card bg-info text-white status-card {% if status_filter == 'all' %}border-light border-3{% endif %}">
+                                    <div class="card-body text-center">
+                                        <h5>{{ status_counts.all }}</h5>
+                                        <small>Total Applications</small>
+                                        {% if status_filter == 'all' %}
+                                        <i class="bi bi-check-circle-fill float-end"></i>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- Filters -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <form method="get" class="d-flex">
+                                <select name="status" class="form-select me-2" onchange="this.form.submit()">
+                                    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Status</option>
+                                    <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                                    <option value="verified" {% if status_filter == 'verified' %}selected{% endif %}>Verified</option>
+                                    <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                                </select>
+                                <input type="hidden" name="search" value="{{ search_query }}">
+                            </form>
+                        </div>
+                        <div class="col-md-6">
+                            <form method="get" class="d-flex">
+                                <input type="text" name="search" class="form-control me-2" 
+                                       placeholder="Search businesses..." value="{{ search_query }}">
+                                <button type="submit" class="btn btn-outline-primary">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                                <input type="hidden" name="status" value="{{ status_filter }}">
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Verification Requests Table -->
+                    {% if page_obj %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Business Name</th>
+                                    <th>Owner</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Documents</th>
+                                    <th>Submitted</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for profile in page_obj %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ profile.business_name }}</strong>
+                                        {% if profile.business_registration_number %}
+                                        <br><small class="text-muted">Reg: {{ profile.business_registration_number }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ profile.user.get_full_name|default:profile.user.username }}
+                                        <br><small class="text-muted">@{{ profile.user.username }}</small>
+                                    </td>
+                                    <td>
+                                        {{ profile.user.email }}
+                                        {% if profile.business_email and profile.business_email != profile.user.email %}
+                                        <br><small class="text-muted">Bus: {{ profile.business_email }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ profile.phone_number|default:"-" }}
+                                        {% if profile.business_phone and profile.business_phone != profile.phone_number %}
+                                        <br><small class="text-muted">Bus: {{ profile.business_phone }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ profile.get_business_type_display|default:"-" }}</td>
+                                    <td>
+                                        {% if profile.business_verification_status == 'pending' %}
+                                            <span class="badge bg-warning">Pending</span>
+                                        {% elif profile.business_verification_status == 'verified' %}
+                                            <span class="badge bg-success">Verified</span>
+                                            {% if profile.business_verified_at %}
+                                            <br><small class="text-muted">{{ profile.business_verified_at|date:"M d, Y" }}</small>
+                                            {% endif %}
+                                        {% elif profile.business_verification_status == 'rejected' %}
+                                            <span class="badge bg-danger">Rejected</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ profile.verification_documents.count }} doc(s)</span>
+                                    </td>
+                                    <td>
+                                        {{ profile.user.date_joined|date:"M d, Y" }}
+                                        <br><small class="text-muted">{{ profile.user.date_joined|timesince }} ago</small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group-vertical btn-group-sm">
+                                            <a href="{% url 'admin_verify_business' profile.id %}" 
+                                               class="btn btn-primary btn-sm">
+                                                <i class="bi bi-eye"></i> Review
+                                            </a>
+                                            <a href="{% url 'user_store' profile.user.username %}" 
+                                               class="btn btn-outline-secondary btn-sm" target="_blank">
+                                                <i class="bi bi-shop"></i> Store
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    {% if page_obj.has_other_pages %}
+                    <nav aria-label="Verification pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1&status={{ status_filter }}&search={{ search_query }}">First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}&status={{ status_filter }}&search={{ search_query }}">Previous</a>
+                                </li>
+                            {% endif %}
+                            
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                            </li>
+                            
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}&status={{ status_filter }}&search={{ search_query }}">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&status={{ status_filter }}&search={{ search_query }}">Last</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox fs-1 text-muted"></i>
+                        <h4 class="text-muted mt-3">No verification requests found</h4>
+                        <p class="text-muted">
+                            {% if status_filter == 'pending' %}
+                                No pending business verifications at the moment.
+                            {% elif search_query %}
+                                No results found for "{{ search_query }}".
+                            {% else %}
+                                No business verification requests have been submitted yet.
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
-            
-            <!-- Pagination -->
-            {% if page_obj.has_other_pages %}
-            <nav aria-label="Business verifications pagination" class="mt-4">
-                <ul class="pagination justify-content-center">
-                    {% if page_obj.has_previous %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page=1&status={{ status_filter }}&search={{ search_query }}">
-                                <i class="bi bi-chevron-double-left"></i>
-                            </a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}&status={{ status_filter }}&search={{ search_query }}">
-                                <i class="bi bi-chevron-left"></i>
-                            </a>
-                        </li>
-                    {% endif %}
-                    
-                    <li class="page-item active">
-                        <span class="page-link">
-                            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-                        </span>
-                    </li>
-                    
-                    {% if page_obj.has_next %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.next_page_number }}&status={{ status_filter }}&search={{ search_query }}">
-                                <i class="bi bi-chevron-right"></i>
-                            </a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&status={{ status_filter }}&search={{ search_query }}">
-                                <i class="bi bi-chevron-double-right"></i>
-                            </a>
-                        </li>
-                    {% endif %}
-                </ul>
-            </nav>
-            {% endif %}
         </div>
     </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+<style>
+.btn-group-vertical .btn {
+    margin-bottom: 2px;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: none;
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+
+/* Status Card Styles */
+.status-card {
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.status-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.status-card:active {
+    transform: translateY(0);
+}
+
+/* Add ripple effect on click */
+.status-card::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+    transition: width 0.6s, height 0.6s;
+    transform: translate(-50%, -50%);
+    z-index: 0;
+}
+
+.status-card:active::before {
+    width: 300px;
+    height: 300px;
+}
+
+.status-card .card-body {
+    position: relative;
+    z-index: 1;
+}
+
+/* Hover indicators */
+.status-card:hover .card-body::after {
+    content: 'Click to filter';
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    opacity: 0.8;
+}
+
+/* Active status indicator */
+.status-card.border-3 {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.85rem;
+    }
+    
+    .btn-group-vertical .btn {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .status-card:hover .card-body::after {
+        display: none;
+    }
+}
+</style>
+
+<script>
+// Auto-refresh pending count every 30 seconds
+{% if status_filter == 'pending' %}
+setInterval(function() {
+    if (document.visibilityState === 'visible') {
+        // Only refresh if page is visible
+        window.location.reload();
+    }
+}, 30000);
+{% endif %}
+
+// Highlight new/urgent pending requests
+document.addEventListener('DOMContentLoaded', function() {
+    const rows = document.querySelectorAll('tbody tr');
+    rows.forEach(function(row) {
+        const statusBadge = row.querySelector('.badge');
+        if (statusBadge && statusBadge.textContent.trim() === 'Pending') {
+            row.style.borderLeft = '4px solid #ffc107';
+        }
+    });
+});
+</script>
+{% endblock %}

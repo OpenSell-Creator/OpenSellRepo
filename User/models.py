@@ -168,26 +168,6 @@ class Profile(models.Model):
         }
         return status_map.get(self.business_verification_status, 'Unknown')
     
-    @property
-    def seller_average_rating(self):
-        """Calculate average rating across all seller's products"""
-        from .models import Review, Product_Listing
-        
-        seller_products = Product_Listing.objects.filter(seller=self)
-        reviews = Review.objects.filter(product__in=seller_products)
-        
-        if reviews.exists():
-            avg_rating = reviews.aggregate(avg_rating=Avg('rating'))['avg_rating']
-            return round(avg_rating, 1) if avg_rating else 0
-        return 0
-    
-    @property
-    def total_seller_reviews(self):
-        """Get total count of reviews across all seller's products"""
-        from .models import Review, Product_Listing
-        
-        seller_products = Product_Listing.objects.filter(seller=self)
-        return Review.objects.filter(product__in=seller_products).count()
     
     def verify_business(self, verified_by_user, notes=None):
         """Verify the business profile"""
@@ -289,7 +269,7 @@ class Profile(models.Model):
     @property
     def seller_average_rating(self):
         """Calculate average rating across all seller's products"""
-        from .models import Review, Product_Listing
+        from Home.models import Review, Product_Listing
         
         # Get all products by this seller
         seller_products = Product_Listing.objects.filter(seller=self)
@@ -305,7 +285,7 @@ class Profile(models.Model):
     @property
     def total_seller_reviews(self):
         """Get total count of reviews across all seller's products"""
-        from .models import Review, Product_Listing
+        from Home.models import Review, Product_Listing
         
         seller_products = Product_Listing.objects.filter(seller=self)
         return Review.objects.filter(product__in=seller_products).count()
