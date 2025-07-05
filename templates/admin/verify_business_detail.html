@@ -149,29 +149,14 @@
                                     </div>
                                 </div>
                                 <div class="document-actions">
-                                    {% if document.document %}
-                                        <a href="{{ document.document.url }}" target="_blank" class="btn btn-outline-primary btn-sm" 
-                                           title="View Document">
-                                            <i class="bi bi-eye"></i> View
-                                        </a>
-                                        <a href="{{ document.document.url }}" download class="btn btn-outline-secondary btn-sm"
-                                           title="Download Document">
-                                            <i class="bi bi-download"></i>
-                                        </a>
-                                    {% else %}
-                                        <span class="text-danger">No file available</span>
-                                    {% endif %}
+                                    <a href="{{ document.document.url }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                    <a href="{{ document.document.url }}" download class="btn btn-outline-secondary btn-sm">
+                                        <i class="bi bi-download"></i>
+                                    </a>
                                 </div>
                             </div>
-                            {% if document.document %}
-                            <div class="document-path">
-                                <small class="text-muted">
-                                    <strong>File:</strong> {{ document.document.name }}<br>
-                                    <strong>URL:</strong> {{ document.document.url }}<br>
-                                    <strong>Size:</strong> {{ document.document.size|filesizeformat }}
-                                </small>
-                            </div>
-                            {% endif %}
                             {% if document.description %}
                             <div class="document-description">
                                 <small class="text-muted">{{ document.description }}</small>
@@ -241,23 +226,21 @@
                 <div class="card-body">
                     {% if profile.business_verification_status == 'pending' %}
                     <!-- Verification Form -->
-                    <form method="post" id="verificationForm">
+                    <form method="post">
                         {% csrf_token %}
                         
                         <div class="mb-3">
                             <label for="admin_notes" class="form-label">Admin Notes</label>
-                            <textarea name="admin_notes" id="admin_notes" class="form-control" rows="4" 
+                            <textarea name="admin_notes" class="form-control" rows="4" 
                                       placeholder="Add notes about this verification decision..."></textarea>
                         </div>
                         
                         <div class="d-grid gap-2">
-                            <button type="submit" name="action" value="verify" class="btn btn-success btn-lg" 
-                                    onclick="return confirm('Are you sure you want to VERIFY this business?')">
+                            <button type="submit" name="action" value="verify" class="btn btn-success btn-lg">
                                 <i class="bi bi-check-circle-fill me-2"></i>Verify Business
                             </button>
                             
-                            <button type="submit" name="action" value="reject" class="btn btn-danger btn-lg"
-                                    onclick="return confirm('Are you sure you want to REJECT this business verification?')">
+                            <button type="submit" name="action" value="reject" class="btn btn-danger btn-lg">
                                 <i class="bi bi-x-circle-fill me-2"></i>Reject Application
                             </button>
                         </div>
@@ -282,8 +265,7 @@
                                 <textarea name="admin_notes" class="form-control" rows="3" 
                                           placeholder="Reason for reversing verification..."></textarea>
                             </div>
-                            <button type="submit" name="action" value="reject" class="btn btn-outline-danger"
-                                    onclick="return confirm('Are you sure you want to REVERSE this verification?')">
+                            <button type="submit" name="action" value="reject" class="btn btn-outline-danger">
                                 <i class="bi bi-arrow-counterclockwise me-2"></i>Reverse Verification
                             </button>
                         </form>
@@ -302,8 +284,7 @@
                                 <textarea name="admin_notes" class="form-control" rows="3" 
                                           placeholder="Reason for approving after rejection..."></textarea>
                             </div>
-                            <button type="submit" name="action" value="verify" class="btn btn-success"
-                                    onclick="return confirm('Are you sure you want to APPROVE this previously rejected application?')">
+                            <button type="submit" name="action" value="verify" class="btn btn-success">
                                 <i class="bi bi-check-circle-fill me-2"></i>Approve Now
                             </button>
                         </form>
@@ -484,85 +465,28 @@
 .btn:active {
     transform: scale(0.98);
 }
-
-/* Loading states */
-.btn.loading {
-    position: relative;
-    color: transparent;
-}
-
-.btn.loading::after {
-    content: '';
-    position: absolute;
-    width: 16px;
-    height: 16px;
-    top: 50%;
-    left: 50%;
-    margin-left: -8px;
-    margin-top: -8px;
-    border: 2px solid #ffffff;
-    border-radius: 50%;
-    border-top-color: transparent;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
 </style>
 
 <script>
+// Simple confirmation dialogs
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('verificationForm');
-    
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            const button = e.submitter;
-            
-            // Add loading state
-            button.classList.add('loading');
-            button.disabled = true;
-            
-            // Re-enable after 5 seconds (in case of error)
-            setTimeout(() => {
-                button.classList.remove('loading');
-                button.disabled = false;
-            }, 5000);
+    // Add confirmation to verify buttons
+    document.querySelectorAll('button[value="verify"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            if (!confirm('Are you sure you want to VERIFY this business?')) {
+                e.preventDefault();
+            }
         });
-    }
+    });
     
-    // Auto-focus on admin notes if pending
-    const adminNotesField = document.getElementById('admin_notes');
-    if (adminNotesField && '{{ profile.business_verification_status }}' === 'pending') {
-        adminNotesField.focus();
-    }
-});
-
-// Keyboard shortcuts
-document.addEventListener('keydown', function(e) {
-    // Ctrl+Shift+A = Approve
-    if (e.ctrlKey && e.shiftKey && e.key === 'A') {
-        e.preventDefault();
-        const approveBtn = document.querySelector('button[value="verify"]');
-        if (approveBtn && !approveBtn.disabled) {
-            if (confirm('Keyboard shortcut: Are you sure you want to VERIFY this business?')) {
-                approveBtn.click();
+    // Add confirmation to reject buttons
+    document.querySelectorAll('button[value="reject"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            if (!confirm('Are you sure you want to REJECT this business verification?')) {
+                e.preventDefault();
             }
-        }
-    }
-    
-    // Ctrl+Shift+R = Reject
-    if (e.ctrlKey && e.shiftKey && e.key === 'R') {
-        e.preventDefault();
-        const rejectBtn = document.querySelector('button[value="reject"]');
-        if (rejectBtn && !rejectBtn.disabled) {
-            if (confirm('Keyboard shortcut: Are you sure you want to REJECT this business verification?')) {
-                rejectBtn.click();
-            }
-        }
-    }
+        });
+    });
 });
 </script>
 {% endblock %}
