@@ -9,7 +9,6 @@ https://docs.djangoproject.com/en/5.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
-
 from pathlib import Path
 from django.contrib.messages import constants as messages
 import os
@@ -21,14 +20,8 @@ load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
-
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY')
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
@@ -44,19 +37,17 @@ if not DEBUG:
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     
-SESSION_COOKIE_AGE = 1209600  # 2 weeks, in seconds
-SESSION_COOKIE_SECURE = True  # Use only with HTTPS
-SESSION_COOKIE_HTTPONLY = True  # Prevents JavaScript access
-SESSION_COOKIE_SAMESITE = 'Lax'  # Recommended for security
+SESSION_COOKIE_AGE = 1209600  
+SESSION_COOKIE_SECURE = True  
+SESSION_COOKIE_HTTPONLY = True 
+SESSION_COOKIE_SAMESITE = 'Lax'
     
-CSRF_COOKIE_SECURE = True  # Use only with HTTPS
-CSRF_COOKIE_HTTPONLY = False  # JavaScript needs access for AJAX
-CSRF_COOKIE_SAMESITE = 'Lax'  # Recommended for security
+CSRF_COOKIE_SECURE = True 
+CSRF_COOKIE_HTTPONLY = False  
+CSRF_COOKIE_SAMESITE = 'Lax'  
     
 # Message encryption settings
 MESSAGE_ENCRYPTION_KEY = os.environ.get('MESSAGE_ENCRYPTION_KEY', None)
-
-
 
 # Application definition
 INSTALLED_APPS = [
@@ -82,6 +73,7 @@ INSTALLED_APPS = [
     'django_countries',
     'widget_tweaks',
     'crispy_forms',
+    'compressor',
     'django_q',
 
     # All Auths
@@ -139,6 +131,8 @@ TEMPLATES = [
         },
     },
 ]
+
+
 
 WSGI_APPLICATION = 'OpenSell.wsgi.application'
 
@@ -482,3 +476,40 @@ else:
         'bulk': 10,
     }
     
+# Django Compressor Settings
+COMPRESS_ENABLED = not DEBUG  # Enable compression in production only
+COMPRESS_CSS_FILTERS = [
+    'compressor.filters.css_default.CssAbsoluteFilter',
+    'compressor.filters.cssmin.rCSSMinFilter', 
+]
+COMPRESS_JS_FILTERS = [
+    'compressor.filters.jsmin.rJSMinFilter', 
+]
+
+# Cache compressed files
+COMPRESS_CACHE_BACKEND = 'default'
+COMPRESS_REBUILD_TIMEOUT = 3600
+
+# Storage for compressed files
+if DEBUG:
+    COMPRESS_STORAGE = 'compressor.storage.CompressorFileStorage'
+    COMPRESS_URL = STATIC_URL
+    COMPRESS_ROOT = STATIC_ROOT
+else:
+    # For production, use the same storage as static files
+    COMPRESS_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+    COMPRESS_URL = STATIC_URL
+    COMPRESS_ROOT = STATIC_ROOT
+
+# Offline compression for production
+COMPRESS_OFFLINE = not DEBUG
+COMPRESS_OFFLINE_CONTEXT = {
+    'STATIC_URL': STATIC_URL,
+}
+
+# Add staticfiles finder for compressor
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+    'compressor.finders.CompressorFinder',
+]
