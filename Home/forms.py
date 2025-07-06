@@ -39,15 +39,20 @@ class FormattedPriceInput(forms.NumberInput):
 class ListingForm(forms.ModelForm):
     images = MultipleFileField(required=False)
     formatted_price = forms.CharField(label='Price', required=True)
-    
-    LISTING_TYPE_CHOICES = [
-        ('standard', 'Standard Listing (45 days)'),
-        ('urgent', 'Urgent Sale (30 days)'),
-        ('permanent', 'Permanent Retail Listing'),
+
+    ALL_LISTING_TYPE_CHOICES = [
+        ('standard', 'Standard Listing (45 days) - Free'),
+        ('urgent', 'Urgent Sale (30 days) - Free'),
+        ('permanent', 'Permanent Retail Listing - Free'),
+    ]
+
+    REGULAR_LISTING_TYPE_CHOICES = [
+        ('standard', 'Standard Listing (45 days) - Free'),
+        ('urgent', 'Urgent Sale (30 days) - Free'),
     ]
     
     listing_type = forms.ChoiceField(
-        choices=LISTING_TYPE_CHOICES,
+        choices=REGULAR_LISTING_TYPE_CHOICES, 
         widget=forms.Select(attrs={'class': 'form-select'})
     )
     
@@ -63,7 +68,7 @@ class ListingForm(forms.ModelForm):
         widget=forms.CheckboxInput(attrs={
             'class': 'form-check-input',
             'data-toggle': 'tooltip',
-            'title': 'Products marked as always available will not be removed from listings'
+            'title': 'Products marked as always available will not be removed from listings',
         })
     )
 
@@ -82,13 +87,21 @@ class ListingForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
-        # Initialize with empty querysets
+        # Set listing type choices based on user verification status
+        if self.user and hasattr(self.user, 'profile'):
+            if self.user.profile.is_verified_business:
+                self.fields['listing_type'].choices = self.ALL_LISTING_TYPE_CHOICES
+            else:
+                self.fields['listing_type'].choices = self.REGULAR_LISTING_TYPE_CHOICES
+        else:
+            self.fields['listing_type'].choices = self.REGULAR_LISTING_TYPE_CHOICES
+
         self.fields['subcategory'].queryset = Subcategory.objects.none()
         self.fields['brand'].queryset = Brand.objects.none()
-        
-        # Add empty choice for all select fields
+
         self.fields['category'].empty_label = "Select Category"
         self.fields['subcategory'].empty_label = "Select Subcategory"
         self.fields['brand'].empty_label = "Select Brand"
@@ -116,7 +129,6 @@ class ListingForm(forms.ModelForm):
             except (ValueError, TypeError):
                 pass
 
-        # Handle existing instance
         if self.instance and self.instance.pk:
             if hasattr(self.instance, 'category') and self.instance.category:
                 self.fields['subcategory'].queryset = Subcategory.objects.filter(
@@ -134,6 +146,19 @@ class ListingForm(forms.ModelForm):
             self.fields['images'].required = False
             self.fields['images'].help_text = "Leave empty to keep existing images"
 
+    def clean_listing_type(self):
+        """Validate that the selected listing type is allowed for this user"""
+        listing_type = self.cleaned_data.get('listing_type')
+        
+        if self.user and hasattr(self.user, 'profile'):
+            # Check if user is trying to select permanent listing without verification
+            if listing_type == 'permanent' and not self.user.profile.is_verified_business:
+                raise forms.ValidationError(
+                    "Permanent listings are only available for verified businesses. "
+                    "Please apply for business verification first."
+                )
+        
+        return listing_type
 
     def clean_formatted_price(self):
         formatted_price = self.cleaned_data.get('formatted_price')
@@ -152,7 +177,6 @@ class ListingForm(forms.ModelForm):
         if category and subcategory and subcategory.category != category:
             self.add_error('subcategory', 'The selected subcategory does not belong to the selected category.')
 
-        # Set the price field
         cleaned_data['price'] = cleaned_data.get('formatted_price')
 
         return cleaned_data

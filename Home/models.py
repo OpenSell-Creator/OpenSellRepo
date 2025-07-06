@@ -403,18 +403,18 @@ class Product_Listing(models.Model):
         
         calculated_score = self.calculate_boost_score()
         if self.boost_score != calculated_score:
-            # Use update to avoid recursion
+
             Product_Listing.objects.filter(pk=self.pk).update(boost_score=calculated_score)
-            # Update the instance to reflect the change
+
             self.boost_score = calculated_score
 
         if is_new:
-            # Use F() expression to avoid race conditions
+
             from django.db.models import F
             Profile.objects.filter(id=self.seller.id).update(
                 total_products_listed=F('total_products_listed') + 1
             )
-            # Refresh the seller instance to get the updated count
+
             self.seller.refresh_from_db(fields=['total_products_listed'])
             
     def delete(self, *args, **kwargs):

@@ -15,7 +15,6 @@
         </div>
     </div>
     
-    </div>
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-lg-10">
@@ -25,7 +24,6 @@
                         <p class="text-muted mb-0">Manage your product listing details</p>
                     </div>
                     <div class="card-body p-4 p-lg-5 position-relative">
-                        
                         
                         <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate id="productForm">
                             {% csrf_token %}
@@ -87,17 +85,19 @@
                                         
                                         <!-- Listing Type -->
                                         <div class="form-floating mb-3">
-                                            <select name="listing_type" id="id_listing_type" class="form-select">
-                                                <option value="standard">Standard Listing (45 days) - Free</option>
-                                                {% comment %}
-                                                <!-- These options will be enabled in the future when payment functionality is ready -->
-                                                <option value="business" disabled>Business Listing (90 days) - ₦2,000</option>
-                                                <option value="urgent" disabled>Urgent Sale (30 days) - ₦1,000</option>
-                                                <option value="permanent" disabled>Permanent Retail Listing - ₦5,000/month</option>
-                                                {% endcomment %}
-                                            </select>
+                                            {{ form.listing_type }}
                                             <label for="id_listing_type">Listing Type</label>
-                                            <small class="form-text text-muted">Additional listing options will be available soon</small>
+                                            {% if is_verified_business %}
+                                                <small class="form-text text-success">
+                                                    <i class="bi bi-check-circle me-1"></i>
+                                                    As a verified business, you have access to all listing types including permanent listings.
+                                                </small>
+                                            {% else %}
+                                                <small class="form-text text-muted">
+                                                    <i class="bi bi-info-circle me-1"></i>
+                                                    <a href="{% url 'business_verification_form' %}" class="text-decoration-none">Apply for business verification</a> to unlock permanent listings.
+                                                </small>
+                                            {% endif %}
                                         </div>
                                         
                                         <!-- Quantity Input -->
@@ -500,6 +500,73 @@
             animation: fadeInUp 0.3s ease-out;
         }
         
+        /* Fade animations for info messages */
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        .fade-out {
+            animation: fadeOut 0.3s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+        }
+        
+        /* Info alert styling */
+        .alert-sm {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+        }
+        
+        /* Business verification badge styling */
+        .text-success .bi-check-circle {
+            color: var(--bs-success) !important;
+        }
+        
+        /* Pulse animation for AI button */
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+            }
+            70% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+            }
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+            }
+        }
+        
+        /* Animate fade in for AI helper */
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        
         /* Ensure overlay is above Bootstrap modals */
         .loading-overlay {
             z-index: 1060;
@@ -661,6 +728,23 @@
                 font-size: 1rem;
             }
         }
+        
+        /* Listing type responsive adjustments */
+        @media (max-width: 576px) {
+            .form-text {
+                font-size: 0.75rem;
+            }
+            
+            .form-text a {
+                display: inline-block;
+                margin-top: 0.25rem;
+            }
+            
+            .alert-sm {
+                padding: 0.4rem 0.6rem;
+                font-size: 0.8rem;
+            }
+        }
     </style>
 
 <script>
@@ -679,6 +763,9 @@
         const imageUploadStats = document.getElementById('imageUploadStats');
         const numFilesEl = document.getElementById('numFiles');
         const totalSizeEl = document.getElementById('totalSize');
+        const listingTypeSelect = document.getElementById('id_listing_type');
+        const quantityField = document.getElementById('id_quantity');
+        const quantityContainer = quantityField?.closest('.form-floating');
 
         // AI Description Elements
         const generateDescriptionBtn = document.getElementById('generateDescriptionBtn');
@@ -707,6 +794,66 @@
         function showErrorToast(message) {
             errorToastMessage.textContent = message;
             errorToastBS.show();
+        }
+
+        // Handle listing type changes
+        if (listingTypeSelect && quantityContainer) {
+            function handleListingTypeChange() {
+                const selectedType = listingTypeSelect.value;
+                
+                if (selectedType === 'permanent') {
+                    // Hide quantity field for permanent listings
+                    quantityContainer.style.display = 'none';
+                    quantityField.required = false;
+                    quantityField.value = 1; // Set default value
+                    
+                    // Show helpful message for permanent listings
+                    showInfoMessage('Permanent listings are ideal for businesses with ongoing inventory.');
+                } else {
+                    // Show quantity field for other listing types
+                    quantityContainer.style.display = 'block';
+                    quantityField.required = true;
+                    
+                    // Show listing duration info
+                    const durations = {
+                        'standard': '45 days',
+                        'urgent': '30 days'
+                    };
+                    
+                    if (durations[selectedType]) {
+                        showInfoMessage(`This listing will be active for ${durations[selectedType]}.`);
+                    }
+                }
+            }
+            
+            function showInfoMessage(message) {
+                // Remove existing info message
+                const existingInfo = document.getElementById('listingTypeInfo');
+                if (existingInfo) existingInfo.remove();
+                
+                // Create new info message
+                const infoDiv = document.createElement('div');
+                infoDiv.id = 'listingTypeInfo';
+                infoDiv.className = 'alert alert-info alert-sm mt-2 fade-in';
+                infoDiv.innerHTML = `<i class="bi bi-info-circle me-1"></i>${message}`;
+                
+                // Insert after listing type field
+                listingTypeSelect.parentElement.appendChild(infoDiv);
+                
+                // Auto-remove after 5 seconds
+                setTimeout(() => {
+                    if (infoDiv) {
+                        infoDiv.classList.add('fade-out');
+                        setTimeout(() => infoDiv.remove(), 300);
+                    }
+                }, 5000);
+            }
+            
+            // Handle initial state
+            handleListingTypeChange();
+            
+            // Handle changes
+            listingTypeSelect.addEventListener('change', handleListingTypeChange);
         }
 
         // Enhanced AI Description Generation with daily limit

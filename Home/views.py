@@ -1047,6 +1047,12 @@ class ProductCreateView(LoginRequiredMixin, CreateView):
     template_name = 'product_form.html'
     success_url = reverse_lazy('home')
     
+    def get_form_kwargs(self):
+        """Pass the current user to the form"""
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+    
     def form_valid(self, form):
         try:
             # Set the seller
@@ -1059,21 +1065,19 @@ class ProductCreateView(LoginRequiredMixin, CreateView):
             if self.object.listing_type != 'permanent':
                 duration = {
                     'standard': 45,
-                    'business': 90,
                     'urgent': 30
                 }.get(self.object.listing_type, 45)
                 self.object.expiration_date = timezone.now() + timedelta(days=duration)
                 self.object.save()
                 
             profile = self.request.user.profile
-            if profile.is_verified_business and profile.permanent_listing_enabled:
-                # Allow verified businesses to create permanent listings
-                if form.cleaned_data.get('listing_type') == 'permanent':
-                    form.instance.listing_type = 'permanent'
-                    form.instance.expires_at = None  # Never expires
-            else:
-                # Regular users get standard listings
-                form.instance.listing_type = 'standard'
+            if form.cleaned_data.get('listing_type') == 'permanent':
+                if not profile.is_verified_business:
+                    messages.error(self.request, 'Permanent listings are only available for verified businesses.')
+                    return self.form_invalid(form)
+                # Set expiration to None for permanent listings
+                self.object.expiration_date = None
+                self.object.save()
                 
             # Handle images with improved error handling for large files
             images = self.request.FILES.getlist('images')
@@ -1130,13 +1134,13 @@ class ProductCreateView(LoginRequiredMixin, CreateView):
         context['save'] = 'List Product'
         context['ai_descriptions_remaining'] = get_remaining_descriptions(self.request.user)
         context.update({
-        'can_create_permanent_listing': (
-            profile and 
-            profile.is_verified_business and 
-            profile.permanent_listing_enabled
-        ),
-        'is_verified_business': profile.is_verified_business if profile else False,
-    })
+            'can_create_permanent_listing': (
+                profile and 
+                profile.is_verified_business and 
+                profile.permanent_listing_enabled
+            ),
+            'is_verified_business': profile.is_verified_business if profile else False,
+        })
         # Add time_remaining to context if object exists
         if hasattr(self, 'object') and self.object:
             context['time_remaining'] = self.object.time_remaining
@@ -1149,7 +1153,9 @@ class ProductUpdateView(LoginRequiredMixin, UpdateView):
     success_url = reverse_lazy('product_list')
 
     def get_form_kwargs(self):
+        """Pass the current user to the form"""
         kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
         kwargs['instance'] = self.get_object()
         return kwargs
 
@@ -1160,7 +1166,6 @@ class ProductUpdateView(LoginRequiredMixin, UpdateView):
             # Reset expiration based on listing type
             duration = {
                 'standard': 45,
-                'business': 90,
                 'urgent': 30
             }.get(self.object.listing_type)
             
@@ -1168,6 +1173,10 @@ class ProductUpdateView(LoginRequiredMixin, UpdateView):
                 self.object.expiration_date = timezone.now() + timedelta(days=duration)
                 self.object.deletion_warning_sent = False
             else:
+                # Verify user can set permanent listing
+                if not self.request.user.profile.is_verified_business:
+                    messages.error(self.request, 'Permanent listings are only available for verified businesses.')
+                    return self.form_invalid(form)
                 self.object.expiration_date = None
             
             self.object.save()
@@ -1214,7 +1223,7 @@ class ProductUpdateView(LoginRequiredMixin, UpdateView):
 
     def test_func(self):
         product = self.get_object()
-        return self.request.user == product.seller
+        return self.request.user == product.seller.user
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
