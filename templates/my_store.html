@@ -33,25 +33,39 @@
 
                     {% if is_verified_business %}
                         <div class="business-info-section">
-                            <h5>✅ Verified Business</h5>
-                            <p><strong>{{ business_info.name }}</strong></p>
+                            <div class="verified-business-badge">
+                                <i class="bi bi-patch-check-fill"></i>
+                                <span>Verified Business</span>
+                            </div>
+                            <h5 class="business-name">{{ business_info.name }}</h5>
                             {% if business_info.email %}
-                                <p>Email: {{ business_info.email }}</p>
+                                <p class="business-contact">
+                                    <i class="bi bi-envelope"></i>
+                                    {{ business_info.email }}
+                                </p>
                             {% endif %}
                             {% if business_info.phone %}
-                                <p>Phone: {{ business_info.phone }}</p>
+                                <p class="business-contact">
+                                    <i class="bi bi-telephone"></i>
+                                    {{ business_info.phone }}
+                                </p>
                             {% endif %}
                             {% if business_location_display %}
-                                <p>Address: {{ business_location_display }}</p>
+                                <p class="business-contact">
+                                    <i class="bi bi-geo-alt"></i>
+                                    {{ business_location_display }}
+                                </p>
                             {% endif %}
                         </div>
                     {% elif has_pending_verification %}
-                        <div class="pending-verification">
-                            <p>⏳ Business verification pending</p>
+                        <div class="pending-verification-badge">
+                            <i class="bi bi-clock-history"></i>
+                            <span>Business verification under review</span>
                         </div>
                     {% else %}
                         {% if request.user == store_owner %}
-                            <a href="{% url 'business_verification_form' %}" class="btn btn-primary">
+                            <a href="{% url 'business_verification_form' %}" class="btn btn-verify-business">
+                                <i class="bi bi-shield-check"></i>
                                 Verify Your Business
                             </a>
                         {% endif %}
@@ -80,53 +94,125 @@
         </div>
     </div>
 
-
     <div class="container">
         {% if request.user == store_owner %}
-        <div class="info-item-card business-verification-card">
-            <div class="info-item-header">
-                <i class="bi bi-building"></i>
-                <span class="info-label">Business Verification</span>
-            </div>
-            <div class="info-content">
-                {% if store_owner.profile.is_verified_business %}
-                    <div class="verified-section">
-                        <span class="verification-badge verified">
-                            <i class="bi bi-patch-check-fill"></i>
-                            <span class="badge-text">Verified Business</span>
-                        </span>
-                        <p class="business-name">{{ store_owner.profile.business_name }}</p>
+        <!-- Enhanced Business Verification Section -->
+        <div class="business-verification-section mb-4">
+            <div class="business-verification-card {% if store_owner.profile.is_verified_business %}verified-card{% elif store_owner.profile.has_pending_verification %}pending-card{% else %}unverified-card{% endif %}">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-2 text-center">
+                            <div class="verification-icon-large">
+                                {% if store_owner.profile.is_verified_business %}
+                                    <i class="bi bi-patch-check-fill text-success"></i>
+                                {% elif store_owner.profile.has_pending_verification %}
+                                    <i class="bi bi-clock-history text-warning"></i>
+                                {% else %}
+                                    <i class="bi bi-shield-exclamation text-primary"></i>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            {% if store_owner.profile.is_verified_business %}
+                                <div class="verification-status">
+                                    <span class="verification-badge verified">
+                                        <i class="bi bi-patch-check-fill"></i>
+                                        <span class="badge-text">Verified Business</span>
+                                    </span>
+                                    <h5 class="business-name mt-2">{{ store_owner.profile.business_name }}</h5>
+                                    <p class="verification-date">
+                                        Verified on {{ store_owner.profile.business_verified_at|date:"M d, Y" }}
+                                    </p>
+                                </div>
+                            {% elif store_owner.profile.has_pending_verification %}
+                                <div class="verification-status">
+                                    <span class="verification-badge pending">
+                                        <i class="bi bi-clock-history"></i>
+                                        <span class="badge-text">Under Review</span>
+                                    </span>
+                                    <h5 class="mt-2">Business Verification Pending</h5>
+                                    <p class="text-muted">
+                                        Your application is being reviewed. You'll be notified once approved.
+                                    </p>
+                                </div>
+                            {% else %}
+                                <div class="verification-status">
+                                    <span class="verification-badge unverified">
+                                        <i class="bi bi-shield-exclamation"></i>
+                                        <span class="badge-text">Unverified</span>
+                                    </span>
+                                    <h5 class="mt-2">Verify Your Business</h5>
+                                    <p class="text-muted">
+                                        Get verified to unlock premium features and build customer trust.
+                                    </p>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            {% if store_owner.profile.is_verified_business %}
+                                <div class="verification-benefits">
+                                    <h6 class="benefits-title">✨ Active Benefits</h6>
+                                    <div class="verification-benefits-grid">
+                                        <div class="benefit-item">
+                                            <i class="bi bi-check-circle-fill text-success"></i>
+                                            <span>Verified Badge</span>
+                                        </div>
+                                        <div class="benefit-item">
+                                            <i class="bi bi-infinity text-success"></i>
+                                            <span>Permanent Listings</span>
+                                        </div>
+                                        <div class="benefit-item">
+                                            <i class="bi bi-eye-fill text-success"></i>
+                                            <span>Enhanced Visibility</span>
+                                        </div>
+                                        <div class="benefit-item">
+                                            <i class="bi bi-headset text-success"></i>
+                                            <span>Priority Support</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% elif store_owner.profile.has_pending_verification %}
+                                <div class="verification-actions">
+                                    <a href="{% url 'business_verification_status' %}" class="btn btn-outline-warning btn-sm">
+                                        <i class="bi bi-search me-1"></i>
+                                        Check Status
+                                    </a>
+                                </div>
+                            {% else %}
+                                <div class="verification-cta">
+                                    <h6 class="benefits-title">🚀 Unlock Benefits</h6>
+                                    <div class="verification-benefits-grid">
+                                        <div class="benefit-item">
+                                            <i class="bi bi-patch-check"></i>
+                                            <span>Verified Badge</span>
+                                        </div>
+                                        <div class="benefit-item">
+                                            <i class="bi bi-infinity"></i>
+                                            <span>Permanent Listings</span>
+                                        </div>
+                                        <div class="benefit-item">
+                                            <i class="bi bi-graph-up"></i>
+                                            <span>Higher Rankings</span>
+                                        </div>
+                                        <div class="benefit-item">
+                                            <i class="bi bi-shield-check"></i>
+                                            <span>Customer Trust</span>
+                                        </div>
+                                    </div>
+                                    <a href="{% url 'business_verification_form' %}" class="btn btn-primary btn-verify-now mt-3">
+                                        <i class="bi bi-shield-check me-1"></i>
+                                        Start Verification
+                                    </a>
+                                </div>
+                            {% endif %}
+                        </div>
                     </div>
-                {% elif store_owner.profile.has_pending_verification %}
-                    <div class="pending-section">
-                        <span class="verification-badge pending">
-                            <i class="bi bi-clock-history"></i>
-                            <span class="badge-text">Under Review</span>
-                        </span>
-                        <a href="{% url 'business_verification_status' %}" class="btn btn-sm btn-outline-info">
-                            Check Status
-                        </a>
-                    </div>
-                {% else %}
-                    <div class="unverified-business-section">
-                        <p class="mb-2">Verify your business to unlock premium features:</p>
-                        <ul class="benefits-mini">
-                            <li>Verified business badge</li>
-                            <li>Permanent listings</li>
-                            <li>Enhanced visibility</li>
-                            <li>Priority Support</li>
-                        </ul>
-                        <a href="{% url 'business_verification_form' %}" class="btn btn-primary btn-sm">
-                            <i class="bi bi-patch-check me-1"></i>
-                            Verify Business
-                        </a>
-                    </div>
-                {% endif %}
+                </div>
             </div>
         </div>
         {% endif %}
-
-        
 
         {% if request.user == store_owner %}
             <div class="row mb-4">
