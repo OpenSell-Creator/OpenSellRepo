@@ -30,46 +30,6 @@
                     {% if store_owner.profile.bio %}
                         <p class="store-bio mb-3">{{ store_owner.profile.bio }}</p>
                     {% endif %}
-
-                    {% if is_verified_business %}
-                        <div class="business-info-section">
-                            <div class="verified-business-badge">
-                                <i class="bi bi-patch-check-fill"></i>
-                                <span>Verified Business</span>
-                            </div>
-                            <h5 class="business-name">{{ business_info.name }}</h5>
-                            {% if business_info.email %}
-                                <p class="business-contact">
-                                    <i class="bi bi-envelope"></i>
-                                    {{ business_info.email }}
-                                </p>
-                            {% endif %}
-                            {% if business_info.phone %}
-                                <p class="business-contact">
-                                    <i class="bi bi-telephone"></i>
-                                    {{ business_info.phone }}
-                                </p>
-                            {% endif %}
-                            {% if business_location_display %}
-                                <p class="business-contact">
-                                    <i class="bi bi-geo-alt"></i>
-                                    {{ business_location_display }}
-                                </p>
-                            {% endif %}
-                        </div>
-                    {% elif has_pending_verification %}
-                        <div class="pending-verification-badge">
-                            <i class="bi bi-clock-history"></i>
-                            <span>Business verification under review</span>
-                        </div>
-                    {% else %}
-                        {% if request.user == store_owner %}
-                            <a href="{% url 'business_verification_form' %}" class="btn btn-verify-business">
-                                <i class="bi bi-shield-check"></i>
-                                Verify Your Business
-                            </a>
-                        {% endif %}
-                    {% endif %}
         
                     {% if request.user == store_owner %}
                         <div class="profile-actions mt-4">
@@ -97,8 +57,8 @@
     <div class="container">
         {% if request.user == store_owner %}
         <!-- Enhanced Business Verification Section -->
-        <div class="business-verification-section mb-4">
-            <div class="business-verification-card {% if store_owner.profile.is_verified_business %}verified-card{% elif store_owner.profile.has_pending_verification %}pending-card{% else %}unverified-card{% endif %}">
+        <div class="business-verification-section ">
+            <div class="business-verification-car {% if store_owner.profile.is_verified_business %}verified-card{% elif store_owner.profile.has_pending_verification %}pending-card{% else %}unverified-card{% endif %}">
                 <div class="card-body">
                     <div class="row align-items-center">
                         <div class="col-md-2 text-center">
@@ -115,7 +75,7 @@
                         
                         <div class="col-md-6">
                             {% if store_owner.profile.is_verified_business %}
-                                <div class="verification-status">
+                                <div class="verification-statu">
                                     <span class="verification-badge verified">
                                         <i class="bi bi-patch-check-fill"></i>
                                         <span class="badge-text">Verified Business</span>
@@ -201,7 +161,7 @@
                                             <span>Customer Trust</span>
                                         </div>
                                     </div>
-                                    <a href="{% url 'business_verification_form' %}" class="btn btn-primary btn-verify-now mt-3">
+                                    <a href="{% url 'business_verification_form' %}" class="btn btn-primary  mt-3">
                                         <i class="bi bi-shield-check me-1"></i>
                                         Start Verification
                                     </a>
@@ -212,118 +172,201 @@
                 </div>
             </div>
         </div>
-        {% endif %}
+        
+        <!-- Business Information Section (New Section) -->
+        {% if store_owner.profile.is_verified_business %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card store-info-card">
+                    <div class="card-body">
+                        <h5 class="info-section-title mb-4">
+                            <i class="bi bi-building-fill me-2"></i>
+                            Business Information
+                        </h5>
 
-        {% if request.user == store_owner %}
-            <div class="row mb-4">
-                <div class="col-12">
-                    <div class="card store-info-card">
-                        <div class="card-body">
-                            <h5 class="info-section-title mb-4">
-                                <i class="bi bi-person-lines-fill me-2"></i>
-                                My Information
-                            </h5>
-
-                            <div class="info-grid">
-                                <div class="info-item-card">
-                                    <div class="info-item-header">
-                                        <i class="bi bi-person-circle"></i>
-                                        <span class="info-label">Full Name</span>
-                                    </div>
-                                    <div class="info-content">
-                                        {{ store_owner.get_full_name|default:"Not provided" }}
-                                    </div>
+                        <div class="info-grid">
+                            <div class="info-item-card">
+                                <div class="info-item-header">
+                                    <i class="bi bi-shop"></i>
+                                    <span class="info-label">Business Name</span>
                                 </div>
-
-                                <div class="info-item-card">
-                                    <div class="info-item-header">
-                                        <i class="bi bi-envelope"></i>
-                                        <span class="info-label">Email Address</span>
-                                    </div>
-                                    <div class="info-content">
-                                        <div class="email-wrapper">
-                                            <span class="email-text">{{ store_owner.email }}</span>
-                                            <div class="verification-status">
-                                                {% if request.user.profile.email_verified %}
-                                                    <span class="verification-badge verified" data-bs-toggle="tooltip" data-bs-placement="top" title="Email Verified">
-                                                        <i class="bi bi-patch-check-fill"></i>
-                                                        <span class="badge-text">Verified</span>
-                                                    </span>
-                                                {% else %}
-                                                    <div class="unverified-section">
-                                                        <span class="verification-badge unverified" data-bs-toggle="tooltip" data-bs-placement="top" title="Email Not Verified">
-                                                            <i class="bi bi-patch-exclamation-fill"></i>
-                                                            <span class="badge-text">Unverified</span>
-                                                        </span>
-                                                        <form class="verify-form" method="post" action="{% url 'send_verification_otp' %}">
-                                                            {% csrf_token %}
-                                                            <button type="submit" class="btn btn-verify">
-                                                                <i class="bi bi-shield-check me-1"></i>
-                                                                Verify Now
-                                                            </button>
-                                                        </form>
-                                                    </div>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    </div>
+                                <div class="info-content">
+                                    {{ store_owner.profile.business_name|default:"Not provided" }}
                                 </div>
-
-                                <div class="info-item-card">
-                                    <div class="info-item-header">
-                                        <i class="bi bi-telephone"></i>
-                                        <span class="info-label">Phone Number</span>
-                                    </div>
-                                    <div class="info-content">
-                                        {{ store_owner.profile.phone_number|default:"Not provided" }}
-                                    </div>
-                                </div>
-
-                                {% if store_owner.profile.location %}
-                                <div class="info-item-card location-card">
-                                    <div class="info-item-header">
-                                        <i class="bi bi-geo-alt"></i>
-                                        <span class="info-label">Location</span>
-                                    </div>
-                                    <div class="info-content">
-                                        <div class="location-details">
-                                            {% if store_owner.profile.location.address %}
-                                                <div class="location-line">{{ store_owner.profile.location.address }}</div>
-                                            {% endif %}
-                                            {% if store_owner.profile.location.address_2 %}
-                                                <div class="location-line">{{ store_owner.profile.location.address_2 }}</div>
-                                            {% endif %}
-                                            <div class="location-line">
-                                                {% if store_owner.profile.location.city %}
-                                                    {{ store_owner.profile.location.city }}
-                                                    {% if store_owner.profile.location.lga %}, {% endif %}
-                                                {% endif %}
-                                                {% if store_owner.profile.location.lga %}
-                                                    {{ store_owner.profile.location.lga.name }}
-                                                {% endif %}
-                                            </div>
-                                            {% if store_owner.profile.location.state %}
-                                                <div class="location-line">{{ store_owner.profile.location.state.name }}</div>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                                {% else %}
-                                <div class="info-item-card">
-                                    <div class="info-item-header">
-                                        <i class="bi bi-geo-alt"></i>
-                                        <span class="info-label">Location</span>
-                                    </div>
-                                    <div class="info-content">
-                                        Not provided
-                                    </div>
-                                </div>
-                                {% endif %}
                             </div>
+
+                            <div class="info-item-card">
+                                <div class="info-item-header">
+                                    <i class="bi bi-briefcase"></i>
+                                    <span class="info-label">Business Type</span>
+                                </div>
+                                <div class="info-content">
+                                    {{ store_owner.profile.get_business_type_display|default:"Not specified" }}
+                                </div>
+                            </div>
+
+                            <div class="info-item-card">
+                                <div class="info-item-header">
+                                    <i class="bi bi-envelope-at"></i>
+                                    <span class="info-label">Business Email</span>
+                                </div>
+                                <div class="info-content">
+                                    {{ store_owner.profile.business_email|default:"Not provided" }}
+                                </div>
+                            </div>
+
+                            <div class="info-item-card">
+                                <div class="info-item-header">
+                                    <i class="bi bi-telephone-fill"></i>
+                                    <span class="info-label">Business Phone</span>
+                                </div>
+                                <div class="info-content">
+                                    {{ store_owner.profile.business_phone|default:"Not provided" }}
+                                </div>
+                            </div>
+
+                            {% if store_owner.profile.business_website %}
+                            <div class="info-item-card">
+                                <div class="info-item-header">
+                                    <i class="bi bi-globe"></i>
+                                    <span class="info-label">Website</span>
+                                </div>
+                                <div class="info-content">
+                                    <a href="{{ store_owner.profile.business_website }}" target="_blank" class="external-link">
+                                        {{ store_owner.profile.business_website }}
+                                        <i class="bi bi-box-arrow-up-right ms-1"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% if store_owner.profile.business_registration_number %}
+                            <div class="info-item-card">
+                                <div class="info-item-header">
+                                    <i class="bi bi-card-text"></i>
+                                    <span class="info-label">Registration Number</span>
+                                </div>
+                                <div class="info-content">
+                                    {{ store_owner.profile.business_registration_number }}
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
+        {% endif %}
+
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card store-info-card">
+                    <div class="card-body">
+                        <h5 class="info-section-title mb-4">
+                            <i class="bi bi-person-lines-fill me-2"></i>
+                            My Information
+                        </h5>
+
+                        <div class="info-grid">
+                            <div class="info-item-card">
+                                <div class="info-item-header">
+                                    <i class="bi bi-person-circle"></i>
+                                    <span class="info-label">Full Name</span>
+                                </div>
+                                <div class="info-content">
+                                    {{ store_owner.get_full_name|default:"Not provided" }}
+                                </div>
+                            </div>
+
+                            <div class="info-item-card">
+                                <div class="info-item-header">
+                                    <i class="bi bi-envelope"></i>
+                                    <span class="info-label">Email Address</span>
+                                </div>
+                                <div class="info-content">
+                                    <div class="email-wrapper">
+                                        <span class="email-text">{{ store_owner.email }}</span>
+                                        <div class="verification-status">
+                                            {% if request.user.profile.email_verified %}
+                                                <span class="verification-badge verified" data-bs-toggle="tooltip" data-bs-placement="top" title="Email Verified">
+                                                    <i class="bi bi-patch-check-fill"></i>
+                                                    <span class="badge-text">Verified</span>
+                                                </span>
+                                            {% else %}
+                                                <div class="unverified-section">
+                                                    <span class="verification-badge unverified" data-bs-toggle="tooltip" data-bs-placement="top" title="Email Not Verified">
+                                                        <i class="bi bi-patch-exclamation-fill"></i>
+                                                        <span class="badge-text">Unverified</span>
+                                                    </span>
+                                                    <form class="verify-form" method="post" action="{% url 'send_verification_otp' %}">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-verify">
+                                                            <i class="bi bi-shield-check me-1"></i>
+                                                            Verify Now
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="info-item-card">
+                                <div class="info-item-header">
+                                    <i class="bi bi-telephone"></i>
+                                    <span class="info-label">Phone Number</span>
+                                </div>
+                                <div class="info-content">
+                                    {{ store_owner.profile.phone_number|default:"Not provided" }}
+                                </div>
+                            </div>
+
+                            {% if store_owner.profile.location %}
+                            <div class="info-item-card location-card">
+                                <div class="info-item-header">
+                                    <i class="bi bi-geo-alt"></i>
+                                    <span class="info-label">Location</span>
+                                </div>
+                                <div class="info-content">
+                                    <div class="location-details">
+                                        {% if store_owner.profile.location.address %}
+                                            <div class="location-line">{{ store_owner.profile.location.address }}</div>
+                                        {% endif %}
+                                        {% if store_owner.profile.location.address_2 %}
+                                            <div class="location-line">{{ store_owner.profile.location.address_2 }}</div>
+                                        {% endif %}
+                                        <div class="location-line">
+                                            {% if store_owner.profile.location.city %}
+                                                {{ store_owner.profile.location.city }}
+                                                {% if store_owner.profile.location.lga %}, {% endif %}
+                                            {% endif %}
+                                            {% if store_owner.profile.location.lga %}
+                                                {{ store_owner.profile.location.lga.name }}
+                                            {% endif %}
+                                        </div>
+                                        {% if store_owner.profile.location.state %}
+                                            <div class="location-line">{{ store_owner.profile.location.state.name }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="info-item-card">
+                                <div class="info-item-header">
+                                    <i class="bi bi-geo-alt"></i>
+                                    <span class="info-label">Location</span>
+                                </div>
+                                <div class="info-content">
+                                    Not provided
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         {% endif %}
 
         <div class="row">
@@ -360,5 +403,6 @@
         </div>
     </div>
 </div>
+
 {% endblock %}
 {% block 'Footer'%}{% endblock %}

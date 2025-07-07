@@ -280,7 +280,6 @@ def business_verification_status(request):
 
 @login_required
 def upload_business_document(request):
-    """AJAX view for uploading additional business documents"""
     if request.method == 'POST':
         form = BusinessDocumentForm(request.POST, request.FILES)
         if form.is_valid():
@@ -305,21 +304,18 @@ def upload_business_document(request):
 @user_passes_test(lambda u: u.is_staff)
 def admin_business_verifications(request):
     """Admin view to manage business verifications"""
-    # Get filter parameters
+
     status_filter = request.GET.get('status', 'pending')
     search_query = request.GET.get('search', '')
-    
-    # Base queryset - get profiles with business information
+
     queryset = Profile.objects.filter(
         business_name__isnull=False,
         business_verification_status__in=['pending', 'verified', 'rejected']
     ).select_related('user', 'business_verified_by').prefetch_related('verification_documents')
-    
-    # Apply status filter
+
     if status_filter and status_filter != 'all':
         queryset = queryset.filter(business_verification_status=status_filter)
-    
-    # Apply search filter
+
     if search_query:
         queryset = queryset.filter(
             Q(business_name__icontains=search_query) |
@@ -328,16 +324,13 @@ def admin_business_verifications(request):
             Q(user__first_name__icontains=search_query) |
             Q(user__last_name__icontains=search_query)
         )
-    
-    # Order by submission date (newest first)
+
     queryset = queryset.order_by('-id')
-    
-    # Paginate results
-    paginator = Paginator(queryset, 25)  # Show 25 verification requests per page
+
+    paginator = Paginator(queryset, 25) 
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    
-    # Get counts for different statuses
+
     status_counts = {
         'pending': Profile.objects.filter(
             business_name__isnull=False,
@@ -363,6 +356,7 @@ def admin_business_verifications(request):
     }
     
     return render(request, 'admin/business_verifications.html', context)
+
 @user_passes_test(lambda u: u.is_staff)
 def admin_verify_business(request, profile_id):
     """Admin view to verify/reject a business"""
