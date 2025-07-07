@@ -477,7 +477,9 @@ else:
     }
     
 # Django Compressor Settings
-COMPRESS_ENABLED = not DEBUG  # Enable compression in production only
+COMPRESS_ENABLED = not DEBUG
+
+# Common filters for both environments
 COMPRESS_CSS_FILTERS = [
     'compressor.filters.css_default.CssAbsoluteFilter',
     'compressor.filters.cssmin.rCSSMinFilter', 
@@ -486,30 +488,42 @@ COMPRESS_JS_FILTERS = [
     'compressor.filters.jsmin.rJSMinFilter', 
 ]
 
-# Cache compressed files
-COMPRESS_CACHE_BACKEND = 'default'
-COMPRESS_REBUILD_TIMEOUT = 3600
-
-# Storage for compressed files
-if DEBUG:
-    COMPRESS_STORAGE = 'compressor.storage.CompressorFileStorage'
-    COMPRESS_URL = STATIC_URL
-    COMPRESS_ROOT = STATIC_ROOT
-else:
-    # For production, use the same storage as static files
-    COMPRESS_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
-    COMPRESS_URL = STATIC_URL
-    COMPRESS_ROOT = STATIC_ROOT
-
-# Offline compression for production
-COMPRESS_OFFLINE = not DEBUG
-COMPRESS_OFFLINE_CONTEXT = {
-    'STATIC_URL': STATIC_URL,
-}
-
-# Add staticfiles finder for compressor
+# Always include the compressor finder
 STATICFILES_FINDERS = [
     'django.contrib.staticfiles.finders.FileSystemFinder',
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
     'compressor.finders.CompressorFinder',
 ]
+
+# Environment-specific settings
+if DEBUG:
+    # Development: NO compression
+    COMPRESS_OFFLINE = False
+    COMPRESS_CACHE_BACKEND = None
+    
+    # Simple static file serving for development
+    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+    
+else:
+    # Production: Full compression and optimization
+    COMPRESS_OFFLINE = True
+    COMPRESS_CACHE_BACKEND = 'default'
+    COMPRESS_REBUILD_TIMEOUT = 0 
+    
+    # Content-based hashing for cache busting
+    COMPRESS_CSS_HASHING_METHOD = 'content'
+    COMPRESS_JS_HASHING_METHOD = 'content'
+    
+    # Production static file storage with versioning
+    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
+
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+            'LOCATION': 'django_cache_table',
+            'TIMEOUT': 86400,
+        }
+    }
+COMPRESS_PRECOMPILERS = ()
+COMPRESS_ROOT = STATIC_ROOT
+COMPRESS_URL = STATIC_URL
