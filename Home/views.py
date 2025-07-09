@@ -532,7 +532,7 @@ class ProductListView(ListView):
             except (ValueError, TypeError):
                 pass
             
-        if verified_business:
+        if verified_business == 'true':
             queryset = queryset.filter(seller__business_verification_status='verified')
         
         # Apply sorting
@@ -683,8 +683,7 @@ class ProductListView(ListView):
         
         # Regular template response
         return super().render_to_response(context, **response_kwargs)
-    
-    # Keep your existing get_context_data and format_price methods unchanged
+
     def get_context_data(self, **kwargs):
         # [Your existing get_context_data method remains exactly the same]
         context = super().get_context_data(**kwargs)

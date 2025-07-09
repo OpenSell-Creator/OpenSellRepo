@@ -1131,6 +1131,7 @@
         if (dropdownFilterForm) {
             const dropdownSubcategorySelect = document.getElementById('dropdown_subcategory');
             const dropdownBrandSelect = document.getElementById('dropdown_brand');
+            const dropdownVerifiedBusinessSelect = document.getElementById('dropdown_verified_business');
             const dropdownConditionSelect = document.getElementById('dropdown_condition');
             const dropdownPriceRangeSelect = document.getElementById('dropdown_price_range');
             const dropdownStateSelect = document.getElementById('dropdown_state');
@@ -1205,13 +1206,15 @@
                                 return response.json();
                             })
                             .then(data => {
-                                dropdownBrandSelect.innerHTML = '<option value="">All Brands</option>';
-                                data.forEach(brand => {
-                                    const option = document.createElement('option');
-                                    option.value = brand.slug;
-                                    option.textContent = `${brand.name}${brand.product_count ? ' (' + brand.product_count + ')' : ''}`;
-                                    dropdownBrandSelect.appendChild(option);
-                                });
+                                if (dropdownBrandSelect) {
+                                    dropdownBrandSelect.innerHTML = '<option value="">All Brands</option>';
+                                    data.forEach(brand => {
+                                        const option = document.createElement('option');
+                                        option.value = brand.slug;
+                                        option.textContent = `${brand.name}${brand.product_count ? ' (' + brand.product_count + ')' : ''}`;
+                                        dropdownBrandSelect.appendChild(option);
+                                    });
+                                }
                             })
                             .catch(error => {
                                 console.error('Error fetching brands:', error);
@@ -1227,11 +1230,15 @@
                 dropdownStateSelect.addEventListener('change', function() {
                     const stateId = this.value;
                     
-                    dropdownLgaSelect.innerHTML = '<option value="">All LGAs</option>';
-                    dropdownLgaSelect.value = '';
+                    if (dropdownLgaSelect) {
+                        dropdownLgaSelect.innerHTML = '<option value="">All LGAs</option>';
+                        dropdownLgaSelect.value = '';
+                    }
                     
                     if (stateId) {
-                        dropdownLgaSelect.disabled = false;
+                        if (dropdownLgaSelect) {
+                            dropdownLgaSelect.disabled = false;
+                        }
                         
                         fetch(`/api/lgas/${stateId}/`)
                             .then(response => {
@@ -1239,22 +1246,28 @@
                                 return response.json();
                             })
                             .then(data => {
-                                data.forEach(lga => {
-                                    const option = document.createElement('option');
-                                    option.value = lga.id;
-                                    option.textContent = lga.name;
-                                    dropdownLgaSelect.appendChild(option);
-                                });
+                                if (dropdownLgaSelect) {
+                                    data.forEach(lga => {
+                                        const option = document.createElement('option');
+                                        option.value = lga.id;
+                                        option.textContent = lga.name;
+                                        dropdownLgaSelect.appendChild(option);
+                                    });
+                                }
                                 
                                 submitFormSafely(100);
                             })
                             .catch(error => {
                                 console.error('Error fetching LGAs:', error);
-                                dropdownLgaSelect.disabled = true;
+                                if (dropdownLgaSelect) {
+                                    dropdownLgaSelect.disabled = true;
+                                }
                                 submitFormSafely(100);
                             });
                     } else {
-                        dropdownLgaSelect.disabled = true;
+                        if (dropdownLgaSelect) {
+                            dropdownLgaSelect.disabled = true;
+                        }
                         submitFormSafely(100);
                     }
                 });
@@ -1267,8 +1280,8 @@
                 });
             }
 
-            // Add change listeners to other filters
-            [dropdownBrandSelect, dropdownConditionSelect, dropdownPriceRangeSelect].forEach(select => {
+            // Add change listeners to all filter dropdowns
+            [dropdownBrandSelect, dropdownVerifiedBusinessSelect, dropdownConditionSelect, dropdownPriceRangeSelect].forEach(select => {
                 if (select) {
                     select.addEventListener('change', handleFilterChange);
                 }
@@ -1279,23 +1292,28 @@
             if (clearDropdownFiltersBtn) {
                 clearDropdownFiltersBtn.addEventListener('click', function() {
                     try {
-                        [dropdownSubcategorySelect, dropdownBrandSelect, dropdownConditionSelect, 
-                         dropdownPriceRangeSelect, dropdownStateSelect, dropdownLgaSelect].forEach(select => {
+                        // Clear all filter selections
+                        [dropdownSubcategorySelect, dropdownBrandSelect, dropdownVerifiedBusinessSelect, 
+                         dropdownConditionSelect, dropdownPriceRangeSelect, dropdownStateSelect, 
+                         dropdownLgaSelect].forEach(select => {
                             if (select) {
                                 select.value = '';
                             }
                         });
 
+                        // Reset LGA dropdown
                         if (dropdownLgaSelect) {
                             dropdownLgaSelect.innerHTML = '<option value="">All LGAs</option>';
                             dropdownLgaSelect.disabled = true;
                         }
 
+                        // Remove price range hidden inputs
                         const existingMinPrice = dropdownFilterForm.querySelector('input[name="min_price"]');
                         const existingMaxPrice = dropdownFilterForm.querySelector('input[name="max_price"]');
                         if (existingMinPrice) existingMinPrice.remove();
                         if (existingMaxPrice) existingMaxPrice.remove();
 
+                        // Reset brands dropdown to all brands for the category
                         const categorySlug = dropdownFilterForm.querySelector('input[name="category"]').value;
                         if (categorySlug && dropdownBrandSelect) {
                             fetch(`/api/brands/${categorySlug}/`)
