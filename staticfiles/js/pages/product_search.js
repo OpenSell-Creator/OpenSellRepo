@@ -1,72 +1,234 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Infinite Scroll Variables
-    let isLoading = false;
-    let hasMoreProducts = true;
-    let currentPage = 1;
-    let totalPages = 1;
-    let loadThreshold = 300;
+    console.log('🔍 Complete Search System Initializing...');
+    
+    // =============== CONFIGURATION ===============
+    const CONFIG = {
+        loadThreshold: 500, // Pixels from bottom to trigger load
+        debounceDelay: 250, // Scroll debounce delay
+        retryAttempts: 3,   // Max retry attempts for failed requests
+        debug: true         // Enable debug logging
+    };
+    
+    // =============== STATE MANAGEMENT ===============
+    const scrollState = {
+        isLoading: false,
+        hasMoreProducts: true,
+        currentPage: 1,
+        totalPages: 1,
+        totalCount: 0,
+        loadedCount: 0,
+        retryCount: 0,
+        initialized: false
+    };
+    
     let currentFilters = {};
     
-    // DOM Elements
-    const searchProductsGrid = document.getElementById('search-products-grid');
-    const searchLoadingIndicator = document.getElementById('search-loading-indicator');
-    const searchEndOfResults = document.getElementById('search-end-of-results');
-    const searchProductsCount = document.getElementById('search-products-count');
-    const form = document.getElementById('advancedSearchForm');
-    const categorySelect = document.getElementById('id_category');
-    const subcategorySelect = document.getElementById('id_subcategory');
-    const brandSelect = document.getElementById('id_brand');
-    const stateSelect = document.getElementById('id_state');
-    const lgaSelect = document.getElementById('id_lga');
-    const activeFiltersCount = document.getElementById('activeFiltersCount');
-    const clearFiltersBtn = document.getElementById('clearFilters');
-    const clearFiltersEmptyBtn = document.getElementById('clearFiltersEmpty');
+    // =============== DOM ELEMENTS ===============
+    const elements = {
+        searchProductsGrid: document.getElementById('search-products-grid'),
+        searchLoadingIndicator: document.getElementById('search-loading-indicator'),
+        searchEndOfResults: document.getElementById('search-end-of-results'),
+        searchProductsCount: document.getElementById('search-products-count'),
+        paginationData: document.getElementById('pagination-data'),
+        searchSortSelect: document.getElementById('searchSortSelect'),
+        
+        // Form elements
+        form: document.getElementById('advancedSearchForm'),
+        activeFiltersCount: document.getElementById('activeFiltersCount'),
+        clearFiltersBtn: document.getElementById('clearFilters'),
+        clearFiltersEmptyBtn: document.getElementById('clearFiltersEmpty'),
+        
+        // Filter form elements
+        categorySelect: document.getElementById('id_category'),
+        subcategorySelect: document.getElementById('id_subcategory'),
+        brandSelect: document.getElementById('id_brand'),
+        stateSelect: document.getElementById('id_state'),
+        lgaSelect: document.getElementById('id_lga'),
+        conditionSelect: document.getElementById('id_condition'),
+        minPriceInput: document.getElementById('id_min_price'),
+        maxPriceInput: document.getElementById('id_max_price'),
+        queryInput: document.querySelector('[name="query"]'),
+        verifiedBusinessSelect: document.querySelector('[name="verified_business"]')
+    };
     
-    // Initialize pagination state from server data
-    function initializePaginationState() {
-        try {
-            const paginationDataElement = document.getElementById('pagination-data');
-            if (paginationDataElement) {
-                const paginationData = JSON.parse(paginationDataElement.textContent);
-                currentPage = paginationData.current_page || 1;
-                totalPages = paginationData.total_pages || 1;
-                hasMoreProducts = paginationData.has_next || false;
-                
-                console.log('Search pagination initialized:', {
-                    currentPage,
-                    totalPages,
-                    hasMoreProducts,
-                    totalCount: paginationData.total_count
-                });
-                
-                // If we're already on the last page or there are no products, show end state
-                if (!hasMoreProducts && paginationData.current_count > 0) {
-                    showEndOfResults();
-                }
-            } else {
-                console.warn('Pagination data not found, using defaults');
-                // Fallback logic
-                const productElements = searchProductsGrid ? searchProductsGrid.querySelectorAll('.product-card') : [];
-                if (productElements.length === 0) {
-                    hasMoreProducts = false;
-                } else if (productElements.length < 12) {
-                    hasMoreProducts = false;
-                    showEndOfResults();
-                }
-            }
-        } catch (error) {
-            console.error('Error initializing pagination state:', error);
-            // Fallback to checking product count
-            const productElements = searchProductsGrid ? searchProductsGrid.querySelectorAll('.product-card') : [];
-            hasMoreProducts = productElements.length >= 12;
+    // =============== UTILITY FUNCTIONS ===============
+    function log(...args) {
+        if (CONFIG.debug) {
+            console.log('🔍 [SearchSystem]', ...args);
         }
     }
     
-    // Function to get all current form parameters
-    function getAllFormParams() {
-        if (!form) return new URLSearchParams();
+    function error(...args) {
+        console.error('❌ [SearchSystem]', ...args);
+    }
+    
+    function warn(...args) {
+        console.warn('⚠️ [SearchSystem]', ...args);
+    }
+    
+    // =============== PAGINATION STATE INITIALIZATION ===============
+    function initializePaginationState() {
+        log('Initializing search pagination state...');
         
-        const formData = new FormData(form);
+        try {
+            if (!elements.paginationData) {
+                warn('No pagination data element found');
+                return false;
+            }
+            
+            const paginationData = JSON.parse(elements.paginationData.textContent);
+            log('Raw search pagination data:', paginationData);
+            
+            // Update state from server data
+            scrollState.currentPage = paginationData.current_page || 1;
+            scrollState.totalPages = paginationData.total_pages || 1;
+            scrollState.hasMoreProducts = paginationData.has_next || false;
+            scrollState.totalCount = paginationData.total_count || 0;
+            scrollState.loadedCount = paginationData.current_count || 0;
+            
+            log('Updated search scroll state:', scrollState);
+            
+            // Initialize UI based on state
+            if (elements.searchEndOfResults) {
+                elements.searchEndOfResults.style.display = 'none';
+            }
+            
+            if (elements.searchLoadingIndicator) {
+                elements.searchLoadingIndicator.style.display = 'none';
+            }
+            
+            // Only show end of results if we have products but no more pages
+            if (!scrollState.hasMoreProducts && scrollState.loadedCount > 0) {
+                log('Search initial state: No more products available, showing end message');
+                showEndOfResults();
+            } else if (scrollState.loadedCount === 0) {
+                log('Search initial state: No products found');
+            } else {
+                log('Search initial state: More products available for loading');
+            }
+            
+            scrollState.initialized = true;
+            return true;
+            
+        } catch (e) {
+            error('Failed to parse search pagination data:', e);
+            
+            // Fallback: count products in DOM
+            if (elements.searchProductsGrid) {
+                const productCount = elements.searchProductsGrid.querySelectorAll('.col-6').length;
+                scrollState.loadedCount = productCount;
+                scrollState.hasMoreProducts = productCount >= 12;
+                log(`Search fallback: Found ${productCount} products in DOM`);
+            }
+            
+            return false;
+        }
+    }
+    
+    // =============== FILTER MANAGEMENT ===============
+    function getCurrentFilters() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const filters = {};
+        
+        for (const [key, value] of urlParams.entries()) {
+            if (key !== 'page' && value.trim() !== '') {
+                filters[key] = value;
+            }
+        }
+        
+        return filters;
+    }
+    
+    function filtersChanged() {
+        const newFilters = getCurrentFilters();
+        const filtersString = JSON.stringify(newFilters);
+        const currentFiltersString = JSON.stringify(currentFilters);
+        
+        if (filtersString !== currentFiltersString) {
+            currentFilters = newFilters;
+            return true;
+        }
+        return false;
+    }
+    
+    function resetInfiniteScrollState() {
+        log('🔄 Resetting search infinite scroll state...');
+        
+        scrollState.isLoading = false;
+        scrollState.hasMoreProducts = true;
+        scrollState.currentPage = 1;
+        scrollState.totalPages = 1;
+        scrollState.retryCount = 0;
+        scrollState.initialized = false;
+        
+        if (elements.searchEndOfResults) elements.searchEndOfResults.style.display = 'none';
+        if (elements.searchLoadingIndicator) elements.searchLoadingIndicator.style.display = 'none';
+        
+        // Clear error messages
+        const existingErrors = document.querySelectorAll('.search-error-message, .infinite-scroll-error');
+        existingErrors.forEach(error => error.remove());
+        
+        log('Search state reset complete');
+    }
+    
+    // =============== ACTIVE FILTERS MANAGEMENT ===============
+    function updateActiveFiltersCount() {
+        if (!elements.form || !elements.activeFiltersCount) return;
+        
+        let count = 0;
+        const formElements = elements.form.elements;
+        
+        for (let element of formElements) {
+            if (element.type !== 'submit' && 
+                element.type !== 'button' && 
+                element.value && 
+                element.value.trim() !== '' &&
+                element.name !== 'query') { // Don't count main search query
+                count++;
+            }
+        }
+        
+        elements.activeFiltersCount.textContent = count;
+        elements.activeFiltersCount.style.display = count > 0 ? 'flex' : 'none';
+        
+        log(`Active filters count updated: ${count}`);
+    }
+    
+    function clearAllFilters() {
+        if (!elements.form) return;
+        
+        log('Clearing all search filters');
+        const formElements = elements.form.elements;
+        for (let element of formElements) {
+            if (element.type !== 'submit' && element.type !== 'button') {
+                if (element.name !== 'query') { // Preserve search query
+                    element.value = '';
+                }
+            }
+        }
+        
+        // Reset dependent fields
+        if (elements.subcategorySelect) {
+            elements.subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
+            elements.subcategorySelect.disabled = true;
+        }
+        if (elements.brandSelect) {
+            elements.brandSelect.innerHTML = '<option value="">All Brands</option>';
+            elements.brandSelect.disabled = true;
+        }
+        if (elements.lgaSelect) {
+            elements.lgaSelect.innerHTML = '<option value="">All LGAs</option>';
+            elements.lgaSelect.disabled = true;
+        }
+        
+        updateActiveFiltersCount();
+    }
+    
+    // =============== URL AND PARAMETER MANAGEMENT ===============
+    function getAllFormParams() {
+        if (!elements.form) return new URLSearchParams();
+        
+        const formData = new FormData(elements.form);
         const params = new URLSearchParams();
         
         // Add all form fields that have values
@@ -85,187 +247,59 @@ document.addEventListener('DOMContentLoaded', function() {
         return params;
     }
     
-    // Function to get current filter parameters
-    function getCurrentFilters() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const filters = {};
+    function buildNextPageUrl() {
+        const nextPage = scrollState.currentPage + 1;
+        const params = getAllFormParams();
+        params.set('page', nextPage);
         
-        for (const [key, value] of urlParams.entries()) {
-            if (key !== 'page' && value.trim() !== '') {
-                filters[key] = value;
-            }
-        }
-        
-        return filters;
+        return `${window.location.pathname}?${params.toString()}`;
     }
     
-    // Function to check if filters have changed
-    function filtersChanged() {
-        const newFilters = getCurrentFilters();
-        const filtersString = JSON.stringify(newFilters);
-        const currentFiltersString = JSON.stringify(currentFilters);
-        
-        if (filtersString !== currentFiltersString) {
-            currentFilters = newFilters;
-            return true;
+    // =============== UI MANAGEMENT ===============
+    function showLoading() {
+        if (elements.searchLoadingIndicator) {
+            elements.searchLoadingIndicator.style.display = 'block';
         }
-        return false;
+        scrollState.isLoading = true;
+        log('Search loading indicator shown');
     }
     
-    // Function to reset infinite scroll state
-    function resetInfiniteScrollState() {
-        isLoading = false;
-        hasMoreProducts = true;
-        currentPage = 1;
-        totalPages = 1;
-        
-        if (searchEndOfResults) searchEndOfResults.style.display = 'none';
-        if (searchLoadingIndicator) searchLoadingIndicator.style.display = 'none';
-        
-        // Clear any error messages
-        const existingErrors = document.querySelectorAll('.search-error-message, .infinite-scroll-error');
-        existingErrors.forEach(error => error.remove());
-        
-        console.log('Search infinite scroll state reset');
+    function hideLoading() {
+        if (elements.searchLoadingIndicator) {
+            elements.searchLoadingIndicator.style.display = 'none';
+        }
+        scrollState.isLoading = false;
+        log('Search loading indicator hidden');
     }
     
-    // Enhanced infinite scroll - load more search results
-    async function loadMoreSearchResults() {
-        // Pre-flight checks
-        if (!searchProductsGrid) {
-            console.log('Search products grid not found');
-            return;
-        }
-        
-        if (isLoading) {
-            console.log('Already loading, skipping');
-            return;
-        }
-        
-        if (!hasMoreProducts) {
-            console.log('No more search results available');
-            showEndOfResults();
-            return;
-        }
-        
-        // Additional check: don't load if we've reached total pages
-        if (currentPage >= totalPages && totalPages > 1) {
-            console.log(`Already at last page (${currentPage}/${totalPages})`);
-            hasMoreProducts = false;
-            showEndOfResults();
-            return;
-        }
-        
-        isLoading = true;
-        if (searchLoadingIndicator) searchLoadingIndicator.style.display = 'block';
-        
-        try {
-            const nextPage = currentPage + 1;
-            
-            // Get all current parameters
-            const params = getAllFormParams();
-            params.set('page', nextPage);
-            
-            // Construct URL with all parameters
-            const url = `${window.location.pathname}?${params.toString()}`;
-            
-            console.log(`Loading search page ${nextPage} from:`, url);
-            
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json',
-                    'Cache-Control': 'no-cache',
-                }
-            });
-            
-            if (!response.ok) {
-                if (response.status === 404) {
-                    console.log('Search page not found (404), end of results');
-                    hasMoreProducts = false;
-                    showEndOfResults();
-                    return;
-                }
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const data = await response.json();
-            
-            // Check if response indicates success
-            if (data.success) {
-                if (data.products_html && data.products_html.length > 0) {
-                    // Add new products to the grid using server-rendered HTML
-                    data.products_html.forEach((productHtml, index) => {
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = productHtml.trim();
-                        const productElement = tempDiv.firstElementChild;
-                        
-                        if (productElement) {
-                            // Wrap in proper grid column
-                            const colDiv = document.createElement('div');
-                            colDiv.className = 'col-6 col-md-4 col-lg-3 col-xl-2';
-                            colDiv.appendChild(productElement);
-                            
-                            // Add with slight animation delay
-                            setTimeout(() => {
-                                searchProductsGrid.appendChild(colDiv);
-                            }, index * 30);
-                        }
-                    });
-                    
-                    // Update pagination state
-                    currentPage = data.current_page || nextPage;
-                    totalPages = data.total_pages || totalPages;
-                    hasMoreProducts = data.has_more === true;
-                    
-                    console.log(`Added ${data.products_html.length} search results. Page ${currentPage}/${totalPages}, hasMore: ${hasMoreProducts}`);
-                    
-                    if (!hasMoreProducts) {
-                        showEndOfResults();
-                    }
-                } else {
-                    console.log('No search results in response, end of results');
-                    hasMoreProducts = false;
-                    showEndOfResults();
-                }
-            } else {
-                throw new Error(data.error || 'Server returned error');
-            }
-            
-        } catch (error) {
-            console.error('Error loading more search results:', error);
-            hasMoreProducts = false;
-            
-            if (error.message.includes('404')) {
-                showEndOfResults('No more search results available');
-            } else {
-                showSearchErrorMessage(`Unable to load more results: ${error.message}`);
-            }
-            
-        } finally {
-            isLoading = false;
-            if (searchLoadingIndicator) searchLoadingIndicator.style.display = 'none';
-        }
-    }
-    
-    // Function to show end of results
-    function showEndOfResults(customMessage = null) {
-        if (searchEndOfResults) {
-            if (customMessage) {
-                const messageElement = searchEndOfResults.querySelector('p');
+    function showEndOfResults(message = null) {
+        if (elements.searchEndOfResults) {
+            if (message) {
+                const messageElement = elements.searchEndOfResults.querySelector('p');
                 if (messageElement) {
-                    messageElement.textContent = customMessage;
+                    messageElement.textContent = message;
                 }
             }
-            searchEndOfResults.style.display = 'block';
+            elements.searchEndOfResults.style.display = 'block';
+            log('Search end of results shown');
         }
-        console.log('Search end of results displayed');
     }
     
-    // Enhanced error message function
-    function showSearchErrorMessage(message) {
-        // Remove any existing error messages first
+    function updateProductCount() {
+        if (elements.searchProductsCount && elements.searchProductsGrid) {
+            const currentCount = elements.searchProductsGrid.querySelectorAll('.col-6').length;
+            scrollState.loadedCount = currentCount;
+            
+            // Update the search results count display
+            const countText = currentCount === 1 ? '1 product found' : `${currentCount} products found`;
+            elements.searchProductsCount.textContent = countText;
+            
+            log(`Search product count updated: ${currentCount}`);
+        }
+    }
+    
+    function showErrorMessage(message) {
+        // Remove existing error messages
         const existingErrors = document.querySelectorAll('.search-error-message, .infinite-scroll-error');
         existingErrors.forEach(error => error.remove());
         
@@ -278,9 +312,11 @@ document.addEventListener('DOMContentLoaded', function() {
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         `;
         
-        // Insert after the products grid
-        if (searchProductsGrid && searchProductsGrid.parentNode) {
-            searchProductsGrid.parentNode.insertBefore(errorDiv, searchLoadingIndicator || searchProductsGrid.nextSibling);
+        if (elements.searchProductsGrid && elements.searchProductsGrid.parentNode) {
+            elements.searchProductsGrid.parentNode.insertBefore(
+                errorDiv, 
+                elements.searchLoadingIndicator || elements.searchProductsGrid.nextSibling
+            );
         }
         
         // Auto-dismiss after 10 seconds
@@ -289,391 +325,553 @@ document.addEventListener('DOMContentLoaded', function() {
                 errorDiv.remove();
             }
         }, 10000);
+        
+        error('Search error message shown:', message);
     }
     
-    // Scroll detection with better throttling
-    function checkSearchScroll() {
-        if (!hasMoreProducts || isLoading) return;
-        
-        const scrollPosition = window.innerHeight + window.scrollY;
-        const threshold = document.body.offsetHeight - loadThreshold;
-        
-        if (scrollPosition >= threshold) {
-            loadMoreSearchResults();
-        }
-    }
-    
-    // Improved throttled scroll event listener
-    let ticking = false;
-    function onScroll() {
-        if (!ticking) {
-            requestAnimationFrame(() => {
-                checkSearchScroll();
-                ticking = false;
-            });
-            ticking = true;
-        }
-    }
-    
-    window.addEventListener('scroll', onScroll, { passive: true });
-    
-    // Function to update active filters count
-    function updateActiveFiltersCount() {
-        if (!form || !activeFiltersCount) return;
-        
-        let count = 0;
-        const formElements = form.elements;
-        
-        for (let element of formElements) {
-            if (element.type !== 'submit' && 
-                element.type !== 'button' && 
-                element.value && 
-                element.value.trim() !== '' &&
-                element.name !== 'query') { // Don't count main search query
-                count++;
-            }
-        }
-        
-        activeFiltersCount.textContent = count;
-        activeFiltersCount.style.display = count > 0 ? 'flex' : 'none';
-    }
-
-    // Function to show loading state
-    function showLoading(button) {
+    function showButtonLoading(button) {
         if (button) {
             button.classList.add('loading');
             button.disabled = true;
         }
     }
-
-    // Function to hide loading state
-    function hideLoading(button) {
+    
+    function hideButtonLoading(button) {
         if (button) {
             button.classList.remove('loading');
             button.disabled = false;
         }
     }
-
-    // Enhanced category change handler
-    if (categorySelect) {
-        categorySelect.addEventListener('change', function() {
-            const categoryId = this.value;
+    
+    // =============== PRODUCT LOADING ===============
+    async function loadMoreSearchResults() {
+        log('🔄 loadMoreSearchResults() called');
+        
+        // Pre-flight checks
+        if (!scrollState.initialized) {
+            log('Search not initialized yet, skipping load');
+            return;
+        }
+        
+        if (!elements.searchProductsGrid) {
+            warn('Search products grid not found');
+            return;
+        }
+        
+        if (scrollState.isLoading) {
+            log('Already loading search results, skipping');
+            return;
+        }
+        
+        if (!scrollState.hasMoreProducts) {
+            log('No more search results available');
+            showEndOfResults();
+            return;
+        }
+        
+        if (scrollState.currentPage >= scrollState.totalPages) {
+            log(`Already at last search page (${scrollState.currentPage}/${scrollState.totalPages})`);
+            scrollState.hasMoreProducts = false;
+            showEndOfResults();
+            return;
+        }
+        
+        log(`Loading search page ${scrollState.currentPage + 1}/${scrollState.totalPages}...`);
+        
+        showLoading();
+        
+        try {
+            const url = buildNextPageUrl();
+            log('Fetching search URL:', url);
             
-            // Reset subcategory and brand
-            if (subcategorySelect) {
-                subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
-                subcategorySelect.disabled = !categoryId;
-            }
-            if (brandSelect) {
-                brandSelect.innerHTML = '<option value="">All Brands</option>';
-                brandSelect.disabled = !categoryId;
-            }
-            
-            if (categoryId) {
-                // Load subcategories
-                if (subcategorySelect) {
-                    fetch(`/api/subcategories/${categoryId}/`)
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error('Failed to fetch subcategories');
-                            }
-                            return response.json();
-                        })
-                        .then(data => {
-                            data.forEach(subcategory => {
-                                const option = document.createElement('option');
-                                option.value = subcategory.id;
-                                option.textContent = subcategory.name;
-                                subcategorySelect.appendChild(option);
-                            });
-                            subcategorySelect.disabled = false;
-                        })
-                        .catch(error => {
-                            console.error('Error fetching subcategories:', error);
-                            subcategorySelect.disabled = false;
-                        });
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache',
                 }
-
-                // Load brands for the category
-                if (brandSelect) {
-                    fetch(`/api/brands/${categoryId}/`)
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error('Failed to fetch brands');
-                            }
-                            return response.json();
-                        })
-                        .then(data => {
-                            data.forEach(brand => {
-                                const option = document.createElement('option');
-                                option.value = brand.id;
-                                option.textContent = brand.name;
-                                if (brand.product_count) {
-                                    option.textContent += ` (${brand.product_count})`;
-                                }
-                                brandSelect.appendChild(option);
-                            });
-                            brandSelect.disabled = false;
-                        })
-                        .catch(error => {
-                            console.error('Error fetching brands by category:', error);
-                            brandSelect.disabled = false;
-                        });
+            });
+            
+            log('Search response status:', response.status);
+            
+            if (!response.ok) {
+                if (response.status === 404) {
+                    log('Search 404 received, no more pages available');
+                    scrollState.hasMoreProducts = false;
+                    showEndOfResults();
+                    return;
+                }
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            log('Search AJAX response data:', data);
+            
+            if (data.success) {
+                if (data.products_html && data.products_html.length > 0) {
+                    await renderNewSearchProducts(data.products_html);
+                    
+                    // Update state from server response
+                    scrollState.currentPage = data.current_page || (scrollState.currentPage + 1);
+                    scrollState.totalPages = data.total_pages || scrollState.totalPages;
+                    scrollState.hasMoreProducts = data.has_more === true;
+                    scrollState.totalCount = data.total_count || scrollState.totalCount;
+                    
+                    updateProductCount();
+                    
+                    log(`✅ Successfully loaded ${data.products_html.length} search results`);
+                    log('Updated search state:', scrollState);
+                    
+                    // Reset retry count on success
+                    scrollState.retryCount = 0;
+                    
+                    if (!scrollState.hasMoreProducts) {
+                        showEndOfResults();
+                    }
+                } else {
+                    log('No search results in response');
+                    scrollState.hasMoreProducts = false;
+                    showEndOfResults();
+                }
+            } else {
+                throw new Error(data.error || 'Server returned error response');
+            }
+            
+        } catch (e) {
+            error('Failed to load more search results:', e);
+            
+            // Retry logic
+            if (scrollState.retryCount < CONFIG.retryAttempts) {
+                scrollState.retryCount++;
+                log(`Retrying search... (${scrollState.retryCount}/${CONFIG.retryAttempts})`);
+                setTimeout(() => loadMoreSearchResults(), 2000 * scrollState.retryCount);
+            } else {
+                scrollState.hasMoreProducts = false;
+                if (e.message.includes('404')) {
+                    showEndOfResults('No more search results available');
+                } else {
+                    showErrorMessage(`Failed to load more search results: ${e.message}`);
                 }
             }
             
-            updateActiveFiltersCount();
-        });
+        } finally {
+            hideLoading();
+        }
     }
-
-    // Enhanced subcategory change handler
-    if (subcategorySelect) {
-        subcategorySelect.addEventListener('change', function() {
-            const subcategoryId = this.value;
+    
+    async function renderNewSearchProducts(productsHtml) {
+        log(`Rendering ${productsHtml.length} new search products...`);
+        
+        for (let i = 0; i < productsHtml.length; i++) {
+            const productHtml = productsHtml[i];
             
-            if (subcategoryId && brandSelect) {
-                // Reset brands
-                brandSelect.innerHTML = '<option value="">All Brands</option>';
-                brandSelect.disabled = true;
+            try {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = productHtml.trim();
+                const productElement = tempDiv.firstElementChild;
                 
-                // Load brands for the subcategory
-                fetch(`/ajax/load-brands/?subcategory=${subcategoryId}`)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Failed to fetch brands for subcategory');
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        data.forEach(brand => {
-                            const option = document.createElement('option');
-                            option.value = brand.id;
-                            option.textContent = brand.name;
-                            brandSelect.appendChild(option);
-                        });
-                        brandSelect.disabled = false;
-                    })
-                    .catch(error => {
-                        console.error('Error fetching brands by subcategory:', error);
-                        brandSelect.disabled = false;
+                if (productElement) {
+                    // Wrap in proper grid column for search
+                    const colDiv = document.createElement('div');
+                    colDiv.className = 'col-6 col-md-4 col-lg-3 col-xl-2';
+                    colDiv.appendChild(productElement);
+                    
+                    // Add with animation delay
+                    setTimeout(() => {
+                        elements.searchProductsGrid.appendChild(colDiv);
+                        log(`Search product ${i + 1} added to grid`);
+                    }, i * 50);
+                }
+            } catch (e) {
+                error(`Failed to render search product ${i + 1}:`, e);
+            }
+        }
+    }
+    
+    // =============== SCROLL DETECTION ===============
+    function checkScroll() {
+        if (!scrollState.initialized || scrollState.isLoading || !scrollState.hasMoreProducts) {
+            return;
+        }
+        
+        const scrollPosition = window.innerHeight + window.scrollY;
+        const documentHeight = document.body.offsetHeight;
+        const threshold = documentHeight - CONFIG.loadThreshold;
+        
+        if (CONFIG.debug && Math.random() < 0.01) { // Log occasionally to avoid spam
+            log('Search scroll check:', {
+                scrollPosition,
+                documentHeight,
+                threshold,
+                canTrigger: scrollPosition >= threshold
+            });
+        }
+        
+        if (scrollPosition >= threshold) {
+            log('🎯 Search scroll threshold reached! Triggering load...');
+            loadMoreSearchResults();
+        }
+    }
+    
+    // Debounced scroll handler
+    let scrollTimeout;
+    function handleScroll() {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(checkScroll, CONFIG.debounceDelay);
+    }
+    
+    // =============== ASYNC DATA LOADERS ===============
+    async function loadSubcategoriesForCategory(categoryId) {
+        try {
+            log('Loading subcategories for category:', categoryId);
+            const response = await fetch(`/api/subcategories/${categoryId}/`);
+            if (response.ok) {
+                const data = await response.json();
+                if (elements.subcategorySelect) {
+                    data.forEach(subcategory => {
+                        const option = document.createElement('option');
+                        option.value = subcategory.id;
+                        option.textContent = subcategory.name;
+                        elements.subcategorySelect.appendChild(option);
                     });
-            } else if (brandSelect && !subcategoryId) {
-                // If no subcategory selected, reset to category-level brands
-                const categoryId = categorySelect ? categorySelect.value : '';
-                if (categoryId) {
-                    brandSelect.innerHTML = '<option value="">All Brands</option>';
-                    fetch(`/api/brands/${categoryId}/`)
-                        .then(response => response.json())
-                        .then(data => {
-                            data.forEach(brand => {
-                                const option = document.createElement('option');
-                                option.value = brand.id;
-                                option.textContent = brand.name;
-                                if (brand.product_count) {
-                                    option.textContent += ` (${brand.product_count})`;
-                                }
-                                brandSelect.appendChild(option);
-                            });
-                        })
-                        .catch(error => {
-                            console.error('Error reloading category brands:', error);
-                        });
+                    elements.subcategorySelect.disabled = false;
+                    log(`Loaded ${data.length} subcategories`);
                 }
             }
-            
-            updateActiveFiltersCount();
-        });
+        } catch (e) {
+            error('Failed to load subcategories:', e);
+        }
     }
-
-    // Enhanced state change handler
-    if (stateSelect) {
-        stateSelect.addEventListener('change', function() {
-            const stateId = this.value;
-            
-            if (lgaSelect) {
-                lgaSelect.innerHTML = '<option value="">All LGAs</option>';
-                lgaSelect.disabled = !stateId;
-                
-                if (stateId) {
-                    fetch(`/api/lgas/${stateId}/`)
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error('Failed to fetch LGAs');
-                            }
-                            return response.json();
-                        })
-                        .then(data => {
-                            data.forEach(lga => {
-                                const option = document.createElement('option');
-                                option.value = lga.id;
-                                option.textContent = lga.name;
-                                lgaSelect.appendChild(option);
-                            });
-                            lgaSelect.disabled = false;
-                        })
-                        .catch(error => {
-                            console.error('Error fetching LGAs:', error);
-                            lgaSelect.disabled = false;
-                        });
+    
+    async function loadBrandsForCategory(categoryId) {
+        try {
+            log('Loading brands for category:', categoryId);
+            const response = await fetch(`/api/brands/${categoryId}/`);
+            if (response.ok) {
+                const data = await response.json();
+                if (elements.brandSelect) {
+                    data.forEach(brand => {
+                        const option = document.createElement('option');
+                        option.value = brand.id;
+                        option.textContent = brand.name;
+                        if (brand.product_count) {
+                            option.textContent += ` (${brand.product_count})`;
+                        }
+                        elements.brandSelect.appendChild(option);
+                    });
+                    elements.brandSelect.disabled = false;
+                    log(`Loaded ${data.length} brands`);
                 }
             }
-            
-            updateActiveFiltersCount();
-        });
+        } catch (e) {
+            error('Failed to load brands:', e);
+        }
     }
-
-    // Clear filters handler
-    function clearAllFilters() {
-        if (!form) return;
-        
-        const formElements = form.elements;
-        for (let element of formElements) {
-            if (element.type !== 'submit' && element.type !== 'button') {
-                if (element.name !== 'query') { // Preserve search query
-                    element.value = '';
+    
+    async function loadBrandsForSubcategory(subcategoryId) {
+        try {
+            log('Loading brands for subcategory:', subcategoryId);
+            const response = await fetch(`/ajax/load-brands/?subcategory=${subcategoryId}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (elements.brandSelect) {
+                    elements.brandSelect.innerHTML = '<option value="">All Brands</option>';
+                    data.forEach(brand => {
+                        const option = document.createElement('option');
+                        option.value = brand.id;
+                        option.textContent = brand.name;
+                        elements.brandSelect.appendChild(option);
+                    });
+                    elements.brandSelect.disabled = false;
+                    log(`Loaded ${data.length} brands for subcategory`);
                 }
             }
+        } catch (e) {
+            error('Failed to load brands for subcategory:', e);
         }
-        
-        // Reset dependent fields
-        if (subcategorySelect) {
-            subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
-            subcategorySelect.disabled = true;
-        }
-        if (brandSelect) {
-            brandSelect.innerHTML = '<option value="">All Brands</option>';
-            brandSelect.disabled = true;
-        }
-        if (lgaSelect) {
-            lgaSelect.innerHTML = '<option value="">All LGAs</option>';
-            lgaSelect.disabled = true;
-        }
-        
-        updateActiveFiltersCount();
-    }
-
-    if (clearFiltersBtn) {
-        clearFiltersBtn.addEventListener('click', clearAllFilters);
     }
     
-    if (clearFiltersEmptyBtn) {
-        clearFiltersEmptyBtn.addEventListener('click', function() {
-            clearAllFilters();
-            // Also clear the search query for empty state
-            const queryInput = form.querySelector('[name="query"]');
-            if (queryInput) queryInput.value = '';
-            updateActiveFiltersCount();
-        });
-    }
-
-    // Listen for changes on all form inputs
-    if (form) {
-        form.addEventListener('change', updateActiveFiltersCount);
-        form.addEventListener('input', updateActiveFiltersCount);
-    }
-
-    // Handle other form elements for active filter count
-    const conditionSelect = document.getElementById('id_condition');
-    if (conditionSelect) {
-        conditionSelect.addEventListener('change', updateActiveFiltersCount);
-    }
-
-    const minPriceInput = document.getElementById('id_min_price');
-    const maxPriceInput = document.getElementById('id_max_price');
-    
-    if (minPriceInput) {
-        minPriceInput.addEventListener('input', updateActiveFiltersCount);
-    }
-    if (maxPriceInput) {
-        maxPriceInput.addEventListener('input', updateActiveFiltersCount);
-    }
-    
-    // Enhanced sort functionality
-    const searchSortSelect = document.getElementById('searchSortSelect');
-    if (searchSortSelect) {
-        searchSortSelect.addEventListener('change', function() {
-            resetInfiniteScrollState();
-            const currentUrl = new URL(window.location);
-            currentUrl.searchParams.set('sort', this.value);
-            currentUrl.searchParams.delete('page'); // Reset to page 1
-            window.location.href = currentUrl.toString();
-        });
-    }
-    
-    // Enhanced form submission with loading state
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            const submitBtns = form.querySelectorAll('button[type="submit"]');
-            submitBtns.forEach(btn => {
-                showLoading(btn);
-            });
-            
-            // Reset infinite scroll state
-            resetInfiniteScrollState();
-            
-            // Remove empty fields to keep URL clean
-            const elements = form.elements;
-            const elementsToDisable = [];
-            
-            for (let element of elements) {
-                if (element.value === '' && 
-                    element.type !== 'submit' && 
-                    element.type !== 'button') {
-                    elementsToDisable.push(element);
+    async function loadLGAsForState(stateId) {
+        try {
+            log('Loading LGAs for state:', stateId);
+            const response = await fetch(`/api/lgas/${stateId}/`);
+            if (response.ok) {
+                const data = await response.json();
+                if (elements.lgaSelect) {
+                    data.forEach(lga => {
+                        const option = document.createElement('option');
+                        option.value = lga.id;
+                        option.textContent = lga.name;
+                        elements.lgaSelect.appendChild(option);
+                    });
+                    elements.lgaSelect.disabled = false;
+                    log(`Loaded ${data.length} LGAs`);
                 }
             }
-            
-            // Disable empty elements temporarily
-            elementsToDisable.forEach(element => {
-                element.disabled = true;
-            });
-            
-            // Re-enable them after a short delay to prevent form issues
-            setTimeout(() => {
-                elementsToDisable.forEach(element => {
-                    element.disabled = false;
+        } catch (e) {
+            error('Failed to load LGAs:', e);
+        }
+    }
+    
+    // =============== FORM HANDLERS ===============
+    function setupFormHandlers() {
+        // Main search form handler
+        if (elements.form) {
+            elements.form.addEventListener('submit', function(e) {
+                log('Search form submitted, resetting infinite scroll state');
+                const submitBtns = elements.form.querySelectorAll('button[type="submit"]');
+                submitBtns.forEach(btn => {
+                    showButtonLoading(btn);
                 });
-            }, 100);
+                
+                resetInfiniteScrollState();
+                
+                // Remove empty fields to keep URL clean
+                const formElements = elements.form.elements;
+                const elementsToDisable = [];
+                
+                for (let element of formElements) {
+                    if (element.value === '' && 
+                        element.type !== 'submit' && 
+                        element.type !== 'button') {
+                        elementsToDisable.push(element);
+                    }
+                }
+                
+                // Disable empty elements temporarily
+                elementsToDisable.forEach(element => {
+                    element.disabled = true;
+                });
+                
+                // Re-enable them after a short delay to prevent form issues
+                setTimeout(() => {
+                    elementsToDisable.forEach(element => {
+                        element.disabled = false;
+                    });
+                }, 100);
+            });
+            
+            // Listen for changes on all form inputs
+            elements.form.addEventListener('change', updateActiveFiltersCount);
+            elements.form.addEventListener('input', updateActiveFiltersCount);
+        }
+        
+        // Sort select handler
+        if (elements.searchSortSelect) {
+            elements.searchSortSelect.addEventListener('change', function() {
+                log('Search sort changed to:', this.value);
+                resetInfiniteScrollState();
+                
+                const currentUrl = new URL(window.location);
+                currentUrl.searchParams.set('sort', this.value);
+                currentUrl.searchParams.delete('page');
+                window.location.href = currentUrl.toString();
+            });
+        }
+        
+        // Category change handler
+        if (elements.categorySelect) {
+            elements.categorySelect.addEventListener('change', function() {
+                const categoryId = this.value;
+                log('Search category changed to:', categoryId);
+                
+                // Reset subcategory and brand
+                if (elements.subcategorySelect) {
+                    elements.subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
+                    elements.subcategorySelect.disabled = !categoryId;
+                }
+                if (elements.brandSelect) {
+                    elements.brandSelect.innerHTML = '<option value="">All Brands</option>';
+                    elements.brandSelect.disabled = !categoryId;
+                }
+                
+                if (categoryId) {
+                    loadSubcategoriesForCategory(categoryId);
+                    loadBrandsForCategory(categoryId);
+                }
+                
+                updateActiveFiltersCount();
+            });
+        }
+        
+        // Subcategory change handler
+        if (elements.subcategorySelect) {
+            elements.subcategorySelect.addEventListener('change', function() {
+                const subcategoryId = this.value;
+                log('Search subcategory changed to:', subcategoryId);
+                
+                if (subcategoryId && elements.brandSelect) {
+                    loadBrandsForSubcategory(subcategoryId);
+                } else if (elements.brandSelect && !subcategoryId) {
+                    // If no subcategory selected, reset to category-level brands
+                    const categoryId = elements.categorySelect ? elements.categorySelect.value : '';
+                    if (categoryId) {
+                        elements.brandSelect.innerHTML = '<option value="">All Brands</option>';
+                        loadBrandsForCategory(categoryId);
+                    }
+                }
+                
+                updateActiveFiltersCount();
+            });
+        }
+        
+        // State change handler
+        if (elements.stateSelect) {
+            elements.stateSelect.addEventListener('change', function() {
+                const stateId = this.value;
+                log('Search state changed to:', stateId);
+                
+                if (elements.lgaSelect) {
+                    elements.lgaSelect.innerHTML = '<option value="">All LGAs</option>';
+                    elements.lgaSelect.disabled = !stateId;
+                    
+                    if (stateId) {
+                        loadLGAsForState(stateId);
+                    }
+                }
+                
+                updateActiveFiltersCount();
+            });
+        }
+        
+        // Clear filters handlers
+        if (elements.clearFiltersBtn) {
+            elements.clearFiltersBtn.addEventListener('click', clearAllFilters);
+        }
+        
+        if (elements.clearFiltersEmptyBtn) {
+            elements.clearFiltersEmptyBtn.addEventListener('click', function() {
+                clearAllFilters();
+                // Also clear the search query for empty state
+                if (elements.queryInput) elements.queryInput.value = '';
+                updateActiveFiltersCount();
+            });
+        }
+        
+        // Individual filter handlers for active count
+        [elements.conditionSelect, elements.minPriceInput, elements.maxPriceInput, 
+         elements.brandSelect, elements.lgaSelect, elements.verifiedBusinessSelect].forEach(element => {
+            if (element) {
+                const eventType = element.type === 'text' || element.type === 'number' ? 'input' : 'change';
+                element.addEventListener(eventType, updateActiveFiltersCount);
+            }
         });
     }
     
-    // Initialize active filters count on page load
-    updateActiveFiltersCount();
-    
-    // Initialize everything
-    currentFilters = getCurrentFilters();
-    initializePaginationState();
-    
-    console.log('Product search infinite scroll initialized');
-    
-    // Add visual feedback for AJAX loading
-    const style = document.createElement('style');
-    style.textContent = `
-        .search-error-message, .infinite-scroll-error {
-            animation: slideDown 0.3s ease-out;
+    // =============== INITIALIZATION ===============
+    function initialize() {
+        log('🎬 Starting complete search system initialization...');
+        
+        // Check required elements
+        if (!elements.searchProductsGrid) {
+            warn('Search products grid not found - infinite scroll disabled');
+            return;
         }
         
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        // Initialize pagination state
+        if (!initializePaginationState()) {
+            warn('Failed to initialize search pagination state');
         }
         
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.1);
-            z-index: 9999;
-            display: none;
-        }
-    `;
-    document.head.appendChild(style);
+        // Setup all event handlers
+        setupFormHandlers();
+        
+        // Initialize active filters count
+        updateActiveFiltersCount();
+        
+        // Initialize current filters
+        currentFilters = getCurrentFilters();
+        
+        // Start scroll monitoring
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        
+        // Debug helper
+        window.debugSearchInfiniteScroll = function() {
+            console.group('🔍 Search System Debug');
+            console.log('Current state:', scrollState);
+            console.log('Config:', CONFIG);
+            console.log('Current filters:', currentFilters);
+            console.log('Elements found:', Object.keys(elements).filter(key => elements[key]));
+            console.log('Products in grid:', elements.searchProductsGrid ? elements.searchProductsGrid.querySelectorAll('.col-6').length : 'N/A');
+            
+            const scrollPos = window.innerHeight + window.scrollY;
+            const docHeight = document.body.offsetHeight;
+            console.log('Scroll info:', {
+                position: scrollPos,
+                documentHeight: docHeight,
+                threshold: docHeight - CONFIG.loadThreshold,
+                canTrigger: scrollPos >= (docHeight - CONFIG.loadThreshold)
+            });
+            
+            if (elements.form) {
+                const formData = new FormData(elements.form);
+                const formParams = {};
+                for (const [key, value] of formData.entries()) {
+                    if (value) formParams[key] = value;
+                }
+                console.log('Current form data:', formParams);
+            }
+            
+            console.groupEnd();
+        };
+        
+        // Add visual feedback styles
+        const style = document.createElement('style');
+        style.textContent = `
+            .search-error-message, .infinite-scroll-error {
+                animation: slideDown 0.3s ease-out;
+            }
+            
+            @keyframes slideDown {
+                from {
+                    opacity: 0;
+                    transform: translateY(-10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            
+            .btn.loading {
+                position: relative;
+                color: transparent;
+            }
+            
+            .btn.loading::after {
+                content: "";
+                position: absolute;
+                width: 1rem;
+                height: 1rem;
+                top: 50%;
+                left: 50%;
+                margin-left: -0.5rem;
+                margin-top: -0.5rem;
+                border: 2px solid transparent;
+                border-top-color: currentColor;
+                border-radius: 50%;
+                animation: spin 1s ease infinite;
+            }
+            
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        log('✅ Complete search system initialization complete!');
+        log('Initial search state:', scrollState);
+        log('Current filters:', currentFilters);
+        
+        // Force a scroll check after a brief delay
+        setTimeout(() => {
+            log('🔍 Initial search scroll check...');
+            checkScroll();
+        }, 1000);
+    }
+    
+    // =============== START ===============
+    initialize();
 });

@@ -38,7 +38,7 @@ from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.core.cache import cache
-from django.db.models import F, Q, Case, When, IntegerField, Value
+from django.db.models import Case, When, F, Q, Avg, Exists, OuterRef, Count, Value, IntegerField
 from random import shuffle
 import random
 import hashlib
@@ -185,100 +185,44 @@ def format_price(price):
 
 def get_sorted_products(base_queryset, user=None, limit=None):
     """
-    Hybrid sorting approach that prioritizes:
-    1. Boosted products (with boost type hierarchy)
-    2. Verified business products
-    3. Pro user products
-    4. Regular products
-    With randomization within each tier
+    Simplified, efficient product sorting with boost support
     """
-    
     if not base_queryset.exists():
-        return []
+        return base_queryset.none()
     
-    for product in base_queryset:
-        product.boost_score = product.calculate_boost_score()
-        product.save(update_fields=['boost_score'])
-    
-
-    premium_boosted = [] 
-    spotlight_boosted = []
-    featured_boosted = [] 
-    urgent_boosted = []
-    pro_products = []
-    regular_products = []
-    verified_business_products = []
-
-    products = base_queryset.select_related(
-        'seller__user__account',
-        'seller',
-        'category',
-        'subcategory',
-        'brand'
-    ).prefetch_related(
-        'images',
-        'boosts'
-    )
-    
-    for product in products:
-        try:
-            if product.is_boosted:
-                boost = product.active_boost
-                if boost and boost.boost_type == 'premium':
-                    premium_boosted.append(product)
-                elif boost and boost.boost_type == 'spotlight':
-                    spotlight_boosted.append(product)
-                elif boost and boost.boost_type == 'featured':
-                    featured_boosted.append(product)
-                elif boost and boost.boost_type == 'urgent':
-                    urgent_boosted.append(product)
-            elif hasattr(product.seller, 'business_verification_status') and product.seller.business_verification_status == 'verified':
-                verified_business_products.append(product)
-            elif product.is_pro_seller:
-                pro_products.append(product)
-            else:
-                regular_products.append(product)
-        except Exception as e:
-            regular_products.append(product)
-
-    for tier in [premium_boosted, spotlight_boosted, featured_boosted, 
-                urgent_boosted, pro_products, regular_products]:
-        shuffle(tier)
-
-    final_products = []
-
-    final_products.extend(premium_boosted)
-
-    mixed_spotlight_featured = []
-    while spotlight_boosted or featured_boosted:
-        if spotlight_boosted and (not featured_boosted or random.random() < 0.8):
-            mixed_spotlight_featured.append(spotlight_boosted.pop(0))
-        elif featured_boosted:
-            mixed_spotlight_featured.append(featured_boosted.pop(0))
-    final_products.extend(mixed_spotlight_featured)
-    
-    mixed_urgent_verified = []
-    while urgent_boosted or verified_business_products:
-        if urgent_boosted and (not verified_business_products or random.random() < 0.7):
-            mixed_urgent_verified.append(urgent_boosted.pop(0))
-        elif verified_business_products:
-            mixed_urgent_verified.append(verified_business_products.pop(0))
-    final_products.extend(mixed_urgent_verified)
-
-    mixed_pro_regular = []
-    while pro_products:
-        mixed_pro_regular.append(pro_products.pop(0))
-        if regular_products and random.random() < 0.2:
-            mixed_pro_regular.append(regular_products.pop(0))
-    
-    final_products.extend(mixed_pro_regular)
-    
-    final_products.extend(regular_products)
-    
-    if limit:
-        final_products = final_products[:limit]
-    
-    return final_products
+    try:
+        # Use simple, efficient database-level sorting
+        sorted_queryset = base_queryset.annotate(
+            # Active boost check
+            has_active_boost=Exists(
+                ProductBoost.objects.filter(
+                    product=OuterRef('pk'),
+                    is_active=True,
+                    end_date__gt=timezone.now()
+                )
+            ),
+            # Verification priority
+            verification_score=Case(
+                When(seller__business_verification_status='verified', then=Value(100)),
+                default=Value(0),
+                output_field=IntegerField()
+            ),
+            # Total priority score
+            total_score=Case(
+                When(has_active_boost=True, then=F('boost_score') + F('verification_score') + Value(1000)),
+                default=F('boost_score') + F('verification_score'),
+                output_field=IntegerField()
+            )
+        ).order_by('-total_score', '-created_at', 'title')
+        
+        if limit:
+            sorted_queryset = sorted_queryset[:limit]
+        
+        return sorted_queryset
+        
+    except Exception:
+        # Simple fallback
+        return base_queryset.order_by('-boost_score', '-created_at')[:limit] if limit else base_queryset.order_by('-boost_score', '-created_at')
 
 def home(request):
     context = {}
@@ -464,189 +408,59 @@ class ProductListView(ListView):
     template_name = 'product_list.html'
     context_object_name = 'products'
     paginate_by = 12
-    
-    def get_queryset(self):
-        try:
-            Product_Listing.delete_expired_listings()
-        except:
-            pass
-        
-        queryset = Product_Listing.objects.filter(
-            is_suspended=False
-        ).exclude(
-            expiration_date__lte=timezone.now()
-        )
-        
-        category_slug = self.request.GET.get('category')
-        subcategory_slug = self.request.GET.get('subcategory')
-        brand_slug = self.request.GET.get('brand')
-        query = self.request.GET.get('query')
-        min_price = self.request.GET.get('min_price')
-        max_price = self.request.GET.get('max_price')
-        condition = self.request.GET.get('condition')
-        state = self.request.GET.get('state')
-        lga = self.request.GET.get('lga')
-        sort_by = self.request.GET.get('sort', 'smart')
-        verified_business = self.request.GET.get('verified_business')
-        
-        # Apply all your existing filters
-        if query:
-            queryset = queryset.filter(
-                Q(title__icontains=query) |
-                Q(description__icontains=query)
-            )
-        
-        if category_slug:
-            queryset = queryset.filter(category__slug=category_slug)
-        
-        if subcategory_slug:
-            queryset = queryset.filter(subcategory__slug=subcategory_slug)
-        
-        if brand_slug:
-            queryset = queryset.filter(brand__slug=brand_slug)
-            
-        if min_price:
-            try:
-                queryset = queryset.filter(price__gte=min_price)
-            except (ValueError, TypeError):
-                pass
-        
-        if max_price:
-            try:
-                queryset = queryset.filter(price__lte=max_price)
-            except (ValueError, TypeError):
-                pass
-        
-        if condition:
-            queryset = queryset.filter(condition=condition)
-        
-        if state:
-            try:
-                queryset = queryset.filter(seller__location__state=state)
-            except (ValueError, TypeError):
-                pass
-        
-        if lga:
-            try:
-                queryset = queryset.filter(seller__location__lga=lga)
-            except (ValueError, TypeError):
-                pass
-            
-        if verified_business == 'true':
-            queryset = queryset.filter(seller__business_verification_status='verified')
-        
-        # Apply sorting
-        if sort_by == 'smart':
-            products_list = get_sorted_products(queryset, self.request.user)
-            product_ids = [p.id for p in products_list]
-            if product_ids:
-                preserved = Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(product_ids)])
-                return Product_Listing.objects.filter(id__in=product_ids).order_by(preserved)
-            else:
-                return Product_Listing.objects.none()
-        else:
-            valid_sort_options = {
-                '-created_at': '-created_at',
-                'created_at': 'created_at', 
-                'price': 'price',
-                '-price': '-price',
-                'title': Lower('title'),
-                '-title': Lower('title').desc(),
-                'condition': 'condition',
-                '-condition': '-condition'
-            }
-            
-            if sort_by in valid_sort_options:
-                return queryset.order_by(valid_sort_options[sort_by])
-            else:
-                return queryset.order_by('-boost_score', '-created_at')
 
     def paginate_queryset(self, queryset, page_size):
-        """Override to handle pagination errors gracefully"""
-        paginator = self.get_paginator(
-            queryset, page_size, orphans=self.get_paginate_orphans(),
-            allow_empty_first_page=self.get_allow_empty())
-        
-        page_kwarg = self.page_kwarg
-        page = self.kwargs.get(page_kwarg) or self.request.GET.get(page_kwarg) or 1
+        """Simplified pagination with better error handling"""
+        paginator = self.get_paginator(queryset, page_size)
+        page = self.request.GET.get('page', 1)
         
         try:
             page_number = int(page)
-        except ValueError:
+            page_obj = paginator.page(page_number)
+            return (paginator, page_obj, page_obj.object_list, page_obj.has_other_pages())
+        except (ValueError, EmptyPage):
             if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                # For AJAX requests, return empty result instead of raising exception
-                return (paginator, paginator.page(1), [], False)
-            raise Http404("Page is not a number")
-        
-        try:
-            page = paginator.page(page_number)
-            return (paginator, page, page.object_list, page.has_other_pages())
-        except EmptyPage:
-            if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                # For AJAX requests, return empty page gracefully
-                try:
-                    last_page = paginator.page(paginator.num_pages)
-                    # Return empty object list but maintain page structure
-                    return (paginator, last_page, [], False)
-                except EmptyPage:
-                    # If there are no pages at all, return empty result
-                    dummy_page = paginator.page(1) if paginator.num_pages > 0 else None
-                    return (paginator, dummy_page, [], False)
-            
-            if page_number == 1:
-                raise Http404("No products found matching your criteria")
+                # Return empty results for AJAX
+                dummy_page = paginator.page(1) if paginator.num_pages > 0 else None
+                return (paginator, dummy_page, [], False)
             else:
-                raise Http404("Page does not exist")
+                # Redirect to first page for regular requests
+                raise Http404("Page not found")
+
 
     def render_to_response(self, context, **response_kwargs):
-        # Handle AJAX requests for infinite scroll
+        """Simplified AJAX response handling"""
         if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             try:
-                # Get pagination info
                 page_obj = context.get('page_obj')
-                paginator = context.get('paginator')
                 products = context.get('products', [])
                 
-                # Check if we have valid pagination data
-                if not page_obj or not paginator:
+                if not page_obj:
                     return JsonResponse({
                         'success': True,
                         'products_html': [],
                         'has_more': False,
                         'current_page': 1,
-                        'total_pages': 0,
-                        'message': 'No more results available'
+                        'total_pages': 0
                     })
                 
-                # Handle case where no products are found
-                if not products or len(products) == 0:
-                    return JsonResponse({
-                        'success': True,
-                        'products_html': [],
-                        'has_more': False,
-                        'current_page': page_obj.number if page_obj else 1,
-                        'total_pages': paginator.num_pages if paginator else 0,
-                        'message': 'No more results available'
-                    })
-                
-                # Process products and add saved status
+                # Process products for saved status
                 if self.request.user.is_authenticated:
-                    saved_products = SavedProduct.objects.filter(
+                    saved_products = set(str(id) for id in SavedProduct.objects.filter(
                         user=self.request.user
-                    ).values_list('product_id', flat=True)
-                    saved_products_set = set(str(id) for id in saved_products)
+                    ).values_list('product_id', flat=True))
                     
                     for product in products:
-                        product.is_saved = str(product.id) in saved_products_set
-                        product.formatted_price = self.format_price(product.price)
+                        product.is_saved = str(product.id) in saved_products
+                        product.formatted_price = format_price(product.price)
+                        product.verification_status = get_product_verification_status(product)
                 else:
                     for product in products:
-                        product.formatted_price = self.format_price(product.price)
+                        product.formatted_price = format_price(product.price)
+                        product.verification_status = get_product_verification_status(product)
                 
-                # Render products HTML
-                from django.template.loader import render_to_string
+                # Render product cards
                 products_html = []
-                
                 for product in products:
                     try:
                         product_html = render_to_string('product_card.html', {
@@ -654,40 +468,111 @@ class ProductListView(ListView):
                             'user': self.request.user
                         }, request=self.request)
                         products_html.append(product_html)
-                    except Exception as e:
-                        logger.error(f"Error rendering product {product.id}: {e}")
+                    except Exception:
                         continue
-                
-                # Determine if there are more pages
-                has_more = page_obj.has_next() if page_obj else False
                 
                 return JsonResponse({
                     'success': True,
                     'products_html': products_html,
-                    'has_more': has_more,
-                    'current_page': page_obj.number if page_obj else 1,
-                    'total_pages': paginator.num_pages if paginator else 0,
-                    'total_count': paginator.count if paginator else 0
+                    'has_more': page_obj.has_next(),
+                    'current_page': page_obj.number,
+                    'total_pages': page_obj.paginator.num_pages,
+                    'total_count': page_obj.paginator.count
                 })
                 
-            except Exception as e:
-                logger.error(f"Error in AJAX response: {e}")
+            except Exception:
                 return JsonResponse({
                     'success': False,
                     'error': 'An error occurred while loading more products',
                     'products_html': [],
-                    'has_more': False,
-                    'current_page': 1,
-                    'total_pages': 0
+                    'has_more': False
                 }, status=500)
         
-        # Regular template response
         return super().render_to_response(context, **response_kwargs)
+    
+    def get_queryset(self):
+        """Replace the complex get_queryset method in ProductListView"""
+        try:
+            Product_Listing.delete_expired_listings()
+        except:
+            pass
+        
+        # Base queryset with proper select_related
+        queryset = Product_Listing.objects.filter(
+            is_suspended=False
+        ).exclude(
+            expiration_date__lte=timezone.now()
+        ).select_related(
+            'seller__user',
+            'category',
+            'subcategory', 
+            'brand'
+        ).prefetch_related('images')
+        
+        # Apply filters efficiently
+        filters = {
+            'category__slug': self.request.GET.get('category'),
+            'subcategory__slug': self.request.GET.get('subcategory'),
+            'brand__slug': self.request.GET.get('brand'),
+            'condition': self.request.GET.get('condition'),
+            'seller__location__state': self.request.GET.get('state'),
+            'seller__location__lga': self.request.GET.get('lga'),
+        }
+        
+        # Apply non-empty filters
+        for field, value in filters.items():
+            if value:
+                try:
+                    queryset = queryset.filter(**{field: value})
+                except (ValueError, TypeError):
+                    continue
+        
+        # Search query
+        query = self.request.GET.get('query')
+        if query:
+            queryset = queryset.filter(
+                Q(title__icontains=query) | Q(description__icontains=query)
+            )
+        
+        # Price filters
+        try:
+            min_price = self.request.GET.get('min_price')
+            max_price = self.request.GET.get('max_price')
+            if min_price:
+                queryset = queryset.filter(price__gte=min_price)
+            if max_price:
+                queryset = queryset.filter(price__lte=max_price)
+        except (ValueError, TypeError):
+            pass
+        
+        # Verified business filter
+        if self.request.GET.get('verified_business') == 'true':
+            queryset = queryset.filter(seller__business_verification_status='verified')
+        
+        # Apply sorting
+        sort_by = self.request.GET.get('sort', 'smart')
+        
+        if sort_by == 'smart':
+            return get_sorted_products(queryset)
+        else:
+            # Simple sorting options
+            sort_options = {
+                '-created_at': '-created_at',
+                'created_at': 'created_at', 
+                'price': 'price',
+                '-price': '-price',
+                'title': Lower('title'),
+                '-title': Lower('title').desc(),
+                'condition': 'condition'
+            }
+            
+            order_by = sort_options.get(sort_by, '-created_at')
+            return queryset.order_by(order_by)
 
     def get_context_data(self, **kwargs):
-        # [Your existing get_context_data method remains exactly the same]
         context = super().get_context_data(**kwargs)
         
+        # Get categories with product counts
         categories = Category.objects.annotate(
             product_count=Count('product_listing')
         )
@@ -700,6 +585,7 @@ class ProductListView(ListView):
             Prefetch('subcategories', queryset=subcategories)
         )
         
+        # Get filter parameters
         category_slug = self.request.GET.get('category')
         subcategory_slug = self.request.GET.get('subcategory')
         brand_slug = self.request.GET.get('brand')
@@ -708,11 +594,13 @@ class ProductListView(ListView):
         context['global_categories'] = categories
         context['states'] = State.objects.all()
         
+        # Get global banners
         global_banners = get_active_banners('global')
         context['global_banners'] = global_banners
         
         context['verified_only'] = self.request.GET.get('verified_business')
         
+        # Handle category-specific context
         if category_slug:
             try:
                 selected_category = categories.get(slug=category_slug)
@@ -750,10 +638,12 @@ class ProductListView(ListView):
                 product_count=Count('products')
             ).filter(product_count__gt=0)
         
+        # Handle state/LGA context
         state_id = self.request.GET.get('state')
         if state_id:
             context['lgas'] = LGA.objects.filter(state_id=state_id)
         
+        # Handle brand context
         if brand_slug:
             try:
                 selected_brand = Brand.objects.get(slug=brand_slug)
@@ -762,6 +652,7 @@ class ProductListView(ListView):
             except Brand.DoesNotExist:
                 pass
         
+        # Add saved status and format prices
         if self.request.user.is_authenticated:
             saved_products = SavedProduct.objects.filter(
                 user=self.request.user
@@ -771,9 +662,11 @@ class ProductListView(ListView):
             for product in context['products']:
                 product.is_saved = str(product.id) in saved_products_set
                 product.formatted_price = self.format_price(product.price)
+                product.verification_status = get_product_verification_status(product)
         else:
             for product in context['products']:
                 product.formatted_price = self.format_price(product.price)
+                product.verification_status = get_product_verification_status(product)
         
         context['current_sort'] = self.request.GET.get('sort', 'smart')
         
@@ -781,7 +674,7 @@ class ProductListView(ListView):
     
     def format_price(self, price):
         return '₦ {:,.0f}'.format(Decimal(price))
-    
+
 class ProductDetailView(DetailView):
     model = Product_Listing
     template_name = 'product_detail.html'
@@ -1295,6 +1188,10 @@ class ProductSearchView(ListView):
                 paginator = context.get('paginator')
                 products = context.get('products', [])
                 
+                print(f"Search AJAX Debug - Page: {page_obj.number if page_obj else 'None'}, "
+                      f"Total Pages: {paginator.num_pages if paginator else 'None'}, "
+                      f"Products Count: {len(products) if products else 0}")
+                
                 if not page_obj or not paginator:
                     return JsonResponse({
                         'success': True,
@@ -1302,7 +1199,7 @@ class ProductSearchView(ListView):
                         'has_more': False,
                         'current_page': 1,
                         'total_pages': 0,
-                        'message': 'No more results available'
+                        'message': 'No pagination data available'
                     })
                 
                 if not products or len(products) == 0:
@@ -1310,11 +1207,12 @@ class ProductSearchView(ListView):
                         'success': True,
                         'products_html': [],
                         'has_more': False,
-                        'current_page': page_obj.number if page_obj else 1,
-                        'total_pages': paginator.num_pages if paginator else 0,
+                        'current_page': page_obj.number,
+                        'total_pages': paginator.num_pages,
                         'message': 'No more results available'
                     })
                 
+                # Process products
                 if self.request.user.is_authenticated:
                     saved_products = SavedProduct.objects.filter(
                         user=self.request.user
@@ -1324,10 +1222,13 @@ class ProductSearchView(ListView):
                     for product in products:
                         product.is_saved = str(product.id) in saved_products_set
                         product.formatted_price = self.format_price(product.price)
+                        product.verification_status = get_product_verification_status(product)
                 else:
                     for product in products:
                         product.formatted_price = self.format_price(product.price)
+                        product.verification_status = get_product_verification_status(product)
                 
+                # Render products HTML
                 from django.template.loader import render_to_string
                 products_html = []
                 
@@ -1342,19 +1243,19 @@ class ProductSearchView(ListView):
                         logger.error(f"Error rendering product {product.id}: {e}")
                         continue
                 
-                has_more = page_obj.has_next() if page_obj else False
+                has_more = page_obj.has_next()
                 
                 return JsonResponse({
                     'success': True,
                     'products_html': products_html,
                     'has_more': has_more,
-                    'current_page': page_obj.number if page_obj else 1,
-                    'total_pages': paginator.num_pages if paginator else 0,
-                    'total_count': paginator.count if paginator else 0
+                    'current_page': page_obj.number,
+                    'total_pages': paginator.num_pages,
+                    'total_count': paginator.count
                 })
                 
             except Exception as e:
-                logger.error(f"Error in AJAX response: {e}")
+                logger.error(f"Error in search AJAX response: {e}")
                 return JsonResponse({
                     'success': False,
                     'error': 'An error occurred while loading more products',
@@ -1377,7 +1278,12 @@ class ProductSearchView(ListView):
             is_suspended=False
         ).exclude(
             expiration_date__lte=timezone.now()
-        )
+        ).select_related(
+            'seller__user',
+            'category',
+            'subcategory',
+            'brand'
+        ).prefetch_related('images')
 
         if form.is_valid():
             if form.cleaned_data['query']:
@@ -1413,14 +1319,42 @@ class ProductSearchView(ListView):
         
         sort_by = self.request.GET.get('sort', 'smart')
         
+        # CORRECTED SORTING - Same fix as ProductListView
         if sort_by == 'smart':
-            products_list = get_sorted_products(queryset, self.request.user)
-            product_ids = [p.id for p in products_list]
-            if product_ids:
-                preserved = Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(product_ids)])
-                return Product_Listing.objects.filter(id__in=product_ids).order_by(preserved)
-            else:
-                return Product_Listing.objects.none()
+            from Dashboard.models import ProductBoost
+            
+            queryset = queryset.annotate(
+                # Use the Product_Listing's own boost_score field directly
+                current_boost_score=F('boost_score'),
+                
+                # Check if product has any active boost using EXISTS
+                has_active_boost=Exists(
+                    ProductBoost.objects.filter(
+                        product=OuterRef('pk'),
+                        is_active=True,
+                        end_date__gt=timezone.now()
+                    )
+                ),
+                
+                # Business verification priority
+                verification_priority=Case(
+                    When(seller__business_verification_status='verified', then=Value(200)),
+                    default=Value(0),
+                    output_field=IntegerField()
+                ),
+                
+                # Calculate total priority - using the product's own boost_score
+                total_priority=Case(
+                    When(
+                        has_active_boost=True, 
+                        then=F('current_boost_score') + F('verification_priority') + Value(1000)
+                    ),
+                    default=F('current_boost_score') + F('verification_priority'),
+                    output_field=IntegerField()
+                )
+            ).distinct().order_by('-total_priority', '-created_at')
+            
+            return queryset
         else:
             valid_sort_options = {
                 '-created_at': '-created_at',
@@ -1439,11 +1373,11 @@ class ProductSearchView(ListView):
                 return queryset.order_by('-created_at')
 
     def get_context_data(self, **kwargs):
-        # [Your existing get_context_data method remains exactly the same]
         context = super().get_context_data(**kwargs)
         context['form'] = ProductSearchForm(self.request.GET)
         context['verified_only'] = self.request.GET.get('verified_business')
 
+        # Add saved status and format prices
         if self.request.user.is_authenticated:
             saved_products = SavedProduct.objects.filter(
                 user=self.request.user
@@ -1454,9 +1388,11 @@ class ProductSearchView(ListView):
             for product in context['products']:
                 product.is_saved = str(product.id) in saved_products_set
                 product.formatted_price = self.format_price(product.price)
+                product.verification_status = get_product_verification_status(product)
         else:
             for product in context['products']:
                 product.formatted_price = self.format_price(product.price)
+                product.verification_status = get_product_verification_status(product)
         
         context['current_sort'] = self.request.GET.get('sort', 'smart')
         

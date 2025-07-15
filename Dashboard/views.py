@@ -201,8 +201,8 @@ def dashboard_home(request):
     # Calculate potential savings if not Pro
     potential_savings = 0
     if not account.is_subscription_active and boost_stats['total_boosts'] > 0:
-        # Calculate what they would have saved with Pro discount
-        potential_savings = boost_stats['total_boost_spent'] * 0.3  # 30% discount
+        # FIXED: Convert to Decimal for calculation
+        potential_savings = boost_stats['total_boost_spent'] * Decimal('0.3')  # 30% discount
     
     context = {
         'account': account,

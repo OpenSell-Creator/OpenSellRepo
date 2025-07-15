@@ -9,6 +9,7 @@
 {% block page_js %}
     <script type="text/javascript" src="{% static 'js/pages/product_list.js' %}"></script>
 {% endblock %}
+
 {% block 'Body' %}
 <div class="container">
     {% if not selected_category %}
@@ -158,8 +159,8 @@
     <div class="results-header">
         <div class="results-info">
             {% if products %}
-                Showing <span id="products-count-number">{{ products|length }}</span> 
-                {% if paginator %}of {{ paginator.count }}{% endif %} products
+                Showing
+                {% if paginator %} {{ paginator.count }}{% endif %} products
                 {% if selected_category_obj %}
                     in {{ selected_category_obj.name }}
                     {% if selected_subcategory_obj %} > {{ selected_subcategory_obj.name }}{% endif %}
@@ -196,31 +197,18 @@
     {% include 'banner.html' with banners=global_banners %}
     {% endif %}
 
-    {% if page_obj and paginator %}
+    <!-- FIXED PAGINATION DATA SCRIPT -->
     <script type="application/json" id="pagination-data">
     {
-        "current_page": {{ page_obj.number }},
-        "total_pages": {{ paginator.num_pages }},
-        "has_next": {% if page_obj.has_next %}true{% else %}false{% endif %},
-        "has_previous": {% if page_obj.has_previous %}true{% else %}false{% endif %},
-        "total_count": {{ paginator.count }},
-        "per_page": {{ paginator.per_page }},
-        "current_count": {{ products|length }}
-    }
-    </script>
-    {% else %}
-    <script type="application/json" id="pagination-data">
-    {
-        "current_page": 1,
-        "total_pages": 1,
-        "has_next": false,
-        "has_previous": false,
-        "total_count": {{ products|length }},
+        "current_page": {% if page_obj %}{{ page_obj.number }}{% else %}1{% endif %},
+        "total_pages": {% if paginator %}{{ paginator.num_pages }}{% else %}1{% endif %},
+        "has_next": {% if page_obj %}{% if page_obj.has_next %}true{% else %}false{% endif %}{% else %}false{% endif %},
+        "has_previous": {% if page_obj %}{% if page_obj.has_previous %}true{% else %}false{% endif %}{% else %}false{% endif %},
+        "total_count": {% if paginator %}{{ paginator.count }}{% else %}{{ products|length }}{% endif %},
         "per_page": 12,
         "current_count": {{ products|length }}
     }
     </script>
-    {% endif %}
 
     <div class="row g-4">
         <!-- Desktop Sidebar -->
@@ -278,7 +266,6 @@
         </div>
     </div>
 </div>
-
 {% endblock %}
 
 {% block 'Footer'%}{% endblock %}

@@ -1,59 +1,143 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Infinite Scroll Variables
-    let isLoading = false;
-    let hasMoreProducts = true;
-    let currentPage = 1;
-    let totalPages = 1;
-    let loadThreshold = 300;
+    console.log('🚀 Complete Product List System Initializing...');
+    
+    // =============== CONFIGURATION ===============
+    const CONFIG = {
+        loadThreshold: 500, // Pixels from bottom to trigger load
+        debounceDelay: 250, // Scroll debounce delay
+        retryAttempts: 3,   // Max retry attempts for failed requests
+        debug: true         // Enable debug logging
+    };
+    
+    // =============== STATE MANAGEMENT ===============
+    const scrollState = {
+        isLoading: false,
+        hasMoreProducts: true,
+        currentPage: 1,
+        totalPages: 1,
+        totalCount: 0,
+        loadedCount: 0,
+        retryCount: 0,
+        initialized: false
+    };
+    
     let currentFilters = {};
     
-    // DOM Elements
-    const productsGrid = document.getElementById('products-grid');
-    const loadingIndicator = document.getElementById('loading-indicator');
-    const endOfResults = document.getElementById('end-of-results');
-    const productsCountNumber = document.getElementById('products-count-number');
+    // =============== DOM ELEMENTS ===============
+    const elements = {
+        productsGrid: document.getElementById('products-grid'),
+        loadingIndicator: document.getElementById('loading-indicator'),
+        endOfResults: document.getElementById('end-of-results'),
+        productsCountNumber: document.getElementById('products-count-number'),
+        paginationData: document.getElementById('pagination-data'),
+        sortSelect: document.getElementById('sortSelect'),
+        
+        // Filter form elements
+        dropdownFilterForm: document.getElementById('dropdownFilterForm'),
+        dropdownSubcategorySelect: document.getElementById('dropdown_subcategory'),
+        dropdownBrandSelect: document.getElementById('dropdown_brand'),
+        dropdownConditionSelect: document.getElementById('dropdown_condition'),
+        dropdownPriceRangeSelect: document.getElementById('dropdown_price_range'),
+        dropdownStateSelect: document.getElementById('dropdown_state'),
+        dropdownLgaSelect: document.getElementById('dropdown_lga'),
+        dropdownVerifiedBusinessSelect: document.getElementById('dropdown_verified_business'),
+        clearDropdownFiltersBtn: document.getElementById('clearDropdownFilters')
+    };
     
-    // Initialize pagination state from server data
-    function initializePaginationState() {
-        try {
-            const paginationDataElement = document.getElementById('pagination-data');
-            if (paginationDataElement) {
-                const paginationData = JSON.parse(paginationDataElement.textContent);
-                currentPage = paginationData.current_page || 1;
-                totalPages = paginationData.total_pages || 1;
-                hasMoreProducts = paginationData.has_next || false;
-                
-                console.log('Pagination initialized:', {
-                    currentPage,
-                    totalPages,
-                    hasMoreProducts,
-                    totalCount: paginationData.total_count
-                });
-                
-                // If we're already on the last page or there are no products, show end state
-                if (!hasMoreProducts && paginationData.current_count > 0) {
-                    showEndOfResults();
-                }
-            } else {
-                console.warn('Pagination data not found, using defaults');
-                // Fallback logic
-                const productElements = productsGrid ? productsGrid.querySelectorAll('.product-card') : [];
-                if (productElements.length === 0) {
-                    hasMoreProducts = false;
-                } else if (productElements.length < 12) {
-                    hasMoreProducts = false;
-                    showEndOfResults();
-                }
-            }
-        } catch (error) {
-            console.error('Error initializing pagination state:', error);
-            // Fallback to checking product count
-            const productElements = productsGrid ? productsGrid.querySelectorAll('.product-card') : [];
-            hasMoreProducts = productElements.length >= 12;
+    // =============== UTILITY FUNCTIONS ===============
+    function log(...args) {
+        if (CONFIG.debug) {
+            console.log('📜 [ProductList]', ...args);
         }
     }
     
-    // Function to get current filter parameters
+    function error(...args) {
+        console.error('❌ [ProductList]', ...args);
+    }
+    
+    function warn(...args) {
+        console.warn('⚠️ [ProductList]', ...args);
+    }
+    
+    // =============== PAGINATION STATE INITIALIZATION ===============
+    function initializePaginationState() {
+        log('Initializing pagination state...');
+        
+        try {
+            if (!elements.paginationData) {
+                warn('No pagination data element found');
+                return false;
+            }
+            
+            const paginationData = JSON.parse(elements.paginationData.textContent);
+            log('Raw pagination data:', paginationData);
+            
+            // Validate pagination data
+            if (paginationData.total_count === undefined || paginationData.total_pages === undefined) {
+                error('Invalid pagination data structure:', paginationData);
+                return false;
+            }
+            
+            // Update state from server data
+            scrollState.currentPage = paginationData.current_page || 1;
+            scrollState.totalPages = paginationData.total_pages || 1;
+            scrollState.hasMoreProducts = paginationData.has_next || false;
+            scrollState.totalCount = paginationData.total_count || 0;
+            scrollState.loadedCount = paginationData.current_count || 0;
+            
+            // DEBUGGING: Log the exact calculation
+            log(`Pagination Debug:
+                - Current Page: ${scrollState.currentPage}
+                - Total Pages: ${scrollState.totalPages}
+                - Has Next: ${scrollState.hasMoreProducts}
+                - Total Count: ${scrollState.totalCount}
+                - Loaded Count: ${scrollState.loadedCount}
+                - Can Load More: ${scrollState.currentPage < scrollState.totalPages}`);
+            
+            // Double-check the has_next calculation
+            if (scrollState.currentPage >= scrollState.totalPages && scrollState.totalCount > scrollState.loadedCount) {
+                warn('Pagination mismatch detected! Server says no more pages but count suggests otherwise');
+                log('This indicates a duplicate product issue was likely fixed');
+            }
+            
+            // Initialize UI based on state
+            if (elements.endOfResults) {
+                elements.endOfResults.style.display = 'none';
+            }
+            
+            if (elements.loadingIndicator) {
+                elements.loadingIndicator.style.display = 'none';
+            }
+            
+            // Only show end of results if we have products but no more pages
+            if (!scrollState.hasMoreProducts && scrollState.loadedCount > 0) {
+                log('Initial state: No more products available, showing end message');
+                showEndOfResults();
+            } else if (scrollState.loadedCount === 0) {
+                log('Initial state: No products found');
+            } else {
+                log('Initial state: More products available for loading');
+            }
+            
+            scrollState.initialized = true;
+            return true;
+            
+        } catch (e) {
+            error('Failed to parse pagination data:', e);
+            
+            // Fallback: count products in DOM
+            if (elements.productsGrid) {
+                const productCount = elements.productsGrid.querySelectorAll('.col').length;
+                scrollState.loadedCount = productCount;
+                scrollState.hasMoreProducts = productCount >= 12; // Assume more if we have a full page
+                log(`Fallback: Found ${productCount} products in DOM`);
+            }
+            
+            return false;
+        }
+    }
+    
+    // =============== FILTER MANAGEMENT ===============
     function getCurrentFilters() {
         const urlParams = new URLSearchParams(window.location.search);
         const filters = {};
@@ -67,7 +151,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return filters;
     }
     
-    // Function to check if filters have changed
     function filtersChanged() {
         const newFilters = getCurrentFilters();
         const filtersString = JSON.stringify(newFilters);
@@ -80,171 +163,140 @@ document.addEventListener('DOMContentLoaded', function() {
         return false;
     }
     
-    // Function to reset infinite scroll state
     function resetInfiniteScrollState() {
-        isLoading = false;
-        hasMoreProducts = true;
-        currentPage = 1;
-        totalPages = 1;
+        log('🔄 Resetting infinite scroll state...');
         
-        if (endOfResults) endOfResults.style.display = 'none';
-        if (loadingIndicator) loadingIndicator.style.display = 'none';
+        scrollState.isLoading = false;
+        scrollState.hasMoreProducts = true;
+        scrollState.currentPage = 1;
+        scrollState.totalPages = 1;
+        scrollState.retryCount = 0;
+        scrollState.initialized = false;
         
-        // Clear any error messages
+        if (elements.endOfResults) elements.endOfResults.style.display = 'none';
+        if (elements.loadingIndicator) elements.loadingIndicator.style.display = 'none';
+        
+        // Clear error messages
         const existingErrors = document.querySelectorAll('.infinite-scroll-error');
         existingErrors.forEach(error => error.remove());
         
-        console.log('Infinite scroll state reset');
+        log('State reset complete');
     }
     
-    // Enhanced load more products function
-    async function loadMoreProducts() {
-        // Pre-flight checks
-        if (!productsGrid) {
-            console.log('Products grid not found');
-            return;
-        }
-        
-        if (isLoading) {
-            console.log('Already loading, skipping');
-            return;
-        }
-        
-        if (!hasMoreProducts) {
-            console.log('No more products available');
-            showEndOfResults();
-            return;
-        }
-        
-        // Additional check: don't load if we've reached total pages
-        if (currentPage >= totalPages && totalPages > 1) {
-            console.log(`Already at last page (${currentPage}/${totalPages})`);
-            hasMoreProducts = false;
-            showEndOfResults();
-            return;
-        }
-        
-        isLoading = true;
-        if (loadingIndicator) loadingIndicator.style.display = 'block';
-        
+    // =============== PRICE RANGE HANDLING ===============
+    function handlePriceRange(priceRange) {
         try {
-            const nextPage = currentPage + 1;
-            const url = new URL(window.location.href);
-            url.searchParams.set('page', nextPage);
+            const existingMinPrice = elements.dropdownFilterForm.querySelector('input[name="min_price"]');
+            const existingMaxPrice = elements.dropdownFilterForm.querySelector('input[name="max_price"]');
             
-            // Ensure all form parameters are included if we have an active filter form
-            const filterForm = document.getElementById('dropdownFilterForm');
-            if (filterForm) {
-                const formData = new FormData(filterForm);
-                for (const [key, value] of formData.entries()) {
-                    if (value && key !== 'page') {
-                        url.searchParams.set(key, value);
-                    }
+            if (existingMinPrice) existingMinPrice.remove();
+            if (existingMaxPrice) existingMaxPrice.remove();
+
+            if (priceRange) {
+                const [minPrice, maxPrice] = priceRange.split('-');
+                
+                const minPriceInput = document.createElement('input');
+                minPriceInput.type = 'hidden';
+                minPriceInput.name = 'min_price';
+                minPriceInput.value = minPrice;
+                
+                const maxPriceInput = document.createElement('input');
+                maxPriceInput.type = 'hidden';
+                maxPriceInput.name = 'max_price';
+                maxPriceInput.value = maxPrice === '999999999' ? '' : maxPrice;
+                
+                elements.dropdownFilterForm.appendChild(minPriceInput);
+                if (maxPrice !== '999999999') {
+                    elements.dropdownFilterForm.appendChild(maxPriceInput);
                 }
+                
+                log('Price range set:', minPrice, 'to', maxPrice);
             }
-            
-            console.log(`Loading page ${nextPage} from:`, url.toString());
-            
-            const response = await fetch(url.toString(), {
-                method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json',
-                    'Cache-Control': 'no-cache',
-                }
-            });
-            
-            if (!response.ok) {
-                if (response.status === 404) {
-                    console.log('Page not found (404), end of results');
-                    hasMoreProducts = false;
-                    showEndOfResults();
-                    return;
-                }
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                if (data.products_html && data.products_html.length > 0) {
-                    // Add new products to the grid using server-rendered HTML
-                    data.products_html.forEach((productHtml, index) => {
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = productHtml.trim();
-                        const productElement = tempDiv.firstElementChild;
-                        
-                        if (productElement) {
-                            // Wrap in proper grid column
-                            const colDiv = document.createElement('div');
-                            colDiv.className = 'col';
-                            colDiv.appendChild(productElement);
-                            
-                            // Add with slight animation delay
-                            setTimeout(() => {
-                                productsGrid.appendChild(colDiv);
-                            }, index * 30);
-                        }
-                    });
-                    
-                    // Update pagination state
-                    currentPage = data.current_page || nextPage;
-                    totalPages = data.total_pages || totalPages;
-                    hasMoreProducts = data.has_more === true;
-                    
-                    // Update product count
-                    if (productsCountNumber) {
-                        const currentCount = productsGrid.querySelectorAll('.product-card').length;
-                        productsCountNumber.textContent = currentCount;
-                    }
-                    
-                    console.log(`Added ${data.products_html.length} products. Page ${currentPage}/${totalPages}, hasMore: ${hasMoreProducts}`);
-                    
-                    if (!hasMoreProducts) {
-                        showEndOfResults();
-                    }
-                } else {
-                    console.log('No products in response, end of results');
-                    hasMoreProducts = false;
-                    showEndOfResults();
-                }
-            } else {
-                throw new Error(data.error || 'Server returned error');
-            }
-            
         } catch (error) {
-            console.error('Error loading more products:', error);
-            hasMoreProducts = false;
-            
-            if (error.message.includes('404')) {
-                showEndOfResults();
-            } else {
-                showErrorMessage(`Failed to load more products: ${error.message}`);
-            }
-            
-        } finally {
-            isLoading = false;
-            if (loadingIndicator) loadingIndicator.style.display = 'none';
+            console.error('Error handling price range:', error);
         }
     }
     
-    // Function to show end of results
-    function showEndOfResults(customMessage = null) {
-        if (endOfResults) {
-            if (customMessage) {
-                const messageElement = endOfResults.querySelector('p');
-                if (messageElement) {
-                    messageElement.textContent = customMessage;
+    function submitFormSafely(delay = 100) {
+        setTimeout(() => {
+            try {
+                log('Submitting filter form, resetting scroll state');
+                resetInfiniteScrollState();
+                elements.dropdownFilterForm.submit();
+            } catch (error) {
+                console.error('Error submitting form:', error);
+            }
+        }, delay);
+    }
+    
+    // =============== URL AND PARAMETER MANAGEMENT ===============
+    function buildNextPageUrl() {
+        const nextPage = scrollState.currentPage + 1;
+        const url = new URL(window.location.href);
+        url.searchParams.set('page', nextPage);
+        
+        // Ensure all form parameters are included
+        if (elements.dropdownFilterForm) {
+            const formData = new FormData(elements.dropdownFilterForm);
+            for (const [key, value] of formData.entries()) {
+                if (value && key !== 'page') {
+                    url.searchParams.set(key, value);
                 }
             }
-            endOfResults.style.display = 'block';
         }
-        console.log('End of results displayed');
+        
+        // Preserve current URL parameters
+        const currentParams = new URLSearchParams(window.location.search);
+        for (const [key, value] of currentParams.entries()) {
+            if (key !== 'page' && value && !url.searchParams.has(key)) {
+                url.searchParams.set(key, value);
+            }
+        }
+        
+        return url.toString();
     }
     
-    // Function to show error message
+    // =============== UI MANAGEMENT ===============
+    function showLoading() {
+        if (elements.loadingIndicator) {
+            elements.loadingIndicator.style.display = 'block';
+        }
+        scrollState.isLoading = true;
+        log('Loading indicator shown');
+    }
+    
+    function hideLoading() {
+        if (elements.loadingIndicator) {
+            elements.loadingIndicator.style.display = 'none';
+        }
+        scrollState.isLoading = false;
+        log('Loading indicator hidden');
+    }
+    
+    function showEndOfResults(message = null) {
+        if (elements.endOfResults) {
+            if (message) {
+                const messageElement = elements.endOfResults.querySelector('p');
+                if (messageElement) {
+                    messageElement.textContent = message;
+                }
+            }
+            elements.endOfResults.style.display = 'block';
+            log('End of results shown');
+        }
+    }
+    
+    function updateProductCount() {
+        if (elements.productsCountNumber && elements.productsGrid) {
+            const currentCount = elements.productsGrid.querySelectorAll('.col').length;
+            elements.productsCountNumber.textContent = currentCount;
+            scrollState.loadedCount = currentCount;
+            log(`Product count updated: ${currentCount}`);
+        }
+    }
+    
     function showErrorMessage(message) {
-        // Remove any existing error messages first
+        // Remove existing error messages
         const existingErrors = document.querySelectorAll('.infinite-scroll-error');
         existingErrors.forEach(error => error.remove());
         
@@ -257,9 +309,11 @@ document.addEventListener('DOMContentLoaded', function() {
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         `;
         
-        // Insert after the products grid
-        if (productsGrid && productsGrid.parentNode) {
-            productsGrid.parentNode.insertBefore(errorDiv, loadingIndicator || productsGrid.nextSibling);
+        if (elements.productsGrid && elements.productsGrid.parentNode) {
+            elements.productsGrid.parentNode.insertBefore(
+                errorDiv, 
+                elements.loadingIndicator || elements.productsGrid.nextSibling
+            );
         }
         
         // Auto-dismiss after 8 seconds
@@ -268,112 +322,209 @@ document.addEventListener('DOMContentLoaded', function() {
                 errorDiv.remove();
             }
         }, 8000);
+        
+        error('Error message shown:', message);
     }
     
-    // Scroll detection
+    // =============== PRODUCT LOADING ===============
+    async function loadMoreProducts() {
+        log('🔄 loadMoreProducts() called');
+        
+        // Pre-flight checks
+        if (!scrollState.initialized) {
+            log('Not initialized yet, skipping load');
+            return;
+        }
+        
+        if (!elements.productsGrid) {
+            warn('Products grid not found');
+            return;
+        }
+        
+        if (scrollState.isLoading) {
+            log('Already loading, skipping');
+            return;
+        }
+        
+        if (!scrollState.hasMoreProducts) {
+            log('No more products available');
+            showEndOfResults();
+            return;
+        }
+        
+        if (scrollState.currentPage >= scrollState.totalPages) {
+            log(`Already at last page (${scrollState.currentPage}/${scrollState.totalPages})`);
+            scrollState.hasMoreProducts = false;
+            showEndOfResults();
+            return;
+        }
+        
+        log(`Loading page ${scrollState.currentPage + 1}/${scrollState.totalPages}...`);
+        
+        showLoading();
+        
+        try {
+            const url = buildNextPageUrl();
+            log('Fetching URL:', url);
+            
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache',
+                }
+            });
+            
+            log('Response status:', response.status);
+            
+            if (!response.ok) {
+                if (response.status === 404) {
+                    log('404 received, no more pages available');
+                    scrollState.hasMoreProducts = false;
+                    showEndOfResults();
+                    return;
+                }
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            log('AJAX response data:', data);
+            
+            if (data.success) {
+                if (data.products_html && data.products_html.length > 0) {
+                    await renderNewProducts(data.products_html);
+                    
+                    // Update state from server response
+                    scrollState.currentPage = data.current_page || (scrollState.currentPage + 1);
+                    scrollState.totalPages = data.total_pages || scrollState.totalPages;
+                    scrollState.hasMoreProducts = data.has_more === true;
+                    scrollState.totalCount = data.total_count || scrollState.totalCount;
+                    
+                    updateProductCount();
+                    
+                    log(`✅ Successfully loaded ${data.products_html.length} products`);
+                    log('Updated state:', scrollState);
+                    
+                    // Reset retry count on success
+                    scrollState.retryCount = 0;
+                    
+                    if (!scrollState.hasMoreProducts) {
+                        showEndOfResults();
+                    }
+                } else {
+                    log('No products in response');
+                    scrollState.hasMoreProducts = false;
+                    showEndOfResults();
+                }
+            } else {
+                throw new Error(data.error || 'Server returned error response');
+            }
+            
+        } catch (e) {
+            error('Failed to load more products:', e);
+            
+            // Retry logic
+            if (scrollState.retryCount < CONFIG.retryAttempts) {
+                scrollState.retryCount++;
+                log(`Retrying... (${scrollState.retryCount}/${CONFIG.retryAttempts})`);
+                setTimeout(() => loadMoreProducts(), 2000 * scrollState.retryCount);
+            } else {
+                scrollState.hasMoreProducts = false;
+                if (e.message.includes('404')) {
+                    showEndOfResults('No more products available');
+                } else {
+                    showErrorMessage(`Failed to load more products: ${e.message}`);
+                }
+            }
+            
+        } finally {
+            hideLoading();
+        }
+    }
+    
+    async function renderNewProducts(productsHtml) {
+        log(`Rendering ${productsHtml.length} new products...`);
+        
+        for (let i = 0; i < productsHtml.length; i++) {
+            const productHtml = productsHtml[i];
+            
+            try {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = productHtml.trim();
+                const productElement = tempDiv.firstElementChild;
+                
+                if (productElement) {
+                    // Wrap in proper grid column
+                    const colDiv = document.createElement('div');
+                    colDiv.className = 'col';
+                    colDiv.appendChild(productElement);
+                    
+                    // Add with animation delay
+                    setTimeout(() => {
+                        elements.productsGrid.appendChild(colDiv);
+                        log(`Product ${i + 1} added to grid`);
+                    }, i * 50); // 50ms delay between each product
+                }
+            } catch (e) {
+                error(`Failed to render product ${i + 1}:`, e);
+            }
+        }
+    }
+    
+    // =============== SCROLL DETECTION ===============
     function checkScroll() {
-        if (!hasMoreProducts || isLoading) return;
+        if (!scrollState.initialized || scrollState.isLoading || !scrollState.hasMoreProducts) {
+            return;
+        }
         
         const scrollPosition = window.innerHeight + window.scrollY;
-        const threshold = document.body.offsetHeight - loadThreshold;
+        const documentHeight = document.body.offsetHeight;
+        const threshold = documentHeight - CONFIG.loadThreshold;
+        
+        if (CONFIG.debug && Math.random() < 0.01) { // Log occasionally to avoid spam
+            log('Scroll check:', {
+                scrollPosition,
+                documentHeight,
+                threshold,
+                canTrigger: scrollPosition >= threshold
+            });
+        }
         
         if (scrollPosition >= threshold) {
+            log('🎯 Scroll threshold reached! Triggering load...');
             loadMoreProducts();
         }
     }
     
-    // Optimized scroll listener
-    let ticking = false;
-    function onScroll() {
-        if (!ticking) {
-            requestAnimationFrame(() => {
-                checkScroll();
-                ticking = false;
-            });
-            ticking = true;
+    // Debounced scroll handler
+    let scrollTimeout;
+    function handleScroll() {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(checkScroll, CONFIG.debounceDelay);
+    }
+    
+    // =============== DROPDOWN FILTER HANDLERS ===============
+    function handleFilterChange() {
+        log('Filter changed:', this.id, this.value);
+        if (this.id === 'dropdown_price_range') {
+            handlePriceRange(this.value);
         }
+        submitFormSafely();
     }
     
-    window.addEventListener('scroll', onScroll, { passive: true });
-    
-    // Reset when sort changes
-    const sortSelect = document.getElementById('sortSelect');
-    if (sortSelect) {
-        sortSelect.addEventListener('change', function() {
-            const currentUrl = new URL(window.location);
-            currentUrl.searchParams.set('sort', this.value);
-            currentUrl.searchParams.delete('page'); // Reset to page 1
-            window.location.href = currentUrl.toString();
-        });
-    }
-    
-    // Dropdown Filter Form Handler
-    const dropdownFilterForm = document.getElementById('dropdownFilterForm');
-    if (dropdownFilterForm) {
-        const dropdownSubcategorySelect = document.getElementById('dropdown_subcategory');
-        const dropdownBrandSelect = document.getElementById('dropdown_brand');
-        const dropdownVerifiedBusinessSelect = document.getElementById('dropdown_verified_business');
-        const dropdownConditionSelect = document.getElementById('dropdown_condition');
-        const dropdownPriceRangeSelect = document.getElementById('dropdown_price_range');
-        const dropdownStateSelect = document.getElementById('dropdown_state');
-        const dropdownLgaSelect = document.getElementById('dropdown_lga');
-
+    function setupDropdownFilterHandlers() {
+        if (!elements.dropdownFilterForm) return;
+        
         const urlParams = new URLSearchParams(window.location.search);
-
-        function handlePriceRange(priceRange) {
-            try {
-                const existingMinPrice = dropdownFilterForm.querySelector('input[name="min_price"]');
-                const existingMaxPrice = dropdownFilterForm.querySelector('input[name="max_price"]');
-                
-                if (existingMinPrice) existingMinPrice.remove();
-                if (existingMaxPrice) existingMaxPrice.remove();
-
-                if (priceRange) {
-                    const [minPrice, maxPrice] = priceRange.split('-');
-                    
-                    const minPriceInput = document.createElement('input');
-                    minPriceInput.type = 'hidden';
-                    minPriceInput.name = 'min_price';
-                    minPriceInput.value = minPrice;
-                    
-                    const maxPriceInput = document.createElement('input');
-                    maxPriceInput.type = 'hidden';
-                    maxPriceInput.name = 'max_price';
-                    maxPriceInput.value = maxPrice === '999999999' ? '' : maxPrice;
-                    
-                    dropdownFilterForm.appendChild(minPriceInput);
-                    if (maxPrice !== '999999999') {
-                        dropdownFilterForm.appendChild(maxPriceInput);
-                    }
-                }
-            } catch (error) {
-                console.error('Error handling price range:', error);
-            }
-        }
-
-        function submitFormSafely(delay = 100) {
-            setTimeout(() => {
-                try {
-                    resetInfiniteScrollState();
-                    dropdownFilterForm.submit();
-                } catch (error) {
-                    console.error('Error submitting form:', error);
-                }
-            }, delay);
-        }
-
-        function handleFilterChange() {
-            if (this.id === 'dropdown_price_range') {
-                handlePriceRange(this.value);
-            }
-            submitFormSafely();
-        }
-
+        
         // Subcategory change handler
-        if (dropdownSubcategorySelect) {
-            dropdownSubcategorySelect.addEventListener('change', function() {
-                const categorySlug = dropdownFilterForm.querySelector('input[name="category"]').value;
+        if (elements.dropdownSubcategorySelect) {
+            elements.dropdownSubcategorySelect.addEventListener('change', function() {
+                const categorySlug = elements.dropdownFilterForm.querySelector('input[name="category"]').value;
                 const subcategorySlug = this.value;
+                
+                log('Subcategory changed:', subcategorySlug);
                 
                 if (categorySlug) {
                     let apiUrl = `/api/brands/${categorySlug}/`;
@@ -387,15 +538,14 @@ document.addEventListener('DOMContentLoaded', function() {
                             return response.json();
                         })
                         .then(data => {
-                            if (dropdownBrandSelect) {
-                                dropdownBrandSelect.innerHTML = '<option value="">All Brands</option>';
-                                data.forEach(brand => {
-                                    const option = document.createElement('option');
-                                    option.value = brand.slug;
-                                    option.textContent = `${brand.name}${brand.product_count ? ' (' + brand.product_count + ')' : ''}`;
-                                    dropdownBrandSelect.appendChild(option);
-                                });
-                            }
+                            elements.dropdownBrandSelect.innerHTML = '<option value="">All Brands</option>';
+                            data.forEach(brand => {
+                                const option = document.createElement('option');
+                                option.value = brand.slug;
+                                option.textContent = `${brand.name}${brand.product_count ? ' (' + brand.product_count + ')' : ''}`;
+                                elements.dropdownBrandSelect.appendChild(option);
+                            });
+                            log('Brands updated for subcategory');
                         })
                         .catch(error => {
                             console.error('Error fetching brands:', error);
@@ -405,21 +555,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitFormSafely(200);
             });
         }
-
+        
         // State change handler
-        if (dropdownStateSelect) {
-            dropdownStateSelect.addEventListener('change', function() {
+        if (elements.dropdownStateSelect) {
+            elements.dropdownStateSelect.addEventListener('change', function() {
                 const stateId = this.value;
+                log('State changed:', stateId);
                 
-                if (dropdownLgaSelect) {
-                    dropdownLgaSelect.innerHTML = '<option value="">All LGAs</option>';
-                    dropdownLgaSelect.value = '';
-                }
+                elements.dropdownLgaSelect.innerHTML = '<option value="">All LGAs</option>';
+                elements.dropdownLgaSelect.value = '';
                 
                 if (stateId) {
-                    if (dropdownLgaSelect) {
-                        dropdownLgaSelect.disabled = false;
-                    }
+                    elements.dropdownLgaSelect.disabled = false;
                     
                     fetch(`/api/lgas/${stateId}/`)
                         .then(response => {
@@ -427,89 +574,92 @@ document.addEventListener('DOMContentLoaded', function() {
                             return response.json();
                         })
                         .then(data => {
-                            if (dropdownLgaSelect) {
-                                data.forEach(lga => {
-                                    const option = document.createElement('option');
-                                    option.value = lga.id;
-                                    option.textContent = lga.name;
-                                    dropdownLgaSelect.appendChild(option);
-                                });
-                            }
+                            data.forEach(lga => {
+                                const option = document.createElement('option');
+                                option.value = lga.id;
+                                option.textContent = lga.name;
+                                elements.dropdownLgaSelect.appendChild(option);
+                            });
                             
+                            log('LGAs loaded for state');
                             submitFormSafely(100);
                         })
                         .catch(error => {
                             console.error('Error fetching LGAs:', error);
-                            if (dropdownLgaSelect) {
-                                dropdownLgaSelect.disabled = true;
-                            }
+                            elements.dropdownLgaSelect.disabled = true;
                             submitFormSafely(100);
                         });
                 } else {
-                    if (dropdownLgaSelect) {
-                        dropdownLgaSelect.disabled = true;
-                    }
+                    elements.dropdownLgaSelect.disabled = true;
                     submitFormSafely(100);
                 }
             });
         }
-
+        
         // LGA change handler
-        if (dropdownLgaSelect) {
-            dropdownLgaSelect.addEventListener('change', function() {
+        if (elements.dropdownLgaSelect) {
+            elements.dropdownLgaSelect.addEventListener('change', function() {
+                log('LGA changed:', this.value);
                 submitFormSafely();
             });
         }
-
-        // Add change listeners to all filter dropdowns
-        [dropdownBrandSelect, dropdownVerifiedBusinessSelect, dropdownConditionSelect, dropdownPriceRangeSelect].forEach(select => {
+        
+        // Verified Business change handler
+        if (elements.dropdownVerifiedBusinessSelect) {
+            elements.dropdownVerifiedBusinessSelect.addEventListener('change', function() {
+                log('Verified business filter changed to:', this.value);
+                submitFormSafely();
+            });
+        }
+        
+        // Add change listeners to all other filters
+        [elements.dropdownBrandSelect, elements.dropdownConditionSelect, 
+         elements.dropdownPriceRangeSelect, elements.dropdownVerifiedBusinessSelect].forEach(select => {
             if (select) {
                 select.addEventListener('change', handleFilterChange);
             }
         });
-
+        
         // Clear filters handler
-        const clearDropdownFiltersBtn = document.getElementById('clearDropdownFilters');
-        if (clearDropdownFiltersBtn) {
-            clearDropdownFiltersBtn.addEventListener('click', function() {
+        if (elements.clearDropdownFiltersBtn) {
+            elements.clearDropdownFiltersBtn.addEventListener('click', function() {
                 try {
-                    // Clear all filter selections
-                    [dropdownSubcategorySelect, dropdownBrandSelect, dropdownVerifiedBusinessSelect, 
-                     dropdownConditionSelect, dropdownPriceRangeSelect, dropdownStateSelect, 
-                     dropdownLgaSelect].forEach(select => {
+                    log('Clearing all filters');
+                    [elements.dropdownSubcategorySelect, elements.dropdownBrandSelect, 
+                     elements.dropdownConditionSelect, elements.dropdownPriceRangeSelect, 
+                     elements.dropdownStateSelect, elements.dropdownLgaSelect, 
+                     elements.dropdownVerifiedBusinessSelect].forEach(select => {
                         if (select) {
                             select.value = '';
                         }
                     });
 
-                    // Reset LGA dropdown
-                    if (dropdownLgaSelect) {
-                        dropdownLgaSelect.innerHTML = '<option value="">All LGAs</option>';
-                        dropdownLgaSelect.disabled = true;
+                    if (elements.dropdownLgaSelect) {
+                        elements.dropdownLgaSelect.innerHTML = '<option value="">All LGAs</option>';
+                        elements.dropdownLgaSelect.disabled = true;
                     }
 
-                    // Remove price range hidden inputs
-                    const existingMinPrice = dropdownFilterForm.querySelector('input[name="min_price"]');
-                    const existingMaxPrice = dropdownFilterForm.querySelector('input[name="max_price"]');
+                    const existingMinPrice = elements.dropdownFilterForm.querySelector('input[name="min_price"]');
+                    const existingMaxPrice = elements.dropdownFilterForm.querySelector('input[name="max_price"]');
                     if (existingMinPrice) existingMinPrice.remove();
                     if (existingMaxPrice) existingMaxPrice.remove();
 
-                    // Reset brands dropdown to all brands for the category
-                    const categorySlug = dropdownFilterForm.querySelector('input[name="category"]').value;
-                    if (categorySlug && dropdownBrandSelect) {
+                    const categorySlug = elements.dropdownFilterForm.querySelector('input[name="category"]').value;
+                    if (categorySlug && elements.dropdownBrandSelect) {
                         fetch(`/api/brands/${categorySlug}/`)
                             .then(response => {
                                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                                 return response.json();
                             })
                             .then(data => {
-                                dropdownBrandSelect.innerHTML = '<option value="">All Brands</option>';
+                                elements.dropdownBrandSelect.innerHTML = '<option value="">All Brands</option>';
                                 data.forEach(brand => {
                                     const option = document.createElement('option');
                                     option.value = brand.slug;
                                     option.textContent = `${brand.name}${brand.product_count ? ' (' + brand.product_count + ')' : ''}`;
-                                    dropdownBrandSelect.appendChild(option);
+                                    elements.dropdownBrandSelect.appendChild(option);
                                 });
+                                log('Brands reset to category default');
                             })
                             .catch(error => {
                                 console.error('Error fetching brands:', error);
@@ -522,24 +672,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         }
-
+        
         // Initialize price range on page load
-        const currentPriceRange = dropdownPriceRangeSelect ? dropdownPriceRangeSelect.value : '';
+        const currentPriceRange = elements.dropdownPriceRangeSelect ? elements.dropdownPriceRangeSelect.value : '';
         if (currentPriceRange) {
             handlePriceRange(currentPriceRange);
         }
-
+        
         // Initialize location selections on page load
         function initializeLocationSelections() {
             try {
                 const currentStateId = urlParams.get('state');
                 const currentLgaId = urlParams.get('lga');
                 
-                if (currentStateId && dropdownStateSelect) {
-                    dropdownStateSelect.value = currentStateId;
+                if (currentStateId && elements.dropdownStateSelect) {
+                    elements.dropdownStateSelect.value = currentStateId;
                     
-                    if (dropdownLgaSelect) {
-                        dropdownLgaSelect.disabled = false;
+                    if (elements.dropdownLgaSelect) {
+                        elements.dropdownLgaSelect.disabled = false;
                         
                         fetch(`/api/lgas/${currentStateId}/`)
                             .then(response => {
@@ -547,7 +697,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 return response.json();
                             })
                             .then(data => {
-                                dropdownLgaSelect.innerHTML = '<option value="">All LGAs</option>';
+                                elements.dropdownLgaSelect.innerHTML = '<option value="">All LGAs</option>';
                                 data.forEach(lga => {
                                     const option = document.createElement('option');
                                     option.value = lga.id;
@@ -557,35 +707,119 @@ document.addEventListener('DOMContentLoaded', function() {
                                         option.selected = true;
                                     }
                                     
-                                    dropdownLgaSelect.appendChild(option);
+                                    elements.dropdownLgaSelect.appendChild(option);
                                 });
+                                log('Location selections initialized');
                             })
                             .catch(error => {
                                 console.error('Error fetching LGAs on page load:', error);
-                                dropdownLgaSelect.disabled = true;
+                                elements.dropdownLgaSelect.disabled = true;
                             });
                     }
                 } else {
-                    if (dropdownLgaSelect) {
-                        dropdownLgaSelect.disabled = true;
+                    if (elements.dropdownLgaSelect) {
+                        elements.dropdownLgaSelect.disabled = true;
                     }
                 }
             } catch (error) {
                 console.error('Error initializing location selections:', error);
             }
         }
-
+        
+        // Initialize verified business filter on page load
+        function initializeVerifiedBusinessFilter() {
+            try {
+                const currentVerifiedBusiness = urlParams.get('verified_business');
+                if (currentVerifiedBusiness && elements.dropdownVerifiedBusinessSelect) {
+                    elements.dropdownVerifiedBusinessSelect.value = currentVerifiedBusiness;
+                    log('Verified business filter initialized with:', currentVerifiedBusiness);
+                }
+            } catch (error) {
+                console.error('Error initializing verified business filter:', error);
+            }
+        }
+        
         initializeLocationSelections();
-
+        initializeVerifiedBusinessFilter();
+        
         // Monitor form submission for state reset
-        dropdownFilterForm.addEventListener('submit', function() {
+        elements.dropdownFilterForm.addEventListener('submit', function() {
+            log('Form submitted, resetting infinite scroll state');
             resetInfiniteScrollState();
         });
     }
     
-    // Initialize everything
-    currentFilters = getCurrentFilters();
-    initializePaginationState();
+    // =============== SORT HANDLER ===============
+    function setupSortHandler() {
+        if (elements.sortSelect) {
+            elements.sortSelect.addEventListener('change', function() {
+                log('Sort changed to:', this.value);
+                resetInfiniteScrollState();
+                
+                const currentUrl = new URL(window.location);
+                currentUrl.searchParams.set('sort', this.value);
+                currentUrl.searchParams.delete('page');
+                window.location.href = currentUrl.toString();
+            });
+        }
+    }
     
-    console.log('Product list infinite scroll initialized');
+    // =============== INITIALIZATION ===============
+    function initialize() {
+        log('🎬 Starting complete product list initialization...');
+        
+        // Check required elements
+        if (!elements.productsGrid) {
+            warn('Products grid not found - infinite scroll disabled');
+            return;
+        }
+        
+        // Initialize pagination state
+        if (!initializePaginationState()) {
+            warn('Failed to initialize pagination state');
+        }
+        
+        // Setup all event handlers
+        setupDropdownFilterHandlers();
+        setupSortHandler();
+        
+        // Initialize current filters
+        currentFilters = getCurrentFilters();
+        
+        // Start scroll monitoring
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        
+        // Debug helper
+        window.debugInfiniteScroll = function() {
+            console.group('🔍 Product List Debug');
+            console.log('Current state:', scrollState);
+            console.log('Config:', CONFIG);
+            console.log('Current filters:', currentFilters);
+            console.log('Elements found:', Object.keys(elements).filter(key => elements[key]));
+            console.log('Products in grid:', elements.productsGrid ? elements.productsGrid.querySelectorAll('.col').length : 'N/A');
+            
+            const scrollPos = window.innerHeight + window.scrollY;
+            const docHeight = document.body.offsetHeight;
+            console.log('Scroll info:', {
+                position: scrollPos,
+                documentHeight: docHeight,
+                threshold: docHeight - CONFIG.loadThreshold,
+                canTrigger: scrollPos >= (docHeight - CONFIG.loadThreshold)
+            });
+            console.groupEnd();
+        };
+        
+        log('✅ Complete product list initialization complete!');
+        log('Initial state:', scrollState);
+        log('Current filters:', currentFilters);
+        
+        // Force a scroll check after a brief delay
+        setTimeout(() => {
+            log('🔍 Initial scroll check...');
+            checkScroll();
+        }, 1000);
+    }
+    
+    // =============== START ===============
+    initialize();
 });
