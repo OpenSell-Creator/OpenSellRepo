@@ -55,8 +55,170 @@
     </div>
 
     <div class="container">
+        <!-- Enhanced Store Verification Status Section (Visible to All Visitors) -->
+        {% if request.user != store_owner %}
+        <div class="store-verification-status-section mb-4">
+            <div class="card verification-overview-card">
+                <div class="card-header py-3">
+                    <h5 class="mb-0 fw-bold d-flex align-items-center">
+                        <i class="bi bi-shield-check me-2" style="color: var(--accent-color)"></i>
+                        Store Verification Status
+                    </h5>
+                </div>
+                
+                <!-- Verification Status Grid -->
+                <div class="verification-status-grid p-3">
+                    <div class="row g-3">
+                        <!-- Business Verification Status -->
+                        <div class="col-12 col-md-6 col-lg-4">
+                            <div class="store-status-chip {% if store_owner.profile.is_verified_business %}verified{% elif store_owner.profile.has_pending_verification %}pending{% else %}unverified{% endif %}">
+                                <div class="status-icon-container">
+                                    {% if store_owner.profile.is_verified_business %}
+                                        <i class="bi bi-patch-check-fill"></i>
+                                    {% elif store_owner.profile.has_pending_verification %}
+                                        <i class="bi bi-clock-history"></i>
+                                    {% else %}
+                                        <i class="bi bi-shield-exclamation"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="status-text-container">
+                                    <div class="status-category">Business Verification</div>
+                                    <div class="status-state">
+                                        {% if store_owner.profile.is_verified_business %}
+                                            Verified
+                                            {% if store_owner.profile.business_verified_at %}
+                                                <small class="verified-date">{{ store_owner.profile.business_verified_at|date:"M d, Y" }}</small>
+                                            {% endif %}
+                                        {% elif store_owner.profile.has_pending_verification %}
+                                            Under Review
+                                        {% else %}
+                                            Not Verified
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Email Verification Status -->
+                        <div class="col-12 col-md-6 col-lg-4">
+                            <div class="store-status-chip {% if store_owner.profile.email_verified %}verified{% else %}unverified{% endif %}">
+                                <div class="status-icon-container">
+                                    {% if store_owner.profile.email_verified %}
+                                        <i class="bi bi-envelope-check-fill"></i>
+                                    {% else %}
+                                        <i class="bi bi-envelope-exclamation-fill"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="status-text-container">
+                                    <div class="status-category">Email Verification</div>
+                                    <div class="status-state">
+                                        {% if store_owner.profile.email_verified %}
+                                            Verified
+                                        {% else %}
+                                            Unverified
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Account Status -->
+                        <div class="col-12 col-md-6 col-lg-4">
+                            <div class="store-status-chip {% if store_owner.is_active %}verified{% else %}unverified{% endif %}">
+                                <div class="status-icon-container">
+                                    {% if store_owner.is_active %}
+                                        <i class="bi bi-person-check-fill"></i>
+                                    {% else %}
+                                        <i class="bi bi-person-x-fill"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="status-text-container">
+                                    <div class="status-category">Account Status</div>
+                                    <div class="status-state">
+                                        {% if store_owner.is_active %}
+                                            Active
+                                            <small class="member-since">Since {{ store_owner.date_joined|date:"M Y" }}</small>
+                                        {% else %}
+                                            Inactive
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Business Information Summary (for verified businesses) -->
+                {% if store_owner.profile.is_verified_business %}
+                    <div class="business-summary-section">
+                        <div class="business-info-banner">
+                            <div class="business-banner-content">
+                                <div class="business-identity">
+                                    <h6 class="business-name">{{ store_owner.profile.business_name }}</h6>
+                                    <div class="business-category">{{ store_owner.profile.get_business_type_display|default:"Verified Business" }}</div>
+                                </div>
+                                <div class="verified-business-badge">
+                                    <i class="bi bi-patch-check-fill"></i>
+                                    <span>Verified Business</span>
+                                </div>
+                            </div>
+                            
+                            {% if store_owner.profile.business_description %}
+                                <div class="business-description-preview">
+                                    <p>{{ store_owner.profile.business_description|truncatechars:120 }}</p>
+                                </div>
+                            {% endif %}
+
+                            <!-- Business Contact Info (if available and visible) -->
+                            <div class="business-contact-preview">
+                                <div class="contact-items-row">
+                                    {% if store_owner.profile.business_email %}
+                                        <div class="contact-preview-item">
+                                            <i class="bi bi-envelope-fill"></i>
+                                            <span>{{ store_owner.profile.business_email }}</span>
+                                        </div>
+                                    {% endif %}
+                                    {% if store_owner.profile.business_phone %}
+                                        <div class="contact-preview-item">
+                                            <i class="bi bi-telephone-fill"></i>
+                                            <span>{{ store_owner.profile.business_phone }}</span>
+                                        </div>
+                                    {% endif %}
+                                    {% if store_owner.profile.business_website %}
+                                        <div class="contact-preview-item">
+                                            <i class="bi bi-globe"></i>
+                                            <a href="{{ store_owner.profile.business_website }}" target="_blank" class="business-website-link">
+                                                Visit Website <i class="bi bi-box-arrow-up-right"></i>
+                                            </a>
+                                        </div>
+                                    {% endif %}
+                                    
+                                    <!-- Business Address (if visible) -->
+                                    {% if store_owner.profile.business_address_visible and store_owner.profile.location %}
+                                        <div class="contact-preview-item business-address-preview">
+                                            <i class="bi bi-geo-alt-fill"></i>
+                                            <div class="address-summary">
+                                                {% if store_owner.profile.location.city %}
+                                                    {{ store_owner.profile.location.city }}{% if store_owner.profile.location.state %}, {{ store_owner.profile.location.state.name }}{% endif %}
+                                                {% elif store_owner.profile.location.lga %}
+                                                    {{ store_owner.profile.location.lga.name }}{% if store_owner.profile.location.state %}, {{ store_owner.profile.location.state.name }}{% endif %}
+                                                {% elif store_owner.profile.location.state %}
+                                                    {{ store_owner.profile.location.state.name }}
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
         {% if request.user == store_owner %}
-        <!-- Business Verification Section -->
+        <!-- Business Verification Section (Owner Only) -->
         <div class="business-verification-section mb-4">
             <!-- Verified Business Status -->
             {% if store_owner.profile.is_verified_business %}
@@ -175,7 +337,7 @@
             {% endif %}
         </div>
         
-        <!-- Business Information Section -->
+        <!-- Business Information Section (Owner Only) -->
         {% if store_owner.profile.is_verified_business %}
         <div class="row mb-4">
             <div class="col-12">
@@ -253,6 +415,46 @@
                                 </div>
                             </div>
                             {% endif %}
+
+                            <!-- Business Address (Enhanced) -->
+                            {% if store_owner.profile.location %}
+                            <div class="info-item-card location-card">
+                                <div class="info-item-header">
+                                    <i class="bi bi-geo-alt"></i>
+                                    <span class="info-label">Business Address</span>
+                                </div>
+                                <div class="info-content">
+                                    <div class="location-details">
+                                        {% if store_owner.profile.location.address %}
+                                            <div class="location-line">{{ store_owner.profile.location.address }}</div>
+                                        {% endif %}
+                                        {% if store_owner.profile.location.address_2 %}
+                                            <div class="location-line">{{ store_owner.profile.location.address_2 }}</div>
+                                        {% endif %}
+                                        <div class="location-line">
+                                            {% if store_owner.profile.location.city %}
+                                                {{ store_owner.profile.location.city }}
+                                                {% if store_owner.profile.location.lga %}, {% endif %}
+                                            {% endif %}
+                                            {% if store_owner.profile.location.lga %}
+                                                {{ store_owner.profile.location.lga.name }}
+                                            {% endif %}
+                                        </div>
+                                        {% if store_owner.profile.location.state %}
+                                            <div class="location-line">{{ store_owner.profile.location.state.name }}</div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <!-- Address Visibility Toggle -->
+                                    <div class="address-visibility-control mt-2">
+                                        <small class="text-muted">
+                                            <i class="bi bi-{% if store_owner.profile.business_address_visible %}eye{% else %}eye-slash{% endif %} me-1"></i>
+                                            Address is {% if store_owner.profile.business_address_visible %}visible{% else %}hidden{% endif %} to customers
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -260,7 +462,7 @@
         </div>
         {% endif %}
 
-        <!-- My Information Section -->
+        <!-- My Information Section (Owner Only) -->
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card store-info-card">

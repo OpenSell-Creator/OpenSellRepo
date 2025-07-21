@@ -822,7 +822,13 @@ class ProductDetailView(DetailView):
             'business_name': seller_profile.business_name if seller_profile.is_verified_business else None,
             'business_email': seller_profile.business_email if seller_profile.is_verified_business else None,
             'business_phone': seller_profile.business_phone if seller_profile.is_verified_business else None,
+            'business_website': seller_profile.business_website if seller_profile.is_verified_business else None,
             'business_address_visible': seller_profile.business_address_visible if seller_profile.is_verified_business else False,
+            'business_type': seller_profile.get_business_type_display() if seller_profile.is_verified_business else None,
+            'business_description': seller_profile.business_description if seller_profile.is_verified_business else None,
+            'business_verified_at': seller_profile.business_verified_at if seller_profile.is_verified_business else None,
+            'email_verified': seller_profile.email_verified,
+            'has_pending_verification': seller_profile.has_pending_verification,
         }
 
         context['created_at'] = self.object.created_at
@@ -1914,9 +1920,21 @@ def my_store(request, username=None):
             'phone': store_owner.profile.business_phone,
             'website': store_owner.profile.business_website,
             'description': store_owner.profile.business_description,
+            'type': store_owner.profile.get_business_type_display() if store_owner.profile.business_type else None,
+            'registration_number': store_owner.profile.business_registration_number,
             'verification_status': store_owner.profile.business_verification_status,
             'verified_at': store_owner.profile.business_verified_at,
+            'address_visible': store_owner.profile.business_address_visible,
         } if hasattr(store_owner.profile, 'business_verification_status') else None,
+        
+        # Store verification status context
+        'store_verification': {
+            'business_verified': store_owner.profile.business_verification_status == 'verified',
+            'business_pending': store_owner.profile.business_verification_status == 'pending',
+            'email_verified': store_owner.profile.email_verified,
+            'account_active': store_owner.is_active,
+            'member_since': store_owner.date_joined,
+        },
     }
     
     # Only show account details if viewing own store

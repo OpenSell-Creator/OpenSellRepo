@@ -145,15 +145,7 @@
                             </div>
                         </div>
                     </div>
-                    <!--
-                    PRO SELLER DISPLAY (if applicable)
-                    {% if product.is_pro_seller %}
-                    <div class="pro-seller-display d-flex align-items-center justify-content-center mb-3">
-                        <i class="bi bi-patch-check-fill pro-seller-icon me-2"></i>
-                        <span class="pro-seller-text">Verified Pro Seller</span>
-                    </div>
-                    {% endif %}
-
+                    
                     <div class="product-action-buttons mb-4">
                     <div class="row g-2">
                         
@@ -167,7 +159,7 @@
                             </button>
                         </div>
                         
-
+                        <!--
                         {% if user == product.seller.user %}
                             <div class="col-6">
                                 {% if product.is_boosted %}
@@ -186,7 +178,7 @@
                                 {% endif %}
                             </div>
                         {% else %} 
-                    -->
+                        -->
                         <!-- Save Button for non-owners -->
                             <div class="col-6">
                                 {% if user.is_authenticated %}
@@ -310,56 +302,167 @@
     </div>
 </div>
 
-<!-- Seller Information Card -->
+<!-- Enhanced Seller Information Card -->
 {% if user != product.seller.user %}
 <div class="card seller-card mt-3 mb-4">
-    <div class="card-header py-2">
+    <div class="card-header py-3">
         <h5 class="mb-0 fw-bold">
             <i class="fas fa-user-circle me-2" style="color: var(--accent-color)"></i>
             Seller Information
         </h5>
-        {% if product.seller_is_verified_business %}
-            <span class="verification-status verified">
-                <i class="bi bi-patch-check-fill"></i>
-                Verified Business
-            </span>
-        {% elif product.seller.has_pending_verification %}
-            <span class="verification-status pending">
-                <i class="bi bi-clock"></i>
-                Verification Pending
-            </span>
-        {% endif %}
     </div>
+    
+    <!-- Verification Status Row -->
+    <div class="verification-status-row">
+        <div class="container-fluid px-3 py-2">
+            <div class="row g-2">
+                <!-- Business Verification Status -->
+                <div class="col-12 col-md-4">
+                    <div class="status-chip {% if product.seller_is_verified_business %}verified{% elif product.seller.has_pending_verification %}pending{% else %}unverified{% endif %}">
+                        <div class="status-icon">
+                            {% if product.seller_is_verified_business %}
+                                <i class="bi bi-patch-check-fill"></i>
+                            {% elif product.seller.has_pending_verification %}
+                                <i class="bi bi-clock-history"></i>
+                            {% else %}
+                                <i class="bi bi-shield-exclamation"></i>
+                            {% endif %}
+                        </div>
+                        <div class="status-content">
+                            <div class="status-label">Business</div>
+                            <div class="status-value">
+                                {% if product.seller_is_verified_business %}
+                                    Verified
+                                {% elif product.seller.has_pending_verification %}
+                                    Pending
+                                {% else %}
+                                    Unverified
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Email Verification Status -->
+                <div class="col-12 col-md-4">
+                    <div class="status-chip {% if product.seller.email_verified %}verified{% else %}unverified{% endif %}">
+                        <div class="status-icon">
+                            {% if product.seller.email_verified %}
+                                <i class="bi bi-envelope-check-fill"></i>
+                            {% else %}
+                                <i class="bi bi-envelope-exclamation-fill"></i>
+                            {% endif %}
+                        </div>
+                        <div class="status-content">
+                            <div class="status-label">Email</div>
+                            <div class="status-value">
+                                {% if product.seller.email_verified %}
+                                    Verified
+                                {% else %}
+                                    Unverified
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Account Status -->
+                <div class="col-12 col-md-4">
+                    <div class="status-chip {% if product.seller.user.is_active %}verified{% else %}unverified{% endif %}">
+                        <div class="status-icon">
+                            {% if product.seller.user.is_active %}
+                                <i class="bi bi-person-check-fill"></i>
+                            {% else %}
+                                <i class="bi bi-person-x-fill"></i>
+                            {% endif %}
+                        </div>
+                        <div class="status-content">
+                            <div class="status-label">Account</div>
+                            <div class="status-value">
+                                {% if product.seller.user.is_active %}
+                                    Active
+                                {% else %}
+                                    Inactive
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Business Information Section (Enhanced) -->
     {% if product.seller_is_verified_business %}
-        <div class="business-info text-center">
+        <div class="business-info-section">
+            <div class="business-header">
+                <div class="business-name-section">
+                    <h6 class="business-name">{{ product.seller.business_name }}</h6>
+                    <div class="business-type">{{ product.seller.get_business_type_display|default:"Business" }}</div>
+                </div>
+                <div class="verified-badge">
+                    <i class="bi bi-patch-check-fill"></i>
+                    <span>Verified Business</span>
+                </div>
+            </div>
+            
             {% if product.seller.business_description %}
-                <p class="text-muted small mb-2">{{ product.seller.business_description|truncatechars:100 }}</p>
+                <div class="business-description">
+                    <p>{{ product.seller.business_description|truncatechars:150 }}</p>
+                </div>
             {% endif %}
             
-            <div class="business-details">
+            <div class="business-contact-grid">
                 {% if product.seller.business_email %}
                     <div class="contact-item">
-                        <i class="bi bi-envelope me-1"></i>
-                        <small>{{ product.seller.business_email }}</small>
+                        <i class="bi bi-envelope-fill"></i>
+                        <span>{{ product.seller.business_email }}</span>
                     </div>
                 {% endif %}
                 {% if product.seller.business_phone %}
                     <div class="contact-item">
-                        <i class="bi bi-telephone me-1"></i>
-                        <small>{{ product.seller.business_phone }}</small>
+                        <i class="bi bi-telephone-fill"></i>
+                        <span>{{ product.seller.business_phone }}</span>
                     </div>
                 {% endif %}
                 {% if product.seller.business_website %}
                     <div class="contact-item">
-                        <i class="bi bi-globe me-1"></i>
-                        <a href="{{ product.seller.business_website }}" target="_blank" class="small">
-                            Visit Website
+                        <i class="bi bi-globe"></i>
+                        <a href="{{ product.seller.business_website }}" target="_blank" class="business-link">
+                            Visit Website <i class="bi bi-box-arrow-up-right"></i>
                         </a>
+                    </div>
+                {% endif %}
+                
+                <!-- Business Address (if visible and available) -->
+                {% if product.seller.business_address_visible and product.seller.location %}
+                    <div class="contact-item business-address">
+                        <i class="bi bi-geo-alt-fill"></i>
+                        <div class="address-details">
+                            {% if product.seller.location.address %}
+                                <div>{{ product.seller.location.address }}</div>
+                            {% endif %}
+                            {% if product.seller.location.address_2 %}
+                                <div>{{ product.seller.location.address_2 }}</div>
+                            {% endif %}
+                            <div>
+                                {% if product.seller.location.city %}
+                                    {{ product.seller.location.city }}{% if product.seller.location.lga %}, {% endif %}
+                                {% endif %}
+                                {% if product.seller.location.lga %}
+                                    {{ product.seller.location.lga.name }}{% if product.seller.location.state %}, {% endif %}
+                                {% endif %}
+                                {% if product.seller.location.state %}
+                                    {{ product.seller.location.state.name }}
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
                 {% endif %}
             </div>
         </div>
     {% endif %}
+
     <div class="card-body py-3">
         <!-- Seller Profile Section -->
         <div class="d-flex flex-column align-items-center gap-2 mb-3">
@@ -391,7 +494,7 @@
                 {% endif %}
             </div>
 
-            <!-- Star Rating (Consistent with review stars) -->
+            <!-- Star Rating -->
             <div class="rating-wrapper">
                 <div class="d-flex align-items-center gap-1">
                     <div class="stars">
@@ -476,13 +579,18 @@
             </div>
         </div>
         
-        <!-- Contact Buttons -->
+        <!-- Enhanced Contact Buttons -->
         <div class="contact-buttons mt-4">
             <div class="row g-2">
                 <div class="col-6">
-                    <a href="https://wa.me/234{{ product.seller.phone_number|cut:'+234'|cut:'-'|cut:' ' }}" 
+                    <a href="javascript:void(0)" 
                         class="btn btn-success w-100" 
-                        target="_blank">
+                        onclick="openWhatsAppWithMessage()"
+                        data-seller-name="{{ product.seller.user.username }}"
+                        data-seller-phone="{{ product.seller.phone_number }}"
+                        data-product-title="{{ product.title }}"
+                        data-product-price="{{ formatted_price }}"
+                        data-product-url="{{ request.build_absolute_uri }}">
                         <i class="fab fa-whatsapp me-2"></i>WhatsApp
                     </a>
                 </div>
@@ -522,7 +630,6 @@
 </div>
 
 {% endif %}
-
 
 
 <!-- Safety Tips Card -->

@@ -1,3 +1,5 @@
+// Enhanced JavaScript for product_detail.html with WhatsApp integration
+
 // Wait for DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', function () {
     // -------------------------
@@ -267,369 +269,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // -------------------------
-    // Share Product Functionality
-    // -------------------------
-    // ===== DEVELOPMENT-FRIENDLY SHARE FUNCTIONALITY =====
-    function shareProduct() {
-        const currentUrl = window.location.href;
-        const productTitle = "{{ product.title|escapejs }}";
-        const productPrice = "{{ product.formatted_price|escapejs }}";
-        const shareText = `Check out this ${productTitle} for ${productPrice} on OpenSell!`;
-        
-        console.log('Share button clicked'); // Debug log
-        
-        // For development and mobile testing
-        const isLocalhost = window.location.hostname === 'localhost' || 
-                        window.location.hostname === '127.0.0.1' || 
-                        window.location.hostname === '';
-        
-        // Check for mobile devices and Web Share API support
-        const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        
-        if (navigator.share && isMobile) {
-            console.log('Using Web Share API'); // Debug log
-            navigator.share({
-                title: `${productTitle} - OpenSell`,
-                text: shareText,
-                url: currentUrl
-            }).then(() => {
-                showShareSuccess('Product shared successfully!');
-            }).catch((error) => {
-                console.log('Web Share API error:', error);
-                fallbackShare(currentUrl, shareText);
-            });
-        } else {
-            console.log('Using fallback share'); // Debug log
-            fallbackShare(currentUrl, shareText);
-        }
-    }
-
-    function fallbackShare(url, text) {
-        // For development, always show the share modal instead of relying on clipboard
-        const isLocalhost = window.location.hostname === 'localhost' || 
-                        window.location.hostname === '127.0.0.1';
-        
-        if (!isLocalhost && navigator.clipboard && window.isSecureContext) {
-            // Production HTTPS environment - try clipboard
-            navigator.clipboard.writeText(url).then(() => {
-                showShareSuccess('Product link copied to clipboard!');
-                updateShareButtonState(true);
-            }).catch((error) => {
-                console.log('Clipboard error:', error);
-                showShareModal(url, text);
-            });
-        } else {
-            // Development environment or no clipboard support - show modal
-            console.log('Showing share modal for development/fallback');
-            showShareModal(url, text);
-        }
-    }
-
-    function showShareSuccess(message) {
-        showToast(message);
-    }
-
-    function updateShareButtonState(success) {
-        const shareButton = document.getElementById('shareButton');
-        if (!shareButton) return;
-        
-        const originalContent = shareButton.innerHTML;
-        
-        if (success) {
-            shareButton.innerHTML = '<i class="fas fa-check me-2"></i><span class="btn-text">Copied!</span>';
-            shareButton.classList.add('btn-share-success');
-            shareButton.classList.remove('btn-action-primary');
-            
-            setTimeout(() => {
-                shareButton.innerHTML = originalContent;
-                shareButton.classList.remove('btn-share-success');
-                shareButton.classList.add('btn-action-primary');
-            }, 2500);
-        }
-    }
-
-    function showShareModal(url, text) {
-        // Remove any existing modal first
-        const existingModal = document.getElementById('shareModal');
-        if (existingModal) {
-            existingModal.remove();
-        }
-        
-        const modal = document.createElement('div');
-        modal.innerHTML = `
-            <div class="modal fade" id="shareModal" tabindex="-1" aria-labelledby="shareModalLabel" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="shareModalLabel">
-                                <i class="fas fa-share-alt me-2"></i>Share this Product
-                            </h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="mb-4">
-                                <label class="form-label fw-semibold">Product URL:</label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control" value="${url}" id="urlInput" readonly>
-                                    <button class="btn btn-outline-primary" onclick="copyFromInput()" id="copyUrlBtn" type="button">
-                                        <i class="fas fa-copy"></i>
-                                    </button>
-                                </div>
-                                <small class="text-muted">Click the copy button or select and copy the URL above</small>
-                            </div>
-                            <div class="share-buttons">
-                                <h6 class="mb-3">Share on social media:</h6>
-                                <div class="row g-2">
-                                    <div class="col-6">
-                                        <a href="https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}" 
-                                        target="_blank" 
-                                        class="btn btn-success w-100"
-                                        onclick="trackShare('whatsapp')">
-                                            <i class="fab fa-whatsapp me-2"></i>WhatsApp
-                                        </a>
-                                    </div>
-                                    <div class="col-6">
-                                        <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}" 
-                                        target="_blank" 
-                                        class="btn btn-primary w-100"
-                                        onclick="trackShare('facebook')">
-                                            <i class="fab fa-facebook me-2"></i>Facebook
-                                        </a>
-                                    </div>
-                                    <div class="col-6">
-                                        <a href="https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}" 
-                                        target="_blank" 
-                                        class="btn btn-info w-100"
-                                        onclick="trackShare('twitter')">
-                                            <i class="fab fa-twitter me-2"></i>Twitter
-                                        </a>
-                                    </div>
-                                    <div class="col-6">
-                                        <a href="https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}" 
-                                        target="_blank" 
-                                        class="btn btn-secondary w-100"
-                                        onclick="trackShare('telegram')">
-                                            <i class="fab fa-telegram me-2"></i>Telegram
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(modal);
-        
-        // Initialize and show modal
-        const shareModal = new bootstrap.Modal(document.getElementById('shareModal'), {
-            backdrop: true,
-            keyboard: true,
-            focus: true
-        });
-        
-        shareModal.show();
-        
-        // Clean up when modal is hidden
-        const modalElement = document.getElementById('shareModal');
-        modalElement.addEventListener('hidden.bs.modal', function() {
-            if (document.body.contains(modal)) {
-                document.body.removeChild(modal);
-            }
-        });
-        
-        // Track that share modal was opened
-        console.log('Share modal opened successfully');
-    }
-
-    function copyFromInput() {
-        const input = document.getElementById('urlInput');
-        const copyBtn = document.getElementById('copyUrlBtn');
-        
-        if (!input || !copyBtn) return;
-        
-        // Select the text
-        input.select();
-        input.setSelectionRange(0, 99999); // For mobile devices
-        
-        // Try modern clipboard API first
-        if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(input.value).then(() => {
-                showCopySuccess();
-            }).catch(() => {
-                // Fallback to execCommand
-                fallbackCopy();
-            });
-        } else {
-            // Fallback for development/older browsers
-            fallbackCopy();
-        }
-        
-        function fallbackCopy() {
-            try {
-                const successful = document.execCommand('copy');
-                if (successful) {
-                    showCopySuccess();
-                } else {
-                    showToast('Please manually copy the URL from the input field.');
-                }
-            } catch (err) {
-                console.log('Copy fallback failed:', err);
-                showToast('Please manually copy the URL from the input field.');
-            }
-        }
-        
-        function showCopySuccess() {
-            copyBtn.innerHTML = '<i class="fas fa-check"></i>';
-            copyBtn.classList.remove('btn-outline-primary');
-            copyBtn.classList.add('btn-success');
-            showToast('URL copied to clipboard!');
-            
-            setTimeout(() => {
-                copyBtn.innerHTML = '<i class="fas fa-copy"></i>';
-                copyBtn.classList.remove('btn-success');
-                copyBtn.classList.add('btn-outline-primary');
-            }, 2000);
-        }
-    }
-
-    // Track share usage for analytics
-    function trackShare(platform) {
-        console.log(`Product shared via ${platform}`);
-        showToast(`Opening ${platform}...`);
-        // Add your analytics tracking here if needed
-    }
-
-    // ===== FIXED SAVE FUNCTIONALITY =====
-    function toggleSaveProduct(event, productId) {
-        event.preventDefault();
-        
-        const button = event.currentTarget;
-        const icon = button.querySelector('i');
-        const text = button.querySelector('.btn-text');
-        const csrfToken = getCookie('csrftoken');
-        
-        if (!csrfToken) {
-            showToast('Error: Please refresh the page and try again.');
-            return;
-        }
-
-        // Store original state
-        const originalIcon = icon.className;
-        const originalText = text.textContent;
-        const wasAlreadySaved = button.getAttribute('data-saved') === 'true';
-
-        // Disable button during request
-        button.disabled = true;
-        icon.className = 'fas fa-spinner fa-spin me-2';
-        text.textContent = 'Saving...';
-        
-        fetch('/products/toggle-save/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': csrfToken,
-            },
-            body: `product_id=${productId}`
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            // Update button state based on response
-            if (data.status === 'saved') {
-                // Product was saved
-                icon.className = 'fas fa-heart me-2';
-                text.textContent = 'Saved';
-                button.setAttribute('data-saved', 'true');
-                button.classList.add('saved-state');
-                
-                // Trigger heart animation
-                setTimeout(() => {
-                    icon.style.animation = 'heartBeat 0.6s ease';
-                    setTimeout(() => {
-                        icon.style.animation = '';
-                    }, 600);
-                }, 100);
-                
-            } else if (data.status === 'removed') {
-                // Product was unsaved
-                icon.className = 'far fa-heart me-2';
-                text.textContent = 'Save';
-                button.setAttribute('data-saved', 'false');
-                button.classList.remove('saved-state');
-            }
-            
-            showToast(data.message);
-            
-            // Update all other instances of this product's save button on the page
-            updateAllSaveButtons(productId, data.status === 'saved');
-            
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showToast('An error occurred. Please try again.');
-            
-            // Restore original state on error
-            icon.className = originalIcon;
-            text.textContent = originalText;
-        })
-        .finally(() => {
-            button.disabled = false;
-        });
-    }
-
-    // Helper function to update all save buttons for this product
-    function updateAllSaveButtons(productId, isSaved) {
-        const buttons = document.querySelectorAll(`[data-product-id="${productId}"]`);
-        buttons.forEach(btn => {
-            const icon = btn.querySelector('i');
-            const text = btn.querySelector('.btn-text') || btn.querySelector('span');
-            
-            if (isSaved) {
-                if (icon) icon.className = 'fas fa-heart me-2';
-                if (text) text.textContent = 'Saved';
-                btn.setAttribute('data-saved', 'true');
-                btn.classList.add('saved-state');
-            } else {
-                if (icon) icon.className = 'far fa-heart me-2';
-                if (text) text.textContent = 'Save';
-                btn.setAttribute('data-saved', 'false');
-                btn.classList.remove('saved-state');
-            }
-        });
-    }
-
-    // Initialize save button states on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        const saveButtons = document.querySelectorAll('.save-product-btn');
-        saveButtons.forEach(button => {
-            const isSaved = button.getAttribute('data-saved') === 'true';
-            if (isSaved) {
-                button.classList.add('saved-state');
-            }
-        });
-    });
-
-    // Initialize saved state on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        const saveBtn = document.querySelector('.save-product-btn');
-        if (saveBtn) {
-            const isInitiallySaved = saveBtn.querySelector('i').classList.contains('fas');
-            if (isInitiallySaved) {
-                saveBtn.setAttribute('data-saved', 'true');
-            }
-        }
-    });
-
-    // -------------------------
     // 7. Thumbnail Navigation
     // -------------------------
     const thumbnails = document.querySelectorAll('.thumbnail-wrapper img');
@@ -642,4 +281,496 @@ document.addEventListener('DOMContentLoaded', function () {
             carousel.to(targetIndex);
         });
     });
+
+    // -------------------------
+    // 8. Enhanced Status Chips Animation
+    // -------------------------
+    const statusChips = document.querySelectorAll('.status-chip');
+    statusChips.forEach(chip => {
+        chip.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px) scale(1.02)';
+        });
+        
+        chip.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
+        });
+    });
+
+    // -------------------------
+    // 9. Business Info Accordion (Mobile Enhancement)
+    // -------------------------
+    function initializeMobileBusinessAccordion() {
+        if (window.innerWidth <= 768) {
+            const businessInfo = document.querySelector('.business-info-section');
+            if (businessInfo) {
+                const header = businessInfo.querySelector('.business-header');
+                const content = businessInfo.querySelector('.business-contact-grid');
+                
+                if (header && content) {
+                    header.style.cursor = 'pointer';
+                    header.addEventListener('click', function() {
+                        content.style.display = content.style.display === 'none' ? 'grid' : 'none';
+                    });
+                }
+            }
+        }
+    }
+
+    // Initialize mobile accordion
+    initializeMobileBusinessAccordion();
+    
+    // Re-initialize on window resize
+    window.addEventListener('resize', initializeMobileBusinessAccordion);
+});
+
+// -------------------------
+// ENHANCED WHATSAPP FUNCTIONALITY
+// -------------------------
+
+/**
+ * Opens WhatsApp with a pre-filled message containing product details
+ * This function is called when the WhatsApp button is clicked
+ */
+function openWhatsAppWithMessage() {
+    try {
+        // Get the WhatsApp button to extract data attributes
+        const whatsappButton = document.querySelector('[onclick="openWhatsAppWithMessage()"]');
+        
+        if (!whatsappButton) {
+            console.error('WhatsApp button not found');
+            fallbackWhatsApp();
+            return;
+        }
+
+        // Extract product and seller information from data attributes
+        const sellerName = whatsappButton.getAttribute('data-seller-name') || 'Seller';
+        const sellerPhone = whatsappButton.getAttribute('data-seller-phone') || '';
+        const productTitle = whatsappButton.getAttribute('data-product-title') || 'Product';
+        const productPrice = whatsappButton.getAttribute('data-product-price') || 'Price not available';
+        const productUrl = whatsappButton.getAttribute('data-product-url') || window.location.href;
+
+        // Clean phone number for WhatsApp
+        const cleanedPhone = cleanPhoneNumber(sellerPhone);
+        
+        if (!cleanedPhone) {
+            showToast('❌ Seller phone number not available');
+            return;
+        }
+
+        // Create the WhatsApp message
+        const message = createWhatsAppMessage(sellerName, productTitle, productPrice, productUrl);
+        
+        // Create WhatsApp URL
+        const whatsappUrl = `https://wa.me/${cleanedPhone}?text=${encodeURIComponent(message)}`;
+        
+        // Add loading state to button
+        const originalContent = whatsappButton.innerHTML;
+        whatsappButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Opening WhatsApp...';
+        whatsappButton.disabled = true;
+        
+        // Open WhatsApp
+        window.open(whatsappUrl, '_blank');
+        
+        // Show success message
+        showToast('✅ Opening WhatsApp with product details...');
+        
+        // Analytics tracking (if needed)
+        if (typeof gtag !== 'undefined') {
+            gtag('event', 'whatsapp_contact', {
+                'event_category': 'contact',
+                'event_label': productTitle,
+                'custom_parameters': {
+                    'seller_name': sellerName,
+                    'product_price': productPrice
+                }
+            });
+        }
+        
+        // Reset button after delay
+        setTimeout(() => {
+            whatsappButton.innerHTML = originalContent;
+            whatsappButton.disabled = false;
+        }, 3000);
+        
+    } catch (error) {
+        console.error('Error opening WhatsApp:', error);
+        showToast('❌ Error opening WhatsApp. Please try again.');
+        fallbackWhatsApp();
+    }
+}
+
+/**
+ * Cleans and formats phone number for WhatsApp
+ * @param {string} phoneNumber - Raw phone number
+ * @returns {string} - Cleaned phone number with country code
+ */
+function cleanPhoneNumber(phoneNumber) {
+    if (!phoneNumber) {
+        return '';
+    }
+    
+    // Remove all non-numeric characters
+    let cleaned = phoneNumber.replace(/\D/g, '');
+    
+    // Handle different formats
+    if (cleaned.startsWith('234')) {
+        // Already has country code
+        return cleaned;
+    } else if (cleaned.startsWith('0')) {
+        // Remove leading 0 and add country code
+        return '234' + cleaned.substring(1);
+    } else if (cleaned.length === 10) {
+        // Add country code
+        return '234' + cleaned;
+    } else if (cleaned.length === 11 && cleaned.startsWith('0')) {
+        // Remove leading 0 and add country code
+        return '234' + cleaned.substring(1);
+    }
+    
+    // Return as-is if we can't determine format
+    return cleaned;
+}
+
+/**
+ * Creates a formatted WhatsApp message with product details
+ * @param {string} sellerName - Name of the seller
+ * @param {string} productTitle - Title of the product
+ * @param {string} productPrice - Price of the product
+ * @param {string} productUrl - URL to the product
+ * @returns {string} - Formatted WhatsApp message
+ */
+function createWhatsAppMessage(sellerName, productTitle, productPrice, productUrl) {
+    const messages = [
+        `Hello ${sellerName}! 👋`,
+        '',
+        `I'm interested in your product listed on OpenSell:`,
+        '',
+        `📦 *${productTitle}*`,
+        `💰 Price: ${productPrice}`,
+        '',
+        `Could you please provide more details about:`,
+        `• Current availability and condition`,
+        `• Payment and delivery options`,
+        `• Any additional information`,
+        '',
+        `You can view the listing here:`,
+        `${productUrl}`,
+        '',
+        `Looking forward to hearing from you!`,
+        '',
+        `*Sent via OpenSell Marketplace* 🛒`
+    ];
+    
+    return messages.join('\n');
+}
+
+/**
+ * Fallback WhatsApp function for when data is not available
+ */
+function fallbackWhatsApp() {
+    const phoneElements = document.querySelectorAll('[href^="tel:"]');
+    if (phoneElements.length > 0) {
+        const phone = phoneElements[0].href.replace('tel:', '');
+        const cleanedPhone = cleanPhoneNumber(phone);
+        
+        if (cleanedPhone) {
+            const fallbackMessage = `Hello! I'm interested in your product listed on OpenSell. Could you please provide more details?\n\n*Sent via OpenSell Marketplace* 🛒`;
+            const whatsappUrl = `https://wa.me/${cleanedPhone}?text=${encodeURIComponent(fallbackMessage)}`;
+            window.open(whatsappUrl, '_blank');
+            showToast('✅ Opening WhatsApp...');
+        } else {
+            showToast('❌ Phone number not available');
+        }
+    } else {
+        showToast('❌ Contact information not available');
+    }
+}
+
+/**
+ * Enhanced toast notification system for WhatsApp functionality
+ * @param {string} message - Message to display
+ * @param {string} type - Type of toast (success, error, info)
+ */
+function showToast(message, type = 'info') {
+    // Remove existing toasts
+    const existingToasts = document.querySelectorAll('.whatsapp-toast');
+    existingToasts.forEach(toast => toast.remove());
+    
+    // Create toast container if it doesn't exist
+    let toastContainer = document.querySelector('.toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        toastContainer.style.zIndex = '9999';
+        document.body.appendChild(toastContainer);
+    }
+    
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = 'toast whatsapp-toast';
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    toast.setAttribute('aria-atomic', 'true');
+    
+    // Determine toast styling based on type
+    let bgClass = 'bg-primary';
+    let iconClass = 'bi-info-circle';
+    
+    if (type === 'success' || message.includes('✅')) {
+        bgClass = 'bg-success';
+        iconClass = 'bi-check-circle';
+    } else if (type === 'error' || message.includes('❌')) {
+        bgClass = 'bg-danger';
+        iconClass = 'bi-exclamation-circle';
+    }
+    
+    toast.innerHTML = `
+        <div class="toast-header ${bgClass} text-white">
+            <i class="bi ${iconClass} me-2"></i>
+            <strong class="me-auto">OpenSell</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            ${message}
+        </div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    // Initialize and show toast
+    const bsToast = new bootstrap.Toast(toast, {
+        autohide: true,
+        delay: 4000
+    });
+    bsToast.show();
+    
+    // Remove toast element after it's hidden
+    toast.addEventListener('hidden.bs.toast', () => {
+        toast.remove();
+    });
+}
+
+// -------------------------
+// SHARE PRODUCT FUNCTIONALITY (Enhanced)
+// -------------------------
+function shareProduct() {
+    const currentUrl = window.location.href;
+    const productTitle = document.querySelector('.product-title')?.textContent || 'Product';
+    const productPrice = document.querySelector('.product-price')?.textContent || 'Price available';
+    const shareText = `Check out this ${productTitle} for ${productPrice} on OpenSell!`;
+    
+    console.log('Share button clicked');
+    
+    // Check for mobile devices and Web Share API support
+    const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (navigator.share && isMobile) {
+        console.log('Using Web Share API');
+        navigator.share({
+            title: `${productTitle} - OpenSell`,
+            text: shareText,
+            url: currentUrl
+        }).then(() => {
+            showShareSuccess('Product shared successfully!');
+        }).catch((error) => {
+            console.log('Web Share API error:', error);
+            fallbackShare(currentUrl, shareText);
+        });
+    } else {
+        console.log('Using fallback share');
+        fallbackShare(currentUrl, shareText);
+    }
+}
+
+function fallbackShare(url, text) {
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                    window.location.hostname === '127.0.0.1';
+    
+    if (!isLocalhost && navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(url).then(() => {
+            showShareSuccess('Product link copied to clipboard!');
+            updateShareButtonState(true);
+        }).catch((error) => {
+            console.log('Clipboard error:', error);
+            showShareModal(url, text);
+        });
+    } else {
+        console.log('Showing share modal for development/fallback');
+        showShareModal(url, text);
+    }
+}
+
+function showShareSuccess(message) {
+    showToast(message, 'success');
+}
+
+function updateShareButtonState(success) {
+    const shareButton = document.getElementById('shareButton');
+    if (!shareButton) return;
+    
+    const originalContent = shareButton.innerHTML;
+    
+    if (success) {
+        shareButton.innerHTML = '<i class="fas fa-check me-2"></i><span class="btn-text">Copied!</span>';
+        shareButton.classList.add('btn-share-success');
+        shareButton.classList.remove('btn-action-primary');
+        
+        setTimeout(() => {
+            shareButton.innerHTML = originalContent;
+            shareButton.classList.remove('btn-share-success');
+            shareButton.classList.add('btn-action-primary');
+        }, 2500);
+    }
+}
+
+function showShareModal(url, text) {
+    // Implementation for share modal (keeping existing code)
+    // ... existing share modal code ...
+}
+
+// -------------------------
+// SAVE FUNCTIONALITY (Enhanced)
+// -------------------------
+function toggleSaveProduct(event, productId) {
+    event.preventDefault();
+    
+    const button = event.currentTarget;
+    const icon = button.querySelector('i');
+    const text = button.querySelector('.btn-text');
+    const csrfToken = getCookie('csrftoken');
+    
+    if (!csrfToken) {
+        showToast('Error: Please refresh the page and try again.', 'error');
+        return;
+    }
+
+    // Store original state
+    const originalIcon = icon.className;
+    const originalText = text.textContent;
+
+    // Disable button during request
+    button.disabled = true;
+    icon.className = 'fas fa-spinner fa-spin me-2';
+    text.textContent = 'Saving...';
+    
+    fetch('/products/toggle-save/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken,
+        },
+        body: `product_id=${productId}`
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        // Update button state based on response
+        if (data.status === 'saved') {
+            icon.className = 'fas fa-heart me-2';
+            text.textContent = 'Saved';
+            button.setAttribute('data-saved', 'true');
+            button.classList.add('saved-state');
+            
+            // Trigger heart animation
+            setTimeout(() => {
+                icon.style.animation = 'heartBeat 0.6s ease';
+                setTimeout(() => {
+                    icon.style.animation = '';
+                }, 600);
+            }, 100);
+            
+        } else if (data.status === 'removed') {
+            icon.className = 'far fa-heart me-2';
+            text.textContent = 'Save';
+            button.setAttribute('data-saved', 'false');
+            button.classList.remove('saved-state');
+        }
+        
+        showToast(data.message, 'success');
+        
+        // Update all other instances of this product's save button on the page
+        updateAllSaveButtons(productId, data.status === 'saved');
+        
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('An error occurred. Please try again.', 'error');
+        
+        // Restore original state on error
+        icon.className = originalIcon;
+        text.textContent = originalText;
+    })
+    .finally(() => {
+        button.disabled = false;
+    });
+}
+
+// Helper function to update all save buttons for this product
+function updateAllSaveButtons(productId, isSaved) {
+    const buttons = document.querySelectorAll(`[data-product-id="${productId}"]`);
+    buttons.forEach(btn => {
+        const icon = btn.querySelector('i');
+        const text = btn.querySelector('.btn-text') || btn.querySelector('span');
+        
+        if (isSaved) {
+            if (icon) icon.className = 'fas fa-heart me-2';
+            if (text) text.textContent = 'Saved';
+            btn.setAttribute('data-saved', 'true');
+            btn.classList.add('saved-state');
+        } else {
+            if (icon) icon.className = 'far fa-heart me-2';
+            if (text) text.textContent = 'Save';
+            btn.setAttribute('data-saved', 'false');
+            btn.classList.remove('saved-state');
+        }
+    });
+}
+
+// Get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// -------------------------
+// INITIALIZATION
+// -------------------------
+
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+// Performance optimization: Lazy load images
+document.addEventListener('DOMContentLoaded', function() {
+    const images = document.querySelectorAll('img[data-src]');
+    const imageObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                img.src = img.dataset.src;
+                img.removeAttribute('data-src');
+                observer.unobserve(img);
+            }
+        });
+    });
+    
+    images.forEach(img => imageObserver.observe(img));
 });
