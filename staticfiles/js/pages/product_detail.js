@@ -556,7 +556,7 @@ function showToast(message, type = 'info') {
 function shareProduct() {
     const currentUrl = window.location.href;
     const productTitle = document.querySelector('.product-title')?.textContent || 'Product';
-    const productPrice = document.querySelector('.product-price')?.textContent || 'Price available';
+    const productPrice = document.querySelector('.price-badge .h2')?.textContent || 'Price available';
     const shareText = `Check out this ${productTitle} for ${productPrice} on OpenSell!`;
     
     console.log('Share button clicked');
