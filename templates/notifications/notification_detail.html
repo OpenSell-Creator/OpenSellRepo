@@ -6,10 +6,6 @@
     <link rel="stylesheet" type="text/css" href="{% static 'css/pages/notifications/notification_detail.css' %}">
 {% endblock %}
 
-{% block page_js %}
-    <script type="text/javascript" src="{% static 'js/pages/notifications/notification_detail.js' %}"></script>
-{% endblock %}
-
 {% block 'Body' %}
 <div class="container-fluid py-3">
     <div class="row justify-content-center">
@@ -153,23 +149,118 @@
     </div>
 </div>
 
-<style>
-    /* Header section */
-    .notification-header {
-        padding: 1.5rem 1.5rem 1rem;
-
-            {
-            % if notification.priority !='normal' %
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Mark as read functionality
+    const markReadBtn = document.getElementById('markReadBtn');
+    if (markReadBtn) {
+        markReadBtn.addEventListener('click', function() {
+            const notificationId = this.dataset.notificationId;
+            
+            fetch('{% url "notifications:mark_read" 0 %}'.replace('0', notificationId), {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Remove unread indicator
+                    const unreadDot = document.querySelector('.unread-dot');
+                    if (unreadDot) {
+                        unreadDot.remove();
+                    }
+                    
+                    // Hide mark read button
+                    this.style.display = 'none';
+                    
+                    // Show success feedback using your existing alert system
+                    showSystemAlert('Notification marked as read', 'success');
+                } else {
+                    showSystemAlert(data.message || 'Failed to mark as read', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showSystemAlert('Failed to mark as read', 'error');
+            });
+        });
+    }
+    
+    // Function to use your existing alert system
+    function showSystemAlert(message, type = 'info', duration = 3000) {
+        // Create or get the alert container
+        let alertContainer = document.querySelector('.alert-system-container');
+        if (!alertContainer) {
+            alertContainer = document.createElement('div');
+            alertContainer.className = 'alert-system-container';
+            document.body.appendChild(alertContainer);
         }
 
-        margin-top: 2.5rem;
+        // Map types to your alert classes
+        const alertTypeClass = {
+            'success': 'alert-success',
+            'error': 'alert-error',
+            'danger': 'alert-danger',
+            'warning': 'alert-warning',
+            'info': 'alert-info'
+        }[type] || 'alert-info';
 
-            {
-            % endif %
+        // Get appropriate icon
+        const alertIcon = {
+            'success': '✓',
+            'error': '✕',
+            'danger': '⚠',
+            'warning': '⚠',
+            'info': 'ℹ'
+        }[type] || 'ℹ';
+
+        // Create the alert element using your existing structure
+        const alert = document.createElement('div');
+        alert.className = `system-alert ${alertTypeClass}`;
+        alert.innerHTML = `
+            <div class="alert-content">
+                <div class="alert-icon">${alertIcon}</div>
+                <div class="alert-message">${message}</div>
+            </div>
+            <button class="alert-close-btn" type="button">
+                <i class="bi bi-x"></i>
+            </button>
+        `;
+
+        // Add the alert to container
+        alertContainer.appendChild(alert);
+
+        // Add close functionality
+        const closeBtn = alert.querySelector('.alert-close-btn');
+        closeBtn.addEventListener('click', () => {
+            alert.classList.add('fade-out');
+            setTimeout(() => {
+                if (alert.parentElement) {
+                    alert.remove();
+                }
+            }, 300);
+        });
+
+        // Auto-remove after duration
+        if (duration > 0) {
+            setTimeout(() => {
+                if (alert.parentElement) {
+                    alert.classList.add('fade-out');
+                    setTimeout(() => {
+                        if (alert.parentElement) {
+                            alert.remove();
+                        }
+                    }, 300);
+                }
+            }, duration);
         }
     }
-
-</style>
+});
+</script>
 
 {% endblock %}
 

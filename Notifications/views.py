@@ -160,35 +160,15 @@ def notification_preferences(request):
     return render(request, 'notifications/preferences.html', context)
 
 
-@require_POST
 @login_required
-def mark_notification_read(request, notification_id):
-    """Mark a specific notification as read"""
-    try:
-        notification = get_object_or_404(
-            Notification, 
-            id=notification_id, 
-            recipient=request.user
-        )
-        notification.mark_as_read()
-        
-        return JsonResponse({
-            'status': 'success',
-            'message': 'Notification marked as read'
-        })
-    except Exception as e:
-        return JsonResponse({
-            'status': 'error',
-            'message': str(e)
-        }, status=500)
-
-
 @require_POST
-@login_required
-def mark_all_notifications_read(request):
+def mark_all_read(request):
     """Mark all notifications as read for the current user"""
     try:
-        count = mark_all_read(request.user)
+        count = Notification.objects.filter(
+            recipient=request.user, 
+            is_read=False
+        ).update(is_read=True)
         
         return JsonResponse({
             'status': 'success',
@@ -202,8 +182,8 @@ def mark_all_notifications_read(request):
         }, status=500)
 
 
-@require_POST
 @login_required
+@require_POST  
 def clear_all_notifications(request):
     """Delete all notifications for the current user"""
     try:
@@ -221,6 +201,29 @@ def clear_all_notifications(request):
             'message': str(e)
         }, status=500)
 
+
+@login_required
+@require_POST
+def mark_notification_read(request, notification_id):
+    """Mark a specific notification as read"""
+    try:
+        notification = get_object_or_404(
+            Notification, 
+            id=notification_id, 
+            recipient=request.user
+        )
+        notification.is_read = True
+        notification.save()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Notification marked as read'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
 
 @require_POST
 @login_required

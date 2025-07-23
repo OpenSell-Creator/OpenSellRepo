@@ -6,10 +6,6 @@
     <link rel="stylesheet" type="text/css" href="{% static 'css/pages/notifications/notification_list.css' %}">
 {% endblock %}
 
-{% block page_js %}
-    <script type="text/javascript" src="{% static 'js/pages/notifications/notification_list.js' %}"></script>
-{% endblock %}
-
 {% block 'Body' %}
 <div class="container-fluid py-3">
     <!-- Header Section -->
@@ -190,6 +186,204 @@
         </div>
     {% endif %}
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Mark individual notification as read
+    document.querySelectorAll('.mark-read-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const notificationId = this.dataset.notificationId;
+            const notificationItem = this.closest('.notification-item');
+            
+            markNotificationAsRead(notificationId, notificationItem);
+        });
+    });
+
+    // Mark all as read
+    const markAllBtn = document.getElementById('markAllReadBtn');
+    if (markAllBtn) {
+        markAllBtn.addEventListener('click', function() {
+            if (!confirm('Mark all notifications as read?')) return;
+            
+            fetch('{% url "notifications:mark_all_read" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Update UI
+                    document.querySelectorAll('.unread-indicator').forEach(el => el.remove());
+                    document.querySelectorAll('.new-indicator').forEach(el => el.remove());
+                    document.querySelectorAll('.mark-read-btn').forEach(el => el.remove());
+                    
+                    const countEl = document.querySelector('.notification-count');
+                    if (countEl) countEl.textContent = '0';
+                    
+                    showSystemAlert('All notifications marked as read', 'success');
+                } else {
+                    showSystemAlert(data.message || 'Failed to mark all as read', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showSystemAlert('Failed to mark all as read', 'error');
+            });
+        });
+    }
+
+    // Clear all notifications
+    const clearAllBtn = document.getElementById('clearAllBtn');
+    if (clearAllBtn) {
+        clearAllBtn.addEventListener('click', function() {
+            if (!confirm('Delete all notifications? This cannot be undone.')) return;
+            
+            fetch('{% url "notifications:clear_all" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    location.reload();
+                } else {
+                    showSystemAlert(data.message || 'Failed to clear notifications', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showSystemAlert('Failed to clear notifications', 'error');
+            });
+        });
+    }
+
+    // Category filtering
+    document.querySelectorAll('.filter-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const category = this.dataset.category;
+            
+            // Update active state
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Filter notifications
+            document.querySelectorAll('.notification-item').forEach(item => {
+                const shouldShow = category === 'all' || item.dataset.category === category;
+                item.style.display = shouldShow ? 'block' : 'none';
+            });
+        });
+    });
+
+    function markNotificationAsRead(notificationId, notificationElement) {
+        fetch('{% url "notifications:mark_read" 0 %}'.replace('0', notificationId), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Update UI
+                notificationElement.querySelector('.unread-indicator')?.remove();
+                notificationElement.querySelector('.new-indicator')?.remove();
+                notificationElement.querySelector('.mark-read-btn')?.remove();
+                
+                showSystemAlert('Marked as read', 'success');
+            } else {
+                showSystemAlert(data.message || 'Failed to mark as read', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showSystemAlert('Failed to mark as read', 'error');
+        });
+    }
+
+    // Function to use your existing alert system
+    function showSystemAlert(message, type = 'info', duration = 3000) {
+        // Create or get the alert container
+        let alertContainer = document.querySelector('.alert-system-container');
+        if (!alertContainer) {
+            alertContainer = document.createElement('div');
+            alertContainer.className = 'alert-system-container';
+            document.body.appendChild(alertContainer);
+        }
+
+        // Map types to your alert classes
+        const alertTypeClass = {
+            'success': 'alert-success',
+            'error': 'alert-error',
+            'danger': 'alert-danger',
+            'warning': 'alert-warning',
+            'info': 'alert-info'
+        }[type] || 'alert-info';
+
+        // Get appropriate icon
+        const alertIcon = {
+            'success': '✓',
+            'error': '✕',
+            'danger': '⚠',
+            'warning': '⚠',
+            'info': 'ℹ'
+        }[type] || 'ℹ';
+
+        // Create the alert element using your existing structure
+        const alert = document.createElement('div');
+        alert.className = `system-alert ${alertTypeClass}`;
+        alert.innerHTML = `
+            <div class="alert-content">
+                <div class="alert-icon">${alertIcon}</div>
+                <div class="alert-message">${message}</div>
+            </div>
+            <button class="alert-close-btn" type="button">
+                <i class="bi bi-x"></i>
+            </button>
+        `;
+
+        // Add the alert to container
+        alertContainer.appendChild(alert);
+
+        // Add close functionality
+        const closeBtn = alert.querySelector('.alert-close-btn');
+        closeBtn.addEventListener('click', () => {
+            alert.classList.add('fade-out');
+            setTimeout(() => {
+                if (alert.parentElement) {
+                    alert.remove();
+                }
+            }, 300);
+        });
+
+        // Auto-remove after duration
+        if (duration > 0) {
+            setTimeout(() => {
+                if (alert.parentElement) {
+                    alert.classList.add('fade-out');
+                    setTimeout(() => {
+                        if (alert.parentElement) {
+                            alert.remove();
+                        }
+                    }, 300);
+                }
+            }, duration);
+        }
+    }
+});
+</script>
 
 {% endblock %}
 

@@ -12,7 +12,7 @@ urlpatterns = [
     # AJAX endpoints
     path('api/', views.NotificationAPIView.as_view(), name='api'),
     path('mark-read/<int:notification_id>/', views.mark_notification_read, name='mark_read'),
-    path('mark-all-read/', views.mark_all_notifications_read, name='mark_all_read'),
+    path('mark-all-read/', views.mark_all_read, name='mark_all_read'),
     path('clear-all/', views.clear_all_notifications, name='clear_all'),
     path('delete/<int:notification_id>/', views.delete_notification, name='delete'),
     path('stats/', views.notification_stats, name='stats'),
