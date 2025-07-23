@@ -1,204 +1,413 @@
-from django.shortcuts import render, redirect
+# notifications/views.py
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.views.generic import ListView
+from django.views.generic import ListView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
-from django.views.generic import ListView, DetailView
 from django.views import View
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from datetime import timedelta
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
-from django.dispatch import receiver
 from django.contrib import messages
 from django.contrib.contenttypes.models import ContentType
-from .models import Notification, NotificationPreference, NotificationCategory
+from django.core.paginator import Paginator
+from django.conf import settings
+import json
+
+from .models import Notification, NotificationPreference, NotificationCategory, mark_all_read
 from Home.models import Product_Listing, Review, SavedProduct
 
 
 def notification_counts(request):
+    """Context processor for notification counts"""
     if request.user.is_authenticated:
-        unread_notifications_count = Notification.objects.filter(
+        unread_count = Notification.objects.filter(
             recipient=request.user,
             is_read=False
         ).count()
-        return {
-            'unread_notifications_count': unread_notifications_count
-        }
-    return {
-        'unread_notifications_count': 0
-    }
+        return {'unread_notifications_count': unread_count}
+    return {'unread_notifications_count': 0}
+
 
 class NotificationListView(LoginRequiredMixin, ListView):
     model = Notification
     template_name = 'notifications/notification_list.html'
     context_object_name = 'notifications'
-    paginate_by = 10
+    paginate_by = 15
     
     def get_queryset(self):
-        return Notification.objects.filter(
+        queryset = Notification.objects.filter(
             recipient=self.request.user
-        ).order_by('-created_at')
+        ).select_related('content_type').order_by('-created_at')
+        
+        # Filter by category if specified
+        category = self.request.GET.get('category')
+        if category and category != 'all':
+            queryset = queryset.filter(category=category)
+        
+        # Filter by read status
+        read_status = self.request.GET.get('read')
+        if read_status == 'unread':
+            queryset = queryset.filter(is_read=False)
+        elif read_status == 'read':
+            queryset = queryset.filter(is_read=True)
+            
+        return queryset
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
-        # Add unread count
-        context['unread_count'] = self.get_queryset().filter(is_read=False).count()
+        # Get unique categories that exist for this user - FIXED
+        user_categories = Notification.objects.filter(
+            recipient=self.request.user
+        ).values('category').distinct().order_by('category')
         
-        # Add categories
-        context['categories'] = NotificationCategory.choices
+        # Create category choices without duplicates
+        category_choices = []
+        seen_categories = set()
         
-        # Find editable notifications
-        editable_notifications = []
-        for notification in context['notifications']:
-            obj = notification.content_object
-            try:
-                # Check if obj exists and has necessary attributes
-                if (obj and hasattr(obj, 'seller') and 
-                    obj.seller and hasattr(obj.seller, 'user') and 
-                    obj.seller.user == self.request.user):
-                    editable_notifications.append({
-                        'id': notification.id,
-                        'edit_url': reverse('product_update', args=[obj.id])
-                    })
-            except AttributeError:
-                # Skip this notification if any attribute access fails
-                continue
+        for cat_dict in user_categories:
+            category = cat_dict['category']
+            if category and category not in seen_categories:
+                # Get display name from choices
+                display_name = None
+                for choice_value, choice_display in NotificationCategory.choices:
+                    if choice_value == category:
+                        display_name = choice_display
+                        break
+                
+                if display_name:
+                    category_choices.append((category, display_name))
+                    seen_categories.add(category)
         
-        context['editable_notifications'] = editable_notifications
+        context['categories'] = category_choices
+        context['current_category'] = self.request.GET.get('category', 'all')
+        context['current_read_status'] = self.request.GET.get('read', 'all')
+        
         return context
-    
+
+
 class NotificationDetailView(LoginRequiredMixin, DetailView):
     model = Notification
     template_name = 'notifications/notification_detail.html'
     context_object_name = 'notification'
-
+    
     def get_queryset(self):
-        return super().get_queryset().filter(recipient=self.request.user)
-
+        return Notification.objects.filter(recipient=self.request.user)
+    
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset)
+        
+        # Mark as read when viewed
+        if not obj.is_read:
+            obj.mark_as_read()
+        
+        return obj
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        notification = self.object
         
-        try:
-            # Get content object (e.g., product)
-            content_obj = notification.content_object
+        # Add related content information
+        if self.object.content_object:
+            context['content_type'] = self.object.get_content_type_name()
             
-            # Add content type for template conditions
-            if content_obj:
-                context['content_type'] = content_obj._meta.model_name
-            
-            # Add URL context if it's a product
-            if content_obj and hasattr(content_obj, 'get_absolute_url'):
-                context['product_url'] = content_obj.get_absolute_url()
-            
-            # Add editable notifications if applicable
-            if (content_obj and 
-                hasattr(content_obj, 'seller') and 
-                content_obj.seller and 
-                hasattr(content_obj.seller, 'user') and 
-                content_obj.seller.user == self.request.user):
-                context['editable_notifications'] = [{
-                    'id': notification.id,
-                    'edit_url': reverse('product_update', args=[content_obj.id])
-                }]
-        except AttributeError:
-            # Skip adding context if any attribute access fails
-            pass
+            # Add specific context based on content type
+            if self.object.get_content_type_name() == 'product_listing':
+                if hasattr(self.object.content_object, 'get_absolute_url'):
+                    context['product_url'] = self.object.content_object.get_absolute_url()
+            elif self.object.get_content_type_name() == 'review':
+                if hasattr(self.object.content_object, 'product') and self.object.content_object.product:
+                    if hasattr(self.object.content_object.product, 'get_absolute_url'):
+                        context['product_url'] = self.object.content_object.product.get_absolute_url()
         
         return context
-    
-    def get(self, request, *args, **kwargs):
-        try:
-            response = super().get(request, *args, **kwargs)
-            if not self.object.is_read:
-                self.object.is_read = True
-                self.object.save()
-            return response
-        except AttributeError:
-            messages.error(request, "This notification is no longer available.")
-            return redirect('notifications:list')
 
-class MarkNotificationAsReadView(View):
-    def post(self, request, pk):
-        notification = Notification.objects.get(pk=pk, recipient=request.user)
-        notification.is_read = True
-        notification.save()
-        return JsonResponse({'status': 'success'})
-
-
-@login_required
-@require_POST
-@csrf_exempt
-def mark_notification_read(request, notification_id):
-    try:
-        notification = Notification.objects.get(id=notification_id, recipient=request.user)
-        notification.is_read = True
-        notification.save()
-        return JsonResponse({'status': 'success'})
-    except Notification.DoesNotExist:
-        return JsonResponse({'status': 'error', 'message': 'Notification not found'}, status=404)
 
 @login_required
 def notification_preferences(request):
-    preferences, created = NotificationPreference.objects.get_or_create(user=request.user)
+    """Handle notification preferences"""
+    preferences, created = NotificationPreference.objects.get_or_create(
+        user=request.user
+    )
     
     if request.method == 'POST':
+        # Update preferences based on form data
         preferences.review_notifications = request.POST.get('review_notifications') == 'on'
         preferences.save_notifications = request.POST.get('save_notifications') == 'on'
         preferences.view_milestone_notifications = request.POST.get('view_milestone_notifications') == 'on'
         preferences.system_notifications = request.POST.get('system_notifications') == 'on'
-        preferences.save()
-        return redirect('notifications:list')
-    
-    return render(request, 'notifications/preferences.html', {'preferences': preferences})
-
-def create_notification(user, title, message, category, content_object=None):
-    """Utility function to create notifications"""
-    notification = Notification.objects.create(
-        recipient=user,
-        title=title,
-        message=message,
-        category=category,
-        content_object=content_object
-    )
-    return notification
-
-
-def check_listing_notifications():
-    # Check for deletion warnings
-    listings = Product_Listing.objects.filter(
-        Q(expiration_date__lte=timezone.now() + timedelta(days=3)) &
-        Q(deletion_warning_sent=False)
-    )
-    
-    for listing in listings:
-        listing.send_deletion_warning()
-
-    # Check for low stock notifications
-    low_stock_listings = Product_Listing.objects.filter(
-        Q(quantity__lte=5) &
-        Q(last_stock_notification__lt=timezone.now() - timedelta(days=1))
-    )
-    
-    for listing in low_stock_listings:
-        # Send low stock notification
-        listing.last_stock_notification = timezone.now()
-        listing.save()
+        preferences.deletion_warnings = request.POST.get('deletion_warnings') == 'on'
+        preferences.stock_alerts = request.POST.get('stock_alerts') == 'on'
+        preferences.price_drop_alerts = request.POST.get('price_drop_alerts') == 'on'
+        preferences.reply_notifications = request.POST.get('reply_notifications') == 'on'
+        preferences.report_notifications = request.POST.get('report_notifications') == 'on'
+        preferences.milestone_achievements = request.POST.get('milestone_achievements') == 'on'
+        preferences.email_notifications = request.POST.get('email_notifications') == 'on'
+        preferences.email_digest = request.POST.get('email_digest') == 'on'
+        preferences.push_notifications = request.POST.get('push_notifications') == 'on'
+        preferences.frequency = request.POST.get('frequency', 'instant')
         
-@login_required
-@require_POST
-def mark_all_read(request):
-    """Mark all notifications as read for the current user"""
-    Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
-    return JsonResponse({'status': 'success', 'message': 'All notifications marked as read'})
+        preferences.save()
+        messages.success(request, 'Your notification preferences have been updated successfully!')
+        return redirect('notifications:preferences')
+    
+    context = {
+        'preferences': preferences
+    }
+    return render(request, 'notifications/preferences.html', context)
 
-@login_required
+
 @require_POST
+@login_required
+def mark_notification_read(request, notification_id):
+    """Mark a specific notification as read"""
+    try:
+        notification = get_object_or_404(
+            Notification, 
+            id=notification_id, 
+            recipient=request.user
+        )
+        notification.mark_as_read()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Notification marked as read'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@require_POST
+@login_required
+def mark_all_notifications_read(request):
+    """Mark all notifications as read for the current user"""
+    try:
+        count = mark_all_read(request.user)
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'{count} notifications marked as read',
+            'count': count
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@require_POST
+@login_required
 def clear_all_notifications(request):
     """Delete all notifications for the current user"""
-    Notification.objects.filter(recipient=request.user).delete()
-    return JsonResponse({'status': 'success', 'message': 'All notifications cleared'})
+    try:
+        count = Notification.objects.filter(recipient=request.user).count()
+        Notification.objects.filter(recipient=request.user).delete()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'{count} notifications cleared',
+            'count': count
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@require_POST
+@login_required
+def delete_notification(request, notification_id):
+    """Delete a specific notification"""
+    try:
+        notification = get_object_or_404(
+            Notification,
+            id=notification_id,
+            recipient=request.user
+        )
+        notification.delete()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Notification deleted'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@login_required
+def notification_stats(request):
+    """Get notification statistics for the user"""
+    user_notifications = Notification.objects.filter(recipient=request.user)
+    
+    stats = {
+        'total': user_notifications.count(),
+        'unread': user_notifications.filter(is_read=False).count(),
+        'read': user_notifications.filter(is_read=True).count(),
+        'today': user_notifications.filter(
+            created_at__date=timezone.now().date()
+        ).count(),
+        'this_week': user_notifications.filter(
+            created_at__gte=timezone.now() - timedelta(days=7)
+        ).count(),
+        'by_category': {}
+    }
+    
+    # Get stats by category
+    for category, display_name in NotificationCategory.choices:
+        count = user_notifications.filter(category=category).count()
+        if count > 0:
+            stats['by_category'][category] = {
+                'count': count,
+                'display_name': display_name
+            }
+    
+    return JsonResponse(stats)
+
+
+class NotificationAPIView(LoginRequiredMixin, View):
+    """API endpoint for notifications (for AJAX requests)"""
+    
+    def get(self, request):
+        """Get notifications for the user"""
+        notifications = Notification.objects.filter(
+            recipient=request.user
+        ).order_by('-created_at')[:10]  # Latest 10
+        
+        data = []
+        for notification in notifications:
+            data.append({
+                'id': notification.id,
+                'title': notification.title,
+                'message': notification.message,
+                'category': notification.category,
+                'priority': notification.priority,
+                'is_read': notification.is_read,
+                'created_at': notification.created_at.isoformat(),
+                'icon': notification.get_icon(),
+                'url': reverse('notifications:detail', args=[notification.id])
+            })
+        
+        return JsonResponse({
+            'notifications': data,
+            'unread_count': Notification.objects.filter(
+                recipient=request.user, 
+                is_read=False
+            ).count()
+        })
+
+
+# Utility function to call from product detail view
+def track_product_view(request, product):
+    """
+    Call this function from your product detail view to track views
+    and send milestone notifications
+    """
+    if not request.user.is_authenticated:
+        return
+    
+    # Increment view count (assuming you have a views field)
+    if hasattr(product, 'views'):
+        product.views += 1
+        product.save(update_fields=['views'])
+        
+        # Import here to avoid circular imports
+        from .signals import check_view_milestones
+        check_view_milestones(product, product.views)
+
+
+# Bulk notification utilities
+@login_required
+def send_bulk_notification(request):
+    """Admin function to send notifications to multiple users"""
+    if not request.user.is_staff:
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+    
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        
+        title = data.get('title')
+        message = data.get('message')
+        category = data.get('category', NotificationCategory.ANNOUNCEMENT)
+        user_ids = data.get('user_ids', [])
+        
+        if not title or not message:
+            return JsonResponse({'error': 'Title and message are required'}, status=400)
+        
+        # Create notifications for specified users
+        from django.contrib.auth.models import User
+        from .models import create_bulk_notification
+        
+        if user_ids:
+            users = User.objects.filter(id__in=user_ids)
+        else:
+            users = User.objects.all()
+        
+        notifications = create_bulk_notification(users, title, message, category)
+        
+        return JsonResponse({
+            'status': 'success',
+            'count': len(notifications)
+        })
+    
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+
+# Push notification subscription (for PWA)
+@require_POST
+@login_required
+def subscribe_push(request):
+    """Handle push notification subscription"""
+    try:
+        data = json.loads(request.body)
+        subscription_info = data.get('subscription')
+        
+        # Store subscription info in user preferences or separate model
+        preferences, created = NotificationPreference.objects.get_or_create(
+            user=request.user
+        )
+        
+        # You might want to create a separate PushSubscription model
+        # For now, we'll just enable push notifications
+        preferences.push_notifications = True
+        preferences.save()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Push notifications enabled'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@require_POST
+@login_required
+def unsubscribe_push(request):
+    """Handle push notification unsubscription"""
+    try:
+        preferences = NotificationPreference.objects.get(user=request.user)
+        preferences.push_notifications = False
+        preferences.save()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Push notifications disabled'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)

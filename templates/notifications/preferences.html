@@ -1,114 +1,350 @@
 {% extends 'base.html' %}
+{% load static %}
+{% load compress %}
+
+{% block page_css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/pages/notifications/preferences.css' %}">
+{% endblock %}
+
+{% block page_js %}
+    <script type="text/javascript" src="{% static 'js/pages/notifications/preferences.js' %}"></script>
+{% endblock %}
 
 {% block 'Body' %}
-<div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col-12">
-            <h1 class="h3 mb-0">Notification Preferences</h1>
-        </div>
-    </div>
+<div class="container-fluid py-3">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8 col-xl-6">
+            <!-- Header -->
+            <div class="preferences-header">
+                <div class="d-flex align-items-center mb-3">
+                    <a href="{% url 'notifications:list' %}" class="btn btn-outline-secondary btn-sm me-3">
+                        <i class="bi bi-arrow-left"></i>
+                    </a>
+                    <h1 class="page-title">Notification Preferences</h1>
+                </div>
+                <p class="page-description">
+                    Customize how and when you receive notifications to stay informed about what matters most to you.
+                </p>
+            </div>
 
-    <div class="row">
-        <div class="col-12 col-md-8 col-lg-6 mx-auto">
-            <div class="card">
-                <div class="card-body">
-                    <form method="POST">
-                        {% csrf_token %}
-                        
-                        <div class="mb-4">
-                            <div class="custom-checkbox mb-3">
-                                <input type="checkbox" class="form-check-input" 
+            <!-- Preferences Form -->
+            <form method="POST" class="preferences-form">
+                {% csrf_token %}
+                
+                <!-- Activity Notifications -->
+                <div class="preference-section">
+                    <div class="section-header">
+                        <h3 class="section-title">
+                            <i class="bi bi-bell-fill me-2"></i>
+                            Activity Notifications
+                        </h3>
+                        <p class="section-description">Get notified about activity on your listings</p>
+                    </div>
+                    
+                    <div class="preferences-grid">
+                        <div class="preference-item">
+                            <div class="preference-control">
+                                <input type="checkbox" class="form-check-input preference-toggle" 
                                        id="review_notifications" name="review_notifications"
                                        {% if preferences.review_notifications %}checked{% endif %}>
-                                <div>
-                                    <label class="form-check-label fw-semibold" for="review_notifications">
-                                        Review Notifications
-                                    </label>
-                                    <p class="text-secondary mb-0 small">
-                                        Get notified when someone reviews your listings
-                                    </p>
-                                </div>
+                                <label class="preference-label" for="review_notifications">
+                                    <div class="preference-icon">⭐</div>
+                                    <div class="preference-content">
+                                        <div class="preference-title">Review Notifications</div>
+                                        <div class="preference-desc">When someone reviews your listings or profile</div>
+                                    </div>
+                                </label>
                             </div>
+                        </div>
 
-                            <div class="custom-checkbox mb-3">
-                                <input type="checkbox" class="form-check-input"
+                        <div class="preference-item">
+                            <div class="preference-control">
+                                <input type="checkbox" class="form-check-input preference-toggle"
                                        id="save_notifications" name="save_notifications"
                                        {% if preferences.save_notifications %}checked{% endif %}>
-                                <div>
-                                    <label class="form-check-label fw-semibold" for="save_notifications">
-                                        Save Notifications
-                                    </label>
-                                    <p class="text-secondary mb-0 small">
-                                        Get notified when someone saves your listings
-                                    </p>
-                                </div>
+                                <label class="preference-label" for="save_notifications">
+                                    <div class="preference-icon">❤️</div>
+                                    <div class="preference-content">
+                                        <div class="preference-title">Save Notifications</div>
+                                        <div class="preference-desc">When someone saves your listings to their favorites</div>
+                                    </div>
+                                </label>
                             </div>
+                        </div>
 
-                            <div class="custom-checkbox mb-3">
-                                <input type="checkbox" class="form-check-input"
-                                       id="view_milestone_notifications" name="view_milestone_notifications"
-                                       {% if preferences.view_milestone_notifications %}checked{% endif %}>
-                                <div>
-                                    <label class="form-check-label fw-semibold" for="view_milestone_notifications">
-                                        View Milestone Notifications
-                                    </label>
-                                    <p class="text-secondary mb-0 small">
-                                        Get notified when your listings reach view milestones
-                                    </p>
-                                </div>
+                        <div class="preference-item">
+                            <div class="preference-control">
+                                <input type="checkbox" class="form-check-input preference-toggle"
+                                       id="reply_notifications" name="reply_notifications"
+                                       {% if preferences.reply_notifications %}checked{% endif %}>
+                                <label class="preference-label" for="reply_notifications">
+                                    <div class="preference-icon">💬</div>
+                                    <div class="preference-content">
+                                        <div class="preference-title">Reply Notifications</div>
+                                        <div class="preference-desc">When sellers reply to your reviews</div>
+                                    </div>
+                                </label>
                             </div>
+                        </div>
+                    </div>
+                </div>
 
-                            <div class="custom-checkbox mb-3">
-                                <input type="checkbox" class="form-check-input"
+                <!-- System & Alerts -->
+                <div class="preference-section">
+                    <div class="section-header">
+                        <h3 class="section-title">
+                            <i class="bi bi-gear-fill me-2"></i>
+                            System & Alerts
+                        </h3>
+                        <p class="section-description">Important system notifications and alerts</p>
+                    </div>
+                    
+                    <div class="preferences-grid">
+                        <div class="preference-item">
+                            <div class="preference-control">
+                                <input type="checkbox" class="form-check-input preference-toggle"
                                        id="system_notifications" name="system_notifications"
                                        {% if preferences.system_notifications %}checked{% endif %}>
-                                <div>
-                                    <label class="form-check-label fw-semibold" for="system_notifications">
-                                        System Notifications
-                                    </label>
-                                    <p class="text-secondary mb-0 small">
-                                        Get notified about system updates and announcements
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="custom-checkbox mb-3">
-                            <input type="checkbox" class="form-check-input"
-                                   id="deletion_warnings" name="deletion_warnings"
-                                   {% if preferences.deletion_warnings %}checked{% endif %}>
-                            <div>
-                                <label class="form-check-label fw-semibold" for="deletion_warnings">
-                                    Deletion Warnings
+                                <label class="preference-label" for="system_notifications">
+                                    <div class="preference-icon">⚙️</div>
+                                    <div class="preference-content">
+                                        <div class="preference-title">System Notifications</div>
+                                        <div class="preference-desc">Updates, maintenance, and system announcements</div>
+                                    </div>
                                 </label>
-                                <p class="text-secondary mb-0 small">
-                                    Get notified when your listings are about to expire
-                                </p>
                             </div>
                         </div>
-                        
-                        <div class="custom-checkbox mb-3">
-                            <input type="checkbox" class="form-check-input"
-                                   id="stock_alerts" name="stock_alerts"
-                                   {% if preferences.stock_alerts %}checked{% endif %}>
-                            <div>
-                                <label class="form-check-label fw-semibold" for="stock_alerts">
-                                    Stock Alerts
+
+                        <div class="preference-item">
+                            <div class="preference-control">
+                                <input type="checkbox" class="form-check-input preference-toggle"
+                                       id="deletion_warnings" name="deletion_warnings"
+                                       {% if preferences.deletion_warnings %}checked{% endif %}>
+                                <label class="preference-label" for="deletion_warnings">
+                                    <div class="preference-icon">⚠️</div>
+                                    <div class="preference-content">
+                                        <div class="preference-title">Expiration Warnings</div>
+                                        <div class="preference-desc">When your listings are about to expire</div>
+                                    </div>
                                 </label>
-                                <p class="text-secondary mb-0 small">
-                                    Get notified when your listings are running low on stock
-                                </p>
                             </div>
                         </div>
-                        <div class="text-end">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-save me-2"></i>Save Preferences
-                            </button>
+
+                        <div class="preference-item">
+                            <div class="preference-control">
+                                <input type="checkbox" class="form-check-input preference-toggle"
+                                       id="stock_alerts" name="stock_alerts"
+                                       {% if preferences.stock_alerts %}checked{% endif %}>
+                                <label class="preference-label" for="stock_alerts">
+                                    <div class="preference-icon">📦</div>
+                                    <div class="preference-content">
+                                        <div class="preference-title">Stock Alerts</div>
+                                        <div class="preference-desc">When your listings are running low on stock</div>
+                                    </div>
+                                </label>
+                            </div>
                         </div>
-                    </form>
+
+                        <div class="preference-item">
+                            <div class="preference-control">
+                                <input type="checkbox" class="form-check-input preference-toggle"
+                                       id="report_notifications" name="report_notifications"
+                                       {% if preferences.report_notifications %}checked{% endif %}>
+                                <label class="preference-label" for="report_notifications">
+                                    <div class="preference-icon">🚨</div>
+                                    <div class="preference-content">
+                                        <div class="preference-title">Report Notifications</div>
+                                        <div class="preference-desc">When your listings are reported for review</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
+
+                <!-- Milestones & Updates -->
+                <div class="preference-section">
+                    <div class="section-header">
+                        <h3 class="section-title">
+                            <i class="bi bi-trophy-fill me-2"></i>
+                            Milestones & Updates
+                        </h3>
+                        <p class="section-description">Achievements and product updates</p>
+                    </div>
+                    
+                    <div class="preferences-grid">
+                        <div class="preference-item">
+                            <div class="preference-control">
+                                <input type="checkbox" class="form-check-input preference-toggle"
+                                       id="view_milestone_notifications" name="view_milestone_notifications"
+                                       {% if preferences.view_milestone_notifications %}checked{% endif %}>
+                                <label class="preference-label" for="view_milestone_notifications">
+                                    <div class="preference-icon">👀</div>
+                                    <div class="preference-content">
+                                        <div class="preference-title">View Milestones</div>
+                                        <div class="preference-desc">When your listings reach view milestones</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="preference-item">
+                            <div class="preference-control">
+                                <input type="checkbox" class="form-check-input preference-toggle"
+                                       id="milestone_achievements" name="milestone_achievements"
+                                       {% if preferences.milestone_achievements %}checked{% endif %}>
+                                <label class="preference-label" for="milestone_achievements">
+                                    <div class="preference-icon">🎯</div>
+                                    <div class="preference-content">
+                                        <div class="preference-title">Achievement Milestones</div>
+                                        <div class="preference-desc">Celebrate your selling milestones and achievements</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="preference-item">
+                            <div class="preference-control">
+                                <input type="checkbox" class="form-check-input preference-toggle"
+                                       id="price_drop_alerts" name="price_drop_alerts"
+                                       {% if preferences.price_drop_alerts %}checked{% endif %}>
+                                <label class="preference-label" for="price_drop_alerts">
+                                    <div class="preference-icon">💰</div>
+                                    <div class="preference-content">
+                                        <div class="preference-title">Price Drop Alerts</div>
+                                        <div class="preference-desc">When items in your favorites drop in price</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Delivery Preferences -->
+                <div class="preference-section">
+                    <div class="section-header">
+                        <h3 class="section-title">
+                            <i class="bi bi-send-fill me-2"></i>
+                            Delivery Preferences
+                        </h3>
+                        <p class="section-description">How you want to receive notifications</p>
+                    </div>
+                    
+                    <div class="preferences-grid">
+                        <div class="preference-item">
+                            <div class="preference-control">
+                                <input type="checkbox" class="form-check-input preference-toggle"
+                                       id="push_notifications" name="push_notifications"
+                                       {% if preferences.push_notifications %}checked{% endif %}>
+                                <label class="preference-label" for="push_notifications">
+                                    <div class="preference-icon">🔔</div>
+                                    <div class="preference-content">
+                                        <div class="preference-title">Browser Notifications</div>
+                                        <div class="preference-desc">Receive instant notifications in your browser</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="preference-item">
+                            <div class="preference-control">
+                                <input type="checkbox" class="form-check-input preference-toggle"
+                                       id="email_notifications" name="email_notifications"
+                                       {% if preferences.email_notifications %}checked{% endif %}>
+                                <label class="preference-label" for="email_notifications">
+                                    <div class="preference-icon">📧</div>
+                                    <div class="preference-content">
+                                        <div class="preference-title">Email Notifications</div>
+                                        <div class="preference-desc">Receive important notifications via email</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="preference-item">
+                            <div class="preference-control">
+                                <input type="checkbox" class="form-check-input preference-toggle"
+                                       id="email_digest" name="email_digest"
+                                       {% if preferences.email_digest %}checked{% endif %}>
+                                <label class="preference-label" for="email_digest">
+                                    <div class="preference-icon">📄</div>
+                                    <div class="preference-content">
+                                        <div class="preference-title">Weekly Email Digest</div>
+                                        <div class="preference-desc">Summary of your weekly activity and notifications</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Frequency Settings -->
+                <div class="preference-section">
+                    <div class="section-header">
+                        <h3 class="section-title">
+                            <i class="bi bi-clock-fill me-2"></i>
+                            Notification Frequency
+                        </h3>
+                        <p class="section-description">How often you want to receive notifications</p>
+                    </div>
+                    
+                    <div class="frequency-options">
+                        <div class="frequency-item">
+                            <input type="radio" class="form-check-input" id="freq_instant" 
+                                   name="frequency" value="instant" 
+                                   {% if preferences.frequency == 'instant' %}checked{% endif %}>
+                            <label class="frequency-label" for="freq_instant">
+                                <div class="frequency-icon">⚡</div>
+                                <div class="frequency-content">
+                                    <div class="frequency-title">Instant</div>
+                                    <div class="frequency-desc">Receive notifications immediately</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="frequency-item">
+                            <input type="radio" class="form-check-input" id="freq_hourly" 
+                                   name="frequency" value="hourly"
+                                   {% if preferences.frequency == 'hourly' %}checked{% endif %}>
+                            <label class="frequency-label" for="freq_hourly">
+                                <div class="frequency-icon">🕐</div>
+                                <div class="frequency-content">
+                                    <div class="frequency-title">Hourly Digest</div>
+                                    <div class="frequency-desc">Bundle notifications into hourly summaries</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="frequency-item">
+                            <input type="radio" class="form-check-input" id="freq_daily" 
+                                   name="frequency" value="daily"
+                                   {% if preferences.frequency == 'daily' %}checked{% endif %}>
+                            <label class="frequency-label" for="freq_daily">
+                                <div class="frequency-icon">📅</div>
+                                <div class="frequency-content">
+                                    <div class="frequency-title">Daily Digest</div>
+                                    <div class="frequency-desc">Receive one summary per day</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-check-lg me-2"></i>
+                        Save Preferences
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-lg" onclick="resetToDefaults()">
+                        <i class="bi bi-arrow-clockwise me-2"></i>
+                        Reset to Defaults
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 {% endblock %}
-{% block 'Footer'%}{% endblock %}
+
+{% block 'Footer' %}{% endblock %}
