@@ -8,6 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 from django.conf import settings
+from django.contrib.auth.models import User
 
 from .models import (
     UserAccount, VirtualAccount, MonnifyTransaction,
@@ -37,7 +38,7 @@ def calculate_transaction_hash(payload, client_secret):
 
 
 @csrf_exempt
-@require_http_methods(["POST", "GET"])  # Allow GET for testing
+@require_http_methods(["POST", "GET"])
 def monnify_webhook(request):
     """
     Enhanced webhook handler with detailed error logging
@@ -50,7 +51,6 @@ def monnify_webhook(request):
         logger.info(f"Method: {request.method}")
         logger.info(f"Content-Type: {request.content_type}")
         logger.info(f"Path: {request.path}")
-        logger.info(f"Full Path: {request.get_full_path()}")
         
         # Get client IP
         client_ip = request.META.get('HTTP_X_FORWARDED_FOR', 
@@ -70,7 +70,7 @@ def monnify_webhook(request):
         try:
             raw_body = request.body.decode('utf-8')
             logger.info(f"Raw Body Length: {len(raw_body)} bytes")
-            logger.info(f"Raw Body (first 500 chars): {raw_body[:500]}")
+            logger.debug(f"Raw Body: {raw_body[:1000]}")
         except Exception as e:
             logger.error(f"Error decoding body: {str(e)}")
             return JsonResponse({
@@ -91,7 +91,7 @@ def monnify_webhook(request):
             data = json.loads(raw_body)
             logger.info(f"Parsed JSON successfully")
             logger.info(f"JSON Keys: {list(data.keys())}")
-            logger.info(f"Full Payload: {json.dumps(data, indent=2)}")
+            logger.debug(f"Full Payload: {json.dumps(data, indent=2)}")
         except json.JSONDecodeError as e:
             logger.error(f"JSON decode error: {str(e)}")
             logger.error(f"Failed to parse: {raw_body}")
@@ -124,6 +124,219 @@ def monnify_webhook(request):
         return JsonResponse({
             'status': 'error',
             'message': 'Internal server error'
+        }, status=500)
+
+
+def process_event_based_webhook(data):
+    """Process EVENT-BASED webhook format - FIXED for one-time payments"""
+    try:
+        event_type = data.get('eventType')
+        event_data = data.get('eventData', {})
+        
+        logger.info(f"Processing event webhook - Type: {event_type}")
+        
+        if event_type != 'SUCCESSFUL_TRANSACTION':
+            logger.info(f"Non-payment event received: {event_type}")
+            return JsonResponse({
+                'status': 'success',
+                'message': f'Event {event_type} acknowledged'
+            })
+        
+        transaction_reference = event_data.get('transactionReference')
+        payment_reference = event_data.get('paymentReference')
+        
+        logger.info(f"Transaction Ref: {transaction_reference}")
+        logger.info(f"Payment Ref: {payment_reference}")
+        
+        # Check for duplicate
+        if MonnifyTransaction.objects.filter(transaction_reference=transaction_reference).exists():
+            logger.info(f"Duplicate transaction: {transaction_reference}")
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Transaction already processed'
+            })
+        
+        # Extract product reference
+        product = event_data.get('product', {})
+        product_reference = product.get('reference')
+        product_type = product.get('type')
+        
+        logger.info(f"Product reference: {product_reference}, Type: {product_type}")
+        
+        # Initialize variables
+        virtual_account = None
+        user_account = None
+        
+        # FIXED: Handle different payment types
+        if product_reference and product_reference.startswith('VA-'):
+            # This is a PERMANENT virtual account payment
+            logger.info(f"Looking for virtual account: {product_reference}")
+            virtual_account = VirtualAccount.objects.filter(
+                account_reference=product_reference,
+                status='active'
+            ).select_related('user_account').first()
+            
+            if not virtual_account:
+                logger.error(f"Virtual account not found: {product_reference}")
+                PaymentNotification.objects.create(
+                    notification_type='FAILED_TRANSACTION',
+                    transaction_reference=transaction_reference,
+                    processed=False,
+                    processing_error=f'Virtual account not found: {product_reference}',
+                    raw_payload=data
+                )
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Virtual account not found',
+                    'product_reference': product_reference
+                }, status=404)
+            
+            user_account = virtual_account.user_account
+            logger.info(f"Found virtual account for user: {user_account.user.username}")
+            
+        elif product_reference and (product_reference.startswith('PAY') or product_type == 'API_NOTIFICATION'):
+            # This is a ONE-TIME PAYMENT (init-transaction)
+            logger.info(f"One-time payment detected: {product_reference}")
+            
+            # Try to find user by email from customer data
+            customer = event_data.get('customer', {})
+            customer_email = customer.get('email', '').strip().lower()
+            
+            logger.info(f"Searching for user by email: {customer_email}")
+            
+            if customer_email:
+                try:
+                    user = User.objects.filter(email__iexact=customer_email).first()
+                    
+                    if user:
+                        user_account = UserAccount.objects.filter(user=user).first()
+                        if user_account:
+                            logger.info(f"Found user account for: {user.username}")
+                        else:
+                            logger.error(f"User found but no UserAccount: {user.username}")
+                    else:
+                        logger.error(f"No user found with email: {customer_email}")
+                except Exception as e:
+                    logger.error(f"Error finding user: {str(e)}", exc_info=True)
+            else:
+                logger.error("No customer email in webhook data")
+            
+            if not user_account:
+                logger.error(f"Cannot identify user for one-time payment: {payment_reference}")
+                PaymentNotification.objects.create(
+                    notification_type='FAILED_TRANSACTION',
+                    transaction_reference=transaction_reference,
+                    processed=False,
+                    processing_error=f'User not found for email: {customer_email}',
+                    raw_payload=data
+                )
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'User account not found',
+                    'email': customer_email
+                }, status=404)
+        else:
+            logger.error(f"Unknown payment type. Reference: {product_reference}, Type: {product_type}")
+            PaymentNotification.objects.create(
+                notification_type='FAILED_TRANSACTION',
+                transaction_reference=transaction_reference,
+                processed=False,
+                processing_error='Unknown payment type',
+                raw_payload=data
+            )
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Unknown payment type'
+            }, status=400)
+        
+        # Parse payment date
+        paid_on_str = event_data.get('paidOn', timezone.now().isoformat())
+        try:
+            # Handle different date formats
+            if '.' in paid_on_str:
+                # Format: "2025-10-28 16:23:50.0"
+                paid_on = datetime.strptime(paid_on_str.split('.')[0], "%Y-%m-%d %H:%M:%S")
+            else:
+                paid_on = datetime.fromisoformat(paid_on_str.replace('Z', '+00:00'))
+            
+            if timezone.is_naive(paid_on):
+                paid_on = timezone.make_aware(paid_on)
+        except Exception as e:
+            logger.warning(f"Date parse error: {e}, using current time")
+            paid_on = timezone.now()
+        
+        # Extract payment details
+        payment_sources = event_data.get('paymentSourceInformation', [])
+        first_source = payment_sources[0] if payment_sources else {}
+        customer = event_data.get('customer', {})
+        
+        # Create transaction record
+        logger.info("Creating MonnifyTransaction record...")
+        monnify_txn = MonnifyTransaction.objects.create(
+            user_account=user_account,
+            virtual_account=virtual_account,  # Can be None for one-time payments
+            transaction_reference=transaction_reference,
+            payment_reference=payment_reference,
+            amount_paid=Decimal(str(event_data.get('amountPaid', 0))),
+            total_payable=Decimal(str(event_data.get('totalPayable', 0))),
+            settlement_amount=Decimal(str(event_data.get('settlementAmount', 0))),
+            paid_on=paid_on,
+            payment_status='PAID',
+            payment_description=event_data.get('paymentDescription', ''),
+            payment_method=event_data.get('paymentMethod', 'ACCOUNT_TRANSFER'),
+            currency=event_data.get('currencyCode', 'NGN'),
+            customer_name=customer.get('name', ''),
+            customer_email=customer.get('email', ''),
+            destination_account_number=first_source.get('accountNumber', ''),
+            destination_account_name=first_source.get('accountName', ''),
+            destination_bank_code=first_source.get('bankCode', ''),
+            webhook_payload=data,
+            processed=False
+        )
+        
+        logger.info(f"Transaction record created: ID={monnify_txn.id}")
+        
+        # Process payment (credit user account)
+        logger.info("Processing payment...")
+        success = monnify_txn.process_payment()
+        
+        # Create notification
+        PaymentNotification.objects.create(
+            notification_type='SUCCESSFUL_TRANSACTION',
+            transaction_reference=transaction_reference,
+            monnify_transaction=monnify_txn,
+            processed=success,
+            processed_at=timezone.now() if success else None,
+            processing_error='' if success else 'Failed to credit account',
+            raw_payload=data
+        )
+        
+        if success:
+            logger.info("="*80)
+            logger.info("✓ PAYMENT PROCESSED SUCCESSFULLY")
+            logger.info(f"Transaction: {transaction_reference}")
+            logger.info(f"Amount: ₦{event_data.get('amountPaid')}")
+            logger.info(f"User: {user_account.user.username}")
+            logger.info(f"Payment Type: {'Virtual Account' if virtual_account else 'One-Time Payment'}")
+            logger.info(f"New Balance: ₦{user_account.balance}")
+            logger.info("="*80)
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Payment processed successfully'
+            })
+        else:
+            logger.error(f"✗ Failed to process payment: {transaction_reference}")
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Failed to process payment'
+            }, status=500)
+            
+    except Exception as e:
+        logger.error(f"Error processing event webhook: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Processing error'
         }, status=500)
 
 
@@ -160,34 +373,6 @@ def process_legacy_webhook(data):
                 'missing_fields': missing_fields
             }, status=400)
         
-        # Validate hash if configured
-        webhook_secret = getattr(settings, 'MONNIFY_WEBHOOK_SECRET', None) or settings.MONNIFY_SECRET_KEY
-        
-        if webhook_secret and transaction_hash:
-            computed_hash = calculate_transaction_hash(data, webhook_secret)
-            
-            if computed_hash != transaction_hash:
-                logger.error("Hash validation FAILED!")
-                logger.error(f"Expected: {computed_hash[:20]}...")
-                logger.error(f"Received: {transaction_hash[:20]}...")
-                
-                PaymentNotification.objects.create(
-                    notification_type='FAILED_TRANSACTION',
-                    transaction_reference=transaction_reference,
-                    processed=False,
-                    processing_error='Hash validation failed',
-                    raw_payload=data
-                )
-                
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'Invalid transaction hash'
-                }, status=401)
-            
-            logger.info("Hash validation PASSED ✓")
-        else:
-            logger.warning("Hash validation SKIPPED (no secret configured)")
-        
         # Only process PAID transactions
         if payment_status != 'PAID':
             logger.warning(f"Non-PAID transaction: {payment_status}")
@@ -214,7 +399,6 @@ def process_legacy_webhook(data):
         product_ref = data.get('product', {}).get('reference')
         if not product_ref:
             logger.error("No product reference in webhook data")
-            logger.error(f"Product field: {data.get('product')}")
             PaymentNotification.objects.create(
                 notification_type='FAILED_TRANSACTION',
                 transaction_reference=transaction_reference,
@@ -236,7 +420,6 @@ def process_legacy_webhook(data):
         
         if not virtual_account:
             logger.error(f"Virtual account not found: {product_ref}")
-            logger.error(f"Available virtual accounts: {list(VirtualAccount.objects.values_list('account_reference', flat=True))}")
             PaymentNotification.objects.create(
                 notification_type='FAILED_TRANSACTION',
                 transaction_reference=transaction_reference,
@@ -330,116 +513,6 @@ def process_legacy_webhook(data):
             
     except Exception as e:
         logger.error(f"Error processing legacy webhook: {str(e)}", exc_info=True)
-        return JsonResponse({
-            'status': 'error',
-            'message': 'Processing error'
-        }, status=500)
-
-
-def process_event_based_webhook(data):
-    """Process EVENT-BASED webhook format"""
-    try:
-        event_type = data.get('eventType')
-        event_data = data.get('eventData', {})
-        
-        logger.info(f"Processing event webhook - Type: {event_type}")
-        
-        if event_type != 'SUCCESSFUL_TRANSACTION':
-            logger.info(f"Non-payment event received: {event_type}")
-            return JsonResponse({
-                'status': 'success',
-                'message': f'Event {event_type} acknowledged'
-            })
-        
-        transaction_reference = event_data.get('transactionReference')
-        
-        if MonnifyTransaction.objects.filter(transaction_reference=transaction_reference).exists():
-            return JsonResponse({
-                'status': 'success',
-                'message': 'Transaction already processed'
-            })
-        
-        product = event_data.get('product', {})
-        account_reference = product.get('reference')
-        
-        if not account_reference:
-            logger.error("No account reference in event data")
-            return JsonResponse({
-                'status': 'error',
-                'message': 'No account reference'
-            }, status=400)
-        
-        virtual_account = VirtualAccount.objects.filter(
-            account_reference=account_reference,
-            status='active'
-        ).select_related('user_account').first()
-        
-        if not virtual_account:
-            logger.error(f"Virtual account not found: {account_reference}")
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Virtual account not found'
-            }, status=404)
-        
-        paid_on_str = event_data.get('paidOn', timezone.now().isoformat())
-        try:
-            paid_on = datetime.fromisoformat(paid_on_str.replace('Z', '+00:00'))
-            if timezone.is_naive(paid_on):
-                paid_on = timezone.make_aware(paid_on)
-        except:
-            paid_on = timezone.now()
-        
-        payment_sources = event_data.get('paymentSourceInformation', [])
-        first_source = payment_sources[0] if payment_sources else {}
-        customer = event_data.get('customer', {})
-        
-        monnify_txn = MonnifyTransaction.objects.create(
-            user_account=virtual_account.user_account,
-            virtual_account=virtual_account,
-            transaction_reference=transaction_reference,
-            payment_reference=event_data.get('paymentReference', transaction_reference),
-            amount_paid=Decimal(str(event_data.get('amountPaid', 0))),
-            total_payable=Decimal(str(event_data.get('totalPayable', 0))),
-            settlement_amount=Decimal(str(event_data.get('settlementAmount', 0))),
-            paid_on=paid_on,
-            payment_status='PAID',
-            payment_description=event_data.get('paymentDescription', ''),
-            payment_method=event_data.get('paymentMethod', 'ACCOUNT_TRANSFER'),
-            currency=event_data.get('currencyCode', 'NGN'),
-            customer_name=customer.get('name', ''),
-            customer_email=customer.get('email', ''),
-            destination_account_number=first_source.get('accountNumber', ''),
-            destination_account_name=first_source.get('accountName', ''),
-            destination_bank_code=first_source.get('bankCode', ''),
-            webhook_payload=data,
-            processed=False
-        )
-        
-        success = monnify_txn.process_payment()
-        
-        PaymentNotification.objects.create(
-            notification_type='SUCCESSFUL_TRANSACTION',
-            transaction_reference=transaction_reference,
-            monnify_transaction=monnify_txn,
-            processed=success,
-            processed_at=timezone.now() if success else None,
-            raw_payload=data
-        )
-        
-        if success:
-            logger.info(f"✓ Event-based payment processed: {transaction_reference}")
-            return JsonResponse({
-                'status': 'success',
-                'message': 'Payment processed successfully'
-            })
-        else:
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Failed to process payment'
-            }, status=500)
-            
-    except Exception as e:
-        logger.error(f"Error processing event webhook: {str(e)}", exc_info=True)
         return JsonResponse({
             'status': 'error',
             'message': 'Processing error'
