@@ -5,6 +5,8 @@ from django.utils import timezone
 from datetime import timedelta
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+import logging
+logger = logging.getLogger(__name__)
 
 class AccountStatus(models.Model):
     """Defines available account tiers with explicit choices"""
@@ -498,3 +500,302 @@ def deactivate_expired_boosts():
     
     expired_boosts.update(is_active=False)
     return expired_boosts.count()
+
+
+class VirtualAccount(models.Model):
+    """
+    Permanent virtual account for a user (Monnify Reserved Account)
+    
+    CORRECTED: Reserved accounts in Monnify are PERMANENT, not temporary.
+    They don't expire unless manually deleted.
+    """
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('inactive', 'Inactive'),
+        ('suspended', 'Suspended'),
+    ]
+    
+    user_account = models.ForeignKey(
+        'UserAccount',  # Your existing UserAccount model
+        on_delete=models.CASCADE,
+        related_name='virtual_accounts'
+    )
+    
+    # Monnify Details
+    account_reference = models.CharField(max_length=100, db_index=True)
+    account_name = models.CharField(max_length=255)
+    account_number = models.CharField(max_length=20, db_index=True)
+    bank_name = models.CharField(max_length=100)
+    bank_code = models.CharField(max_length=10)
+    
+    # Status
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    
+    # KYC Information (OPTIONAL - affects transaction limits)
+    bvn = models.CharField(max_length=11, blank=True, null=True)
+    nin = models.CharField(max_length=11, blank=True, null=True)
+    kyc_verified = models.BooleanField(default=False)
+    kyc_verified_at = models.DateTimeField(null=True, blank=True)
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    # Monnify response data (stored as JSON for reference)
+    monnify_response = models.JSONField(default=dict, blank=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['account_reference']),
+            models.Index(fields=['account_number']),
+            models.Index(fields=['user_account', 'status']),
+        ]
+        # Allow multiple bank accounts for same reference (Monnify provides multiple banks)
+        unique_together = [['account_reference', 'bank_code']]
+    
+    def __str__(self):
+        return f"{self.account_name} - {self.account_number} ({self.bank_name})"
+    
+    @property
+    def is_active(self):
+        """Check if account is active"""
+        return self.status == 'active'
+    
+    @property
+    def has_kyc(self):
+        """Check if account has KYC verification"""
+        return self.kyc_verified and (self.bvn or self.nin)
+    
+    @property
+    def transaction_limit_info(self):
+        """Get transaction limit information based on KYC status"""
+        if self.bvn and self.nin:
+            return {
+                'level': 'Maximum',
+                'per_transaction': '5,000,000+',
+                'daily': 'Unlimited',
+                'description': 'Full KYC verified (BVN + NIN)'
+            }
+        elif self.bvn or self.nin:
+            return {
+                'level': 'Medium',
+                'per_transaction': '1,000,000',
+                'daily': '5,000,000',
+                'description': 'Partial KYC verified'
+            }
+        else:
+            return {
+                'level': 'Basic',
+                'per_transaction': '50,000',
+                'daily': '300,000',
+                'description': 'No KYC verification'
+            }
+    
+    def deactivate(self):
+        """Deactivate the virtual account"""
+        self.status = 'inactive'
+        self.save()
+
+
+class MonnifyTransaction(models.Model):
+    """
+    Track all Monnify payment transactions
+    
+    CORRECTED: Simplified to handle webhook data correctly
+    """
+    TRANSACTION_STATUS = [
+        ('PAID', 'Paid'),
+        ('PENDING', 'Pending'),
+        ('OVERPAID', 'Overpaid'),
+        ('PARTIALLY_PAID', 'Partially Paid'),
+        ('FAILED', 'Failed'),
+        ('REVERSED', 'Reversed'),
+    ]
+    
+    # User & Account Info
+    user_account = models.ForeignKey(
+        'UserAccount',
+        on_delete=models.CASCADE,
+        related_name='monnify_transactions'
+    )
+    virtual_account = models.ForeignKey(
+        VirtualAccount,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='transactions'
+    )
+    
+    # Monnify Transaction Details
+    transaction_reference = models.CharField(max_length=100, unique=True, db_index=True)
+    payment_reference = models.CharField(max_length=100, db_index=True)
+    amount_paid = models.DecimalField(max_digits=10, decimal_places=2)
+    total_payable = models.DecimalField(max_digits=10, decimal_places=2)
+    settlement_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    paid_on = models.DateTimeField()
+    payment_status = models.CharField(max_length=20, choices=TRANSACTION_STATUS)
+    payment_description = models.TextField(blank=True)
+    
+    # Payment Method Details
+    payment_method = models.CharField(max_length=50, blank=True)
+    currency = models.CharField(max_length=3, default='NGN')
+    
+    # Customer Details
+    customer_name = models.CharField(max_length=255, blank=True)
+    customer_email = models.EmailField(blank=True)
+    
+    # Bank Details (from webhook)
+    destination_account_number = models.CharField(max_length=20, blank=True)
+    destination_account_name = models.CharField(max_length=255, blank=True)
+    destination_bank_name = models.CharField(max_length=100, blank=True)
+    destination_bank_code = models.CharField(max_length=10, blank=True)
+    
+    # Processing Status
+    processed = models.BooleanField(default=False)
+    processed_at = models.DateTimeField(null=True, blank=True)
+    credited_to_account = models.BooleanField(default=False)
+    
+    # Dashboard Transaction Link
+    dashboard_transaction = models.ForeignKey(
+        'Transaction',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='monnify_transaction'
+    )
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    # Full webhook payload (for debugging)
+    webhook_payload = models.JSONField(default=dict, blank=True)
+    
+    class Meta:
+        ordering = ['-paid_on']
+        indexes = [
+            models.Index(fields=['transaction_reference']),
+            models.Index(fields=['payment_reference']),
+            models.Index(fields=['user_account', '-paid_on']),
+            models.Index(fields=['payment_status', 'processed']),
+        ]
+    
+    def __str__(self):
+        return f"{self.transaction_reference} - ₦{self.amount_paid} ({self.payment_status})"
+    
+    def process_payment(self):
+        """Process the payment and credit user account"""
+        if self.processed or self.payment_status != 'PAID':
+            return False
+        
+        try:
+            # Credit user account
+            self.user_account.add_funds(
+                amount=self.amount_paid,
+                transaction_type='deposit',
+                description=f"Monnify deposit via {self.payment_method} - {self.transaction_reference}"
+            )
+            
+            # Get the transaction that was just created
+            dashboard_transaction = self.user_account.transactions.filter(
+                transaction_type='deposit'
+            ).order_by('-created_at').first()
+            
+            # Link to dashboard transaction
+            self.dashboard_transaction = dashboard_transaction
+            self.processed = True
+            self.processed_at = timezone.now()
+            self.credited_to_account = True
+            self.save()
+            
+            logger.info(
+                f"Payment processed: {self.transaction_reference} - "
+                f"₦{self.amount_paid} credited to {self.user_account.user.username}"
+            )
+            
+            return True
+            
+        except Exception as e:
+            logger.error(
+                f"Error processing Monnify payment {self.transaction_reference}: {str(e)}",
+                exc_info=True
+            )
+            return False
+
+
+class PaymentNotification(models.Model):
+    """
+    Store all webhook notifications from Monnify
+    Used for debugging and audit trail
+    """
+    NOTIFICATION_TYPES = [
+        ('SUCCESSFUL_TRANSACTION', 'Successful Transaction'),
+        ('FAILED_TRANSACTION', 'Failed Transaction'),
+        ('REVERSED_TRANSACTION', 'Reversed Transaction'),
+    ]
+    
+    # Basic Info
+    notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPES)
+    transaction_reference = models.CharField(max_length=100, db_index=True)
+    
+    # Processing Status
+    processed = models.BooleanField(default=False)
+    processed_at = models.DateTimeField(null=True, blank=True)
+    processing_error = models.TextField(blank=True)
+    
+    # Linked Records
+    monnify_transaction = models.ForeignKey(
+        MonnifyTransaction,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='notifications'
+    )
+    
+    # Raw Data
+    raw_payload = models.JSONField()
+    
+    # Timestamps
+    received_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-received_at']
+        indexes = [
+            models.Index(fields=['transaction_reference', 'processed']),
+            models.Index(fields=['-received_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.notification_type} - {self.transaction_reference} ({'Processed' if self.processed else 'Pending'})"
+
+
+# Helper functions for background tasks
+
+def process_pending_monnify_transactions():
+    """Background task to process pending Monnify transactions"""
+    pending_transactions = MonnifyTransaction.objects.filter(
+        payment_status='PAID',
+        processed=False
+    )
+    
+    success_count = 0
+    for transaction in pending_transactions:
+        if transaction.process_payment():
+            success_count += 1
+    
+    logger.info(f"Processed {success_count} pending Monnify transactions")
+    return success_count
+    """Background task to process pending Monnify transactions"""
+    pending_transactions = MonnifyTransaction.objects.filter(
+        payment_status='PAID',
+        processed=False
+    )
+    
+    success_count = 0
+    for transaction in pending_transactions:
+        if transaction.process_payment():
+            success_count += 1
+    
+    logger.info(f"Processed {success_count} pending Monnify transactions")
+    return success_count

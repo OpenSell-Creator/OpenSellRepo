@@ -1,0 +1,1474 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Fund Your Account - {{ block.super }}{% endblock %}
+
+<script>
+// Disable service worker for testing
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+            registration.unregister();
+            console.log('Service worker unregistered');
+        }
+    });
+}
+</script>
+{% block 'Body' %}
+<div class="container my-5">
+    {% if has_virtual_account %}
+    <script id="virtualAccountData" type="application/json">
+    {
+        "account_reference": "{{ virtual_accounts.first.account_reference }}",
+        "account_name": "{{ virtual_accounts.first.account_name }}",
+        "accounts": [
+            {% for va in virtual_accounts %}
+            {
+                "bank_name": "{{ va.bank_name }}",
+                "account_number": "{{ va.account_number }}",
+                "bank_code": "{{ va.bank_code }}"
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ]
+    }
+    </script>
+    {% endif %}
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Header Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-wallet2"></i> Fund Your Account</h4>
+                    <small>Add money instantly via bank transfer</small>
+                </div>
+            </div>
+
+            <!-- Funding Options Selection -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-bank"></i> Choose Funding Method</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <!-- Permanent Account Option (Recommended) -->
+                        <div class="col-md-6">
+                            <div class="option-card {% if has_virtual_account %}active-option{% endif %}" 
+                                onclick="showSection('permanentAccount')" role="button" tabindex="0">
+                                <div class="option-header">
+                                    <i class="bi bi-bank2"></i>
+                                    {% if has_virtual_account %}
+                                    <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-primary">Recommended</span>
+                                    {% endif %}
+                                </div>
+                                <h6>Permanent Virtual Account</h6>
+                                <p>Create dedicated account for ongoing deposits</p>
+                                <ul class="list-unstyled small">
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> One-time setup</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> Auto-credit deposits</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> Reusable anytime</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> BVN/NIN required</li>
+                                </ul>
+                                <button class="btn btn-primary btn-sm w-100 mt-2">
+                                    {% if has_virtual_account %}View Details{% else %}Create Account{% endif %}
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Quick Transfer Option (One-time) -->
+                        <div class="col-md-6">
+                            <div class="option-card" onclick="showSection('quickTransfer')" role="button" tabindex="0">
+                                <div class="option-header">
+                                    <i class="bi bi-lightning-charge-fill"></i>
+                                    <span class="badge bg-warning text-dark">One-Time</span>
+                                </div>
+                                <h6>Quick Transfer (One-Time)</h6>
+                                <p>Generate temporary account for single deposit</p>
+                                <ul class="list-unstyled small">
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> No setup needed</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> Expires after use</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> Best for one-time deposit</li>
+                                </ul>
+                                <button class="btn btn-outline-primary btn-sm w-100 mt-2">Select Option</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            
+            <!-- Create permanent account form -->
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>KYC Required:</strong> BVN or NIN is now mandatory for account creation (CBN regulation)
+            </div>
+
+            <form id="permanentAccountForm" onsubmit="createPermanentAccount(event)">
+                {% csrf_token %}
+
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Verification Method (Required):</label>
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="verifyType" id="useBVN" value="bvn" checked>
+                        <label class="btn btn-outline-primary" for="useBVN">
+                            <i class="bi bi-check-circle me-2"></i>Use BVN
+                        </label>
+
+                        <input type="radio" class="btn-check" name="verifyType" id="useNIN" value="nin">
+                        <label class="btn btn-outline-primary" for="useNIN">
+                            <i class="bi bi-check-circle me-2"></i>Use NIN
+                        </label>
+
+                        <input type="radio" class="btn-check" name="verifyType" id="useBoth" value="both">
+                        <label class="btn btn-outline-primary" for="useBoth">
+                            <i class="bi bi-check-circle me-2"></i>Both (Higher Limits)
+                        </label>
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                        <i class="bi bi-shield-check"></i> Required by Central Bank of Nigeria for account creation
+                    </small>
+                </div>
+
+                <div id="kycFields">
+                    <div class="mb-3" id="bvnField">
+                        <label for="bvn" class="form-label">Bank Verification Number (BVN) <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="bvn" name="bvn" maxlength="11" pattern="[0-9]{11}" placeholder="Enter 11-digit BVN" required>
+                        <small class="form-text text-muted">
+                            <i class="bi bi-phone"></i> Dial *565*0# to get your BVN | 
+                            <i class="bi bi-lock"></i> Your data is encrypted and secure
+                        </small>
+                    </div>
+
+                    <div class="mb-3" id="ninField" style="display: none;">
+                        <label for="nin" class="form-label">National Identification Number (NIN)</label>
+                        <input type="text" class="form-control" id="nin" name="nin" maxlength="11" pattern="[0-9]{11}" placeholder="Enter 11-digit NIN">
+                        <small class="form-text text-muted">
+                            <i class="bi bi-lock"></i> Your NIN is secure and encrypted
+                        </small>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Transaction Limits:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><strong>BVN or NIN:</strong> Up to ₦1,000,000 per transaction</li>
+                            <li><strong>Both BVN + NIN:</strong> Up to ₦5,000,000+ per transaction</li>
+                        </ul>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="agreeTerms" required>
+                        <label class="form-check-label" for="agreeTerms">
+                            I agree to share my BVN/NIN for account verification <span class="text-danger">*</span>
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg w-100" id="createPermanentBtn">
+                    <i class="bi bi-bank2 me-2"></i>Create Permanent Account
+                </button>
+                
+                <p class="text-muted text-center mt-3 mb-0 small">
+                    <i class="bi bi-shield-check"></i> Your information is protected and used only for account verification
+                </p>
+            </form>
+
+            <!-- Permanent Account Section -->
+            <div id="permanentAccount" class="transfer-section" style="{% if has_virtual_account %}display: block;{% else %}display: none;{% endif %}">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-bank2"></i> Permanent Virtual Account</h5>
+                        {% if has_virtual_account %}
+                        <span class="badge bg-success">Active</span>
+                        {% else %}
+                        <button class="btn btn-sm btn-outline-secondary" onclick="hideAllSections()">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                    <div class="card-body">
+                        {% if has_virtual_account %}
+                            <!-- Existing Account Display -->
+                            <div class="alert alert-success mb-4">
+                                <i class="bi bi-check-circle-fill me-2"></i>
+                                <strong>Your permanent account is active!</strong> Use these details anytime to deposit funds.
+                            </div>
+
+                            <div id="virtualAccountDetails">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Account Name</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control bg-light" value="{{ virtual_accounts.first.account_name }}" readonly>
+                                        <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard(this, '{{ virtual_accounts.first.account_name }}')">
+                                            <i class="bi bi-clipboard"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <label class="form-label fw-bold mb-2">Your Bank Accounts:</label>
+                                <div class="row g-3 mb-4">
+                                    {% for va in virtual_accounts %}
+                                    <div class="col-md-12">
+                                        <div class="bank-account-card p-3 border rounded">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <h6 class="mb-1 fw-bold">{{ va.bank_name }}</h6>
+                                                    <p class="mb-0 text-muted small">Account Number</p>
+                                                </div>
+                                                <div class="text-end">
+                                                    <h5 class="mb-1 font-monospace">{{ va.account_number }}</h5>
+                                                    <button class="btn btn-sm btn-outline-primary" onclick="copyToClipboard(this, '{{ va.account_number }}')">
+                                                        <i class="bi bi-clipboard"></i> Copy
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    <strong>Instructions:</strong>
+                                    <ol class="mb-0 mt-2 ps-3">
+                                        <li>Copy any account number above</li>
+                                        <li>Open your banking app</li>
+                                        <li>Transfer any amount to the account</li>
+                                        <li>Your wallet will be credited automatically!</li>
+                                    </ol>
+                                </div>
+
+                                {% if virtual_accounts.first.kyc_verified %}
+                                <div class="alert alert-success">
+                                    <i class="bi bi-shield-check me-2"></i>
+                                    <strong>KYC Verified:</strong> 
+                                    {% if virtual_accounts.first.bvn and virtual_accounts.first.nin %}
+                                    Maximum transaction limit: â‚¦5,000,000+
+                                    {% else %}
+                                    Transaction limit: â‚¦1,000,000
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <!-- Create Account Form -->
+                            <div id="virtualAccountDetails"></div>
+                            
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>KYC Required:</strong> BVN or NIN is now mandatory for account creation (CBN regulation)
+                            </div>
+
+                            <form id="permanentAccountForm" onsubmit="createPermanentAccount(event)">
+                                {% csrf_token %}
+
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold">Verification Method (Required):</label>
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" name="verifyType" id="useBVN" value="bvn" checked>
+                                        <label class="btn btn-outline-primary" for="useBVN">
+                                            <i class="bi bi-check-circle me-2"></i>Use BVN
+                                        </label>
+
+                                        <input type="radio" class="btn-check" name="verifyType" id="useNIN" value="nin">
+                                        <label class="btn btn-outline-primary" for="useNIN">
+                                            <i class="bi bi-check-circle me-2"></i>Use NIN
+                                        </label>
+
+                                        <input type="radio" class="btn-check" name="verifyType" id="useBoth" value="both">
+                                        <label class="btn btn-outline-primary" for="useBoth">
+                                            <i class="bi bi-check-circle me-2"></i>Both (Higher Limits)
+                                        </label>
+                                    </div>
+                                    <small class="text-muted d-block mt-2">
+                                        <i class="bi bi-shield-check"></i> Required by Central Bank of Nigeria for account creation
+                                    </small>
+                                </div>
+
+                                <div id="kycFields">
+                                    <div class="mb-3" id="bvnField">
+                                        <label for="bvn" class="form-label">Bank Verification Number (BVN) <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="bvn" name="bvn" maxlength="11" pattern="[0-9]{11}" placeholder="Enter 11-digit BVN" required>
+                                        <small class="form-text text-muted">
+                                            <i class="bi bi-phone"></i> Dial *565*0# to get your BVN | 
+                                            <i class="bi bi-lock"></i> Your data is encrypted and secure
+                                        </small>
+                                    </div>
+
+                                    <div class="mb-3" id="ninField" style="display: none;">
+                                        <label for="nin" class="form-label">National Identification Number (NIN)</label>
+                                        <input type="text" class="form-control" id="nin" name="nin" maxlength="11" pattern="[0-9]{11}" placeholder="Enter 11-digit NIN">
+                                        <small class="form-text text-muted">
+                                            <i class="bi bi-lock"></i> Your NIN is secure and encrypted
+                                        </small>
+                                    </div>
+
+                                    <div class="alert alert-warning">
+                                        <i class="bi bi-exclamation-triangle me-2"></i>
+                                        <strong>Transaction Limits:</strong>
+                                        <ul class="mb-0 mt-2">
+                                            <li><strong>BVN or NIN:</strong> Up to â‚¦1,000,000 per transaction</li>
+                                            <li><strong>Both BVN + NIN:</strong> Up to â‚¦5,000,000+ per transaction</li>
+                                        </ul>
+                                    </div>
+
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" id="agreeTerms" required>
+                                        <label class="form-check-label" for="agreeTerms">
+                                            I agree to share my BVN/NIN for account verification <span class="text-danger">*</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary btn-lg w-100" id="createPermanentBtn">
+                                    <i class="bi bi-bank2 me-2"></i>Create Permanent Account
+                                </button>
+                                
+                                <p class="text-muted text-center mt-3 mb-0 small">
+                                    <i class="bi bi-shield-check"></i> Your information is protected and used only for account verification
+                                </p>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Transfer Section (One-Time Payment) -->
+            <div id="quickTransfer" class="transfer-section" style="display: none;">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-lightning-charge-fill"></i> Quick Transfer (One-Time)</h5>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="hideAllSections()">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            <strong>Note:</strong> This generates a one-time account that expires after payment. For repeated deposits, use Permanent Account instead.
+                        </div>
+
+                        <!-- Amount Input Form -->
+                        <div id="quickTransferAmountForm">
+                            <form id="generateQuickTransferForm" onsubmit="generateQuickTransferWithAmount(event)">
+                                <div class="mb-3">
+                                    <label for="quickAmount" class="form-label fw-bold">
+                                        <i class="bi bi-cash-stack me-2"></i>Enter Amount to Deposit
+                                    </label>
+                                    <div class="input-group input-group-lg">
+                                        <span class="input-group-text">₦</span>
+                                        <input 
+                                            type="number" 
+                                            class="form-control" 
+                                            id="quickAmount" 
+                                            name="amount"
+                                            min="100" 
+                                            max="5000000"
+                                            step="100"
+                                            placeholder="Enter amount (min ₦100)" 
+                                            required
+                                        >
+                                    </div>
+                                    <small class="text-muted">
+                                        Minimum: ₦100 | Maximum: ₦5,000,000 per transaction
+                                    </small>
+                                </div>
+
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-warning btn-lg" id="generateQuickBtn">
+                                        <i class="bi bi-lightning-charge-fill me-2"></i>Generate Transfer Account
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Transfer Details (Hidden initially) -->
+                        <div id="quickTransferDetails" style="display: none;"></div>
+
+                        <div class="alert alert-info mt-4" style="display: none;" id="quickWarning">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Auto-Credit:</strong> Your account will be credited automatically within seconds
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Current Balance -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body text-center">
+                    <h6 class="text-muted mb-2">Current Balance</h6>
+                    <h2 class="text-primary mb-0" id="currentBalance">₦{{ account.balance|floatformat:0 }}</h2>
+                </div>
+            </div>
+
+            <!-- How It Works -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-lightbulb me-2"></i>How It Works</h6>
+                </div>
+                <div class="card-body">
+                    <div class="steps">
+                        <div class="step-item">
+                            <div class="step-number">1</div>
+                            <div>
+                                <strong>Choose Method</strong>
+                                <small class="d-block text-muted">Permanent or one-time account</small>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-number">2</div>
+                            <div>
+                                <strong>Get Account Details</strong>
+                                <small class="d-block text-muted">Bank account numbers instantly</small>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-number">3</div>
+                            <div>
+                                <strong>Make Transfer</strong>
+                                <small class="d-block text-muted">From any bank app or USSD</small>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-number">4</div>
+                            <div>
+                                <strong>Auto-Credit</strong>
+                                <small class="d-block text-muted">Your account credited instantly</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Support -->
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-headset me-2"></i>Need Help?</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="#" class="btn btn-outline-primary">
+                            <i class="bi bi-chat-dots me-2"></i>Live Chat
+                        </a>
+                        <a href="mailto:support@example.com" class="btn btn-outline-primary">
+                            <i class="bi bi-envelope me-2"></i>Email Support
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="paymentToast" class="toast" role="alert">
+        <div class="toast-header bg-success text-white">
+            <i class="bi bi-check-circle me-2"></i>
+            <strong class="me-auto">Payment Received!</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body">
+            Your account has been credited with <strong id="toastAmount"></strong>
+        </div>
+    </div>
+</div>
+
+<style>
+.option-card {
+    border: 2px solid #dee2e6;
+    border-radius: 10px;
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.option-card:hover, .option-card.active-option {
+    border-color: #0d6efd;
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15);
+    transform: translateY(-2px);
+}
+
+.option-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.option-header i {
+    font-size: 2rem;
+    color: #0d6efd;
+}
+
+.steps {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.step-number {
+    width: 35px;
+    height: 35px;
+    background: #0d6efd;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.bank-account-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.bank-account-card:hover {
+    background-color: #f8f9fa;
+}
+.service-error-card {
+    border: 2px solid #ffc107;
+    background: #fff3cd;
+    border-radius: 10px;
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.retry-btn {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+</style>
+
+<script>
+// ============================================
+// MONNIFY DEPOSIT SYSTEM - FIXED VERSION
+// ============================================
+
+// State Management
+const MonnifyState = {
+    paymentCheckInterval: null,
+    currentSection: null,
+    pollingInterval: null,
+    currentTransactionRef: null,
+    pollStartTime: null,
+    pollCount: 0
+};
+
+// ============================================
+// INITIALIZATION
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Monnify Deposit System Initializing...');
+    initializeEventListeners();
+    initializeExistingAccounts();
+    startGeneralPaymentCheck();
+    
+    // Auto-show permanent account section if available
+    const virtualAccountData = document.getElementById('virtualAccountData');
+    if (virtualAccountData) {
+        try {
+            const data = JSON.parse(virtualAccountData.textContent);
+            if (data && data.accounts && data.accounts.length > 0) {
+                showSection('permanentAccount');
+            }
+        } catch (e) {
+            console.error('Error parsing virtual account data:', e);
+        }
+    }
+    
+    console.log('Monnify Deposit System Ready');
+});
+
+// ============================================
+// EVENT LISTENERS
+// ============================================
+
+function initializeEventListeners() {
+    // KYC verification type radio buttons
+    document.querySelectorAll('input[name="verifyType"]').forEach(radio => {
+        radio.addEventListener('change', toggleVerificationType);
+    });
+
+    // Make option cards keyboard accessible
+    document.querySelectorAll('.option-card').forEach(card => {
+        card.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.click();
+            }
+        });
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', cleanupIntervals);
+}
+
+function initializeExistingAccounts() {
+    const virtualAccountData = document.getElementById('virtualAccountData');
+    if (virtualAccountData) {
+        try {
+            const data = JSON.parse(virtualAccountData.textContent);
+            if (data && data.accounts && data.accounts.length > 0) {
+                displayPermanentAccount(data);
+            }
+        } catch (e) {
+            console.error('Error parsing virtual account data:', e);
+        }
+    }
+}
+
+// ============================================
+// SECTION MANAGEMENT
+// ============================================
+
+function showSection(sectionName) {
+    hideAllSections();
+    const section = document.getElementById(sectionName);
+    if (section) {
+        section.style.display = 'block';
+        MonnifyState.currentSection = sectionName;
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function hideAllSections() {
+    const sections = ['quickTransfer', 'permanentAccount'];
+    sections.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) element.style.display = 'none';
+    });
+    MonnifyState.currentSection = null;
+}
+
+// ============================================
+// KYC FIELDS MANAGEMENT
+// ============================================
+
+function toggleVerificationType(event) {
+    const bvnField = document.getElementById('bvnField');
+    const ninField = document.getElementById('ninField');
+    const bvnInput = document.getElementById('bvn');
+    const ninInput = document.getElementById('nin');
+
+    if (!bvnField || !ninField || !bvnInput || !ninInput) return;
+
+    const verifyType = event.target.value;
+
+    switch(verifyType) {
+        case 'bvn':
+            bvnField.style.display = 'block';
+            ninField.style.display = 'none';
+            bvnInput.setAttribute('required', 'required');
+            ninInput.removeAttribute('required');
+            ninInput.value = '';
+            break;
+        case 'nin':
+            bvnField.style.display = 'none';
+            ninField.style.display = 'block';
+            ninInput.setAttribute('required', 'required');
+            bvnInput.removeAttribute('required');
+            bvnInput.value = '';
+            break;
+        case 'both':
+            bvnField.style.display = 'block';
+            ninField.style.display = 'block';
+            bvnInput.setAttribute('required', 'required');
+            ninInput.setAttribute('required', 'required');
+            break;
+    }
+}
+
+// ============================================
+// CREATE PERMANENT ACCOUNT
+// ============================================
+
+async function createPermanentAccount(event) {
+    event.preventDefault();
+
+    const form = event.target;
+    const btn = form.querySelector('button[type="submit"]');
+    if (!btn) return;
+
+    const originalText = btn.innerHTML;
+
+    // Get verification type
+    const verifyTypeElement = form.querySelector('input[name="verifyType"]:checked');
+    if (!verifyTypeElement) {
+        showNotification('Please select a verification type', 'warning');
+        return;
+    }
+
+    const verifyType = verifyTypeElement.value;
+    const bvn = form.querySelector('#bvn')?.value.trim() || '';
+    const nin = form.querySelector('#nin')?.value.trim() || '';
+
+    // Validate based on selected type
+    if (verifyType === 'bvn' || verifyType === 'both') {
+        if (!validateBVN(bvn)) {
+            showNotification('Valid BVN is required. Must be 11 digits', 'error');
+            return;
+        }
+    }
+    
+    if (verifyType === 'nin' || verifyType === 'both') {
+        if (!validateNIN(nin)) {
+            showNotification('Valid NIN is required. Must be 11 digits', 'error');
+            return;
+        }
+    }
+
+    // Check terms agreement
+    const agreeTerms = document.getElementById('agreeTerms');
+    if (!agreeTerms || !agreeTerms.checked) {
+        showNotification('Please agree to the terms and conditions', 'warning');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating Account...';
+
+    try {
+        // Prepare data based on verification type
+        const requestData = {};
+        
+        if (verifyType === 'bvn' || verifyType === 'both') {
+            requestData.bvn = bvn;
+        }
+        
+        if (verifyType === 'nin' || verifyType === 'both') {
+            requestData.nin = nin;
+        }
+
+        const response = await fetch('/api/create-permanent-account/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        // Check content type
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('Non-JSON response:', text);
+            throw new Error('Server returned invalid response. Please try again.');
+        }
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            showNotification('Permanent account created successfully!', 'success');
+            displayPermanentAccount(data);
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            // Handle specific error types
+            if (data.error_type === 'service_unavailable') {
+                showServiceUnavailableError('create-account');
+            } else {
+                showNotification(data.message || 'Failed to create account', 'error');
+            }
+        }
+    } catch (error) {
+        console.error('Error creating permanent account:', error);
+        showNotification('Error: ' + error.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+function displayPermanentAccount(data) {
+    const container = document.getElementById('virtualAccountDetails');
+    if (!container) return;
+
+    const accounts = data.accounts || [];
+    const accountName = data.account_name || 'N/A';
+
+    let bankAccountsHtml = '<div class="row g-3 mb-4">';
+    accounts.forEach(account => {
+        const bankName = account.bankName || account.bank_name || 'Unknown Bank';
+        const accountNumber = account.accountNumber || account.account_number || 'N/A';
+
+        bankAccountsHtml += `
+            <div class="col-md-12">
+                <div class="bank-account-card p-3 border rounded">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1 fw-bold">${bankName}</h6>
+                            <p class="mb-0 text-muted small">Account Number</p>
+                        </div>
+                        <div class="text-end">
+                            <h5 class="mb-1 font-monospace">${accountNumber}</h5>
+                            <button class="btn btn-sm btn-outline-primary" onclick="copyToClipboard(this, '${accountNumber}')">
+                                <i class="bi bi-clipboard"></i> Copy
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    bankAccountsHtml += '</div>';
+
+    const html = `
+        <div class="mb-3">
+            <label class="form-label fw-bold">Account Name</label>
+            <div class="input-group">
+                <input type="text" class="form-control" value="${accountName}" readonly>
+                <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard(this, '${accountName}')">
+                    <i class="bi bi-clipboard"></i>
+                </button>
+            </div>
+        </div>
+
+        <label class="form-label fw-bold mb-2">Your Bank Accounts:</label>
+        ${bankAccountsHtml}
+
+        <div class="alert alert-success">
+            <i class="bi bi-check-circle me-2"></i>
+            <strong>Your permanent account is active!</strong> Use these details anytime to deposit funds.
+        </div>
+    `;
+
+    container.innerHTML = html;
+    container.style.display = 'block';
+}
+
+// ============================================
+// QUICK TRANSFER (ONE-TIME PAYMENT) - FIXED
+// ============================================
+
+async function generateQuickTransferWithAmount(event) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const amountInput = form.querySelector('#quickAmount');
+    const btn = form.querySelector('button[type="submit"]');
+    
+    if (!amountInput || !btn) return;
+    
+    const amount = parseFloat(amountInput.value);
+    
+    // Validate amount
+    if (isNaN(amount) || amount < 100) {
+        showNotification('Please enter a valid amount (minimum ₦100)', 'warning');
+        return;
+    }
+    
+    if (amount > 5000000) {
+        showNotification('Maximum amount per transaction is ₦5,000,000', 'warning');
+        return;
+    }
+    
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Generating...';
+    
+    try {
+        const response = await fetch('/api/generate-quick-transfer/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                amount: amount
+            })
+        });
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('Non-JSON response:', text);
+            throw new Error('Server returned invalid response');
+        }
+        
+        const data = await response.json();
+        
+        if (!response.ok || !data.success) {
+            if (data.error_type === 'service_unavailable') {
+                showServiceUnavailableError('quick-transfer');
+                return;
+            }
+            throw new Error(data.message || 'Failed to generate transfer account');
+        }
+        
+        console.log('Quick transfer generated:', data);
+        
+        // Hide the form
+        document.getElementById('quickTransferAmountForm').style.display = 'none';
+        
+        // Display account details
+        displayQuickTransfer(data);
+        
+        // Show info alert
+        const quickWarning = document.getElementById('quickWarning');
+        if (quickWarning) {
+            quickWarning.style.display = 'block';
+        }
+        
+        // Start polling for this specific transaction
+        if (data.transaction_reference) {
+            MonnifyState.currentTransactionRef = data.transaction_reference;
+            startSpecificPaymentPolling(data.transaction_reference);
+        }
+        
+        showNotification('Transfer account generated successfully!', 'success');
+        
+    } catch (error) {
+        console.error('Error generating quick transfer:', error);
+        showNotification('Error: ' + error.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+function displayQuickTransfer(data) {
+    const container = document.getElementById('quickTransferDetails');
+    if (!container) return;
+    
+    const accounts = data.accounts || [];
+    const accountName = data.account_name || 'N/A';
+    const amount = data.amount || 0;
+    const checkoutUrl = data.checkout_url;
+    const transactionRef = data.transaction_reference || '';
+    
+    let contentHtml = '';
+    
+    // Show amount to transfer prominently
+    contentHtml += `
+        <div class="alert alert-primary text-center mb-4">
+            <h6 class="mb-1">Amount to Transfer</h6>
+            <h2 class="mb-0">₦${parseFloat(amount).toLocaleString('en-NG', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            })}</h2>
+            <small class="text-muted">Transfer exactly this amount</small>
+        </div>
+    `;
+    
+    // If we have bank account details, show them
+    if (accounts.length > 0) {
+        contentHtml += `
+            <div class="mb-3">
+                <label class="form-label fw-bold">Account Name</label>
+                <div class="input-group">
+                    <input type="text" class="form-control bg-light" value="${accountName}" readonly>
+                    <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard(this, '${accountName}')">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+            </div>
+
+            <label class="form-label fw-bold mb-2">Transfer to any of these accounts:</label>
+            <div class="row g-3 mb-4">
+        `;
+        
+        accounts.forEach(account => {
+            const bankName = account.bankName || account.bank_name || 'Unknown Bank';
+            const accountNumber = account.accountNumber || account.account_number || 'N/A';
+
+            contentHtml += `
+                <div class="col-12">
+                    <div class="bank-account-card p-3 border rounded bg-light">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 fw-bold text-primary">
+                                    <i class="bi bi-bank me-2"></i>${bankName}
+                                </h6>
+                                <p class="mb-0 text-muted small">Account Number</p>
+                                <h5 class="mb-0 font-monospace mt-1">${accountNumber}</h5>
+                            </div>
+                            <button class="btn btn-primary btn-sm" onclick="copyToClipboard(this, '${accountNumber}')">
+                                <i class="bi bi-clipboard"></i> Copy
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        contentHtml += '</div>';
+        
+        contentHtml += `
+            <div class="alert alert-success">
+                <i class="bi bi-check-circle me-2"></i>
+                <strong>Instructions:</strong>
+                <ol class="mb-0 mt-2 ps-3">
+                    <li>Copy the account number above</li>
+                    <li>Open your banking app</li>
+                    <li>Transfer exactly <strong>₦${parseFloat(amount).toLocaleString()}</strong></li>
+                    <li>Your wallet will be credited instantly!</li>
+                </ol>
+            </div>
+        `;
+    }
+    
+    // Always show checkout option if URL is available
+    if (checkoutUrl) {
+        if (accounts.length > 0) {
+            contentHtml += '<div class="text-center my-3"><strong>OR</strong></div>';
+        }
+        
+        contentHtml += `
+            <div class="card border-primary mb-3">
+                <div class="card-body text-center">
+                    <i class="bi bi-credit-card text-primary" style="font-size: 2rem;"></i>
+                    <h6 class="mt-2 mb-3">Pay with Card or USSD</h6>
+                    <a href="${checkoutUrl}" target="_blank" class="btn btn-primary btn-lg w-100">
+                        <i class="bi bi-box-arrow-up-right me-2"></i>
+                        Open Payment Page
+                    </a>
+                    <p class="text-muted small mt-2 mb-0">
+                        Secure checkout with multiple payment options
+                    </p>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Waiting for payment alert with timeout info
+    contentHtml += `
+        <div class="alert alert-warning" id="paymentWaitingAlert">
+            <div class="d-flex align-items-center">
+                <div class="spinner-border spinner-border-sm me-2" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <div>
+                    <strong>Waiting for payment...</strong>
+                    <p class="mb-0 small">We'll automatically detect when your payment is completed.</p>
+                    <p class="mb-0 small text-muted">This account expires in 40 minutes.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="d-grid gap-2">
+            <button class="btn btn-outline-secondary" onclick="resetQuickTransfer()">
+                <i class="bi bi-arrow-left me-2"></i>Generate New Account
+            </button>
+        </div>
+    `;
+
+    container.innerHTML = contentHtml;
+    container.style.display = 'block';
+}
+
+function resetQuickTransfer() {
+    // Stop polling
+    stopAllPolling();
+    
+    // Clear transaction ref
+    MonnifyState.currentTransactionRef = null;
+    
+    // Show form again
+    document.getElementById('quickTransferAmountForm').style.display = 'block';
+    document.getElementById('quickTransferDetails').style.display = 'none';
+    const quickWarning = document.getElementById('quickWarning');
+    if (quickWarning) {
+        quickWarning.style.display = 'none';
+    }
+    
+    // Clear amount input
+    const amountInput = document.getElementById('quickAmount');
+    if (amountInput) {
+        amountInput.value = '';
+    }
+    
+    // Restart general payment check
+    startGeneralPaymentCheck();
+}
+
+// ============================================
+// PAYMENT POLLING - FIXED VERSION
+// ============================================
+
+function startGeneralPaymentCheck() {
+    // Stop any existing polling first
+    stopAllPolling();
+
+    console.log('Starting general payment check...');
+    
+    MonnifyState.paymentCheckInterval = setInterval(async () => {
+        try {
+            const response = await fetch('/api/check-payment-status/', {
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+
+            if (!response.ok) return;
+
+            const data = await response.json();
+
+            if (data.success && data.payment_received) {
+                handlePaymentReceived(data);
+            }
+        } catch (error) {
+            console.error('Error checking payment:', error);
+        }
+    }, 5000); // Check every 5 seconds
+}
+
+function startSpecificPaymentPolling(transactionRef) {
+    // Stop all existing polling
+    stopAllPolling();
+    
+    MonnifyState.pollStartTime = Date.now();
+    MonnifyState.pollCount = 0;
+    const maxPolls = 480; // 40 minutes (5 seconds * 480 = 2400 seconds = 40 minutes)
+    
+    console.log('Starting payment polling for:', transactionRef);
+    console.log('Will poll for maximum 40 minutes');
+    
+    MonnifyState.pollingInterval = setInterval(async () => {
+        MonnifyState.pollCount++;
+        const elapsedMinutes = Math.floor((Date.now() - MonnifyState.pollStartTime) / 60000);
+        
+        console.log(`Poll #${MonnifyState.pollCount} - ${elapsedMinutes} minutes elapsed`);
+        
+        try {
+            const response = await fetch(`/api/check-payment-status/?ref=${transactionRef}`, {
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+            
+            if (!response.ok) {
+                console.warn('Payment check response not OK:', response.status);
+                return;
+            }
+            
+            const data = await response.json();
+            
+            if (data.success && data.payment_received) {
+                console.log('Payment received! Stopping polling.');
+                stopAllPolling();
+                handlePaymentReceived(data);
+                return;
+            }
+            
+            // Check if we've reached the timeout (40 minutes)
+            if (MonnifyState.pollCount >= maxPolls) {
+                console.log('Payment polling timeout after 40 minutes');
+                stopAllPolling();
+                handlePollingTimeout();
+                return;
+            }
+            
+        } catch (error) {
+            console.error('Polling error:', error);
+        }
+    }, 5000); // Poll every 5 seconds
+}
+
+function stopAllPolling() {
+    console.log('Stopping all polling intervals');
+    
+    if (MonnifyState.paymentCheckInterval) {
+        clearInterval(MonnifyState.paymentCheckInterval);
+        MonnifyState.paymentCheckInterval = null;
+    }
+    
+    if (MonnifyState.pollingInterval) {
+        clearInterval(MonnifyState.pollingInterval);
+        MonnifyState.pollingInterval = null;
+    }
+    
+    MonnifyState.pollCount = 0;
+    MonnifyState.pollStartTime = null;
+}
+
+function handlePollingTimeout() {
+    const waitingAlert = document.getElementById('paymentWaitingAlert');
+    if (waitingAlert) {
+        waitingAlert.className = 'alert alert-danger';
+        waitingAlert.innerHTML = `
+            <div>
+                <strong><i class="bi bi-exclamation-triangle me-2"></i>Payment window expired</strong>
+                <p class="mb-0 small mt-2">
+                    The temporary account has expired after 40 minutes. 
+                    If you made a payment, please contact support or wait a few minutes and refresh the page.
+                </p>
+                <button class="btn btn-sm btn-outline-danger mt-2" onclick="resetQuickTransfer()">
+                    Generate New Account
+                </button>
+            </div>
+        `;
+    }
+    
+    showNotification(
+        'Payment window expired. The temporary account is no longer active. Please generate a new one if needed.',
+        'warning'
+    );
+    
+    // Optionally restart general polling
+    setTimeout(() => {
+        startGeneralPaymentCheck();
+    }, 2000);
+}
+
+function handlePaymentReceived(data) {
+    console.log('Payment received:', data);
+    
+    // Stop all polling
+    stopAllPolling();
+
+    const amount = parseFloat(data.amount || 0);
+    const newBalance = parseFloat(data.new_balance || 0);
+
+    // Update balance display if element exists
+    const balanceElement = document.getElementById('currentBalance');
+    if (balanceElement) {
+        balanceElement.textContent = `₦${newBalance.toLocaleString('en-NG', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
+        })}`;
+    }
+
+    // Hide waiting alert if exists
+    const waitingAlert = document.getElementById('paymentWaitingAlert');
+    if (waitingAlert) {
+        waitingAlert.className = 'alert alert-success';
+        waitingAlert.innerHTML = `
+            <i class="bi bi-check-circle-fill me-2"></i>
+            <strong>Payment Received!</strong>
+            <p class="mb-0 small">Your account has been credited with ₦${amount.toLocaleString()}</p>
+        `;
+    }
+
+    // Show success notification
+    showNotification(
+        `Payment of ₦${amount.toLocaleString()} received successfully! New balance: ₦${newBalance.toLocaleString()}`,
+        'success'
+    );
+
+    // Show toast if element exists
+    const toastAmountElement = document.getElementById('toastAmount');
+    if (toastAmountElement) {
+        toastAmountElement.textContent = `₦${amount.toLocaleString('en-NG', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
+        })}`;
+        
+        const toastElement = document.getElementById('paymentToast');
+        if (toastElement && typeof bootstrap !== 'undefined') {
+            const toast = new bootstrap.Toast(toastElement);
+            toast.show();
+        }
+    }
+
+    // Reload page after 3 seconds
+    setTimeout(() => {
+        location.reload();
+    }, 3000);
+}
+
+// ============================================
+// ERROR HANDLING
+// ============================================
+
+function showServiceUnavailableError(context) {
+    const errorHtml = `
+        <div class="service-error-card">
+            <i class="bi bi-exclamation-triangle text-warning" style="font-size: 3rem;"></i>
+            <h5 class="mt-3 mb-2">Payment Service Temporarily Unavailable</h5>
+            <p class="text-muted mb-3">
+                The Monnify payment service is currently experiencing issues. 
+                This is usually temporary and should be resolved shortly.
+            </p>
+            <button class="btn btn-warning retry-btn" onclick="location.reload()">
+                <i class="bi bi-arrow-clockwise me-2"></i>Try Again
+            </button>
+            <p class="text-muted small mt-3 mb-0">
+                If the problem persists, please contact support or try again later.
+            </p>
+        </div>
+    `;
+    
+    if (context === 'create-account') {
+        const container = document.getElementById('virtualAccountDetails');
+        if (container) {
+            container.innerHTML = errorHtml;
+            container.style.display = 'block';
+        }
+    } else if (context === 'quick-transfer') {
+        const container = document.getElementById('quickTransferDetails');
+        if (container) {
+            container.innerHTML = errorHtml;
+            container.style.display = 'block';
+        }
+        document.getElementById('quickTransferAmountForm').style.display = 'none';
+    }
+    
+    showNotification('Payment service temporarily unavailable. Please try again in a few minutes.', 'warning');
+}
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+function copyToClipboard(button, text) {
+    if (!navigator.clipboard) {
+        // Fallback for older browsers
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+            document.execCommand('copy');
+            showCopySuccess(button);
+        } catch (err) {
+            console.error('Failed to copy:', err);
+            showNotification('Failed to copy to clipboard', 'error');
+        }
+        document.body.removeChild(textarea);
+        return;
+    }
+
+    navigator.clipboard.writeText(text).then(() => {
+        showCopySuccess(button);
+        showNotification('Copied to clipboard!', 'success');
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+        showNotification('Failed to copy to clipboard', 'error');
+    });
+}
+
+function showCopySuccess(button) {
+    const originalHtml = button.innerHTML;
+    const originalClass = button.className;
+    
+    button.innerHTML = '<i class="bi bi-check-circle-fill"></i> Copied!';
+    button.classList.remove('btn-outline-secondary', 'btn-outline-primary');
+    button.classList.add('btn-success');
+    button.disabled = true;
+
+    setTimeout(() => {
+        button.innerHTML = originalHtml;
+        button.className = originalClass;
+        button.disabled = false;
+    }, 2000);
+}
+
+function validateBVN(bvn) {
+    return /^[0-9]{11}$/.test(bvn);
+}
+
+function validateNIN(nin) {
+    return /^[0-9]{11}$/.test(nin);
+}
+
+function showNotification(message, type = 'info') {
+    const alertClass = type === 'error' ? 'alert-danger' : `alert-${type}`;
+    const iconMap = {
+        'success': 'check-circle-fill',
+        'error': 'x-circle-fill',
+        'warning': 'exclamation-triangle-fill',
+        'info': 'info-circle-fill'
+    };
+    const iconClass = iconMap[type] || 'info-circle-fill';
+
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert ${alertClass} alert-dismissible fade show`;
+    alertDiv.setAttribute('role', 'alert');
+    alertDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 300px;
+        max-width: 500px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        animation: slideInRight 0.3s ease-out;
+    `;
+
+    alertDiv.innerHTML = `
+        <i class="bi bi-${iconClass} me-2"></i>${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+
+    document.body.appendChild(alertDiv);
+
+    setTimeout(() => {
+        if (alertDiv.parentElement) {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Alert) {
+                const bsAlert = new bootstrap.Alert(alertDiv);
+                bsAlert.close();
+            } else {
+                alertDiv.remove();
+            }
+        }
+    }, 5000);
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function cleanupIntervals() {
+    if (MonnifyState.paymentCheckInterval) {
+        clearInterval(MonnifyState.paymentCheckInterval);
+    }
+    if (MonnifyState.pollingInterval) {
+        clearInterval(MonnifyState.pollingInterval);
+    }
+}
+
+// Add animation styles
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}
+
+{% block 'Footer' %}{% endblock %}

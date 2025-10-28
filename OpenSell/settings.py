@@ -25,7 +25,14 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
+ALLOWED_HOSTS = [
+    
+    'waldo-edaphic-rodger.ngrok-free.dev',
+    '.ngrok-free.app',
+    '.ngrok.io',
+] + os.environ.get('ALLOWED_HOSTS', '').split(',') if os.environ.get('ALLOWED_HOSTS') else []
+
+SECURE_SSL_REDIRECT = False
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
@@ -61,6 +68,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'User.apps.UserConfig',
     'Home.apps.HomeConfig',
+    'BuyerRequest.apps.BuyerRequestConfig',
+    'Services.apps.ServicesConfig',
     'Messages',
     'Notifications',
     'Dashboard',
@@ -327,6 +336,7 @@ LOGGING = {
         },
     },
 }
+
 if DEBUG:
     LOGGING = {
         'version': 1,
@@ -527,3 +537,18 @@ else:
 COMPRESS_PRECOMPILERS = ()
 COMPRESS_ROOT = STATIC_ROOT
 COMPRESS_URL = STATIC_URL
+
+# Monnify API Credentials
+MONNIFY_API_KEY = os.getenv('MONNIFY_API_KEY')
+MONNIFY_SECRET_KEY = os.getenv('MONNIFY_SECRET_KEY')
+MONNIFY_CONTRACT_CODE = os.getenv('MONNIFY_CONTRACT_CODE')
+
+# Base URL (sandbox for testing, live for production)
+MONNIFY_BASE_URL = os.getenv('MONNIFY_BASE_URL')
+
+# Webhook Configuration
+MONNIFY_WEBHOOK_SECRET = MONNIFY_SECRET_KEY 
+MONNIFY_AUTO_PROCESS_PAYMENTS = True
+MONNIFY_SEND_EMAIL_NOTIFICATIONS = True
+
+SITE_URL = 'http://127.0.0.1:8000'

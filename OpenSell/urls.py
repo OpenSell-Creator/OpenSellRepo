@@ -33,6 +33,8 @@ sitemaps = {
 urlpatterns = [
     path('controlroom/', admin.site.urls),
     path('', include('Home.urls')),
+    path('', include('BuyerRequest.urls')),
+    path('', include('Services.urls')),
     path('', include('User.urls')),
     path('', include('Messages.urls')),
     path('', include('Notifications.urls')),

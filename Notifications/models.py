@@ -156,8 +156,8 @@ class NotificationPreference(models.Model):
         return preferences
 
 def create_notification(user, title, message, category=NotificationCategory.ANNOUNCEMENT, 
-                       content_object=None, priority=NotificationPriority.NORMAL, 
-                       action_url=None, action_text=None):
+                        content_object=None, priority=NotificationPriority.NORMAL, 
+                        action_url=None, action_text=None):
     """
     Utility function to create notifications
     

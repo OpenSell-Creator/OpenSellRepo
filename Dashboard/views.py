@@ -6,13 +6,15 @@ from datetime import timedelta, datetime
 from django.db.models import Sum, Count, Q, Avg
 from decimal import Decimal
 from django.http import JsonResponse, HttpResponse
+from django.views.decorators.http import require_http_methods
 from django.core.paginator import Paginator
 from django.urls import reverse
-import csv
-import logging
-
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
 from .models import UserAccount, Transaction, ProductBoost, AccountStatus
 from Home.models import Product_Listing
+from .models import VirtualAccount, MonnifyTransaction
+from .monnify_service import monnify_service
 from .forms import DepositForm, BoostProductForm
 from django.contrib.admin.views.decorators import staff_member_required
 from django_q.models import Task, Schedule
@@ -21,6 +23,9 @@ from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.conf import settings
 from django.utils.html import strip_tags
+import csv
+import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -402,48 +407,6 @@ def transaction_history(request):
     }
     
     return render(request, 'dashboard/transaction_history.html', context)
-
-@login_required
-def deposit_funds(request):
-    """Enhanced deposit funds view with better UX"""
-    if request.method == 'POST':
-        form = DepositForm(request.POST)
-        if form.is_valid():
-            amount = form.cleaned_data['amount']
-            
-            # Here you would typically integrate with a payment gateway
-            # For now, we'll just add the funds directly (for demo purposes)
-            try:
-                request.user.account.add_funds(amount)
-                
-                # Create transaction record
-                Transaction.objects.create(
-                    account=request.user.account,
-                    transaction_type='deposit',
-                    amount=amount,
-                    balance_after=request.user.account.balance,
-                    reference=f"DEP-{timezone.now().strftime('%Y%m%d%H%M%S')}"
-                )
-                
-                messages.success(request, f"Successfully added ₦{amount:,.0f} to your account!")
-                return redirect('dashboard_home')
-            except Exception as e:
-                messages.error(request, f"Error processing deposit: {str(e)}")
-    else:
-        form = DepositForm()
-    
-    # Get recent deposits for history section
-    recent_deposits = Transaction.objects.filter(
-        account=request.user.account,
-        transaction_type='deposit'
-    ).order_by('-created_at')[:5]
-    
-    context = {
-        'form': form,
-        'recent_deposits': recent_deposits,
-    }
-    
-    return render(request, 'dashboard/deposit_funds.html', context)
 
 @login_required
 def subscription_management(request):
@@ -897,3 +860,403 @@ def deactivate_expired_boosts():
         
     except Exception as e:
         logger.error(f"Error deactivating expired boosts: {str(e)}")
+        
+@login_required
+def deposit_funds_monnify(request):
+    """
+    FIXED: Deposit view with correct Monnify implementation
+    - Reserved accounts are PERMANENT (not temporary)
+    - One-time payments use init-payment API (different from reserved accounts)
+    """
+    account = request.user.account
+    
+    # Get user's permanent virtual accounts (can be multiple banks)
+    # FIXED: Removed the incorrect prefetch_related('accounts')
+    virtual_accounts = VirtualAccount.objects.filter(
+        user_account=account,
+        status='active'
+    ).order_by('bank_name')  # Order by bank name for consistency
+    
+    # Get recent Monnify transactions
+    recent_monnify_transactions = MonnifyTransaction.objects.filter(
+        user_account=account,
+        payment_status='PAID'
+    ).select_related('virtual_account').order_by('-paid_on')[:5]
+    
+    context = {
+        'account': account,
+        'virtual_accounts': virtual_accounts,  # Changed from singular to plural
+        'has_virtual_account': virtual_accounts.exists(),  # Helper boolean
+        'recent_transactions': recent_monnify_transactions,
+        'monnify_enabled': True,
+    }
+    
+    return render(request, 'dashboard/deposit_monnify.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def create_permanent_virtual_account(request):
+    """Create permanent reserved account - KYC REQUIRED by CBN"""
+    try:
+        logger.info("=== CREATE PERMANENT ACCOUNT REQUEST ===")
+        
+        account = request.user.account
+        
+        # Check for existing account
+        existing_va = VirtualAccount.objects.filter(
+            user_account=account,
+            status='active'
+        ).first()
+        
+        if existing_va:
+            return JsonResponse({
+                'success': False,
+                'message': 'You already have an active virtual account'
+            }, status=400)
+        
+        # Parse request data
+        try:
+            if request.content_type and 'application/json' in request.content_type:
+                data = json.loads(request.body)
+                bvn = data.get('bvn') or None
+                nin = data.get('nin') or None
+            else:
+                bvn = request.POST.get('bvn') or None
+                nin = request.POST.get('nin') or None
+            
+            # Clean data
+            if bvn:
+                bvn = bvn.strip()
+            if nin:
+                nin = nin.strip()
+            
+            # CRITICAL: BVN or NIN is now REQUIRED by CBN regulation
+            if not bvn and not nin:
+                logger.warning("Account creation attempted without KYC")
+                return JsonResponse({
+                    'success': False,
+                    'message': 'BVN or NIN is required for account creation (CBN regulation). Please provide at least one.',
+                    'error_type': 'kyc_required'
+                }, status=400)
+            
+            # Validate format
+            if bvn and (not bvn.isdigit() or len(bvn) != 11):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Invalid BVN format. Must be 11 digits'
+                }, status=400)
+            
+            if nin and (not nin.isdigit() or len(nin) != 11):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Invalid NIN format. Must be 11 digits'
+                }, status=400)
+            
+            logger.info(f"KYC provided: BVN={bool(bvn)}, NIN={bool(nin)}")
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error: {e}")
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid request data format'
+            }, status=400)
+        
+        # Call Monnify service with KYC
+        logger.info("Calling Monnify service with KYC data...")
+        result = monnify_service.create_reserved_account(account, bvn=bvn, nin=nin)
+        
+        if not result:
+            logger.error("Monnify service returned None")
+            return JsonResponse({
+                'success': False,
+                'message': 'Payment service is temporarily unavailable. Please try again in a few minutes.',
+                'error_type': 'service_unavailable'
+            }, status=503)
+        
+        # Validate and save accounts
+        if not result.get('accounts'):
+            logger.error(f"No accounts in result")
+            return JsonResponse({
+                'success': False,
+                'message': 'Unable to create account details. Please try again.'
+            }, status=500)
+        
+        # Save to database
+        accounts_data = []
+        for bank_account in result['accounts']:
+            account_number = bank_account.get('accountNumber') or bank_account.get('account_number')
+            bank_name = bank_account.get('bankName') or bank_account.get('bank_name')
+            bank_code = bank_account.get('bankCode') or bank_account.get('bank_code')
+            
+            if not all([account_number, bank_name, bank_code]):
+                continue
+            
+            VirtualAccount.objects.create(
+                user_account=account,
+                account_reference=result['account_reference'],
+                account_name=result['account_name'],
+                account_number=account_number,
+                bank_name=bank_name,
+                bank_code=bank_code,
+                status='active',
+                bvn=bvn,
+                nin=nin,
+                kyc_verified=True,  # Always true when KYC provided
+                kyc_verified_at=timezone.now(),
+                monnify_response=result.get('monnify_response', {})
+            )
+            
+            accounts_data.append({
+                'bank_name': bank_name,
+                'account_number': account_number,
+                'bank_code': bank_code
+            })
+        
+        logger.info(f"SUCCESS: Created {len(accounts_data)} virtual accounts with KYC")
+        
+        return JsonResponse({
+            'success': True,
+            'account_reference': result['account_reference'],
+            'account_name': result['account_name'],
+            'accounts': accounts_data,
+            'message': 'Permanent virtual account created successfully'
+        })
+        
+    except Exception as e:
+        logger.error("UNEXPECTED ERROR", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'message': 'An unexpected error occurred. Please try again later.'
+        }, status=500)
+
+@login_required
+@require_http_methods(["POST"])
+def generate_reserved_account(request):
+    """
+    Generate one-time payment account with user-specified amount
+    """
+    try:
+        account = request.user.account
+        
+        # Parse request body
+        try:
+            data = json.loads(request.body) if request.body else {}
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid request data'
+            }, status=400)
+        
+        # Get amount from request
+        amount = data.get('amount')
+        
+        if not amount:
+            return JsonResponse({
+                'success': False,
+                'message': 'Amount is required'
+            }, status=400)
+        
+        # Validate amount
+        try:
+            amount = float(amount)
+        except (ValueError, TypeError):
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid amount format'
+            }, status=400)
+        
+        if amount < 100:
+            return JsonResponse({
+                'success': False,
+                'message': 'Minimum amount is ₦100'
+            }, status=400)
+        
+        if amount > 5000000:
+            return JsonResponse({
+                'success': False,
+                'message': 'Maximum amount is ₦5,000,000 per transaction'
+            }, status=400)
+        
+        logger.info(f"Generating quick transfer for {account.user.username} - Amount: ₦{amount}")
+        
+        # Generate one-time payment
+        result = monnify_service.init_one_time_payment(account, amount=amount)
+        
+        if not result:
+            logger.error("Failed to generate one-time payment")
+            return JsonResponse({
+                'success': False,
+                'message': 'Payment service is temporarily unavailable. Please try again in a few minutes.',
+                'error_type': 'service_unavailable'
+            }, status=503)
+        
+        logger.info(
+            f"One-time payment created - Ref: {result['transaction_reference']} - Amount: ₦{amount}"
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'transaction_reference': result['transaction_reference'],
+            'payment_reference': result['payment_reference'],
+            'checkout_url': result.get('checkout_url'),
+            'account_name': result['account_name'],
+            'accounts': result['accounts'],
+            'amount': result['amount'],
+            'message': f'Payment account generated for ₦{amount:,.2f}'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error generating one-time payment: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'message': 'An error occurred. Please try again later.'
+        }, status=500)
+
+@require_http_methods(["GET", "POST"])
+def test_json_response(request):
+    """Test endpoint to verify JSON responses work"""
+    return JsonResponse({
+        'success': True,
+        'message': 'JSON endpoint working!',
+        'method': request.method,
+        'path': request.path
+    })
+
+
+@login_required
+def check_payment_status(request, transaction_reference=None):
+    """
+    AJAX endpoint to check payment status
+    Polls for recent payments
+    """
+    try:
+        account = request.user.account
+        
+        if transaction_reference:
+            # Check specific transaction
+            monnify_transaction = MonnifyTransaction.objects.filter(
+                transaction_reference=transaction_reference,
+                user_account=account
+            ).first()
+            
+            if monnify_transaction:
+                return JsonResponse({
+                    'success': True,
+                    'payment_received': True,
+                    'status': monnify_transaction.payment_status,
+                    'amount': float(monnify_transaction.amount_paid),
+                    'processed': monnify_transaction.credited_to_account,
+                    'paid_on': monnify_transaction.paid_on.isoformat(),
+                    'transaction_ref': monnify_transaction.transaction_reference,
+                    'new_balance': float(account.balance)
+                })
+            
+            # Query Monnify API if not found locally
+            result = monnify_service.get_transaction_status(transaction_reference)
+            
+            if result:
+                return JsonResponse({
+                    'success': True,
+                    'payment_received': False,
+                    'status': result.get('paymentStatus'),
+                    'amount': float(result.get('amountPaid', 0)),
+                    'processed': False,
+                    'message': 'Transaction found but not yet processed'
+                })
+            
+            return JsonResponse({
+                'success': False,
+                'payment_received': False,
+                'message': 'Transaction not found'
+            }, status=404)
+        
+        else:
+            # Check for any recent payments (polling mode)
+            recent_transaction = MonnifyTransaction.objects.filter(
+                user_account=account,
+                paid_on__gte=timezone.now() - timedelta(minutes=5),
+                payment_status='PAID',
+                credited_to_account=True
+            ).order_by('-paid_on').first()
+            
+            if recent_transaction:
+                return JsonResponse({
+                    'success': True,
+                    'payment_received': True,
+                    'amount': float(recent_transaction.amount_paid),
+                    'transaction_ref': recent_transaction.transaction_reference,
+                    'paid_on': recent_transaction.paid_on.isoformat(),
+                    'new_balance': float(account.balance)
+                })
+            else:
+                return JsonResponse({
+                    'success': True,
+                    'payment_received': False,
+                    'current_balance': float(account.balance)
+                })
+        
+    except Exception as e:
+        logger.error(f"Error checking payment status: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'message': 'Error checking payment status'
+        }, status=500)
+
+
+@login_required
+def get_virtual_account_info(request):
+    """
+    AJAX endpoint to get user's virtual account information
+    """
+    try:
+        account = request.user.account
+        
+        # Get all virtual accounts (there can be multiple banks)
+        virtual_accounts = VirtualAccount.objects.filter(
+            user_account=account,
+            status='active'
+        )
+        
+        response_data = {
+            'success': True,
+            'has_account': virtual_accounts.exists(),
+        }
+        
+        if virtual_accounts.exists():
+            accounts_list = []
+            first_account = virtual_accounts.first()
+            
+            for va in virtual_accounts:
+                accounts_list.append({
+                    'account_name': va.account_name,
+                    'account_number': va.account_number,
+                    'bank_name': va.bank_name,
+                    'bank_code': va.bank_code,
+                })
+            
+            response_data['accounts'] = accounts_list
+            response_data['account_reference'] = first_account.account_reference
+            response_data['kyc_verified'] = first_account.kyc_verified
+        
+        return JsonResponse(response_data)
+        
+    except Exception as e:
+        logger.error(f"Error getting virtual account info: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'message': 'Error retrieving account information'
+        }, status=500)
+        
+@require_http_methods(["GET"])
+def test_monnify_connection(request):
+    try:
+        success = monnify_service.authenticate()
+        return JsonResponse({
+            'monnify_reachable': success,
+            'base_url': monnify_service.base_url
+        })
+    except Exception as e:
+        return JsonResponse({
+            'error': str(e)
+        }, status=500)
