@@ -10,6 +10,7 @@
     {
         "account_reference": "{{ virtual_accounts.first.account_reference }}",
         "account_name": "{{ virtual_accounts.first.account_name }}",
+        "user_id": "{{ request.user.id }}",
         "accounts": [
             {% for va in virtual_accounts %}
             {
@@ -26,18 +27,43 @@
     <div class="row g-4">
         <div class="col-lg-8">
             <div class="card border-0 shadow-sm mb-3">
-                <div class="card-header bg-primary text-white py-3">
-                    <h5 class="mb-0"><i class="bi bi-wallet2 me-2"></i>Fund Your Account</h5>
+                <div class="card-header py-3" style="background-color: var(--primary-color);">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold text-white" style="font-size: 1.35rem;">
+                            <i class="bi bi-wallet2 me-2"></i>Fund Your Account
+                        </h5>
+                        <a href="{% url 'dashboard_home' %}" class="btn btn-light btn-sm">
+                            <i class="bi bi-arrow-left me-1"></i>Back
+                        </a>
+                    </div>
                 </div>
             </div>
 
             <div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;"></div>
 
             {% if has_virtual_account %}
+                <!-- Active Transfer Alert (when modal is closed) -->
+                <div id="activeTransferAlert" class="card border-0 shadow-sm mb-3" style="display: none;">
+                    <div class="card-body p-3" style="background-color: var(--warning); border-radius: 0.375rem;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-lightning-charge-fill text-dark" style="font-size: 1.5rem;"></i>
+                                <div>
+                                    <div class="fw-bold text-dark">Active Transfer in Progress</div>
+                                    <small class="text-dark" style="opacity: 0.8;">Expires in: <span id="alertCountdown" class="fw-semibold">--:--</span></small>
+                                </div>
+                            </div>
+                            <button class="btn btn-dark btn-sm" onclick="reopenAccountModal()">
+                                <i class="bi bi-eye me-1"></i>View Details
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="card border-0 shadow-sm mb-3">
-                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center py-3">
-                        <h6 class="mb-0"><i class="bi bi-bank2 me-2"></i>Your Permanent Account</h6>
-                        <span class="badge bg-light text-success">Active</span>
+                    <div class="card-header d-flex justify-content-between align-items-center py-3" style="background-color: var(--success);">
+                        <h6 class="mb-0 text-white"><i class="bi bi-bank2 me-2"></i>Your Permanent Account</h6>
+                        <span class="badge bg-light" style="color: var(--success);">Active</span>
                     </div>
                     <div class="card-body p-4">
                         <div class="mb-3">
@@ -47,21 +73,22 @@
 
                         <label class="form-label text-muted small fw-bold mb-2">TRANSFER TO ANY BANK</label>
                         {% for va in virtual_accounts %}
-                        <div class="bank-card p-3 rounded mb-2">
-                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div class="bank-card-custom p-3 rounded mb-2">
+                            <div class="d-flex justify-content-between align-items-center gap-3">
                                 <div class="flex-grow-1 min-w-0">
-                                    <h6 class="mb-1 fw-bold text-body text-truncate">{{ va.bank_name }}</h6>
-                                    <h5 class="mb-0 font-monospace text-primary">{{ va.account_number }}</h5>
+                                    <h6 class="mb-2 fw-bold bank-name-text">{{ va.bank_name }}</h6>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <h5 class="mb-0 font-monospace account-number-text">{{ va.account_number }}</h5>
+                                        <button class="btn-copy-custom" onclick="copyText(this, '{{ va.account_number }}')">
+                                            <i class="bi bi-copy"></i>
+                                        </button>
+                                    </div>
                                 </div>
-                                <button class="btn btn-primary btn-sm flex-shrink-0" onclick="copyText(this, '{{ va.account_number }}')">
-                                    <i class="bi bi-clipboard d-sm-none"></i>
-                                    <span class="d-none d-sm-inline"><i class="bi bi-clipboard me-1"></i>Copy</span>
-                                </button>
                             </div>
                         </div>
                         {% endfor %}
 
-                        <div class="alert alert-light border mb-0 mt-3">
+                        <div class="deposit-alert deposit-alert-light border mb-0 mt-3">
                             <small class="text-body-secondary">
                                 <i class="bi bi-info-circle me-1"></i>
                                 Transfer any amount to credit your wallet instantly
@@ -73,7 +100,7 @@
                 <div class="card border-0 shadow-sm">
                     <div class="card-header bg-body-secondary py-3" role="button" data-bs-toggle="collapse" data-bs-target="#oneTimeSection">
                         <h6 class="mb-0">
-                            <i class="bi bi-lightning-charge-fill text-warning me-1"></i>One-Time Transfer
+                            <i class="bi bi-lightning-charge-fill me-1" style="color: var(--warning);"></i>One-Time Transfer
                             <i class="bi bi-chevron-down float-end"></i>
                         </h6>
                     </div>
@@ -82,15 +109,29 @@
                             <div id="quickTransferForm">
                                 <p class="text-muted small mb-3">Generate temporary account for single deposit</p>
                                 <form onsubmit="generateQuickTransfer(event)">
-                                    <div class="input-group mb-2">
-                                        <span class="input-group-text">₦</span>
-                                        <input type="number" class="form-control" id="quickAmount" name="amount" 
-                                               min="100" max="5000000" step="100" placeholder="Enter amount" required>
-                                        <button type="submit" class="btn btn-warning" id="generateBtn">
-                                            <i class="bi bi-lightning-charge-fill me-1"></i>Generate
-                                        </button>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-semibold">Enter Amount</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white">₦</span>
+                                            <input type="number" class="form-control custom-input" id="quickAmount" name="amount" 
+                                                   min="100" max="5000000" step="100" placeholder="0.00" required>
+                                        </div>
+                                        <small class="text-muted d-block mt-1">Min: ₦100 | Max: ₦5,000,000</small>
                                     </div>
-                                    <small class="text-muted">Min: ₦100 | Max: ₦5,000,000</small>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-semibold">Quick Select</label>
+                                        <div class="d-flex gap-2 flex-wrap">
+                                            <button type="button" class="btn btn-outline-primary quick-amount-btn" onclick="setQuickAmount(1000)">₦1,000</button>
+                                            <button type="button" class="btn btn-outline-primary quick-amount-btn" onclick="setQuickAmount(2000)">₦2,000</button>
+                                            <button type="button" class="btn btn-outline-primary quick-amount-btn" onclick="setQuickAmount(5000)">₦5,000</button>
+                                            <button type="button" class="btn btn-outline-primary quick-amount-btn" onclick="setQuickAmount(10000)">₦10,000</button>
+                                        </div>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn w-100" id="generateBtn" style="background-color: var(--warning); color: var(--dark-text-primary); border: none;">
+                                        <i class="bi bi-lightning-charge-fill me-1"></i>Generate Transfer Account
+                                    </button>
                                 </form>
                             </div>
                             <div id="quickTransferDetails" style="display: none;"></div>
@@ -101,20 +142,34 @@
             {% else %}
                 <div class="card border-0 shadow-sm mb-3">
                     <div class="card-body p-4">
-                        <h6 class="mb-3"><i class="bi bi-lightning-charge-fill text-warning me-2"></i>Quick Transfer</h6>
+                        <h6 class="mb-3"><i class="bi bi-lightning-charge-fill me-2" style="color: var(--warning);"></i>Quick Transfer</h6>
                         <p class="text-muted small mb-3">Generate temporary account for single deposit</p>
                         
                         <div id="quickTransferForm">
                             <form onsubmit="generateQuickTransfer(event)">
-                                <div class="input-group input-group-lg mb-2">
-                                    <span class="input-group-text">₦</span>
-                                    <input type="number" class="form-control" id="quickAmount" name="amount" 
-                                           min="100" max="5000000" step="100" placeholder="Enter amount" required>
-                                    <button type="submit" class="btn btn-warning" id="generateBtn">
-                                        <i class="bi bi-lightning-charge-fill me-1"></i>Generate
-                                    </button>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Enter Amount</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-white">₦</span>
+                                        <input type="number" class="form-control custom-input" id="quickAmount" name="amount" 
+                                               min="100" max="5000000" step="100" placeholder="0.00" required>
+                                    </div>
+                                    <small class="text-muted d-block mt-1">Min: ₦100 | Max: ₦5,000,000</small>
                                 </div>
-                                <small class="text-muted">Min: ₦100 | Max: ₦5,000,000</small>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Quick Select</label>
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <button type="button" class="btn btn-outline-primary quick-amount-btn" onclick="setQuickAmount(1000)">₦1,000</button>
+                                        <button type="button" class="btn btn-outline-primary quick-amount-btn" onclick="setQuickAmount(2000)">₦2,000</button>
+                                        <button type="button" class="btn btn-outline-primary quick-amount-btn" onclick="setQuickAmount(5000)">₦5,000</button>
+                                        <button type="button" class="btn btn-outline-primary quick-amount-btn" onclick="setQuickAmount(10000)">₦10,000</button>
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" class="btn w-100" id="generateBtn" style="background-color: var(--warning); color: var(--dark-text-primary); border: none;">
+                                    <i class="bi bi-lightning-charge-fill me-1"></i>Generate Transfer Account
+                                </button>
                             </form>
                         </div>
                         <div id="quickTransferDetails" style="display: none;"></div>
@@ -125,14 +180,14 @@
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between align-items-start mb-3">
                             <h6 class="mb-0">
-                                <i class="bi bi-bank2 text-primary me-2"></i>Permanent Account
+                                <i class="bi bi-bank2 me-2" style="color: var(--primary-color);"></i>Permanent Account
                             </h6>
-                            <span class="badge bg-primary">Recommended</span>
+                            <span class="badge" style="background-color: var(--primary-color);">Recommended</span>
                         </div>
                         <ul class="list-unstyled mb-3 small">
-                            <li class="mb-1"><i class="bi bi-check-circle-fill text-success me-2"></i>One-time setup</li>
-                            <li class="mb-1"><i class="bi bi-check-circle-fill text-success me-2"></i>Reusable anytime</li>
-                            <li class="mb-1"><i class="bi bi-check-circle-fill text-success me-2"></i>Auto-credit deposits</li>
+                            <li class="mb-1"><i class="bi bi-check-circle-fill me-2" style="color: var(--success);"></i>One-time setup</li>
+                            <li class="mb-1"><i class="bi bi-check-circle-fill me-2" style="color: var(--success);"></i>Reusable anytime</li>
+                            <li class="mb-1"><i class="bi bi-check-circle-fill me-2" style="color: var(--success);"></i>Auto-credit deposits</li>
                         </ul>
 
                         <button class="btn btn-primary w-100 mb-3" data-bs-toggle="collapse" data-bs-target="#permanentForm">
@@ -140,7 +195,7 @@
                         </button>
 
                         <div id="permanentForm" class="collapse">
-                            <div class="alert alert-info border-info bg-info bg-opacity-10 mb-3 py-2">
+                            <div class="deposit-alert deposit-alert-info border-info mb-3 py-2">
                                 <small>
                                     <i class="bi bi-shield-check me-1"></i>
                                     Required by Central Bank of Nigeria for account creation
@@ -162,7 +217,7 @@
                                 </div>
 
                                 <div id="bvnField" class="mb-3">
-                                    <input type="text" class="form-control" id="bvn" name="bvn" 
+                                    <input type="text" class="form-control custom-input" id="bvn" name="bvn" 
                                            maxlength="11" pattern="[0-9]{11}" placeholder="Enter 11-digit BVN" required>
                                     <small class="text-muted d-block mt-1">
                                         <i class="bi bi-phone"></i> Dial *565*0# to get your BVN
@@ -170,7 +225,7 @@
                                 </div>
 
                                 <div id="ninField" class="mb-3" style="display: none;">
-                                    <input type="text" class="form-control" id="nin" name="nin" 
+                                    <input type="text" class="form-control custom-input" id="nin" name="nin" 
                                            maxlength="11" pattern="[0-9]{11}" placeholder="Enter 11-digit NIN">
                                 </div>
 
@@ -192,39 +247,10 @@
         </div>
 
         <div class="col-lg-4">
-            <div class="card border-0 shadow-sm mb-3">
+            <div class="card border-0 shadow-sm">
                 <div class="card-body text-center py-4">
                     <h6 class="text-muted mb-2 small">Current Balance</h6>
-                    <h2 class="text-primary mb-0">₦{{ account.balance|floatformat:0 }}</h2>
-                </div>
-            </div>
-
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-body-secondary py-3">
-                    <h6 class="mb-0"><i class="bi bi-lightbulb me-2"></i>How It Works</h6>
-                </div>
-                <div class="card-body p-3">
-                    <div class="step-item">
-                        <span class="step-num">1</span>
-                        <div>
-                            <strong class="d-block">Get Account</strong>
-                            <small class="text-muted">Choose method</small>
-                        </div>
-                    </div>
-                    <div class="step-item">
-                        <span class="step-num">2</span>
-                        <div>
-                            <strong class="d-block">Transfer</strong>
-                            <small class="text-muted">From any bank</small>
-                        </div>
-                    </div>
-                    <div class="step-item">
-                        <span class="step-num">3</span>
-                        <div>
-                            <strong class="d-block">Auto-Credit</strong>
-                            <small class="text-muted">Instant credit</small>
-                        </div>
-                    </div>
+                    <h2 class="mb-0" id="currentBalance" style="color: var(--text-primary);">₦{{ account.balance|floatformat:0 }}</h2>
                 </div>
             </div>
         </div>
@@ -234,8 +260,8 @@
 <div class="modal fade" id="accountModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" id="accountModalContent">
-            <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title"><i class="bi bi-clock-history me-2"></i>Active Transfer Account</h5>
+            <div class="modal-header" style="background-color: var(--warning);">
+                <h5 class="modal-title text-dark"><i class="bi bi-clock-history me-2"></i>Active Transfer Account</h5>
             </div>
             <div class="modal-body" id="modalBody"></div>
         </div>
@@ -243,29 +269,137 @@
 </div>
 
 <style>
-.bank-card {
+/* Custom Input Style with theme-aware primary color */
+.custom-input {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 0.625rem 0.75rem;
+    font-size: 0.95rem;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.custom-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(0, 51, 102, 0.25);
+    outline: 0;
+}
+
+[data-bs-theme="dark"] .custom-input:focus {
+    box-shadow: 0 0 0 0.25rem rgba(0, 51, 102, 0.4);
+}
+
+.custom-input::placeholder {
+    color: #adb5bd;
+    font-size: 0.95rem;
+}
+
+.input-group .input-group-text {
+    border: 1px solid #dee2e6;
+}
+
+.input-group .custom-input {
+    border-left: 0;
+}
+
+.input-group:focus-within .input-group-text {
+    border-color: var(--primary-color);
+}
+
+/* Quick Amount Buttons */
+.quick-amount-btn {
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    transition: all 0.2s ease;
+}
+
+.quick-amount-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.quick-amount-btn.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+/* Custom Bank Card with larger text */
+.bank-card-custom {
     background: var(--bs-body-bg);
     border: 1px solid var(--bs-border-color);
     transition: all 0.3s;
 }
 
-.bank-card:hover {
+.bank-card-custom:hover {
     background: var(--bs-secondary-bg);
-    border-color: var(--bs-primary);
+    border-color: var(--primary-color);
+}
+
+.bank-name-text {
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+.account-number-text {
+    font-size: 1.3rem;
+    color: var(--primary-color);
+}
+
+[data-bs-theme="dark"] .account-number-text {
+    color: var(--dark-text-primary);
+}
+
+/* Custom Copy Button - Double copy icon style */
+.btn-copy-custom {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-primary);
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-copy-custom:hover {
+    transform: scale(1.15);
+    color: var(--primary-color);
+}
+
+.btn-copy-custom:active {
+    transform: scale(0.95);
+}
+
+.btn-copy-custom.copied {
+    color: var(--success);
+}
+
+[data-bs-theme="dark"] .btn-copy-custom {
+    color: var(--dark-text-primary);
+}
+
+[data-bs-theme="dark"] .btn-copy-custom:hover {
+    color: var(--dark-accent-color);
 }
 
 .min-w-0 {
     min-width: 0;
 }
 
-.bank-card .btn-sm {
-    padding: 0.375rem 0.5rem;
-    font-size: 0.875rem;
-}
-
 @media (max-width: 575.98px) {
-    .bank-card .btn-sm {
-        padding: 0.375rem 0.625rem;
+    .bank-name-text {
+        font-size: 1rem;
+    }
+    
+    .account-number-text {
+        font-size: 1.15rem;
+    }
+    
+    .btn-copy-custom {
+        font-size: 1.15rem;
     }
 }
 
@@ -284,7 +418,7 @@
 .step-num {
     width: 32px;
     height: 32px;
-    background: var(--bs-primary);
+    background: var(--primary-color);
     color: white;
     border-radius: 50%;
     display: flex;
@@ -302,11 +436,11 @@
 .countdown-timer {
     font-size: 1.25rem;
     font-weight: 600;
-    color: var(--bs-warning);
+    color: var(--warning);
 }
 
 .countdown-expired {
-    color: var(--bs-danger);
+    color: var(--error);
 }
 
 .waiting-pulse {
@@ -333,10 +467,71 @@
     }
 }
 
+.deposit-alert {
+    padding: 1rem;
+    border-radius: 0.375rem;
+}
+
+.deposit-alert-primary {
+    background-color: var(--bs-primary-bg-subtle);
+    border: 1px solid var(--bs-primary-border-subtle);
+    color: var(--bs-primary-text-emphasis);
+}
+
+.deposit-alert-warning {
+    background-color: var(--bs-warning-bg-subtle);
+    border: 1px solid var(--bs-warning-border-subtle);
+    color: var(--bs-warning-text-emphasis);
+}
+
+.deposit-alert-info {
+    background-color: var(--bs-info-bg-subtle);
+    border: 1px solid var(--bs-info-border-subtle);
+    color: var(--bs-info-text-emphasis);
+}
+
+.deposit-alert-success {
+    background-color: var(--bs-success-bg-subtle);
+    border: 1px solid var(--bs-success-border-subtle);
+    color: var(--bs-success-text-emphasis);
+}
+
+.deposit-alert-danger {
+    background-color: var(--bs-danger-bg-subtle);
+    border: 1px solid var(--bs-danger-border-subtle);
+    color: var(--bs-danger-text-emphasis);
+}
+
+/* Modal centering for all screen sizes */
+.modal-dialog {
+    display: flex;
+    align-items: center;
+    min-height: calc(100% - 1rem);
+}
+
+@media (min-width: 576px) {
+    .modal-dialog {
+        max-width: 500px;
+        margin: 1.75rem auto;
+    }
+}
+
 @media (max-width: 991.98px) {
     .modal-dialog {
-        margin: 1rem;
+        margin: 1rem auto;
     }
+}
+
+@media (max-width: 575.98px) {
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+}
+
+.deposit-alert-light {
+    background-color: var(--bs-light-bg-subtle);
+    border: 1px solid var(--bs-border-color);
+    color: var(--bs-body-color);
 }
 </style>
 
@@ -348,12 +543,24 @@ const State = {
     countdownInterval: null,
     quickTransferActive: false,
     paymentProcessed: false,
-    modalShown: false
+    modalShown: false,
+    currentUserId: null,
+    expiryTime: null,
+    savedTransferData: null
 };
 
 document.addEventListener('DOMContentLoaded', function() {
-    protectModalFromAlertSystem();
     initEventListeners();
+    
+    const virtualAccountData = document.getElementById('virtualAccountData');
+    if (virtualAccountData) {
+        try {
+            const data = JSON.parse(virtualAccountData.textContent);
+            State.currentUserId = data.user_id;
+        } catch (e) {
+            console.error('Error parsing account data:', e);
+        }
+    }
     
     setTimeout(() => {
         restoreQuickTransferState();
@@ -361,44 +568,92 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 200);
 });
 
-function protectModalFromAlertSystem() {
-    const modalEl = document.getElementById('accountModal');
-    if (modalEl) {
-        modalEl.setAttribute('data-no-auto-dismiss', 'true');
-        
-        const modalContent = document.getElementById('accountModalContent');
-        if (modalContent) {
-            modalContent.setAttribute('data-no-auto-dismiss', 'true');
-        }
-        
-        const observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                if (mutation.type === 'childList') {
-                    const modalBody = document.getElementById('modalBody');
-                    if (modalBody && State.quickTransferActive) {
-                        const alerts = modalBody.querySelectorAll('[class*="alert"]');
-                        alerts.forEach(alert => {
-                            alert.setAttribute('data-persist', 'true');
-                            alert.setAttribute('data-no-auto-dismiss', 'true');
-                        });
-                    }
-                }
-            });
-        });
-        
-        observer.observe(modalEl, {
-            childList: true,
-            subtree: true
-        });
-    }
-}
-
 function initEventListeners() {
     document.querySelectorAll('input[name="verifyType"]').forEach(radio => {
         radio.addEventListener('change', toggleVerificationType);
     });
     
     window.addEventListener('beforeunload', cleanup);
+    
+    // Persistent countdown updater
+    setInterval(() => {
+        if (State.quickTransferActive && State.expiryTime) {
+            const now = Date.now();
+            const remaining = Math.floor((State.expiryTime - now) / 1000);
+            
+            if (remaining > 0) {
+                updateCountdownDisplay(remaining);
+                updateAlertCountdown(remaining);
+            } else if (remaining <= 0 && !State.paymentProcessed) {
+                handleCountdownExpired();
+            }
+        }
+    }, 1000);
+}
+
+function setQuickAmount(amount) {
+    const input = document.getElementById('quickAmount');
+    if (input) {
+        input.value = amount;
+        input.focus();
+        
+        document.querySelectorAll('.quick-amount-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        event.target.classList.add('active');
+    }
+}
+
+function updateCountdownDisplay(seconds) {
+    const countdownEl = document.getElementById('countdown');
+    if (!countdownEl) return;
+    
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    const display = `${minutes}:${secs.toString().padStart(2, '0')}`;
+    
+    countdownEl.textContent = display;
+    
+    if (seconds <= 300) {
+        countdownEl.classList.add('countdown-expired');
+    }
+}
+
+function updateAlertCountdown(seconds) {
+    const alertCountdownEl = document.getElementById('alertCountdown');
+    if (!alertCountdownEl) return;
+    
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    const display = `${minutes}:${secs.toString().padStart(2, '0')}`;
+    
+    alertCountdownEl.textContent = display;
+}
+
+function showActiveTransferAlert() {
+    const alert = document.getElementById('activeTransferAlert');
+    if (alert && State.quickTransferActive) {
+        alert.style.display = 'block';
+    }
+}
+
+function hideActiveTransferAlert() {
+    const alert = document.getElementById('activeTransferAlert');
+    if (alert) {
+        alert.style.display = 'none';
+    }
+}
+
+function reopenAccountModal() {
+    if (State.savedTransferData && State.quickTransferActive) {
+        const now = Date.now();
+        const remaining = Math.floor((State.expiryTime - now) / 1000);
+        
+        if (remaining > 0) {
+            showAccountModal(State.savedTransferData, remaining);
+            hideActiveTransferAlert();
+        }
+    }
 }
 
 function restoreQuickTransferState() {
@@ -407,28 +662,29 @@ function restoreQuickTransferState() {
         if (!savedState) return;
         
         const state = JSON.parse(savedState);
+        
+        if (state.userId && State.currentUserId && state.userId !== State.currentUserId) {
+            console.log('Different user detected, clearing state');
+            sessionStorage.removeItem('quickTransferState');
+            return;
+        }
+        
         const now = Date.now();
-        const elapsed = (now - state.startTime) / 1000;
-        const remaining = (40 * 60) - elapsed;
+        const remaining = Math.floor((state.expiryTime - now) / 1000);
         
         if (remaining > 0 && !state.completed) {
             State.quickTransferActive = true;
             State.currentTransactionRef = state.transactionRef;
-            State.pollStartTime = state.startTime;
+            State.expiryTime = state.expiryTime;
+            State.savedTransferData = state.transferData;
             
             const quickForm = document.getElementById('quickTransferForm');
             if (quickForm) {
                 quickForm.style.display = 'none';
             }
             
-            showAccountModal(state.transferData, Math.floor(remaining));
-            
-            setTimeout(() => {
-                if (document.getElementById('countdown')) {
-                    startCountdown(Math.floor(remaining));
-                }
-                startPaymentPolling(state.transactionRef);
-            }, 300);
+            showAccountModal(state.transferData, remaining);
+            startPaymentPolling(state.transactionRef);
         } else {
             sessionStorage.removeItem('quickTransferState');
         }
@@ -440,12 +696,16 @@ function restoreQuickTransferState() {
 
 function saveQuickTransferState(transactionRef, transferData) {
     try {
+        const expiryTime = Date.now() + (40 * 60 * 1000);
         const state = {
             transactionRef: transactionRef,
             transferData: transferData,
-            startTime: Date.now(),
-            completed: false
+            expiryTime: expiryTime,
+            completed: false,
+            userId: State.currentUserId
         };
+        State.expiryTime = expiryTime;
+        State.savedTransferData = transferData;
         sessionStorage.setItem('quickTransferState', JSON.stringify(state));
     } catch (error) {
         console.error('Error saving state:', error);
@@ -455,6 +715,9 @@ function saveQuickTransferState(transactionRef, transferData) {
 function clearQuickTransferState() {
     try {
         sessionStorage.removeItem('quickTransferState');
+        State.expiryTime = null;
+        State.savedTransferData = null;
+        hideActiveTransferAlert();
     } catch (error) {
         console.error('Error clearing state:', error);
     }
@@ -578,7 +841,7 @@ async function generateQuickTransfer(event) {
     
     const originalText = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Generating...';
     
     try {
         const response = await fetch('/api/generate-quick-transfer/', {
@@ -610,7 +873,6 @@ async function generateQuickTransfer(event) {
         document.getElementById('quickTransferForm').style.display = 'none';
         
         startPaymentPolling(data.transaction_reference);
-        startCountdown(40 * 60);
         
         showToast('Transfer account generated!', 'success');
         
@@ -632,7 +894,7 @@ function showAccountModal(data, seconds) {
     const initialDisplay = `${minutes}:${secs.toString().padStart(2, '0')}`;
     
     let html = `
-        <div class="alert alert-primary text-center mb-3" id="amountDisplay" data-persist="true">
+        <div class="deposit-alert deposit-alert-primary text-center mb-3" id="amountDisplay">
             <h6 class="mb-1">Amount to Transfer</h6>
             <h2 class="mb-0">₦${parseFloat(amount).toLocaleString('en-NG', {
                 minimumFractionDigits: 2,
@@ -640,14 +902,14 @@ function showAccountModal(data, seconds) {
             })}</h2>
         </div>
         
-        <div id="countdownDisplay" class="alert alert-warning text-center mb-3" data-persist="true">
+        <div id="countdownDisplay" class="deposit-alert deposit-alert-warning text-center mb-3">
             <i class="bi bi-clock me-1"></i> Expires in: <span class="countdown-timer" id="countdown">${initialDisplay}</span>
         </div>
     `;
     
     if (accounts.length > 0) {
         html += `
-            <div class="mb-3" id="accountNameDisplay" data-persist="true">
+            <div class="mb-3" id="accountNameDisplay">
                 <label class="form-label text-muted small fw-bold">ACCOUNT NAME</label>
                 <input type="text" class="form-control bg-body-secondary border-0" value="${data.account_name}" readonly>
             </div>
@@ -655,16 +917,17 @@ function showAccountModal(data, seconds) {
         
         accounts.forEach((acc, index) => {
             html += `
-                <div class="bank-card p-3 rounded mb-2" id="bankCard${index}" data-persist="true">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="bank-card-custom p-3 rounded mb-2" id="bankCard${index}">
+                    <div class="d-flex justify-content-between align-items-center gap-3">
                         <div class="flex-grow-1 min-w-0">
-                            <h6 class="mb-1 text-body text-truncate">${acc.bankName || acc.bank_name}</h6>
-                            <h5 class="mb-0 font-monospace text-primary">${acc.accountNumber || acc.account_number}</h5>
+                            <h6 class="mb-2 fw-bold bank-name-text">${acc.bankName || acc.bank_name}</h6>
+                            <div class="d-flex align-items-center gap-2">
+                                <h5 class="mb-0 font-monospace account-number-text">${acc.accountNumber || acc.account_number}</h5>
+                                <button class="btn-copy-custom" onclick="copyText(this, '${acc.accountNumber || acc.account_number}')">
+                                    <i class="bi bi-copy"></i>
+                                </button>
+                            </div>
                         </div>
-                        <button class="btn btn-primary btn-sm flex-shrink-0" onclick="copyText(this, '${acc.accountNumber || acc.account_number}')">
-                            <i class="bi bi-clipboard d-sm-none"></i>
-                            <span class="d-none d-sm-inline"><i class="bi bi-clipboard me-1"></i>Copy</span>
-                        </button>
                     </div>
                 </div>
             `;
@@ -672,19 +935,23 @@ function showAccountModal(data, seconds) {
     }
     
     html += `
-        <div class="alert alert-info border mb-3 waiting-pulse" id="waitingAlert" data-persist="true">
+        <div class="deposit-alert deposit-alert-info border mb-3 waiting-pulse" id="waitingAlert">
             <small><i class="bi bi-hourglass-split me-1"></i> Waiting for payment...</small>
         </div>
         
-        <button class="btn btn-outline-secondary w-100" onclick="closeAccountModal()">
-            Close
-        </button>
+        <div class="d-grid gap-2">
+            <button class="btn btn-danger" onclick="cancelQuickTransfer()">
+                <i class="bi bi-x-circle me-1"></i> Cancel Transfer
+            </button>
+            <button class="btn btn-outline-secondary" onclick="closeAccountModal()">
+                <i class="bi bi-eye-slash me-1"></i> Close (Keep Active)
+            </button>
+        </div>
     `;
     
     const modalBody = document.getElementById('modalBody');
     if (modalBody) {
         modalBody.innerHTML = html;
-        modalBody.setAttribute('data-no-dismiss', 'true');
     }
     
     const modalEl = document.getElementById('accountModal');
@@ -699,13 +966,11 @@ function showAccountModal(data, seconds) {
         });
     }
     
-    modalEl.addEventListener('hidden.bs.modal', function(e) {
-        e.stopPropagation();
-    });
-    
     if (!State.modalShown || !modal._isShown) {
         modal.show();
         State.modalShown = true;
+        // Hide alert when showing modal
+        hideActiveTransferAlert();
     }
 }
 
@@ -715,10 +980,17 @@ function closeAccountModal() {
         modal.hide();
     }
     State.modalShown = false;
+    
+    // Show alert immediately after closing modal if transfer is still active
+    if (State.quickTransferActive) {
+        setTimeout(() => {
+            showActiveTransferAlert();
+        }, 300); // Small delay to ensure modal is fully closed
+    }
 }
 
 function cancelQuickTransfer() {
-    if (!confirm('Are you sure you want to cancel this transfer?')) return;
+    if (!confirm('Are you sure you want to cancel this transfer? You can generate a new one immediately.')) return;
     
     stopAllPolling();
     State.quickTransferActive = false;
@@ -727,66 +999,33 @@ function cancelQuickTransfer() {
     
     closeAccountModal();
     
-    document.getElementById('quickTransferForm').style.display = 'block';
-    document.getElementById('quickTransferDetails').style.display = 'none';
-    document.getElementById('quickAmount').value = '';
+    const quickForm = document.getElementById('quickTransferForm');
+    if (quickForm) {
+        quickForm.style.display = 'block';
+    }
+    
+    const quickAmount = document.getElementById('quickAmount');
+    if (quickAmount) {
+        quickAmount.value = '';
+        quickAmount.focus();
+    }
+    
+    showToast('Transfer cancelled. You can generate a new one.', 'info');
     
     startGeneralPaymentCheck();
 }
 
-function startCountdown(seconds) {
+function handleCountdownExpired() {
     if (State.countdownInterval) {
         clearInterval(State.countdownInterval);
     }
-    
-    let remaining = seconds;
-    
-    function updateDisplay() {
-        const countdownEl = document.getElementById('countdown');
-        if (!countdownEl) {
-            console.warn('Countdown element not found, stopping countdown');
-            if (State.countdownInterval) {
-                clearInterval(State.countdownInterval);
-                State.countdownInterval = null;
-            }
-            return false;
-        }
-        
-        const minutes = Math.floor(remaining / 60);
-        const secs = remaining % 60;
-        const display = `${minutes}:${secs.toString().padStart(2, '0')}`;
-        
-        countdownEl.textContent = display;
-        
-        if (remaining <= 300) {
-            countdownEl.classList.add('countdown-expired');
-        }
-        
-        return true;
-    }
-    
-    if (!updateDisplay()) return;
-    
-    State.countdownInterval = setInterval(() => {
-        remaining--;
-        
-        if (!updateDisplay()) return;
-        
-        if (remaining <= 0) {
-            handleCountdownExpired();
-        }
-    }, 1000);
-}
-
-function handleCountdownExpired() {
-    clearInterval(State.countdownInterval);
     stopAllPolling();
     clearQuickTransferState();
     
     const waitingAlert = document.getElementById('waitingAlert');
     if (waitingAlert) {
-        waitingAlert.className = 'alert alert-danger border';
-        waitingAlert.innerHTML = '<small><i class="bi bi-x-circle me-1"></i> Transfer expired. Generate new account if needed.</small>';
+        waitingAlert.className = 'deposit-alert deposit-alert-danger border';
+        waitingAlert.innerHTML = '<small><i class="bi bi-x-circle me-1"></i> Transfer expired. You can generate a new one.</small>';
     }
     
     State.quickTransferActive = false;
@@ -794,7 +1033,10 @@ function handleCountdownExpired() {
     
     setTimeout(() => {
         closeAccountModal();
-        document.getElementById('quickTransferForm').style.display = 'block';
+        const quickForm = document.getElementById('quickTransferForm');
+        if (quickForm) {
+            quickForm.style.display = 'block';
+        }
     }, 3000);
 }
 
@@ -870,25 +1112,30 @@ function handlePaymentReceived(data) {
     stopAllPolling();
     clearQuickTransferState();
     State.quickTransferActive = false;
+    State.paymentProcessed = true;
     
     const amount = parseFloat(data.amount || 0);
     const newBalance = parseFloat(data.new_balance || 0);
     
-    const balanceEl = document.querySelector('.card-body.text-center h2');
+    const balanceEl = document.getElementById('currentBalance');
     if (balanceEl) {
         balanceEl.textContent = `₦${newBalance.toLocaleString('en-NG')}`;
     }
     
     const waitingAlert = document.getElementById('waitingAlert');
     if (waitingAlert) {
-        waitingAlert.className = 'alert alert-success border payment-success';
-        waitingAlert.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i> <strong>Payment Received!</strong> ₦${amount.toLocaleString()}`;
+        waitingAlert.className = 'deposit-alert deposit-alert-success border payment-success';
+        waitingAlert.innerHTML = `<strong><i class="bi bi-check-circle-fill me-1"></i> Payment Received!</strong> ₦${amount.toLocaleString()}`;
     }
     
-    showToast(`Payment of ₦${amount.toLocaleString()} received!`, 'success');
+    showToast(`Payment of ₦${amount.toLocaleString()} received successfully!`, 'success');
     
     setTimeout(() => {
         closeAccountModal();
+        const quickForm = document.getElementById('quickTransferForm');
+        if (quickForm) {
+            quickForm.style.display = 'block';
+        }
         location.reload();
     }, 3000);
 }
@@ -921,16 +1168,13 @@ function copyText(button, text) {
 
 function showCopySuccess(button) {
     const originalHtml = button.innerHTML;
-    const originalClass = button.className;
     
-    button.innerHTML = '<i class="bi bi-check-circle-fill"></i>';
-    button.className = button.className.replace('btn-primary', 'btn-success').replace('btn-outline-secondary', 'btn-success');
-    button.disabled = true;
+    button.innerHTML = '<i class="bi bi-check2-all"></i>';
+    button.classList.add('copied');
 
     setTimeout(() => {
         button.innerHTML = originalHtml;
-        button.className = originalClass;
-        button.disabled = false;
+        button.classList.remove('copied');
     }, 2000);
 }
 
