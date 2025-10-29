@@ -37,6 +37,10 @@ function updateAlertContainerPosition() {
 }
 
 function setupAlert(alert, index) {
+
+    if (alert.hasAttribute('data-persist') || alert.hasAttribute('data-no-auto-dismiss')) {
+        return;
+    }
     // Get auto-dismiss duration (default 3.5 seconds - moderate timing)
     const autoDismissTime = parseInt(alert.dataset.autoDismiss) || 3500;
     
@@ -153,6 +157,8 @@ function dismissLegacyAlert(alert) {
         }, 300);
     }
 }
+
+
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {

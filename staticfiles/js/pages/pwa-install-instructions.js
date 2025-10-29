@@ -1,5 +1,5 @@
 /**
- * PWA Installation Instructions Manager - Updated Version
+ * PWA Installation Instructions Manager - Syntax Error Free Version
  */
 class PWAInstallInstructions {
     constructor() {
@@ -18,6 +18,11 @@ class PWAInstallInstructions {
     }
 
     init() {
+        console.log('PWA Install Instructions initializing...');
+        console.log('User Agent:', this.userAgent);
+        console.log('Detected Platform:', this.platform);
+        console.log('Detected Browser:', this.browser);
+        
         this.checkPWAStatus();
         this.createModalHTML();
         this.setupEventListeners();
@@ -27,6 +32,7 @@ class PWAInstallInstructions {
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             this.deferredPrompt = e;
+            console.log('beforeinstallprompt event captured');
         });
         
         // Listen for app installation
@@ -34,6 +40,7 @@ class PWAInstallInstructions {
             this.isInstalled = true;
             this.hideModal();
             this.clearScheduledDisplays();
+            console.log('App installed successfully');
         });
     }
 
@@ -72,6 +79,7 @@ class PWAInstallInstructions {
         if (window.matchMedia('(display-mode: standalone)').matches || 
             window.navigator.standalone === true) {
             this.isInstalled = true;
+            console.log('Running in PWA mode');
             return;
         }
         
@@ -86,6 +94,7 @@ class PWAInstallInstructions {
                 if (relatedApps.length > 0) {
                     this.isInstalled = true;
                     this.isPWAInstalledInBrowser = true;
+                    console.log('PWA detected as installed in browser');
                 }
             }).catch(() => {
                 // Fallback detection methods
@@ -102,23 +111,32 @@ class PWAInstallInstructions {
         if (installTime && (Date.now() - parseInt(installTime)) < (30 * 24 * 60 * 60 * 1000)) {
             // Consider installed if marked as installed within last 30 days
             this.isPWAInstalledInBrowser = true;
+            console.log('PWA marked as recently installed');
         }
     }
 
     createModalHTML() {
         // Don't create modal if running in PWA mode
         if (this.isInstalled && !this.isPWAInstalledInBrowser) {
+            console.log('Skipping modal creation - running in PWA mode');
             return;
         }
         
-        // Check if modal already exists
-        if (document.getElementById('pwaInstallModal')) {
-            this.modal = document.getElementById('pwaInstallModal');
+        // Check if modal already exists (from template)
+        const existingModal = document.getElementById('pwaInstallModal');
+        if (existingModal) {
+            console.log('Found existing modal from template');
+            this.modal = existingModal;
+            this.modifyExistingModal();
             return;
         }
 
-        // Conditionally include actions for non-iOS platforms
-        const actionsHTML = this.platform !== 'ios' ? `
+        console.log('Creating modal dynamically for platform:', this.platform);
+
+        // Create modal HTML dynamically (fallback if template not included)
+        let actionsHTML = '';
+        if (this.platform !== 'ios') {
+            actionsHTML = `
             <div class="pwa-install-actions" id="pwaInstallActions">
                 <button type="button" class="pwa-install-btn" id="pwaDirectInstall">
                     <i class="bi bi-download"></i>
@@ -127,10 +145,11 @@ class PWAInstallInstructions {
                 <button type="button" class="pwa-later-btn" id="pwaLaterBtn">
                     Maybe Later
                 </button>
-            </div>
-        ` : '';
+            </div>`;
+        }
 
-        // Create modal HTML (using the template structure)
+        const iosClass = this.platform === 'ios' ? 'ios-mode' : '';
+        
         const modalHTML = `
             <div class="pwa-install-modal" id="pwaInstallModal" aria-hidden="true" role="dialog">
                 <div class="pwa-install-modal-content">
@@ -144,7 +163,7 @@ class PWAInstallInstructions {
                         </button>
                     </div>
                     
-                    <div class="pwa-install-modal-body">
+                    <div class="pwa-install-modal-body ${iosClass}">
                         <div class="pwa-install-intro">
                             <p>Get the full OpenSell experience with our app! Enjoy faster loading, offline access, and seamless shopping.</p>
                         </div>
@@ -161,28 +180,81 @@ class PWAInstallInstructions {
                         </div>
                     </div>
                 </div>
-            </div>
-        `;
+            </div>`;
 
         document.body.insertAdjacentHTML('beforeend', modalHTML);
         this.modal = document.getElementById('pwaInstallModal');
         this.renderInstructions();
     }
 
+    modifyExistingModal() {
+        if (!this.modal) {
+            console.error('No modal found to modify');
+            return;
+        }
+        
+        console.log('Modifying existing modal for platform:', this.platform);
+        
+        const modalBody = this.modal.querySelector('.pwa-install-modal-body');
+        const installActions = this.modal.querySelector('#pwaInstallActions');
+        
+        // Apply platform-specific modifications
+        if (this.platform === 'ios') {
+            console.log('Applying iOS-specific modifications');
+            
+            // Hide install actions for iOS
+            if (installActions) {
+                installActions.classList.add('ios-hidden');
+                installActions.style.display = 'none';
+                console.log('Hidden install actions for iOS');
+            }
+            
+            // Add iOS mode class to modal body
+            if (modalBody) {
+                modalBody.classList.add('ios-mode');
+                console.log('Added iOS mode class to modal body');
+            }
+        } else {
+            console.log('Applying non-iOS modifications for:', this.platform);
+            
+            // Ensure install actions are visible for non-iOS platforms
+            if (installActions) {
+                installActions.classList.remove('ios-hidden');
+                installActions.style.display = 'flex';
+                console.log('Showing install actions for', this.platform);
+            }
+            
+            // Remove iOS mode class if present
+            if (modalBody) {
+                modalBody.classList.remove('ios-mode');
+            }
+        }
+        
+        // Always render instructions for the detected platform
+        this.renderInstructions();
+    }
+
     renderInstructions() {
         const container = document.getElementById('installStepsContainer');
-        const instructions = this.getInstructionsForPlatform();
+        if (!container) {
+            console.error('Install steps container not found');
+            return;
+        }
         
+        const instructions = this.getInstructionsForPlatform();
         container.innerHTML = instructions;
+        console.log('Rendered instructions for platform:', this.platform);
     }
 
     getInstructionsForPlatform() {
-        // For iOS, always show Safari instructions (simplified)
+        console.log('Getting instructions for platform:', this.platform);
+        
+        // For iOS, always show Safari instructions
         if (this.platform === 'ios') {
             return this.getIOSInstructions();
         }
         
-        // For Windows and Android, show platform-specific but simplified instructions
+        // For Windows and Android, show platform-specific instructions
         if (this.platform === 'windows') {
             return this.getWindowsInstructions();
         }
@@ -196,7 +268,7 @@ class PWAInstallInstructions {
 
     getIOSInstructions() {
         return `
-            <div class="pwa-install-steps">
+            <div class="pwa-install-steps" id="iosInstructions">
                 <div class="pwa-install-section-title">
                     <div class="browser-icon safari"></div>
                     Add to iPhone Home Screen
@@ -228,13 +300,12 @@ class PWAInstallInstructions {
                         </div>
                     </div>
                 </div>
-            </div>
-        `;
+            </div>`;
     }
 
     getWindowsInstructions() {
         return `
-            <div class="pwa-install-steps">
+            <div class="pwa-install-steps" id="windowsInstructions">
                 <div class="pwa-install-section-title">
                     <i class="bi bi-windows"></i>
                     Install on Windows
@@ -266,13 +337,12 @@ class PWAInstallInstructions {
                         </div>
                     </div>
                 </div>
-            </div>
-        `;
+            </div>`;
     }
 
     getAndroidInstructions() {
         return `
-            <div class="pwa-install-steps">
+            <div class="pwa-install-steps" id="androidInstructions">
                 <div class="pwa-install-section-title">
                     <i class="bi bi-android2"></i>
                     Install on Android
@@ -304,13 +374,12 @@ class PWAInstallInstructions {
                         </div>
                     </div>
                 </div>
-            </div>
-        `;
+            </div>`;
     }
 
     getGenericInstructions() {
         return `
-            <div class="pwa-install-steps">
+            <div class="pwa-install-steps" id="genericInstructions">
                 <div class="pwa-install-section-title">
                     <i class="bi bi-download"></i>
                     Install Instructions
@@ -319,46 +388,69 @@ class PWAInstallInstructions {
                     <div class="pwa-step-number">1</div>
                     <div class="pwa-step-content">
                         <p class="pwa-step-text">Look for an "Install" or "Add to Home Screen" option in your browser menu</p>
+                        <div class="pwa-step-icon">
+                            <i class="bi bi-search"></i> Find Install Option
+                        </div>
                     </div>
                 </div>
                 <div class="pwa-step">
                     <div class="pwa-step-number">2</div>
                     <div class="pwa-step-content">
                         <p class="pwa-step-text">Check the address bar for an install button or app icon</p>
+                        <div class="pwa-step-icon">
+                            <i class="bi bi-app-indicator"></i> Address Bar
+                        </div>
                     </div>
                 </div>
                 <div class="pwa-step">
                     <div class="pwa-step-number">3</div>
                     <div class="pwa-step-content">
                         <p class="pwa-step-text">Use the "Install App" button in our footer or navbar</p>
+                        <div class="pwa-step-icon">
+                            <i class="bi bi-layout-text-sidebar-reverse"></i> Footer/Navbar
+                        </div>
                     </div>
                 </div>
-            </div>
-        `;
+            </div>`;
     }
 
     setupEventListeners() {
+        if (!this.modal) {
+            console.error('Cannot setup event listeners - modal not found');
+            return;
+        }
+
         // Close modal
-        const closeBtn = document.getElementById('pwaModalClose');
-        const laterBtn = document.getElementById('pwaLaterBtn');
+        const closeBtn = this.modal.querySelector('#pwaModalClose');
+        const laterBtn = this.modal.querySelector('#pwaLaterBtn');
         
         if (closeBtn) {
-            closeBtn.addEventListener('click', () => this.hideModal());
+            closeBtn.addEventListener('click', () => {
+                console.log('Close button clicked');
+                this.hideModal();
+            });
         }
         
         if (laterBtn) {
-            laterBtn.addEventListener('click', () => this.handleLater());
+            laterBtn.addEventListener('click', () => {
+                console.log('Later button clicked');
+                this.handleLater();
+            });
         }
 
-        // Direct install button
-        const installBtn = document.getElementById('pwaDirectInstall');
-        if (installBtn) {
-            installBtn.addEventListener('click', () => this.handleDirectInstall());
+        // Direct install button (only for non-iOS)
+        const installBtn = this.modal.querySelector('#pwaDirectInstall');
+        if (installBtn && this.platform !== 'ios') {
+            installBtn.addEventListener('click', () => {
+                console.log('Install button clicked');
+                this.handleDirectInstall();
+            });
         }
 
         // Close on outside click
         this.modal.addEventListener('click', (e) => {
             if (e.target === this.modal) {
+                console.log('Outside click detected');
                 this.hideModal();
             }
         });
@@ -366,37 +458,61 @@ class PWAInstallInstructions {
         // Escape key to close
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.modal.classList.contains('show')) {
+                console.log('Escape key pressed');
                 this.hideModal();
             }
         });
+
+        console.log('Event listeners setup complete');
     }
 
     scheduleModalDisplay() {
         // Don't show if running in PWA mode or if installed
-        if (this.isInstalled && !this.isPWAInstalledInBrowser) return;
+        if (this.isInstalled && !this.isPWAInstalledInBrowser) {
+            console.log('Skipping modal display - PWA already installed');
+            return;
+        }
 
         const now = Date.now();
         const lastShown = this.getLastShownTime();
         const noReminderUntil = this.getNoReminderTime();
 
+        console.log('Scheduling modal display check...');
+        console.log('Last shown:', lastShown ? new Date(lastShown) : 'Never');
+        console.log('No reminder until:', noReminderUntil ? new Date(noReminderUntil) : 'Not set');
+
         // Don't show if user said no reminder for today
         if (noReminderUntil && now < noReminderUntil) {
+            console.log('User requested no reminders until', new Date(noReminderUntil));
             return;
         }
 
         // Show if never shown or if interval has passed
         if (!lastShown || (now - lastShown) >= this.showInterval) {
+            console.log('Scheduling modal to show in 2 seconds');
             // Show after a short delay to let page load
             setTimeout(() => {
                 this.showModal();
             }, 2000);
+        } else {
+            const timeRemaining = this.showInterval - (now - lastShown);
+            console.log('Next modal show scheduled in', Math.round(timeRemaining / (60 * 60 * 1000)), 'hours');
         }
     }
 
     showModal() {
         // Don't show if running in PWA mode
-        if (this.isInstalled && !this.isPWAInstalledInBrowser) return;
-        if (!this.modal) return;
+        if (this.isInstalled && !this.isPWAInstalledInBrowser) {
+            console.log('Skipping modal show - running in PWA mode');
+            return;
+        }
+        
+        if (!this.modal) {
+            console.error('Cannot show modal - modal not found');
+            return;
+        }
+
+        console.log('Showing PWA install modal for platform:', this.platform);
 
         // Update install button state (except for iOS)
         if (this.platform !== 'ios') {
@@ -421,8 +537,12 @@ class PWAInstallInstructions {
     }
 
     hideModal() {
-        if (!this.modal) return;
+        if (!this.modal) {
+            console.error('Cannot hide modal - modal not found');
+            return;
+        }
 
+        console.log('Hiding PWA install modal');
         this.modal.classList.add('fade-out');
         
         setTimeout(() => {
@@ -433,12 +553,13 @@ class PWAInstallInstructions {
     }
 
     handleLater() {
-        const noReminderCheckbox = document.getElementById('pwaNoReminder');
+        const noReminderCheckbox = this.modal.querySelector('#pwaNoReminder');
         
         if (noReminderCheckbox && noReminderCheckbox.checked) {
             // Don't show again today (24 hours)
             const tomorrow = Date.now() + (24 * 60 * 60 * 1000);
             this.setNoReminderTime(tomorrow);
+            console.log('User requested no reminders until', new Date(tomorrow));
         }
         
         this.hideModal();
@@ -446,21 +567,25 @@ class PWAInstallInstructions {
         // Track analytics
         if (typeof gtag !== 'undefined') {
             gtag('event', 'pwa_install_later', {
-                no_reminder: noReminderCheckbox ? noReminderCheckbox.checked : false
+                no_reminder: noReminderCheckbox ? noReminderCheckbox.checked : false,
+                platform: this.platform
             });
         }
     }
 
     async handleDirectInstall() {
         try {
+            console.log('Handling direct install for platform:', this.platform);
+            
             // If PWA is already installed in browser, try to open it
             if (this.isPWAInstalledInBrowser) {
                 this.openInstalledPWA();
                 return;
             }
             
-            // For iOS, just show the manual instructions
+            // For iOS, just show the manual instructions (this shouldn't happen since button is hidden)
             if (this.platform === 'ios') {
+                console.log('iOS user clicked install button - this should not happen');
                 this.showManualInstructions();
                 this.trackInstallAttempt('ios_manual_guide');
                 return;
@@ -468,9 +593,13 @@ class PWAInstallInstructions {
 
             // For Windows and Android, try native install first
             if (this.deferredPrompt) {
+                console.log('Using native install prompt');
                 // Use native install prompt
                 this.deferredPrompt.prompt();
-                const { outcome } = await this.deferredPrompt.userChoice;
+                const result = await this.deferredPrompt.userChoice;
+                const outcome = result.outcome;
+                
+                console.log('Install prompt outcome:', outcome);
                 
                 if (outcome === 'accepted') {
                     this.isInstalled = true;
@@ -483,6 +612,7 @@ class PWAInstallInstructions {
                 this.deferredPrompt = null;
                 this.trackInstallAttempt('native_prompt', outcome);
             } else {
+                console.log('No native prompt available, using fallback');
                 // Fallback for Windows/Android without native support
                 this.attemptUniversalInstall();
             }
@@ -493,14 +623,14 @@ class PWAInstallInstructions {
     }
     
     openInstalledPWA() {
-        // Try to open the installed PWA
-        const installBtn = document.getElementById('pwaDirectInstall');
+        console.log('Attempting to open installed PWA');
+        const installBtn = this.modal.querySelector('#pwaDirectInstall');
         if (installBtn) {
             installBtn.innerHTML = '<i class="bi bi-check-circle"></i> Opening App...';
             installBtn.disabled = true;
         }
         
-        // Try various methods to open the installed PWA
+        // Try to open the installed PWA
         try {
             // Method 1: Try to navigate to the PWA start_url
             window.open(window.location.origin, '_blank');
@@ -518,16 +648,22 @@ class PWAInstallInstructions {
         this.trackInstallAttempt('open_installed_app');
     }
     
-    showToast(message, type = 'info', duration = 3000) {
-        // Simple toast notification
+    showToast(message, type, duration) {
+        type = type || 'info';
+        duration = duration || 3000;
+        
+        // Use the existing alert system if available
+        if (typeof showSystemAlert !== 'undefined') {
+            showSystemAlert(message, type, duration);
+            return;
+        }
+        
+        console.log('Toast:', message, type);
+        
+        // Fallback to custom toast
         const toast = document.createElement('div');
-        toast.className = `pwa-toast pwa-toast-${type}`;
-        toast.innerHTML = `
-            <div class="pwa-toast-content">
-                <span>${message}</span>
-                <button class="pwa-toast-close">&times;</button>
-            </div>
-        `;
+        toast.className = 'pwa-toast pwa-toast-' + type;
+        toast.innerHTML = '<div class="pwa-toast-content"><span>' + message + '</span><button class="pwa-toast-close">&times;</button></div>';
         
         // Add toast styles if not present
         if (!document.querySelector('#pwa-toast-styles')) {
@@ -538,30 +674,34 @@ class PWAInstallInstructions {
                     position: fixed;
                     top: 20px;
                     right: 20px;
-                    background: var(--card-background);
-                    border: 1px solid var(--border-color);
-                    border-radius: var(--radius-md);
+                    background: var(--card-background, #fff);
+                    border: 1px solid var(--border-color, #ddd);
+                    border-radius: var(--radius-md, 8px);
                     padding: 1rem;
                     z-index: 10000;
                     max-width: 400px;
                     opacity: 0;
                     transform: translateX(100px);
                     transition: all 0.3s ease;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
                 }
                 .pwa-toast.pwa-toast-show { opacity: 1; transform: translateX(0); }
                 .pwa-toast-success { border-left: 4px solid #28a745; }
                 .pwa-toast-info { border-left: 4px solid #007bff; }
                 .pwa-toast-content { display: flex; justify-content: space-between; align-items: center; }
-                .pwa-toast-close { background: none; border: none; cursor: pointer; font-size: 1.2rem; }
-            `;
+                .pwa-toast-close { background: none; border: none; cursor: pointer; font-size: 1.2rem; margin-left: 1rem; }`;
             document.head.appendChild(toastStyles);
         }
 
         document.body.appendChild(toast);
-        setTimeout(() => toast.classList.add('pwa-toast-show'), 100);
+        setTimeout(() => {
+            toast.classList.add('pwa-toast-show');
+        }, 100);
 
         if (duration > 0) {
-            setTimeout(() => this.hideToast(toast), duration);
+            setTimeout(() => {
+                this.hideToast(toast);
+            }, duration);
         }
 
         toast.querySelector('.pwa-toast-close').addEventListener('click', () => {
@@ -571,10 +711,13 @@ class PWAInstallInstructions {
     
     hideToast(toast) {
         toast.classList.remove('pwa-toast-show');
-        setTimeout(() => toast.remove(), 300);
+        setTimeout(() => {
+            toast.remove();
+        }, 300);
     }
 
     attemptUniversalInstall() {
+        console.log('Attempting universal install for platform:', this.platform);
         // Universal install attempt for Windows/Android
         if (this.platform === 'windows' || this.platform === 'android') {
             // Try to trigger browser's install mechanism
@@ -587,8 +730,9 @@ class PWAInstallInstructions {
     }
 
     showInstallHint() {
+        console.log('Showing install hint');
         // Show visual hint for where to find install options
-        const installBtn = document.getElementById('pwaDirectInstall');
+        const installBtn = this.modal.querySelector('#pwaDirectInstall');
         if (installBtn) {
             // Change button text temporarily
             const originalText = installBtn.innerHTML;
@@ -607,11 +751,12 @@ class PWAInstallInstructions {
     }
 
     showManualInstructions() {
+        console.log('Highlighting manual instructions');
         // Highlight the instruction steps
         const steps = this.modal.querySelectorAll('.pwa-step');
         steps.forEach((step, index) => {
             setTimeout(() => {
-                step.style.background = 'var(--primary-color)';
+                step.style.background = 'var(--primary-color, #007bff)';
                 step.style.color = 'white';
                 step.style.transform = 'scale(1.02)';
                 step.style.transition = 'all 0.3s ease';
@@ -626,11 +771,14 @@ class PWAInstallInstructions {
     }
 
     updateInstallButton() {
-        const installBtn = document.getElementById('pwaDirectInstall');
+        const installBtn = this.modal.querySelector('#pwaDirectInstall');
         if (!installBtn) return;
 
-        // For iOS, don't update button since it's hidden
+        console.log('Updating install button for platform:', this.platform);
+
+        // For iOS, this method shouldn't be called since button is hidden
         if (this.platform === 'ios') {
+            console.warn('updateInstallButton called for iOS - button should be hidden');
             return;
         }
 
@@ -639,6 +787,7 @@ class PWAInstallInstructions {
             installBtn.disabled = false;
             installBtn.innerHTML = '<i class="bi bi-box-arrow-up-right"></i> Open in App';
             installBtn.style.background = '#28a745'; // Green color
+            console.log('Updated button to "Open in App"');
             return;
         }
 
@@ -646,15 +795,19 @@ class PWAInstallInstructions {
         if (this.platform === 'windows' || this.platform === 'android') {
             installBtn.disabled = false;
             installBtn.innerHTML = '<i class="bi bi-download"></i> Install Now';
+            console.log('Updated button to "Install Now"');
         }
         // For other platforms
         else {
             installBtn.disabled = false;
             installBtn.innerHTML = '<i class="bi bi-download"></i> Install Now';
+            console.log('Updated button to "Install Now" (generic)');
         }
     }
 
-    trackInstallAttempt(method, outcome = null) {
+    trackInstallAttempt(method, outcome) {
+        outcome = outcome || null;
+        console.log('Tracking install attempt:', method, outcome);
         if (typeof gtag !== 'undefined') {
             gtag('event', 'pwa_install_attempted', {
                 method: method,
@@ -678,7 +831,7 @@ class PWAInstallInstructions {
         try {
             localStorage.setItem('pwa_modal_last_shown', time.toString());
         } catch (e) {
-            // Ignore storage errors
+            console.warn('Failed to save last shown time:', e);
         }
     }
 
@@ -694,7 +847,7 @@ class PWAInstallInstructions {
         try {
             localStorage.setItem('pwa_no_reminder_until', time.toString());
         } catch (e) {
-            // Ignore storage errors
+            console.warn('Failed to save no reminder time:', e);
         }
     }
 
@@ -702,29 +855,36 @@ class PWAInstallInstructions {
         try {
             localStorage.removeItem('pwa_modal_last_shown');
             localStorage.removeItem('pwa_no_reminder_until');
+            console.log('Cleared scheduled displays');
         } catch (e) {
-            // Ignore storage errors
+            console.warn('Failed to clear scheduled displays:', e);
         }
     }
 
     // Public methods for manual triggering
     show() {
+        console.log('Manual show() called');
         this.showModal();
     }
 
     hide() {
+        console.log('Manual hide() called');
         this.hideModal();
     }
 }
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, checking PWA mode...');
+    
     // Don't initialize if running in PWA mode (standalone)
     if (window.matchMedia('(display-mode: standalone)').matches || 
         window.navigator.standalone === true) {
+        console.log('Running in PWA mode, skipping PWA install instructions');
         return;
     }
     
+    console.log('Initializing PWA Install Instructions');
     // Only initialize in browser context
     window.pwaInstallInstructions = new PWAInstallInstructions();
 });

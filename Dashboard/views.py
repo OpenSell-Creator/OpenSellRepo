@@ -1123,24 +1123,41 @@ def test_json_response(request):
         'path': request.path
     })
 
-
 @login_required
 def check_payment_status(request, transaction_reference=None):
     """
-    AJAX endpoint to check payment status
-    Polls for recent payments
+    FIXED: AJAX endpoint to check payment status
+    Prevents duplicate processing with session tracking
     """
     try:
         account = request.user.account
         
+        # Get transaction reference from URL param if not in path
+        if not transaction_reference:
+            transaction_reference = request.GET.get('ref')
+        
         if transaction_reference:
+            # Check if already processed in this session to prevent duplicate toasts
+            processed_key = f'payment_processed_{transaction_reference}'
+            if request.session.get(processed_key):
+                return JsonResponse({
+                    'success': True,
+                    'payment_received': False,
+                    'already_processed': True,
+                    'message': 'Payment already processed'
+                })
+            
             # Check specific transaction
             monnify_transaction = MonnifyTransaction.objects.filter(
                 transaction_reference=transaction_reference,
                 user_account=account
             ).first()
             
-            if monnify_transaction:
+            if monnify_transaction and monnify_transaction.payment_status == 'PAID':
+                # Mark as processed in session
+                request.session[processed_key] = True
+                request.session.modified = True
+                
                 return JsonResponse({
                     'success': True,
                     'payment_received': True,
@@ -1155,32 +1172,46 @@ def check_payment_status(request, transaction_reference=None):
             # Query Monnify API if not found locally
             result = monnify_service.get_transaction_status(transaction_reference)
             
-            if result:
+            if result and result.get('paymentStatus') == 'PAID':
                 return JsonResponse({
                     'success': True,
-                    'payment_received': False,
+                    'payment_received': True,
                     'status': result.get('paymentStatus'),
                     'amount': float(result.get('amountPaid', 0)),
                     'processed': False,
-                    'message': 'Transaction found but not yet processed'
+                    'message': 'Transaction found, processing...'
                 })
             
             return JsonResponse({
-                'success': False,
+                'success': True,
                 'payment_received': False,
-                'message': 'Transaction not found'
-            }, status=404)
+                'message': 'Payment not yet received'
+            })
         
         else:
-            # Check for any recent payments (polling mode)
+            # General polling - check for any recent payments
+            # Only return payments from last 2 minutes to avoid old duplicates
             recent_transaction = MonnifyTransaction.objects.filter(
                 user_account=account,
-                paid_on__gte=timezone.now() - timedelta(minutes=5),
+                paid_on__gte=timezone.now() - timedelta(minutes=2),
                 payment_status='PAID',
                 credited_to_account=True
             ).order_by('-paid_on').first()
             
             if recent_transaction:
+                # Check if already notified in session
+                processed_key = f'payment_notified_{recent_transaction.transaction_reference}'
+                if request.session.get(processed_key):
+                    return JsonResponse({
+                        'success': True,
+                        'payment_received': False,
+                        'current_balance': float(account.balance)
+                    })
+                
+                # Mark as notified
+                request.session[processed_key] = True
+                request.session.modified = True
+                
                 return JsonResponse({
                     'success': True,
                     'payment_received': True,
@@ -1202,7 +1233,6 @@ def check_payment_status(request, transaction_reference=None):
             'success': False,
             'message': 'Error checking payment status'
         }, status=500)
-
 
 @login_required
 def get_virtual_account_info(request):
