@@ -20,9 +20,9 @@ class AccountStatus(models.Model):
     description = models.TextField(blank=True)
     benefits = models.TextField(blank=True)
     
-    # Pricing (stored but can be overridden by properties)
+    # Pricing - UPDATED: Changed from yearly to two_month
     monthly_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    yearly_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    two_month_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # NEW
     
     # Benefits
     max_listings = models.PositiveIntegerField(default=5)
@@ -90,14 +90,14 @@ class UserAccount(models.Model):
         if not latest_sub:
             return None
         
-        # Calculate subscription details
-        is_yearly = 'yearly' in latest_sub.description.lower()
-        duration = timedelta(days=365 if is_yearly else 30)
+        # Calculate subscription details - UPDATED: Handle two_month
+        is_two_month = 'two_month' in latest_sub.description.lower() or 'two month' in latest_sub.description.lower()
+        duration = timedelta(days=60 if is_two_month else 30)
         end_date = latest_sub.created_at + duration
         
         return {
             'active': end_date > timezone.now(),
-            'type': 'yearly' if is_yearly else 'monthly',
+            'type': 'two_month' if is_two_month else 'monthly',
             'start_date': latest_sub.created_at,
             'end_date': end_date,
             'transaction': latest_sub
@@ -130,7 +130,6 @@ class UserAccount(models.Model):
     
     def subscribe_to_tier(self, tier_type='pro', subscription_type='monthly'):
         """Subscribe user to a specific tier"""
-        # Use get() with better error handling
         try:
             target_status = AccountStatus.objects.get(tier_type=tier_type)
         except AccountStatus.DoesNotExist:
@@ -139,11 +138,13 @@ class UserAccount(models.Model):
         if not target_status.is_subscription_based:
             raise ValueError(f"Tier '{tier_type}' does not require subscription")
         
-        # Calculate price
-        if subscription_type == 'yearly':
-            price = target_status.yearly_price
+        # Calculate price - UPDATED: Changed from yearly to two_month
+        if subscription_type == 'two_month':
+            price = target_status.two_month_price
+            duration_days = 60  # 2 months
         else:
             price = target_status.monthly_price
+            duration_days = 30  # 1 month
         
         if self.balance < price:
             raise ValueError(f"Insufficient funds for subscription. Required: ₦{price:,.2f}, Available: ₦{self.balance:,.2f}")
@@ -296,10 +297,10 @@ class ProductBoost(models.Model):
     
     # Base prices per day (before discounts)
     BASE_PRICES = {
-        'featured': Decimal('5.00'),
-        'urgent': Decimal('3.00'),
-        'spotlight': Decimal('7.50'),
-        'premium': Decimal('10.00'),
+        'featured': Decimal('100.00'),
+        'urgent': Decimal('75.00'),
+        'spotlight': Decimal('200.00'),
+        'premium': Decimal('350.00'),
     }
     
     product = models.ForeignKey('Home.Product_Listing', on_delete=models.CASCADE, related_name='boosts')

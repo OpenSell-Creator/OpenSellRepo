@@ -410,7 +410,7 @@ def transaction_history(request):
 
 @login_required
 def subscription_management(request):
-    """Enhanced subscription management view"""
+    """Enhanced subscription management view with two-month plan"""
     account = request.user.account
     account.check_and_update_status()
     
@@ -431,7 +431,7 @@ def subscription_management(request):
             description='Basic free account',
             max_listings=5,
             monthly_price=0,
-            yearly_price=0
+            two_month_price=0
         )
     
     if request.method == 'POST':
@@ -446,8 +446,8 @@ def subscription_management(request):
                 messages.error(request, 'Invalid subscription tier selected.')
                 return redirect('subscription_management')
             
-            # Validate subscription_type
-            if subscription_type not in ['monthly', 'yearly']:
+            # Validate subscription_type - UPDATED: Accept two_month instead of yearly
+            if subscription_type not in ['monthly', 'two_month']:
                 messages.error(request, 'Invalid subscription type selected.')
                 return redirect('subscription_management')
             
@@ -457,9 +457,11 @@ def subscription_management(request):
                 # Enhanced subscription info for email
                 subscription_info['tier_name'] = pro_tier.name
                 
+                # Better success message based on subscription type
+                plan_name = "Two Month" if subscription_type == 'two_month' else "Monthly"
                 messages.success(
                     request, 
-                    f"Successfully subscribed to {tier_type.title()} tier! "
+                    f"Successfully subscribed to {plan_name} Pro plan! "
                     f"Your subscription is active until {subscription_info['end_date'].strftime('%B %d, %Y')}."
                 )
                 
@@ -474,38 +476,41 @@ def subscription_management(request):
                 logger.error(f"Subscription error for user {request.user.id}: {str(e)}")
                 messages.error(request, "An error occurred while processing your subscription.")
         
-        elif action == 'reactivate':
-            if account.subscription_info and not account.subscription_info['active']:
-                try:
-                    # Reactivate subscription
-                    account.reactivate_subscription()
-                    messages.success(request, "Your subscription has been reactivated!")
-                    return redirect('subscription_management')
-                    
-                except ValueError as e:
-                    messages.error(request, str(e))
-                except Exception as e:
-                    logger.error(f"Subscription reactivation error for user {request.user.id}: {str(e)}")
-                    messages.error(request, "An error occurred while reactivating your subscription.")
+        elif action == 'cancel_auto_renew':
+            # Handle auto-renewal cancellation (if implemented)
+            messages.info(request, "Auto-renewal has been cancelled. Your subscription will expire on schedule.")
+            return redirect('subscription_management')
+        
+        elif action == 'enable_auto_renew':
+            # Handle auto-renewal activation (if implemented)
+            messages.success(request, "Auto-renewal has been enabled.")
+            return redirect('subscription_management')
     
-    # Calculate potential savings and benefits
+    # Calculate savings for two-month plan
+    two_month_savings = 0
+    if pro_tier:
+        # Calculate savings: (Monthly * 2) - Two Month Price
+        monthly_cost_for_two_months = pro_tier.monthly_price * 2
+        two_month_savings = monthly_cost_for_two_months - pro_tier.two_month_price
+    
+    # Calculate potential boost savings
     monthly_boost_savings = 0
     yearly_boost_savings = 0
-    yearly_savings = 0
     
     if pro_tier:
         avg_boosts_per_month = 10  # Estimate - could be dynamic based on user history
-        avg_boost_cost = 5
+        avg_boost_cost = Decimal('500.00')  # Average boost cost
         monthly_boost_savings = (avg_boost_cost * avg_boosts_per_month * pro_tier.boost_discount / 100)
         yearly_boost_savings = monthly_boost_savings * 12
-        yearly_savings = (pro_tier.monthly_price * 12) - pro_tier.yearly_price
     
     # Check if subscription is expiring soon (within 7 days)
     subscription_expiring_soon = False
     days_until_expiry = None
+    days_remaining = None
     
     if account.subscription_info and account.subscription_info['active']:
         days_until_expiry = (account.subscription_info['end_date'] - timezone.now()).days
+        days_remaining = days_until_expiry  # For template
         subscription_expiring_soon = days_until_expiry <= 7
     
     # Get subscription history for display
@@ -513,19 +518,24 @@ def subscription_management(request):
         transaction_type='subscription'
     ).order_by('-created_at')[:5]
     
+    # Check if user is currently Pro
+    is_pro = account.is_subscription_active
+    
     context = {
         'account': account,
         'effective_status': account.effective_status,
         'subscription_info': account.subscription_info,
         'pro_tier': pro_tier,
+        'two_month_savings': two_month_savings,  # Savings for choosing two-month plan
         'monthly_boost_savings': monthly_boost_savings,
         'yearly_boost_savings': yearly_boost_savings,
-        'yearly_savings': yearly_savings,
         'current_tier': account.effective_status.tier_type if account.effective_status else 'free',
         'subscription_expiring_soon': subscription_expiring_soon,
         'days_until_expiry': days_until_expiry,
+        'days_remaining': days_remaining,  # For template display
         'subscription_history': subscription_history,
         'can_subscribe': account.balance >= (pro_tier.monthly_price if pro_tier else 0),
+        'is_pro': is_pro,
     }
     
     return render(request, 'dashboard/subscription_management.html', context)

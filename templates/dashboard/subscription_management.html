@@ -53,7 +53,11 @@
                             </div>
                             <h3 class="text-white mb-2">You're a Pro Member!</h3>
                             <p class="text-white-50 mb-3">
-                                {{ account.subscription_type|title }} Plan • Expires {{ account.subscription_end_date|date:"M d, Y" }}
+                                {% if account.subscription_info.type == 'two_month' %}
+                                    Two Month Plan • Expires {{ account.subscription_end_date|date:"M d, Y" }}
+                                {% else %}
+                                    Monthly Plan • Expires {{ account.subscription_end_date|date:"M d, Y" }}
+                                {% endif %}
                             </p>
                             
                             <div class="subscription-details-box">
@@ -91,7 +95,13 @@
                                         <div class="detail-item-white">
                                             <i class="bi bi-tag"></i>
                                             <span class="detail-label">Plan Type</span>
-                                            <span class="detail-value">{{ account.subscription_type|title }}</span>
+                                            <span class="detail-value">
+                                                {% if account.subscription_info.type == 'two_month' %}
+                                                    2 Months
+                                                {% else %}
+                                                    Monthly
+                                                {% endif %}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -177,7 +187,7 @@
                     </div>
                 </div>
                 
-                <!-- Yearly Plan -->
+                <!-- Two Month Plan -->
                 <div class="col-md-6">
                     <div class="dashboard-card plan-card recommended h-100">
                         <div class="recommended-badge">
@@ -185,24 +195,26 @@
                         </div>
                         <div class="card-body p-3">
                             <div class="plan-header text-center mb-3">
-                                <h5 class="plan-title mb-2">Yearly Plan</h5>
+                                <h5 class="plan-title mb-2">Two Month Plan</h5>
                                 <div class="price-display my-2">
-                                    <h2 class="price-amount mb-0">₦{{ pro_tier.yearly_price|floatformat:0 }}</h2>
-                                    <p class="price-period mb-1">per year</p>
+                                    <h2 class="price-amount mb-0">₦{{ pro_tier.two_month_price|floatformat:0 }}</h2>
+                                    <p class="price-period mb-1">for 2 months</p>
+                                    {% if two_month_savings > 0 %}
                                     <span class="savings-badge">
-                                        <i class="bi bi-piggy-bank me-1"></i>Save ₦{{ yearly_savings|floatformat:0 }}
+                                        <i class="bi bi-piggy-bank me-1"></i>Save ₦{{ two_month_savings|floatformat:0 }}
                                     </span>
+                                    {% endif %}
                                 </div>
                             </div>
                             
                             <div class="plan-features mb-3">
                                 <div class="feature-item">
                                     <i class="bi bi-check-circle-fill"></i>
-                                    <span>Billed annually</span>
+                                    <span>Pay once for 2 months</span>
                                 </div>
                                 <div class="feature-item">
                                     <i class="bi bi-check-circle-fill"></i>
-                                    <span>2 months free</span>
+                                    <span>Better value</span>
                                 </div>
                                 <div class="feature-item">
                                     <i class="bi bi-check-circle-fill"></i>
@@ -214,10 +226,10 @@
                                 {% csrf_token %}
                                 <input type="hidden" name="action" value="subscribe">
                                 <input type="hidden" name="tier_type" value="pro">
-                                <input type="hidden" name="subscription_type" value="yearly">
+                                <input type="hidden" name="subscription_type" value="two_month">
                                 <button type="submit" class="btn btn-primary w-100 btn-sm"
-                                        {% if account.balance < pro_tier.yearly_price %}disabled{% endif %}>
-                                    {% if account.balance < pro_tier.yearly_price %}
+                                        {% if account.balance < pro_tier.two_month_price %}disabled{% endif %}>
+                                    {% if account.balance < pro_tier.two_month_price %}
                                         <i class="bi bi-exclamation-circle me-2"></i>Insufficient Balance
                                     {% else %}
                                         <i class="bi bi-rocket-takeoff me-2"></i>Subscribe Now
@@ -225,9 +237,9 @@
                                 </button>
                             </form>
                             
-                            {% if account.balance < pro_tier.yearly_price %}
+                            {% if account.balance < pro_tier.two_month_price %}
                                 <div class="text-center mt-2">
-                                    <small class="text-muted d-block">Need ₦{{ pro_tier.yearly_price|floatformat:0 }}</small>
+                                    <small class="text-muted d-block">Need ₦{{ pro_tier.two_month_price|floatformat:0 }}</small>
                                     <a href="{% url 'deposit_with_monnify' %}" class="btn btn-link btn-sm p-0 mt-1">
                                         <i class="bi bi-wallet2 me-1"></i>Add Funds
                                     </a>
@@ -239,6 +251,7 @@
             </div>
         {% endif %}
         
+        <!-- Rest of template remains the same... -->
         <!-- Benefits Section -->
         <div class="row mt-4">
             <div class="col-12">
@@ -806,7 +819,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Add loading state to subscription buttons
+    // Same JavaScript from your original file
     const subscribeButtons = document.querySelectorAll('button[type="submit"]');
     
     subscribeButtons.forEach(button => {
@@ -817,7 +830,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     const originalClass = icon.className;
                     icon.className = 'bi bi-arrow-repeat spinner-border spinner-border-sm me-2';
                     
-                    // Restore after 2 seconds if still on page
                     setTimeout(() => {
                         icon.className = originalClass;
                     }, 2000);
@@ -826,7 +838,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Animate benefit items on scroll
     const observerOptions = {
         threshold: 0.1,
         rootMargin: '0px 0px -50px 0px'
