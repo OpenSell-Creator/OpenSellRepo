@@ -31,10 +31,21 @@ class SignUpForm(UserCreationForm):
             'placeholder': 'Last Name (Optional)'
         })
     )
+    
+    referral_code = forms.CharField(
+        label="",
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Referral Code (Optional)',
+            'id': 'id_referral_code'
+        })
+    )
 
     class Meta:
         model = User
-        fields = ('username', 'first_name', 'last_name', 'email', 'password1', 'password2')
+        fields = ('username', 'first_name', 'last_name', 'email', 'password1', 'password2', 'referral_code')
 
     def __init__(self, *args, **kwargs):
         super(SignUpForm, self).__init__(*args, **kwargs)
@@ -96,6 +107,21 @@ class SignUpForm(UserCreationForm):
         if commit:
             user.save()
         return user
+    
+    def clean_referral_code(self):
+        """Validate referral code if provided"""
+        code = self.cleaned_data.get('referral_code', '').strip()
+        
+        if code:
+            from Dashboard.models import AffiliateProfile
+            try:
+                affiliate = AffiliateProfile.objects.get(referral_code__iexact=code, status='active')
+                # Store the affiliate instance for later use
+                self.cleaned_data['_affiliate_instance'] = affiliate
+            except AffiliateProfile.DoesNotExist:
+                raise forms.ValidationError('Invalid referral code. Please check and try again.')
+        
+        return code
 
 class LocationForm(forms.ModelForm):
     class Meta:

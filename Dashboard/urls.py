@@ -11,7 +11,6 @@ urlpatterns = [
     path('account/status/', views.account_status, name='account_status'),
     path('boost/status/', views.product_boost_status, name='product_boost_status'),
     
-    
     path('api/transaction/<int:transaction_id>/', views.get_transaction_details, name='transaction_details_api'),
     path('api/stats/', views.dashboard_stats_api, name='dashboard_stats_api'),
     
@@ -23,8 +22,19 @@ urlpatterns = [
     path('api/get-account-details/', views.get_virtual_account_info, name='get_account_details'),
     path('api/test/', views.test_json_response, name='test_json'),
     
-    
     # Webhook (NO authentication required - must be publicly accessible)
     path('webhook/monnify/', monnify_webhook, name='monnify_webhook'),
     path('webhook/monnify', monnify_webhook, name='monnify_webhook_no_slash'),
+    
+    # Affiliate Program
+    path('affiliate/apply/', views.affiliate_apply, name='affiliate_apply'),
+    path('affiliate/dashboard/', views.affiliate_dashboard, name='affiliate_dashboard'),
+    path('affiliate/withdraw/', views.affiliate_withdraw, name='affiliate_withdraw'),
+    path('affiliate/analytics/', views.affiliate_analytics, name='affiliate_analytics'),
+    
+    path('admin/affiliates/', views.admin_affiliate_approvals, name='admin_affiliate_approvals'),
+    path('admin/affiliates/<int:affiliate_id>/', views.admin_affiliate_detail, name='admin_affiliate_detail'),
+    
+    # API
+    path('api/validate-referral-code/', views.validate_referral_code, name='validate_referral_code'),
 ]

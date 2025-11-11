@@ -13,8 +13,8 @@ urlpatterns = [
     path('password-reset/',
     auth_views.PasswordResetView.as_view(
         template_name='password_reset.html',
-        email_template_name='password_reset_email.txt',  # Plain text version
-        html_email_template_name='password_reset_email.html',  # Add this line
+        email_template_name='password_reset_email.txt',
+        html_email_template_name='password_reset_email.html',
         from_email='OpenSell <no-reply@opensell.online>',
         subject_template_name='password_reset_subject.txt'
     ),
@@ -47,11 +47,13 @@ urlpatterns = [
     
     path('business/status/', views.business_verification_status, name='business_verification_status'),
     path('business/upload-document/', views.upload_business_document, name='upload_business_document'),
-    
-    # Admin URLs
-    path('admin/business-verifications/', views.admin_business_verifications, name='admin_business_verifications'),
-    path('admin/verify-business/<int:profile_id>/', views.admin_verify_business, name='admin_verify_business'),
     path('business/verify/', views.business_verification_form, name='business_verification_form'),
     
+    # Admin URLs
+    path('admin-panel/', views.admin_panel, name='admin_panel'),
+    path('admin/business-verifications/', views.admin_business_verifications, name='admin_business_verifications'),
+    path('admin/verify-business/<int:profile_id>/', views.admin_verify_business, name='admin_verify_business'),
+    
+    # API endpoints
     path('api/lgas/<int:state_id>/', views.load_lgas, name='load_lgas'),
 ]

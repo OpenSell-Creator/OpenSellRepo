@@ -9,6 +9,7 @@ from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.db import transaction as db_transaction
 
 from .models import (
     UserAccount, VirtualAccount, MonnifyTransaction,
@@ -18,39 +19,73 @@ from .models import (
 logger = logging.getLogger(__name__)
 
 
-def calculate_transaction_hash(payload, client_secret):
-    """Calculate transaction hash for webhook validation"""
+def verify_monnify_signature(payload):
+    """
+    SECURITY: Verify Monnify webhook signature
+    
+    Returns:
+        bool: True if signature is valid, False otherwise
+    """
     try:
+        # Get the hash from payload
+        received_hash = payload.get('transactionHash', '')
+        
+        if not received_hash:
+            logger.warning("No transaction hash in webhook payload")
+            return False
+        
+        # Calculate expected hash
         payment_ref = str(payload.get('paymentReference', ''))
         amount_paid = str(payload.get('amountPaid', ''))
         paid_on = str(payload.get('paidOn', ''))
         transaction_ref = str(payload.get('transactionReference', ''))
         
-        hash_string = f"{payment_ref}{amount_paid}{paid_on}{transaction_ref}{client_secret}"
+        # Monnify hash formula: SHA512(paymentReference|amountPaid|paidOn|transactionReference|clientSecret)
+        hash_string = f"{payment_ref}|{amount_paid}|{paid_on}|{transaction_ref}|{settings.MONNIFY_SECRET_KEY}"
         computed_hash = hashlib.sha512(hash_string.encode('utf-8')).hexdigest()
         
-        logger.debug(f"Hash calculated for txn: {transaction_ref[:20]}...")
-        return computed_hash
+        # Compare hashes (case-insensitive)
+        is_valid = computed_hash.upper() == received_hash.upper()
+        
+        if not is_valid:
+            logger.error(
+                f"⚠️ WEBHOOK SIGNATURE MISMATCH!\n"
+                f"Transaction: {transaction_ref}\n"
+                f"Expected: {computed_hash[:20]}...\n"
+                f"Received: {received_hash[:20]}..."
+            )
+        
+        return is_valid
         
     except Exception as e:
-        logger.error(f"Error calculating hash: {str(e)}", exc_info=True)
-        return None
+        logger.error(f"Signature verification error: {str(e)}", exc_info=True)
+        return False
+
+
+def is_duplicate_transaction(transaction_reference):
+    """
+    DATABASE-LEVEL duplicate check
+    
+    Returns:
+        bool: True if duplicate, False if new
+    """
+    return MonnifyTransaction.objects.filter(
+        transaction_reference=transaction_reference
+    ).exists()
 
 
 @csrf_exempt
 @require_http_methods(["POST", "GET"])
 def monnify_webhook(request):
     """
-    Enhanced webhook handler with detailed error logging
+    SECURED webhook handler with signature verification and duplicate prevention
     """
     try:
-        # Log request details
         logger.info("="*80)
         logger.info("WEBHOOK REQUEST RECEIVED")
         logger.info("="*80)
         logger.info(f"Method: {request.method}")
         logger.info(f"Content-Type: {request.content_type}")
-        logger.info(f"Path: {request.path}")
         
         # Get client IP
         client_ip = request.META.get('HTTP_X_FORWARDED_FOR', 
@@ -66,11 +101,10 @@ def monnify_webhook(request):
                 'method': 'GET'
             })
         
-        # Get raw body
+        # Parse request body
         try:
             raw_body = request.body.decode('utf-8')
             logger.info(f"Raw Body Length: {len(raw_body)} bytes")
-            logger.debug(f"Raw Body: {raw_body[:1000]}")
         except Exception as e:
             logger.error(f"Error decoding body: {str(e)}")
             return JsonResponse({
@@ -78,7 +112,6 @@ def monnify_webhook(request):
                 'message': 'Invalid request body encoding'
             }, status=400)
         
-        # Check if body is empty
         if not raw_body or raw_body.strip() == '':
             logger.error("Empty request body received")
             return JsonResponse({
@@ -91,10 +124,8 @@ def monnify_webhook(request):
             data = json.loads(raw_body)
             logger.info(f"Parsed JSON successfully")
             logger.info(f"JSON Keys: {list(data.keys())}")
-            logger.debug(f"Full Payload: {json.dumps(data, indent=2)}")
         except json.JSONDecodeError as e:
             logger.error(f"JSON decode error: {str(e)}")
-            logger.error(f"Failed to parse: {raw_body}")
             return JsonResponse({
                 'status': 'error',
                 'message': f'Invalid JSON: {str(e)}'
@@ -103,13 +134,12 @@ def monnify_webhook(request):
         # Determine webhook format
         if 'eventType' in data and 'eventData' in data:
             logger.info(f"Event-based webhook format detected: {data.get('eventType')}")
-            return process_event_based_webhook(data)
+            return process_event_based_webhook(data, client_ip)
         elif 'transactionReference' in data or 'paymentReference' in data:
             logger.info("Legacy webhook format detected")
-            return process_legacy_webhook(data)
+            return process_legacy_webhook(data, client_ip)
         else:
-            logger.error("Unknown webhook format - no recognized fields")
-            logger.error(f"Available fields: {list(data.keys())}")
+            logger.error("Unknown webhook format")
             return JsonResponse({
                 'status': 'error',
                 'message': 'Unknown webhook format',
@@ -117,18 +147,17 @@ def monnify_webhook(request):
             }, status=400)
             
     except Exception as e:
-        logger.error("="*80)
-        logger.error("CRITICAL WEBHOOK ERROR")
-        logger.error("="*80)
-        logger.error(f"Error: {str(e)}", exc_info=True)
+        logger.error("CRITICAL WEBHOOK ERROR", exc_info=True)
         return JsonResponse({
             'status': 'error',
             'message': 'Internal server error'
         }, status=500)
 
 
-def process_event_based_webhook(data):
-    """Process EVENT-BASED webhook format - FIXED for one-time payments"""
+def process_event_based_webhook(data, client_ip):
+    """
+    SECURED event-based webhook with signature verification
+    """
     try:
         event_type = data.get('eventType')
         event_data = data.get('eventData', {})
@@ -148,9 +177,20 @@ def process_event_based_webhook(data):
         logger.info(f"Transaction Ref: {transaction_reference}")
         logger.info(f"Payment Ref: {payment_reference}")
         
-        # Check for duplicate
-        if MonnifyTransaction.objects.filter(transaction_reference=transaction_reference).exists():
-            logger.info(f"Duplicate transaction: {transaction_reference}")
+        # SECURITY: Verify signature for legacy format
+        # (Event-based format doesn't always include transactionHash)
+        # If it does, verify it
+        if 'transactionHash' in event_data:
+            if not verify_monnify_signature(event_data):
+                logger.error("⚠️ SIGNATURE VERIFICATION FAILED - Rejecting webhook")
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Invalid signature'
+                }, status=403)
+        
+        # DATABASE-LEVEL duplicate check
+        if is_duplicate_transaction(transaction_reference):
+            logger.info(f"Duplicate transaction (DB check): {transaction_reference}")
             return JsonResponse({
                 'status': 'success',
                 'message': 'Transaction already processed'
@@ -167,9 +207,9 @@ def process_event_based_webhook(data):
         virtual_account = None
         user_account = None
         
-        # FIXED: Handle different payment types
+        # Handle different payment types
         if product_reference and product_reference.startswith('VA-'):
-            # This is a PERMANENT virtual account payment
+            # Permanent virtual account payment
             logger.info(f"Looking for virtual account: {product_reference}")
             virtual_account = VirtualAccount.objects.filter(
                 account_reference=product_reference,
@@ -187,18 +227,16 @@ def process_event_based_webhook(data):
                 )
                 return JsonResponse({
                     'status': 'error',
-                    'message': 'Virtual account not found',
-                    'product_reference': product_reference
+                    'message': 'Virtual account not found'
                 }, status=404)
             
             user_account = virtual_account.user_account
             logger.info(f"Found virtual account for user: {user_account.user.username}")
             
         elif product_reference and (product_reference.startswith('PAY') or product_type == 'API_NOTIFICATION'):
-            # This is a ONE-TIME PAYMENT (init-transaction)
+            # One-time payment
             logger.info(f"One-time payment detected: {product_reference}")
             
-            # Try to find user by email from customer data
             customer = event_data.get('customer', {})
             customer_email = customer.get('email', '').strip().lower()
             
@@ -232,8 +270,7 @@ def process_event_based_webhook(data):
                 )
                 return JsonResponse({
                     'status': 'error',
-                    'message': 'User account not found',
-                    'email': customer_email
+                    'message': 'User account not found'
                 }, status=404)
         else:
             logger.error(f"Unknown payment type. Reference: {product_reference}, Type: {product_type}")
@@ -249,12 +286,26 @@ def process_event_based_webhook(data):
                 'message': 'Unknown payment type'
             }, status=400)
         
+        # Validate amount (minimum ₦50 to prevent spam)
+        amount_paid = Decimal(str(event_data.get('amountPaid', 0)))
+        if amount_paid < 50:
+            logger.warning(f"Payment amount too low: ₦{amount_paid}")
+            PaymentNotification.objects.create(
+                notification_type='FAILED_TRANSACTION',
+                transaction_reference=transaction_reference,
+                processed=False,
+                processing_error=f'Amount too low: ₦{amount_paid}',
+                raw_payload=data
+            )
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Payment amount too low'
+            }, status=400)
+        
         # Parse payment date
         paid_on_str = event_data.get('paidOn', timezone.now().isoformat())
         try:
-            # Handle different date formats
             if '.' in paid_on_str:
-                # Format: "2025-10-28 16:23:50.0"
                 paid_on = datetime.strptime(paid_on_str.split('.')[0], "%Y-%m-%d %H:%M:%S")
             else:
                 paid_on = datetime.fromisoformat(paid_on_str.replace('Z', '+00:00'))
@@ -270,67 +321,78 @@ def process_event_based_webhook(data):
         first_source = payment_sources[0] if payment_sources else {}
         customer = event_data.get('customer', {})
         
-        # Create transaction record
+        # Create transaction record with atomic DB operation
         logger.info("Creating MonnifyTransaction record...")
-        monnify_txn = MonnifyTransaction.objects.create(
-            user_account=user_account,
-            virtual_account=virtual_account,  # Can be None for one-time payments
-            transaction_reference=transaction_reference,
-            payment_reference=payment_reference,
-            amount_paid=Decimal(str(event_data.get('amountPaid', 0))),
-            total_payable=Decimal(str(event_data.get('totalPayable', 0))),
-            settlement_amount=Decimal(str(event_data.get('settlementAmount', 0))),
-            paid_on=paid_on,
-            payment_status='PAID',
-            payment_description=event_data.get('paymentDescription', ''),
-            payment_method=event_data.get('paymentMethod', 'ACCOUNT_TRANSFER'),
-            currency=event_data.get('currencyCode', 'NGN'),
-            customer_name=customer.get('name', ''),
-            customer_email=customer.get('email', ''),
-            destination_account_number=first_source.get('accountNumber', ''),
-            destination_account_name=first_source.get('accountName', ''),
-            destination_bank_code=first_source.get('bankCode', ''),
-            webhook_payload=data,
-            processed=False
-        )
         
-        logger.info(f"Transaction record created: ID={monnify_txn.id}")
-        
-        # Process payment (credit user account)
-        logger.info("Processing payment...")
-        success = monnify_txn.process_payment()
-        
-        # Create notification
-        PaymentNotification.objects.create(
-            notification_type='SUCCESSFUL_TRANSACTION',
-            transaction_reference=transaction_reference,
-            monnify_transaction=monnify_txn,
-            processed=success,
-            processed_at=timezone.now() if success else None,
-            processing_error='' if success else 'Failed to credit account',
-            raw_payload=data
-        )
-        
-        if success:
-            logger.info("="*80)
-            logger.info("✓ PAYMENT PROCESSED SUCCESSFULLY")
-            logger.info(f"Transaction: {transaction_reference}")
-            logger.info(f"Amount: ₦{event_data.get('amountPaid')}")
-            logger.info(f"User: {user_account.user.username}")
-            logger.info(f"Payment Type: {'Virtual Account' if virtual_account else 'One-Time Payment'}")
-            logger.info(f"New Balance: ₦{user_account.balance}")
-            logger.info("="*80)
+        with db_transaction.atomic():
+            # Double-check for duplicates within transaction
+            if MonnifyTransaction.objects.filter(
+                transaction_reference=transaction_reference
+            ).exists():
+                logger.warning("Duplicate caught in atomic block")
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Transaction already processed'
+                })
             
-            return JsonResponse({
-                'status': 'success',
-                'message': 'Payment processed successfully'
-            })
-        else:
-            logger.error(f"✗ Failed to process payment: {transaction_reference}")
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Failed to process payment'
-            }, status=500)
+            monnify_txn = MonnifyTransaction.objects.create(
+                user_account=user_account,
+                virtual_account=virtual_account,
+                transaction_reference=transaction_reference,
+                payment_reference=payment_reference,
+                amount_paid=amount_paid,
+                total_payable=Decimal(str(event_data.get('totalPayable', 0))),
+                settlement_amount=Decimal(str(event_data.get('settlementAmount', 0))),
+                paid_on=paid_on,
+                payment_status='PAID',
+                payment_description=event_data.get('paymentDescription', ''),
+                payment_method=event_data.get('paymentMethod', 'ACCOUNT_TRANSFER'),
+                currency=event_data.get('currencyCode', 'NGN'),
+                customer_name=customer.get('name', ''),
+                customer_email=customer.get('email', ''),
+                destination_account_number=first_source.get('accountNumber', ''),
+                destination_account_name=first_source.get('accountName', ''),
+                destination_bank_code=first_source.get('bankCode', ''),
+                webhook_payload=data,
+                processed=False
+            )
+            
+            logger.info(f"Transaction record created: ID={monnify_txn.id}")
+            
+            # Process payment (credit user account)
+            logger.info("Processing payment...")
+            success = monnify_txn.process_payment()
+            
+            # Create notification
+            PaymentNotification.objects.create(
+                notification_type='SUCCESSFUL_TRANSACTION',
+                transaction_reference=transaction_reference,
+                monnify_transaction=monnify_txn,
+                processed=success,
+                processed_at=timezone.now() if success else None,
+                processing_error='' if success else 'Failed to credit account',
+                raw_payload=data
+            )
+            
+            if success:
+                logger.info("="*80)
+                logger.info("✓ PAYMENT PROCESSED SUCCESSFULLY")
+                logger.info(f"Transaction: {transaction_reference}")
+                logger.info(f"Amount: ₦{event_data.get('amountPaid')}")
+                logger.info(f"User: {user_account.user.username}")
+                logger.info(f"New Balance: ₦{user_account.balance}")
+                logger.info("="*80)
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Payment processed successfully'
+                })
+            else:
+                logger.error(f"✗ Failed to process payment: {transaction_reference}")
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Failed to process payment'
+                }, status=500)
             
     except Exception as e:
         logger.error(f"Error processing event webhook: {str(e)}", exc_info=True)
@@ -340,19 +402,26 @@ def process_event_based_webhook(data):
         }, status=500)
 
 
-def process_legacy_webhook(data):
-    """Process LEGACY webhook format"""
+def process_legacy_webhook(data, client_ip):
+    """
+    SECURED legacy webhook with signature verification
+    """
     try:
         logger.info("Processing legacy webhook...")
         
-        # Extract critical fields
+        # SECURITY: Verify signature
+        if not verify_monnify_signature(data):
+            logger.error("⚠️ SIGNATURE VERIFICATION FAILED - Rejecting webhook")
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Invalid signature'
+            }, status=403)
+        
         transaction_reference = data.get('transactionReference')
         payment_reference = data.get('paymentReference')
         amount_paid = data.get('amountPaid')
         payment_status = data.get('paymentStatus')
-        transaction_hash = data.get('transactionHash')
         
-        # Log extracted fields
         logger.info(f"Transaction Ref: {transaction_reference}")
         logger.info(f"Payment Ref: {payment_reference}")
         logger.info(f"Amount: {amount_paid}")
@@ -360,17 +429,17 @@ def process_legacy_webhook(data):
         
         # Validate required fields
         if not all([transaction_reference, payment_reference, amount_paid, payment_status]):
-            missing_fields = []
-            if not transaction_reference: missing_fields.append('transactionReference')
-            if not payment_reference: missing_fields.append('paymentReference')
-            if not amount_paid: missing_fields.append('amountPaid')
-            if not payment_status: missing_fields.append('paymentStatus')
+            missing = []
+            if not transaction_reference: missing.append('transactionReference')
+            if not payment_reference: missing.append('paymentReference')
+            if not amount_paid: missing.append('amountPaid')
+            if not payment_status: missing.append('paymentStatus')
             
-            logger.error(f"Missing required fields: {missing_fields}")
+            logger.error(f"Missing required fields: {missing}")
             return JsonResponse({
                 'status': 'error',
                 'message': 'Missing required fields',
-                'missing_fields': missing_fields
+                'missing_fields': missing
             }, status=400)
         
         # Only process PAID transactions
@@ -387,13 +456,22 @@ def process_legacy_webhook(data):
                 'message': f'Transaction status {payment_status} noted'
             })
         
-        # Check for duplicate
-        if MonnifyTransaction.objects.filter(transaction_reference=transaction_reference).exists():
-            logger.info(f"Duplicate transaction ignored: {transaction_reference}")
+        # DATABASE-LEVEL duplicate check
+        if is_duplicate_transaction(transaction_reference):
+            logger.info(f"Duplicate transaction (DB check): {transaction_reference}")
             return JsonResponse({
                 'status': 'success',
                 'message': 'Transaction already processed'
             })
+        
+        # Validate amount
+        amount_decimal = Decimal(str(amount_paid))
+        if amount_decimal < 50:
+            logger.warning(f"Payment amount too low: ₦{amount_decimal}")
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Payment amount too low'
+            }, status=400)
         
         # Find virtual account
         product_ref = data.get('product', {}).get('reference')
@@ -429,8 +507,7 @@ def process_legacy_webhook(data):
             )
             return JsonResponse({
                 'status': 'error',
-                'message': 'Virtual account not found',
-                'product_reference': product_ref
+                'message': 'Virtual account not found'
             }, status=404)
         
         logger.info(f"Virtual account found for user: {virtual_account.user_account.user.username}")
@@ -440,76 +517,87 @@ def process_legacy_webhook(data):
         try:
             paid_on = datetime.strptime(paid_on_str, "%d/%m/%Y %I:%M:%S %p")
             paid_on = timezone.make_aware(paid_on)
-        except Exception as date_error:
-            logger.warning(f"Date parse error: {date_error}, using current time")
+        except Exception:
+            logger.warning("Date parse error, using current time")
             paid_on = timezone.now()
         
         # Extract details
         account_details = data.get('accountDetails', {})
         customer = data.get('customer', {})
         
-        # Create transaction
+        # Create transaction with atomic DB operation
         logger.info("Creating MonnifyTransaction record...")
-        monnify_txn = MonnifyTransaction.objects.create(
-            user_account=virtual_account.user_account,
-            virtual_account=virtual_account,
-            transaction_reference=transaction_reference,
-            payment_reference=payment_reference,
-            amount_paid=Decimal(str(amount_paid)),
-            total_payable=Decimal(str(data.get('totalPayable', amount_paid))),
-            settlement_amount=Decimal(str(data.get('settlementAmount', amount_paid))),
-            paid_on=paid_on,
-            payment_status='PAID',
-            payment_description=data.get('paymentDescription', ''),
-            payment_method=data.get('paymentMethod', 'ACCOUNT_TRANSFER'),
-            currency=data.get('currencyCode', 'NGN'),
-            customer_name=customer.get('name', ''),
-            customer_email=customer.get('email', ''),
-            destination_account_number=account_details.get('accountNumber', ''),
-            destination_account_name=account_details.get('accountName', ''),
-            destination_bank_code=account_details.get('bankCode', ''),
-            destination_bank_name=account_details.get('bankName', ''),
-            webhook_payload=data,
-            processed=False
-        )
         
-        logger.info(f"Transaction record created: ID={monnify_txn.id}")
-        
-        # Process payment
-        logger.info("Processing payment...")
-        success = monnify_txn.process_payment()
-        
-        # Create notification
-        PaymentNotification.objects.create(
-            notification_type='SUCCESSFUL_TRANSACTION',
-            transaction_reference=transaction_reference,
-            monnify_transaction=monnify_txn,
-            processed=success,
-            processed_at=timezone.now() if success else None,
-            processing_error='' if success else 'Failed to credit account',
-            raw_payload=data
-        )
-        
-        if success:
-            logger.info("="*80)
-            logger.info("✓ PAYMENT PROCESSED SUCCESSFULLY")
-            logger.info(f"Transaction: {transaction_reference}")
-            logger.info(f"Amount: ₦{amount_paid}")
-            logger.info(f"User: {virtual_account.user_account.user.username}")
-            logger.info(f"New Balance: ₦{virtual_account.user_account.balance}")
-            logger.info("="*80)
+        with db_transaction.atomic():
+            # Double-check for duplicates
+            if MonnifyTransaction.objects.filter(
+                transaction_reference=transaction_reference
+            ).exists():
+                logger.warning("Duplicate caught in atomic block")
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Transaction already processed'
+                })
             
-            return JsonResponse({
-                'status': 'success',
-                'message': 'Payment processed successfully',
-                'transaction_reference': transaction_reference
-            })
-        else:
-            logger.error(f"✗ Failed to process payment: {transaction_reference}")
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Failed to process payment'
-            }, status=500)
+            monnify_txn = MonnifyTransaction.objects.create(
+                user_account=virtual_account.user_account,
+                virtual_account=virtual_account,
+                transaction_reference=transaction_reference,
+                payment_reference=payment_reference,
+                amount_paid=amount_decimal,
+                total_payable=Decimal(str(data.get('totalPayable', amount_paid))),
+                settlement_amount=Decimal(str(data.get('settlementAmount', amount_paid))),
+                paid_on=paid_on,
+                payment_status='PAID',
+                payment_description=data.get('paymentDescription', ''),
+                payment_method=data.get('paymentMethod', 'ACCOUNT_TRANSFER'),
+                currency=data.get('currencyCode', 'NGN'),
+                customer_name=customer.get('name', ''),
+                customer_email=customer.get('email', ''),
+                destination_account_number=account_details.get('accountNumber', ''),
+                destination_account_name=account_details.get('accountName', ''),
+                destination_bank_code=account_details.get('bankCode', ''),
+                destination_bank_name=account_details.get('bankName', ''),
+                webhook_payload=data,
+                processed=False
+            )
+            
+            logger.info(f"Transaction record created: ID={monnify_txn.id}")
+            
+            # Process payment
+            logger.info("Processing payment...")
+            success = monnify_txn.process_payment()
+            
+            # Create notification
+            PaymentNotification.objects.create(
+                notification_type='SUCCESSFUL_TRANSACTION',
+                transaction_reference=transaction_reference,
+                monnify_transaction=monnify_txn,
+                processed=success,
+                processed_at=timezone.now() if success else None,
+                processing_error='' if success else 'Failed to credit account',
+                raw_payload=data
+            )
+            
+            if success:
+                logger.info("="*80)
+                logger.info("✓ PAYMENT PROCESSED SUCCESSFULLY")
+                logger.info(f"Transaction: {transaction_reference}")
+                logger.info(f"Amount: ₦{amount_paid}")
+                logger.info(f"User: {virtual_account.user_account.user.username}")
+                logger.info(f"New Balance: ₦{virtual_account.user_account.balance}")
+                logger.info("="*80)
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Payment processed successfully'
+                })
+            else:
+                logger.error(f"✗ Failed to process payment: {transaction_reference}")
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Failed to process payment'
+                }, status=500)
             
     except Exception as e:
         logger.error(f"Error processing legacy webhook: {str(e)}", exc_info=True)

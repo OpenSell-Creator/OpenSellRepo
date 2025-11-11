@@ -1,0 +1,435 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Affiliate Approvals - Admin{% endblock %}
+
+{% block 'Body' %}
+<div class="container-fluid my-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4><i class="bi bi-megaphone-fill me-2"></i>Affiliate Approvals Management</h4>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Status Summary -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <a href="?status=pending&search={{ search_query }}" class="text-decoration-none">
+                                <div class="card bg-warning text-dark status-card {% if status_filter == 'pending' %}border-dark border-3{% endif %}">
+                                    <div class="card-body text-center">
+                                        <h5>{{ status_counts.pending }}</h5>
+                                        <small>Pending Review</small>
+                                        {% if status_filter == 'pending' %}
+                                        <i class="bi bi-check-circle-fill float-end"></i>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="?status=active&search={{ search_query }}" class="text-decoration-none">
+                                <div class="card bg-success text-white status-card {% if status_filter == 'active' %}border-light border-3{% endif %}">
+                                    <div class="card-body text-center">
+                                        <h5>{{ status_counts.active }}</h5>
+                                        <small>Active Affiliates</small>
+                                        {% if status_filter == 'active' %}
+                                        <i class="bi bi-check-circle-fill float-end"></i>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="?status=rejected&search={{ search_query }}" class="text-decoration-none">
+                                <div class="card bg-danger text-white status-card {% if status_filter == 'rejected' %}border-light border-3{% endif %}">
+                                    <div class="card-body text-center">
+                                        <h5>{{ status_counts.rejected }}</h5>
+                                        <small>Rejected</small>
+                                        {% if status_filter == 'rejected' %}
+                                        <i class="bi bi-check-circle-fill float-end"></i>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="?status=suspended&search={{ search_query }}" class="text-decoration-none">
+                                <div class="card bg-secondary text-white status-card {% if status_filter == 'suspended' %}border-light border-3{% endif %}">
+                                    <div class="card-body text-center">
+                                        <h5>{{ status_counts.suspended }}</h5>
+                                        <small>Suspended</small>
+                                        {% if status_filter == 'suspended' %}
+                                        <i class="bi bi-check-circle-fill float-end"></i>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- Filters -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <form method="get" class="d-flex">
+                                <select name="status" class="form-select me-2" onchange="this.form.submit()">
+                                    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Status</option>
+                                    <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                                    <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+                                    <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                                    <option value="suspended" {% if status_filter == 'suspended' %}selected{% endif %}>Suspended</option>
+                                </select>
+                                <input type="hidden" name="search" value="{{ search_query }}">
+                            </form>
+                        </div>
+                        <div class="col-md-6">
+                            <form method="get" class="d-flex">
+                                <input type="text" name="search" class="form-control me-2" 
+                                       placeholder="Search by username, email, or referral code..." value="{{ search_query }}">
+                                <button type="submit" class="btn btn-outline-primary">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                                <input type="hidden" name="status" value="{{ status_filter }}">
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Affiliate Applications Table -->
+                    {% if page_obj %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>User</th>
+                                    <th>Referral Code</th>
+                                    <th>Email</th>
+                                    <th>Status</th>
+                                    <th>Referrals</th>
+                                    <th>Earnings</th>
+                                    <th>Applied</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for affiliate in page_obj %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ affiliate.user.get_full_name|default:affiliate.user.username }}</strong>
+                                        <br><small class="text-muted">@{{ affiliate.user.username }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ affiliate.referral_code }}</span>
+                                    </td>
+                                    <td>{{ affiliate.user.email }}</td>
+                                    <td>
+                                        {% if affiliate.status == 'pending' %}
+                                            <span class="badge bg-warning">Pending</span>
+                                        {% elif affiliate.status == 'active' %}
+                                            <span class="badge bg-success">Active</span>
+                                            {% if affiliate.approved_at %}
+                                            <br><small class="text-muted">{{ affiliate.approved_at|date:"M d, Y" }}</small>
+                                            {% endif %}
+                                        {% elif affiliate.status == 'rejected' %}
+                                            <span class="badge bg-danger">Rejected</span>
+                                        {% elif affiliate.status == 'suspended' %}
+                                            <span class="badge bg-secondary">Suspended</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <strong>{{ affiliate.total_referrals }}</strong>
+                                        {% if affiliate.active_referrals > 0 %}
+                                        <br><small class="text-success">{{ affiliate.active_referrals }} active</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <strong>₦{{ affiliate.total_earned|floatformat:2 }}</strong>
+                                        {% if affiliate.pending_balance > 0 %}
+                                        <br><small class="text-warning">₦{{ affiliate.pending_balance|floatformat:2 }} pending</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ affiliate.created_at|date:"M d, Y" }}
+                                        <br><small class="text-muted">{{ affiliate.created_at|timesince }} ago</small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group-vertical btn-group-sm">
+                                            <a href="{% url 'admin_affiliate_detail' affiliate.id %}" 
+                                               class="btn btn-primary btn-sm">
+                                                <i class="bi bi-eye"></i> Review
+                                            </a>
+                                            
+                                            {% if affiliate.status == 'pending' %}
+                                            <!-- Quick Actions for Pending -->
+                                            <button class="btn btn-success btn-sm" 
+                                                    onclick="quickAction({{ affiliate.id }}, 'approve')">
+                                                <i class="bi bi-check-lg"></i> Approve
+                                            </button>
+                                            <button class="btn btn-danger btn-sm" 
+                                                    onclick="quickAction({{ affiliate.id }}, 'reject')">
+                                                <i class="bi bi-x-lg"></i> Reject
+                                            </button>
+                                            {% elif affiliate.status == 'active' %}
+                                            <!-- Quick Suspend for Active -->
+                                            <button class="btn btn-warning btn-sm" 
+                                                    onclick="quickAction({{ affiliate.id }}, 'suspend')">
+                                                <i class="bi bi-pause-circle"></i> Suspend
+                                            </button>
+                                            {% elif affiliate.status == 'suspended' %}
+                                            <!-- Reactivate Suspended -->
+                                            <button class="btn btn-success btn-sm" 
+                                                    onclick="quickAction({{ affiliate.id }}, 'approve')">
+                                                <i class="bi bi-play-circle"></i> Reactivate
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    {% if page_obj.has_other_pages %}
+                    <nav aria-label="Affiliate pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1&status={{ status_filter }}&search={{ search_query }}">First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}&status={{ status_filter }}&search={{ search_query }}">Previous</a>
+                                </li>
+                            {% endif %}
+                            
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                            </li>
+                            
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}&status={{ status_filter }}&search={{ search_query }}">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&status={{ status_filter }}&search={{ search_query }}">Last</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox fs-1 text-muted"></i>
+                        <h4 class="text-muted mt-3">No affiliate applications found</h4>
+                        <p class="text-muted">
+                            {% if status_filter == 'pending' %}
+                                No pending affiliate applications at the moment.
+                            {% elif search_query %}
+                                No results found for "{{ search_query }}".
+                            {% else %}
+                                No affiliate applications have been submitted yet.
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Action Modal -->
+<div class="modal fade" id="quickActionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Confirm Action</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="quickActionForm">
+                {% csrf_token %}
+                <input type="hidden" name="affiliate_id" id="affiliateId">
+                <input type="hidden" name="action" id="actionType">
+                
+                <div class="modal-body">
+                    <p id="modalMessage"></p>
+                    <div class="mb-3">
+                        <label for="adminNotes" class="form-label">Admin Notes (Optional)</label>
+                        <textarea class="form-control" name="admin_notes" id="adminNotes" rows="3" 
+                                  placeholder="Add notes about this decision..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="confirmBtn">Confirm</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.btn-group-vertical .btn {
+    margin-bottom: 2px;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: none;
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+
+.status-card {
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.status-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.status-card:active {
+    transform: translateY(0);
+}
+
+.status-card::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+    transition: width 0.6s, height 0.6s;
+    transform: translate(-50%, -50%);
+    z-index: 0;
+}
+
+.status-card:active::before {
+    width: 300px;
+    height: 300px;
+}
+
+.status-card .card-body {
+    position: relative;
+    z-index: 1;
+}
+
+.status-card:hover .card-body::after {
+    content: 'Click to filter';
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    opacity: 0.8;
+}
+
+.status-card.border-3 {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.85rem;
+    }
+    
+    .btn-group-vertical .btn {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .status-card:hover .card-body::after {
+        display: none;
+    }
+}
+</style>
+
+<script>
+function quickAction(affiliateId, action) {
+    const modal = new bootstrap.Modal(document.getElementById('quickActionModal'));
+    const form = document.getElementById('quickActionForm');
+    
+    document.getElementById('affiliateId').value = affiliateId;
+    document.getElementById('actionType').value = action;
+    
+    // Set modal content based on action
+    let title, message, btnClass, btnText;
+    
+    switch(action) {
+        case 'approve':
+            title = 'Approve Affiliate';
+            message = 'Are you sure you want to APPROVE this affiliate? They will be able to earn commissions immediately.';
+            btnClass = 'btn-success';
+            btnText = 'Approve';
+            break;
+        case 'reject':
+            title = 'Reject Application';
+            message = 'Are you sure you want to REJECT this affiliate application? The user will be notified.';
+            btnClass = 'btn-danger';
+            btnText = 'Reject';
+            break;
+        case 'suspend':
+            title = 'Suspend Affiliate';
+            message = 'Are you sure you want to SUSPEND this affiliate? They will stop earning commissions.';
+            btnClass = 'btn-warning';
+            btnText = 'Suspend';
+            break;
+    }
+    
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalMessage').textContent = message;
+    
+    const confirmBtn = document.getElementById('confirmBtn');
+    confirmBtn.className = `btn ${btnClass}`;
+    confirmBtn.textContent = btnText;
+    
+    modal.show();
+}
+
+// Auto-refresh pending count every 60 seconds
+{% if status_filter == 'pending' %}
+setInterval(function() {
+    if (document.visibilityState === 'visible') {
+        // Could add AJAX call here to just update the count
+        const currentUrl = new URL(window.location.href);
+        fetch(currentUrl.pathname + '?ajax=1&status=pending')
+            .then(response => response.json())
+            .then(data => {
+                // Update pending count without full reload
+                if (data.pending_count !== {{ status_counts.pending }}) {
+                    location.reload();
+                }
+            });
+    }
+}, 60000);
+{% endif %}
+
+// Highlight urgent pending requests (older than 24 hours)
+document.addEventListener('DOMContentLoaded', function() {
+    const rows = document.querySelectorAll('tbody tr');
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+    
+    rows.forEach(function(row) {
+        const statusBadge = row.querySelector('.badge');
+        if (statusBadge && statusBadge.textContent.trim() === 'Pending') {
+            row.style.borderLeft = '4px solid #ffc107';
+        }
+    });
+});
+</script>
+{% endblock %}

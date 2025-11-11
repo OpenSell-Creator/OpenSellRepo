@@ -19,6 +19,41 @@
                     </svg>
                     {% endif %}
                     <h1 class="profile-username mt-3">{{ user.username }}</h1>
+                    
+                    <!-- Role & Status Badges -->
+                    <div class="badge-container mb-2">
+                        {% if user.is_superuser %}
+                            <span class="badge bg-danger">
+                                <i class="bi bi-shield-fill-check"></i> Super Admin
+                            </span>
+                        {% elif user.is_staff %}
+                            <span class="badge bg-warning">
+                                <i class="bi bi-shield-check"></i> Staff
+                            </span>
+                        {% endif %}
+                        
+                        {% if user.affiliate %}
+                            <span class="badge bg-success">
+                                ₦</i> Affiliate Partner
+                            </span>
+                        {% endif %}
+                        
+                        {% if user.profile.is_verified_business %}
+                            <span class="badge bg-primary">
+                                <i class="bi bi-patch-check-fill"></i> Verified Business
+                            </span>
+                        {% elif user.profile.has_pending_verification %}
+                            <span class="badge bg-warning">
+                                <i class="bi bi-clock-history"></i> Verification Pending
+                            </span>
+                        {% endif %}
+                        
+                        {% if user.profile.email_verified %}
+                            <span class="badge bg-info">
+                                <i class="bi bi-envelope-check-fill"></i> Email Verified
+                            </span>
+                        {% endif %}
+                    </div>
 
                     <div class="profile-actions mt-4">
                         <a href="{% url 'profile_update' %}" class="btn btn-edit-profile">
@@ -49,13 +84,52 @@
                             </a>
                         </div>
 
-                        <div class="profile-card mb-3 ">
+                        <!-- Dashboard with Balance -->
+                        <div class="profile-card mb-3">
                             <a href="{% url 'dashboard_home' %}" class="menu-link">
-                                <i class="bi bi-wallet-fill fs-4 me-3 text-muted"></i>
-                                <span class="menu-text">Dashboard </span>
+                                <i class="bi bi-wallet-fill fs-4 me-3 text-success"></i>
+                                <div class="menu-content">
+                                    <span class="menu-text">Dashboard</span>
+                                    {% if account %}
+                                    <span class="balance-amount">₦{{ account.balance|floatformat:0 }}</span>
+                                    {% endif %}
+                                </div>
                                 <i class="bi bi-chevron-right ms-auto"></i>
                             </a>
                         </div>
+
+                        <!-- Affiliate Dashboard (Only for Affiliates) -->
+                        {% if user.affiliate %}
+                        <div class="profile-card mb-3">
+                            <a href="{% url 'affiliate_dashboard' %}" class="menu-link">
+                                <i class="bi bi-graph-up-arrow fs-4 me-3 text-success"></i>
+                                <span class="menu-text">Affiliate Dashboard</span>
+                                {% if user.affiliate.status == 'active' %}
+                                    <span class="badge bg-success ms-2">Active</span>
+                                {% elif user.affiliate.status == 'pending' %}
+                                    <span class="badge bg-warning ms-2">Pending</span>
+                                {% endif %}
+                                <i class="bi bi-chevron-right ms-auto"></i>
+                            </a>
+                        </div>
+                        {% endif %}
+
+                        <!-- Admin Panel (Only for Staff/Superuser) -->
+                        {% if user.is_staff or user.is_superuser %}
+                        <div class="profile-card mb-3">
+                            <a href="{% url 'admin_panel' %}" class="menu-link">
+                                <i class="bi bi-shield-lock-fill fs-4 me-3 text-danger"></i>
+                                <span class="menu-text">Admin Panel</span>
+                                {% if user.is_superuser %}
+                                    <span class="badge bg-danger ms-2">Super</span>
+                                {% else %}
+                                    <span class="badge bg-warning ms-2">Staff</span>
+                                {% endif %}
+                                <i class="bi bi-chevron-right ms-auto"></i>
+                            </a>
+                        </div>
+                        {% endif %}
+
 
                         <!-- Theme Toggle -->
                         <div class="profile-card mb-3">
@@ -191,31 +265,6 @@
         transform: translateX(8px);
     }
 
-    .disabled-card {
-        opacity: 0.7;
-    }
-
-    .disabled-card:hover {
-        transform: none;
-        background-color: transparent;
-        cursor: not-allowed;
-    }
-
-    .disabled-link {
-        pointer-events: none;
-        color: var(--text-muted);
-    }
-
-    .coming-soon-badge {
-        font-size: 0.75rem;
-        background-color: var(--secondary-color);
-        color: white;
-        padding: 0.25rem 0.5rem;
-        border-radius: var(--radius-md);
-        margin-left: 0.5rem;
-        vertical-align: middle;
-    }
-
     .menu-link {
         text-decoration: none;
         color: var(--text-primary);
@@ -224,10 +273,38 @@
         gap: 1rem;
     }
 
+    .menu-content {
+        flex-grow: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
     .menu-text {
         font-size: 1.1rem;
         font-weight: 500;
         flex-grow: 1;
+    }
+
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.35rem 0.65rem;
+        border-radius: var(--radius-md);
+    }
+
+    .badge-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .balance-amount {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--bs-success, #198754);
+        white-space: nowrap;
     }
 
     /* Theme Toggle Icon */
@@ -274,9 +351,21 @@
             font-size: 0.9rem;
         }
 
-        .coming-soon-badge {
+        .badge {
             font-size: 0.7rem;
             padding: 0.2rem 0.4rem;
+        }
+
+        .badge-container {
+            gap: 0.35rem;
+        }
+
+        .balance-amount {
+            font-size: 0.9rem;
+        }
+
+        .menu-text {
+            font-size: 0.95rem;
         }
     }
 </style>

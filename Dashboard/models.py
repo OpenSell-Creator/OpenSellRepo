@@ -2,12 +2,15 @@ from django.db import models
 from django.contrib.auth.models import User
 from decimal import Decimal
 from django.utils import timezone
-from datetime import timedelta
 from django.db.models.signals import post_save
+from django.db import transaction as db_transaction
+from datetime import timedelta
 from django.dispatch import receiver
 import logging
+
 logger = logging.getLogger(__name__)
 
+#Account Status And Product Boost
 class AccountStatus(models.Model):
     """Defines available account tiers with explicit choices"""
     TIER_CHOICES = [
@@ -277,7 +280,263 @@ class Transaction(models.Model):
         indexes = [
             models.Index(fields=['account', 'transaction_type', '-created_at']),
         ]
+    refund_of_transaction = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='refunds',
+        help_text='Original transaction this refund is for'
+    )
+    
+    def create_refund(self, refund_amount=None, reason=''):
+        """
+        Create a refund transaction for this transaction
+        
+        Args:
+            refund_amount: Amount to refund (defaults to full amount)
+            reason: Reason for refund
+            
+        Returns:
+            Transaction: The refund transaction
+        """
+        if refund_amount is None:
+            refund_amount = abs(self.amount)
+        
+        # Create refund transaction
+        refund_txn = Transaction.objects.create(
+            account=self.account,
+            amount=refund_amount,  # Positive amount
+            transaction_type='refund',
+            description=f"Refund: {reason or self.description}",
+            reference_id=self.reference_id or f"REF-{self.id}",
+            refund_of_transaction=self
+        )
+        
+        # Credit the account
+        self.account.balance += refund_amount
+        self.account.save(update_fields=['balance'])
+        
+        return refund_txn
 
+@receiver(post_save, sender=Transaction)
+def track_affiliate_commission(sender, instance, created, **kwargs):
+    """
+    SECURE COMMISSION TRACKING - 7-DAY HOLDING PERIOD
+    Commissions are held for 7 days to prevent fraud
+    
+    UPDATED:
+    - 7-day holding period added
+    - Affiliates must be 'active' status
+    - Minimum threshold: ₦100 (down from ₦1,000)
+    - Referral activates at ₦100-500 range
+    """
+    if not created:
+        return
+    
+    # Only track these transaction types
+    qualifying_types = ['deposit', 'boost_fee', 'subscription']
+    if instance.transaction_type not in qualifying_types:
+        return
+    
+    transaction_amount = abs(instance.amount)
+    
+    # UPDATED: Minimum amount check (₦100) - lowered for Nigerian market
+    if instance.transaction_type == 'deposit' and transaction_amount < 100:
+        logger.info(f"Skipping commission - deposit amount {transaction_amount} below ₦100 minimum")
+        return
+    
+    try:
+        from Dashboard.models import Referral, AffiliateProfile, AffiliateCommission
+        
+        existing_commission = AffiliateCommission.objects.filter(
+            source_transaction=instance
+        ).exists()
+        
+        if existing_commission:
+            logger.warning(
+                f"⚠️ Duplicate commission attempt blocked - "
+                f"Transaction {instance.id} already processed"
+            )
+            return
+        
+        # Get referral
+        try:
+            referral = Referral.objects.select_related('affiliate').get(
+                referred_user=instance.account.user
+            )
+        except Referral.DoesNotExist:
+            return
+        
+        # CRITICAL: Affiliate must be 'active' to earn commissions
+        if referral.affiliate.status != 'active':
+            logger.info(f"⚠️ Commission blocked - affiliate {referral.affiliate.referral_code} not active (status: {referral.affiliate.status})")
+            return
+        
+        # Calculate commission
+        base_amount = transaction_amount
+        
+        # Map transaction types to commission rates
+        commission_type_map = {
+            'deposit': ('funding', referral.affiliate.funding_commission_rate),
+            'boost_fee': ('boost', referral.affiliate.boost_commission_rate),
+            'subscription': ('subscription', referral.affiliate.subscription_commission_rate),
+        }
+        
+        if instance.transaction_type not in commission_type_map:
+            logger.warning(f"Unknown transaction type: {instance.transaction_type}")
+            return
+        
+        commission_type, commission_rate = commission_type_map[instance.transaction_type]
+        commission_amount = (base_amount * commission_rate / 100)
+        
+        if commission_amount <= 0:
+            logger.info(f"Skipping commission - calculated amount is ₦0")
+            return
+        
+        # UPDATED: 7-day holding period
+        from datetime import timedelta
+        available_date = timezone.now() + timedelta(days=7)
+        
+        # Create commission record with PENDING status
+        with db_transaction.atomic():
+            # Lock the affiliate record
+            affiliate = AffiliateProfile.objects.select_for_update().get(
+                id=referral.affiliate.id
+            )
+            
+            commission = AffiliateCommission.objects.create(
+                affiliate=affiliate,
+                referral=referral,
+                transaction_type=commission_type,
+                base_amount=base_amount,
+                commission_rate=commission_rate,
+                commission_amount=commission_amount,
+                status='pending',
+                source_transaction=instance,
+                available_at=available_date 
+            )
+            
+            # UPDATED: Only update pending_balance (not available yet)
+            affiliate.pending_balance += commission_amount
+            affiliate.total_earned += commission_amount
+            affiliate.save(update_fields=['pending_balance', 'total_earned'])
+            
+            # UPDATED: Activate referral on FIRST qualifying transaction (₦100+)
+            # This allows small transactions to count
+            if referral.status == 'pending' and base_amount >= 100:
+                referral.first_qualifying_transaction = timezone.now()
+                referral.status = 'active'
+            
+            # Update referral statistics
+            referral.total_revenue_generated += base_amount
+            referral.total_commission_earned += commission_amount
+            referral.save(update_fields=[
+                'first_qualifying_transaction',
+                'status',
+                'total_revenue_generated',
+                'total_commission_earned'
+            ])
+            
+            logger.info(
+                f"✓ COMMISSION TRACKED (7-DAY HOLD): "
+                f"₦{commission_amount:.2f} ({commission_rate}%) | "
+                f"Affiliate: {affiliate.referral_code} | "
+                f"From: {instance.account.user.username} | "
+                f"Type: {commission_type} | "
+                f"Available: {available_date.strftime('%Y-%m-%d')} | "
+                f"Pending Balance: ₦{affiliate.pending_balance:.2f}"
+            )
+            
+    except Exception as e:
+        logger.error(
+            f"⚠️ Commission tracking error: "
+            f"User: {instance.account.user.username} | "
+            f"Amount: ₦{instance.amount} | "
+            f"Type: {instance.transaction_type} | "
+            f"Error: {str(e)}",
+            exc_info=True
+        )
+
+@receiver(post_save, sender=Transaction)
+def handle_commission_reversal(sender, instance, created, **kwargs):
+    """
+    NEW: Handle commission reversal for refunds
+    
+    When a transaction is refunded, reverse any commissions earned from it
+    """
+    if not created:
+        return
+    
+    # Only process refunds
+    if instance.transaction_type != 'refund':
+        return
+    
+    try:
+        from Dashboard.models import AffiliateCommission
+        
+        # Find original transaction that was refunded
+        # You'll need to link refunds to original transactions via reference_id
+        original_ref = instance.reference_id
+        if not original_ref:
+            return
+        
+        # Find commissions from the original transaction
+        original_transaction = Transaction.objects.filter(
+            reference_id=original_ref,
+            account=instance.account
+        ).exclude(id=instance.id).first()
+        
+        if not original_transaction:
+            return
+        
+        # Find and cancel associated commissions
+        commissions = AffiliateCommission.objects.filter(
+            source_transaction=original_transaction
+        ).exclude(status='cancelled')
+        
+        with db_transaction.atomic():
+            for commission in commissions:
+                # Lock affiliate
+                affiliate = AffiliateProfile.objects.select_for_update().get(
+                    id=commission.affiliate.id
+                )
+                
+                # Reverse the commission based on its status
+                if commission.status == 'pending':
+                    # Remove from pending balance
+                    affiliate.pending_balance -= commission.commission_amount
+                elif commission.status == 'available':
+                    # Remove from available balance
+                    affiliate.available_balance -= commission.commission_amount
+                elif commission.status == 'paid':
+                    # Commission already paid - create debt record
+                    logger.warning(
+                        f"⚠️ Commission reversal for PAID commission: "
+                        f"₦{commission.commission_amount:.2f} | "
+                        f"Affiliate: {affiliate.referral_code}"
+                    )
+                    # You may want to handle this differently
+                    # (e.g., deduct from future commissions)
+                
+                # Reduce total earned
+                affiliate.total_earned -= commission.commission_amount
+                affiliate.save(update_fields=['pending_balance', 'available_balance', 'total_earned'])
+                
+                # Mark commission as cancelled
+                commission.status = 'cancelled'
+                commission.save(update_fields=['status'])
+                
+                logger.info(
+                    f"✓ COMMISSION REVERSED: "
+                    f"₦{commission.commission_amount:.2f} | "
+                    f"Affiliate: {affiliate.referral_code} | "
+                    f"Reason: Transaction refunded"
+                )
+                
+    except Exception as e:
+        logger.error(f"Commission reversal error: {str(e)}", exc_info=True)
+        
 class ProductBoost(models.Model):
     """Product boost functionality with tier-based pricing"""
     BOOST_TYPES = [
@@ -482,7 +741,6 @@ class ProductBoost(models.Model):
             models.Index(fields=['end_date', 'is_active']),
         ]
 
-# Periodic task to check subscription expiry (run this via Celery or cron)
 def check_subscription_expiry():
     """Check and handle expired subscriptions"""
     accounts = UserAccount.objects.filter(
@@ -502,7 +760,7 @@ def deactivate_expired_boosts():
     expired_boosts.update(is_active=False)
     return expired_boosts.count()
 
-
+#Monnify Funding Setup
 class VirtualAccount(models.Model):
     """
     Permanent virtual account for a user (Monnify Reserved Account)
@@ -597,7 +855,6 @@ class VirtualAccount(models.Model):
         """Deactivate the virtual account"""
         self.status = 'inactive'
         self.save()
-
 
 class MonnifyTransaction(models.Model):
     """
@@ -724,7 +981,6 @@ class MonnifyTransaction(models.Model):
             )
             return False
 
-
 class PaymentNotification(models.Model):
     """
     Store all webhook notifications from Monnify
@@ -770,9 +1026,6 @@ class PaymentNotification(models.Model):
     def __str__(self):
         return f"{self.notification_type} - {self.transaction_reference} ({'Processed' if self.processed else 'Pending'})"
 
-
-# Helper functions for background tasks
-
 def process_pending_monnify_transactions():
     """Background task to process pending Monnify transactions"""
     pending_transactions = MonnifyTransaction.objects.filter(
@@ -787,16 +1040,235 @@ def process_pending_monnify_transactions():
     
     logger.info(f"Processed {success_count} pending Monnify transactions")
     return success_count
-    """Background task to process pending Monnify transactions"""
-    pending_transactions = MonnifyTransaction.objects.filter(
-        payment_status='PAID',
-        processed=False
+
+#Affiliate Referral Setup
+class AffiliateProfile(models.Model):
+    """Affiliate program participation"""
+    STATUS_CHOICES = [
+        ('pending', 'Pending Approval'),
+        ('active', 'Active'),
+        ('suspended', 'Suspended'),
+        ('rejected', 'Rejected'),
+    ]
+    
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='affiliate')
+    referral_code = models.CharField(max_length=20, unique=True, db_index=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    # Commission rates (can be customized per affiliate)
+    funding_commission_rate = models.DecimalField(max_digits=5, decimal_places=2, default=5.0)  # 5%
+    boost_commission_rate = models.DecimalField(max_digits=5, decimal_places=2, default=10.0)   # 10%
+    subscription_commission_rate = models.DecimalField(max_digits=5, decimal_places=2, default=15.0)  # 15%
+    
+    # Balances
+    pending_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    available_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_earned = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_withdrawn = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    
+    # Settings
+    minimum_withdrawal = models.DecimalField(max_digits=10, decimal_places=2, default=5000)  # ₦5,000
+    
+    # Metadata
+    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_affiliates')
+    approved_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    # Notes
+    application_reason = models.TextField(blank=True, help_text="Why they want to be an affiliate")
+    admin_notes = models.TextField(blank=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.referral_code}"
+    
+    @property
+    def total_referrals(self):
+        return Referral.objects.filter(affiliate=self, status='active').count()
+    
+    @property
+    def active_referrals(self):
+        """Referrals who have made at least one qualifying transaction"""
+        return Referral.objects.filter(
+            affiliate=self, 
+            status='active',
+            first_qualifying_transaction__isnull=False
+        ).count()
+    
+    def save(self, *args, **kwargs):
+        """
+        UPDATED: Automatically set referral_code to username if not set
+        """
+        if not self.referral_code:
+            self.referral_code = self.generate_referral_code()
+        super().save(*args, **kwargs)
+    
+    def generate_referral_code(self):
+        """
+        UPDATED: Use username as referral code, add suffix if duplicate
+        """
+        base_code = self.user.username.lower()
+        referral_code = base_code
+        
+        # Check if code already exists
+        counter = 1
+        while AffiliateProfile.objects.filter(
+            referral_code__iexact=referral_code
+        ).exclude(id=self.id).exists():
+            referral_code = f"{base_code}{counter}"
+            counter += 1
+        
+        return referral_code
+    
+    def get_referral_url(self, request=None):
+        """
+        Get the full referral URL for this affiliate
+        UPDATED: Points to signup_options instead of register
+        """
+        from django.urls import reverse
+        from django.conf import settings
+        
+        if request:
+            base_url = request.build_absolute_uri('/')
+        else:
+            base_url = settings.SITE_URL if hasattr(settings, 'SITE_URL') else 'https://opensell.online/'
+        
+        # UPDATED: Use 'signup' which is the signup_options view
+        signup_path = reverse('signup')  # This is signup_options
+        return f"{base_url.rstrip('/')}{signup_path}?ref={self.referral_code}"
+    
+    def get_short_link(self):
+        """
+        Get a short version of the referral link (just the code)
+        Useful for sharing: "Use code: johndoe"
+        """
+        return self.referral_code
+
+class Referral(models.Model):
+    """Track referred users"""
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),  # Signed up but no activity
+        ('active', 'Active'),    # Has qualifying activity
+        ('inactive', 'Inactive'), # Account inactive
+        ('fraud', 'Flagged as Fraud'),
+    ]
+    
+    affiliate = models.ForeignKey(AffiliateProfile, on_delete=models.CASCADE, related_name='referrals')
+    referred_user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='referral_info')
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    # Tracking
+    referral_code_used = models.CharField(max_length=20)
+    signup_ip = models.GenericIPAddressField(null=True, blank=True)
+    signup_date = models.DateTimeField(auto_now_add=True)
+    first_qualifying_transaction = models.DateTimeField(null=True, blank=True)
+    
+    # Total value generated (for analytics)
+    total_revenue_generated = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_commission_earned = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    
+    # Fraud detection
+    flagged_for_review = models.BooleanField(default=False)
+    fraud_reason = models.TextField(blank=True)
+    
+    class Meta:
+        ordering = ['-signup_date']
+        indexes = [
+            models.Index(fields=['affiliate', 'status']),
+            models.Index(fields=['referred_user']),
+        ]
+    
+    def __str__(self):
+        return f"{self.referred_user.username} referred by {self.affiliate.referral_code}"
+
+class AffiliateCommission(models.Model):
+    """Track individual commission transactions"""
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),      # Waiting for holding period
+        ('available', 'Available'),  # Ready for withdrawal
+        ('paid', 'Paid'),           # Already withdrawn
+        ('cancelled', 'Cancelled'),  # Refunded/cancelled
+    ]
+    
+    affiliate = models.ForeignKey(AffiliateProfile, on_delete=models.CASCADE, related_name='commissions')
+    referral = models.ForeignKey(Referral, on_delete=models.CASCADE, related_name='commissions')
+    
+    # Transaction details
+    transaction_type = models.CharField(max_length=20, choices=[
+        ('funding', 'Account Funding'),
+        ('boost', 'Boost Purchase'),
+        ('subscription', 'Pro Subscription'),
+    ])
+    
+    base_amount = models.DecimalField(max_digits=10, decimal_places=2)  # Original transaction amount
+    commission_rate = models.DecimalField(max_digits=5, decimal_places=2)  # Rate applied
+    commission_amount = models.DecimalField(max_digits=10, decimal_places=2)  # Commission earned
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    # Related transaction
+    source_transaction = models.ForeignKey(
+        'Transaction', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='affiliate_commission'
     )
     
-    success_count = 0
-    for transaction in pending_transactions:
-        if transaction.process_payment():
-            success_count += 1
+    # Timing
+    created_at = models.DateTimeField(auto_now_add=True)
+    available_at = models.DateTimeField()  # When it becomes available (30 days later)
+    paid_at = models.DateTimeField(null=True, blank=True)
     
-    logger.info(f"Processed {success_count} pending Monnify transactions")
-    return success_count
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['affiliate', 'status']),
+            models.Index(fields=['status', 'available_at']),
+        ]
+    
+    def __str__(self):
+        return f"₦{self.commission_amount} - {self.affiliate.referral_code} - {self.transaction_type}"
+
+class AffiliateWithdrawal(models.Model):
+    """Track withdrawal requests"""
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('processing', 'Processing'),
+        ('completed', 'Completed'),
+        ('rejected', 'Rejected'),
+    ]
+    
+    affiliate = models.ForeignKey(AffiliateProfile, on_delete=models.CASCADE, related_name='withdrawals')
+    
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    
+    # Payment details
+    payment_method = models.CharField(max_length=50, default='bank_transfer')
+    bank_name = models.CharField(max_length=100)
+    account_number = models.CharField(max_length=20)
+    account_name = models.CharField(max_length=255)
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    # Processing
+    processed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='processed_withdrawals')
+    processed_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.TextField(blank=True)
+    
+    # Reference
+    payment_reference = models.CharField(max_length=100, blank=True)
+    
+    # Timestamps
+    requested_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-requested_at']
+    
+    def __str__(self):
+        return f"₦{self.amount} - {self.affiliate.referral_code} - {self.status}"

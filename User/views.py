@@ -12,6 +12,8 @@ from django.db.models import Q, Avg, Exists, OuterRef, Count
 from .models import EmailPreferences, Profile
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
+from django.contrib.auth.decorators import user_passes_test
+from Home.models import Product_Listing, ProductReport
 from django.db import models
 from django.core.paginator import Paginator
 from allauth.socialaccount.views import SignupView
@@ -29,9 +31,61 @@ from django.views.decorators.http import require_GET
 from .utils import send_otp_email, send_business_verification_approved_email, send_business_verification_rejected_email, send_business_verification_submitted_email
 from django.utils import timezone
 from django.conf import settings
+from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
+from allauth.socialaccount.signals import pre_social_login
+from django.dispatch import receiver
 import logging
+
 logger = logging.getLogger(__name__)
-import random
+
+
+class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
+    """Handle referral tracking for social signups"""
+    
+    def save_user(self, request, sociallogin, form=None):
+        """Save user and handle referral"""
+        user = super().save_user(request, sociallogin, form)
+        
+        # Get referral code from session or default
+        referral_code = request.session.get('referral_code', 'opensell')
+        
+        if referral_code:
+            # Use the same helper function
+            create_referral_record(user, referral_code, request)
+            
+            # Clear from session
+            request.session.pop('referral_code', None)
+        
+        return user
+
+@receiver(pre_social_login)
+def capture_referral_code(sender, request, sociallogin, **kwargs):
+    """
+    Capture referral code from URL before Google OAuth redirect
+    Store in session so it survives the OAuth round-trip
+    """
+    # Check if referral code is in GET parameters
+    referral_code = request.GET.get('ref', '').strip()
+    
+    # UPDATED: Use default if no code provided
+    if not referral_code:
+        referral_code = 'opensell'
+    
+    if referral_code:
+        # Validate the code exists and is active
+        try:
+            from Dashboard.models import AffiliateProfile
+            affiliate = AffiliateProfile.objects.get(
+                referral_code__iexact=referral_code,
+                status='active'
+            )
+            # Store in session for use after OAuth completes
+            request.session['referral_code'] = referral_code
+            logger.info(f"Captured referral code {referral_code} for social auth")
+        except AffiliateProfile.DoesNotExist:
+            logger.warning(f"Invalid referral code attempted in social auth: {referral_code}")
+            # Still store default code even if validation fails
+            request.session['referral_code'] = 'opensell'
 
 class CustomSignupView(SignupView):
     def dispatch(self, request, *args, **kwargs):
@@ -47,9 +101,13 @@ def loginview(request):
         next_url = request.GET.get('next', '')
         if next_url:
             return redirect(next_url)
-        return redirect('home')  # or your preferred default page
+        return redirect('home')
     
     next_url = request.GET.get('next', '')
+    referral_code = request.GET.get('ref', '')
+    
+    if not referral_code:
+        referral_code = 'opensell'
     
     if request.method == 'POST':
         login_form = AuthenticationForm(request=request, data=request.POST)
@@ -61,7 +119,6 @@ def loginview(request):
                 login(request, user)
                 messages.success(request, f'You are now logged in as {username}.')
                 
-                # Get next URL from POST data or default to home
                 next_url = request.POST.get('next', '')
                 if next_url:
                     return redirect(next_url)
@@ -73,7 +130,8 @@ def loginview(request):
     
     return render(request, 'login.html', {
         'login_form': login_form,
-        'next': next_url
+        'next': next_url,
+        'referral_code': referral_code  # NEW: Pass to template
     })
 
 @login_required
@@ -83,34 +141,228 @@ def logoutview(request):
     return redirect('home')
 
 def register_user(request):
-	form =SignUpForm()
-	if request.method == "POST":
-		form = SignUpForm(request.POST)
-		if form.is_valid():
-			form.save()
-			username = form.cleaned_data['username']
-			password = form.cleaned_data['password1']
-			user = authenticate(username=username, password=password)
-			login(request,user)
-			messages.success(request, ("You have successfully registered! Welcome!"))
-			return redirect(reverse('profile_update'))
-	return render(request, "signup.html", {'form':form})
 
+    # Get referral code from URL or use default
+    referral_code = request.GET.get('ref', '').strip() or 'opensell'
+    
+    if request.method == "POST":
+        form = SignUpForm(request.POST)
+        
+        if form.is_valid():
+            # STEP 1: Create user (MOST IMPORTANT - THIS MUST SUCCEED)
+            try:
+                user = form.save()
+                username = form.cleaned_data['username']
+                password = form.cleaned_data['password1']
+                
+                logger.info(f"✓ User created: {username}")
+                
+            except Exception as user_error:
+                logger.error(f"User creation failed: {str(user_error)}", exc_info=True)
+                messages.error(request, f"Registration failed: {str(user_error)}")
+                return render(request, "signup.html", {'form': form, 'referral_code': referral_code})
+            
+            # STEP 2: Handle referral tracking (OPTIONAL - Won't block user creation)
+            ref_code = form.cleaned_data.get('referral_code', '').strip() or 'opensell'
+            
+            if ref_code:
+                referral_created = create_referral_record(user, ref_code, request)
+                
+                if referral_created:
+                    logger.info(f"✓ Referral created: {username} -> {ref_code}")
+                else:
+                    logger.warning(f"⚠️ Referral failed (user still registered): {username} -> {ref_code}")
+            
+            # STEP 3: Log user in (CRITICAL)
+            try:
+                authenticated_user = authenticate(username=username, password=password)
+                
+                if authenticated_user:
+                    login(request, authenticated_user)
+                    messages.success(request, "Welcome! Your account has been created successfully.")
+                    logger.info(f"✓ User logged in: {username}")
+                else:
+                    logger.error(f"Authentication failed for {username}")
+                    messages.warning(request, "Account created but login failed. Please log in manually.")
+                    return redirect('login')
+                    
+            except Exception as login_error:
+                logger.error(f"Login error: {str(login_error)}", exc_info=True)
+                messages.warning(request, "Account created but login failed. Please log in manually.")
+                return redirect('login')
+            
+            return redirect('profile_update')
+        
+        else:
+            # Form validation failed
+            logger.warning(f"Form validation failed: {form.errors}")
+    
+    else:
+        # GET request - show form
+        initial_data = {}
+        if referral_code:
+            initial_data['referral_code'] = referral_code
+        form = SignUpForm(initial=initial_data)
+    
+    return render(request, "signup.html", {
+        'form': form,
+        'referral_code': referral_code
+    })
+
+def create_referral_record(user, referral_code, request):
+    """
+    HELPER: Create referral record (separate function for clarity)
+    
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        from Dashboard.models import AffiliateProfile, Referral
+        
+        # Get affiliate
+        try:
+            affiliate = AffiliateProfile.objects.get(
+                referral_code__iexact=referral_code.strip(),
+                status='active'
+            )
+        except AffiliateProfile.DoesNotExist:
+            logger.warning(f"Invalid referral code: {referral_code}")
+            return False
+        
+        # Get client IP
+        ip = None
+        try:
+            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+            if x_forwarded_for:
+                ip = x_forwarded_for.split(',')[0].strip()
+            else:
+                ip = request.META.get('REMOTE_ADDR')
+        except Exception:
+            pass
+        
+        # Create referral
+        try:
+            referral = Referral.objects.create(
+                affiliate=affiliate,
+                referred_user=user,
+                referral_code_used=referral_code,
+                signup_ip=ip,
+                status='pending'
+            )
+            
+            logger.info(
+                f"✓ Referral created: {user.username} by {affiliate.referral_code} "
+                f"from IP {ip or 'unknown'}"
+            )
+            
+            # OPTIONAL: Run fraud check asynchronously (won't block anything)
+            try:
+                from django_q.tasks import async_task
+                async_task('Dashboard.utils.check_referral_fraud_async', referral.id)
+            except Exception:
+                # Django-Q not available or failed - that's fine
+                pass
+            
+            return True
+            
+        except Exception as referral_error:
+            logger.error(f"Referral creation error: {str(referral_error)}", exc_info=True)
+            return False
+    
+    except Exception as outer_error:
+        logger.error(f"Referral tracking error: {str(outer_error)}", exc_info=True)
+        return False
+    
 def signup_options(request):
     next_url = request.GET.get('next', '')
+    referral_code = request.GET.get('ref', '')
+    
+    if not referral_code:
+        referral_code = 'opensell'
+    
     return render(request, 'signup_options.html', {
-        'next': next_url
+        'next': next_url,
+        'referral_code': referral_code
     })
 
 @login_required
 def profile_menu(request):
-    return render(request, 'profile_menu.html', {'user': request.user})
+    """Enhanced profile menu with account status and balance"""
+    # Check if user is an affiliate
+    try:
+        affiliate = request.user.affiliate
+    except:
+        affiliate = None
+    
+    # Ensure user has an account (for balance display)
+    try:
+        account = request.user.account
+    except:
+        # Create account if it doesn't exist
+        from Dashboard.models import UserAccount, AccountStatus
+        free_status = AccountStatus.objects.filter(tier_type='free').first()
+        if free_status:
+            account = UserAccount.objects.create(user=request.user, status=free_status)
+        else:
+            # Create default free status if it doesn't exist
+            free_status = AccountStatus.objects.create(
+                name='Free User',
+                tier_type='free',
+                description='Basic free account',
+                max_listings=5,
+                monthly_price=0,
+                two_month_price=0
+            )
+            account = UserAccount.objects.create(user=request.user, status=free_status)
+    
+    context = {
+        'user': request.user,
+        'affiliate': affiliate,
+        'account': account,  # This passes the account to template
+    }
+    
+    return render(request, 'profile_menu.html', context)
+
+
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def admin_panel(request):
+    """
+    Main admin panel with links to all admin sections
+    Only accessible to staff and superusers
+    """
+    # Get quick stats
+    total_users = User.objects.count()
+    total_products = Product_Listing.objects.count()
+    
+    # Pending business verifications
+    pending_verifications = Profile.objects.filter(
+        business_name__isnull=False,
+        business_verification_status='pending'
+    ).count()
+    
+    # Pending product reports
+    pending_reports = ProductReport.objects.filter(
+        status='pending'
+    ).count()
+    
+    context = {
+        'total_users': total_users,
+        'total_products': total_products,
+        'pending_verifications': pending_verifications,
+        'pending_reports': pending_reports,
+    }
+    
+    return render(request, 'admin/admin_panel.html', context)
 
 class ProfileUpdateView(LoginRequiredMixin, UpdateView):
     model = Profile
     form_class = ProfileUpdateForm
     template_name = 'profile_update.html'
-    success_url = reverse_lazy('my_store')
+    
+    def get_success_url(self):
+        # Redirect to user's own store with username
+        return reverse('user_store', kwargs={'username': self.request.user.username})
     
     def get_object(self, queryset=None):
         return get_object_or_404(Profile, user=self.request.user)
@@ -178,7 +430,7 @@ def business_verification_form(request):
     # Check if user already has verified status
     if profile.is_verified_business:
         messages.info(request, "Your business is already verified!")
-        return redirect('my_store', username=request.user.username)
+        return redirect('user_store', username=request.user.username)
     
     # Check if user has pending verification
     if profile.has_pending_verification:
@@ -409,7 +661,7 @@ def send_verification_otp(request):
             messages.error(request, "Failed to send verification code. Please try again.")
     
     # Fix: Remove username parameter since your URL pattern doesn't accept it
-    return redirect('my_store')
+    return redirect('user_store', username=request.user.username)
 
 @login_required
 def verify_email_form(request):
@@ -431,7 +683,7 @@ def verify_email_form(request):
             user.profile.save()
             
             messages.success(request, "Your email has been successfully verified!")
-            return redirect('my_store')
+            return redirect('user_store', username=request.user.username)
         else:
             messages.error(request, "Invalid or expired verification code. Please try again.")
     

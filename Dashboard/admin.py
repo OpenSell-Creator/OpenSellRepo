@@ -1,7 +1,16 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.utils import timezone
-from .models import AccountStatus, UserAccount, Transaction, ProductBoost
+from django.contrib import admin
+from django.utils.html import format_html
+from django.urls import reverse
+from .models import (
+    AffiliateProfile, Referral, AffiliateCommission, 
+    AffiliateWithdrawal, UserAccount, Transaction
+)
+from django.utils import timezone
+from datetime import timedelta
+from .models import AccountStatus, UserAccount, Transaction, ProductBoost, AffiliateProfile, Referral
 
 @admin.register(AccountStatus)
 class AccountStatusAdmin(admin.ModelAdmin):
@@ -351,3 +360,292 @@ class ProductBoostAdmin(admin.ModelAdmin):
             f"Pro Users: {pro_boosts}"
         )
     export_boost_stats.short_description = "View boost statistics"
+    
+@admin.register(AffiliateProfile)
+class AffiliateProfileAdmin(admin.ModelAdmin):
+    list_display = [
+        'referral_code', 'user_link', 'status', 'total_referrals_count', 
+        'active_referrals_count', 'pending_balance_display', 
+        'available_balance_display', 'total_earned_display', 'created_at'
+    ]
+    list_filter = ['status', 'created_at', 'approved_at']
+    search_fields = ['user__username', 'user__email', 'referral_code']
+    readonly_fields = [
+        'referral_code', 'pending_balance', 'available_balance', 
+        'total_earned', 'total_withdrawn', 'created_at', 'updated_at',
+        'approved_at', 'approved_by'
+    ]
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('user', 'referral_code', 'status')
+        }),
+        ('Commission Rates (%)', {
+            'fields': ('funding_commission_rate', 'boost_commission_rate', 'subscription_commission_rate')
+        }),
+        ('Balance Information', {
+            'fields': ('pending_balance', 'available_balance', 'total_earned', 'total_withdrawn', 'minimum_withdrawal')
+        }),
+        ('Application Details', {
+            'fields': ('application_reason', 'admin_notes')
+        }),
+        ('Approval Information', {
+            'fields': ('approved_by', 'approved_at')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at')
+        }),
+    )
+    
+    actions = ['approve_affiliates', 'suspend_affiliates', 'reject_affiliates']
+    
+    def user_link(self, obj):
+        url = reverse('admin:auth_user_change', args=[obj.user.id])
+        return format_html('<a href="{}">{}</a>', url, obj.user.username)
+    user_link.short_description = 'User'
+    
+    def total_referrals_count(self, obj):
+        count = obj.referrals.count()
+        url = reverse('admin:Dashboard_referral_changelist') + f'?affiliate__id__exact={obj.id}'
+        return format_html('<a href="{}">{}</a>', url, count)
+    total_referrals_count.short_description = 'Total Referrals'
+    
+    def active_referrals_count(self, obj):
+        count = obj.referrals.filter(status='active').count()
+        return count
+    active_referrals_count.short_description = 'Active'
+    
+    def pending_balance_display(self, obj):
+        # FIXED: Format the value first, then pass to format_html
+        amount = f'{float(obj.pending_balance):,.2f}'
+        return format_html('<span style="color: orange;">₦{}</span>', amount)
+    pending_balance_display.short_description = 'Pending'
+    
+    def available_balance_display(self, obj):
+        # FIXED: Format the value first, then pass to format_html
+        amount = f'{float(obj.available_balance):,.2f}'
+        return format_html('<span style="color: green; font-weight: bold;">₦{}</span>', amount)
+    available_balance_display.short_description = 'Available'
+    
+    def total_earned_display(self, obj):
+        return f'₦{float(obj.total_earned):,.2f}'
+    total_earned_display.short_description = 'Total Earned'
+    
+    def approve_affiliates(self, request, queryset):
+        updated = queryset.filter(status='pending').update(
+            status='active',
+            approved_by=request.user,
+            approved_at=timezone.now()
+        )
+        self.message_user(request, f'{updated} affiliate(s) approved successfully.')
+    approve_affiliates.short_description = "✅ Approve selected affiliates"
+    
+    def suspend_affiliates(self, request, queryset):
+        updated = queryset.update(status='suspended')
+        self.message_user(request, f'{updated} affiliate(s) suspended.')
+    suspend_affiliates.short_description = "⏸️ Suspend selected affiliates"
+    
+    def reject_affiliates(self, request, queryset):
+        updated = queryset.filter(status='pending').update(status='rejected')
+        self.message_user(request, f'{updated} affiliate(s) rejected.')
+    reject_affiliates.short_description = "❌ Reject selected affiliates"
+
+@admin.register(Referral)
+class ReferralAdmin(admin.ModelAdmin):
+    list_display = [
+        'referred_user_link', 'affiliate_link', 'status', 'signup_date', 
+        'first_qualifying_transaction', 'total_revenue_display', 
+        'total_commission_display', 'flagged_for_review'
+    ]
+    list_filter = ['status', 'signup_date', 'flagged_for_review']
+    search_fields = ['referred_user__username', 'affiliate__referral_code', 'signup_ip']
+    readonly_fields = [
+        'signup_date', 'signup_ip', 'first_qualifying_transaction',
+        'total_revenue_generated', 'total_commission_earned'
+    ]
+    
+    fieldsets = (
+        ('Referral Information', {
+            'fields': ('affiliate', 'referred_user', 'referral_code_used', 'status')
+        }),
+        ('Tracking', {
+            'fields': ('signup_ip', 'signup_date', 'first_qualifying_transaction')
+        }),
+        ('Performance', {
+            'fields': ('total_revenue_generated', 'total_commission_earned')
+        }),
+        ('Fraud Detection', {
+            'fields': ('flagged_for_review', 'fraud_reason'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    actions = ['mark_as_fraud', 'mark_as_active']
+    
+    def referred_user_link(self, obj):
+        url = reverse('admin:auth_user_change', args=[obj.referred_user.id])
+        return format_html('<a href="{}">{}</a>', url, obj.referred_user.username)
+    referred_user_link.short_description = 'Referred User'
+    
+    def affiliate_link(self, obj):
+        url = reverse('admin:Dashboard_affiliateprofile_change', args=[obj.affiliate.id])
+        return format_html('<a href="{}">{}</a>', url, obj.affiliate.referral_code)
+    affiliate_link.short_description = 'Affiliate'
+    
+    def total_revenue_display(self, obj):
+        return f'₦{float(obj.total_revenue_generated):,.2f}'
+    total_revenue_display.short_description = 'Revenue Generated'
+    
+    def total_commission_display(self, obj):
+        return f'₦{float(obj.total_commission_earned):,.2f}'
+    total_commission_display.short_description = 'Commission Earned'
+    
+    def mark_as_fraud(self, request, queryset):
+        updated = queryset.update(status='fraud', flagged_for_review=True)
+        self.message_user(request, f'{updated} referral(s) marked as fraud.')
+    mark_as_fraud.short_description = "🚨 Mark as fraud"
+    
+    def mark_as_active(self, request, queryset):
+        updated = queryset.update(status='active', flagged_for_review=False, fraud_reason='')
+        self.message_user(request, f'{updated} referral(s) marked as active.')
+    mark_as_active.short_description = "✅ Mark as active"
+
+
+@admin.register(AffiliateCommission)
+class AffiliateCommissionAdmin(admin.ModelAdmin):
+    list_display = [
+        'affiliate_link', 'referral_link', 'transaction_type', 
+        'base_amount_display', 'commission_rate', 'commission_amount_display',
+        'status', 'created_at', 'instant_availability_badge'
+    ]
+    list_filter = ['status', 'transaction_type', 'created_at']
+    search_fields = ['affiliate__referral_code', 'referral__referred_user__username']
+    readonly_fields = [
+        'affiliate', 'referral', 'transaction_type', 'base_amount', 
+        'commission_rate', 'commission_amount', 'source_transaction',
+        'created_at', 'available_at'
+    ]
+    
+    fieldsets = (
+        ('Commission Details', {
+            'fields': ('affiliate', 'referral', 'transaction_type', 'status')
+        }),
+        ('Amounts', {
+            'fields': ('base_amount', 'commission_rate', 'commission_amount')
+        }),
+        ('Related Transaction', {
+            'fields': ('source_transaction',)
+        }),
+        ('Timing', {
+            'fields': ('created_at', 'available_at'),
+            'description': 'Commissions are INSTANTLY available (no hold period)'
+        }),
+    )
+    
+    def affiliate_link(self, obj):
+        url = reverse('admin:Dashboard_affiliateprofile_change', args=[obj.affiliate.id])
+        return format_html('<a href="{}">{}</a>', url, obj.affiliate.referral_code)
+    affiliate_link.short_description = 'Affiliate'
+    
+    def referral_link(self, obj):
+        url = reverse('admin:Dashboard_referral_change', args=[obj.referral.id])
+        return format_html('<a href="{}">{}</a>', url, obj.referral.referred_user.username)
+    referral_link.short_description = 'Referred User'
+    
+    def base_amount_display(self, obj):
+        return f'N{float(obj.base_amount):,.2f}'
+    base_amount_display.short_description = 'Base Amount'
+    
+    def commission_amount_display(self, obj):
+        amount = f'{float(obj.commission_amount):,.2f}'
+        # Show green for available/paid, orange for pending
+        color = 'green' if obj.status == 'available' else 'orange' if obj.status == 'pending' else 'gray'
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">N{}</span>', 
+            color, amount
+        )
+    commission_amount_display.short_description = 'Commission'
+    
+    def instant_availability_badge(self, obj):
+        """Show instant availability badge"""
+        if obj.status == 'available':
+            return format_html(
+                '<span style="color: green; font-weight: bold;">✓ Instant</span>'
+            )
+        elif obj.status == 'pending':
+            return format_html(
+                '<span style="color: orange;">⏳ Pending</span>'
+            )
+        else:
+            return format_html(
+                '<span style="color: gray;">● {}</span>', obj.get_status_display()
+            )
+    instant_availability_badge.short_description = 'Availability'
+    
+@admin.register(AffiliateWithdrawal)
+class AffiliateWithdrawalAdmin(admin.ModelAdmin):
+    list_display = [
+        'affiliate_link', 'amount_display', 'status', 'payment_method',
+        'account_details', 'requested_at', 'processed_at'
+    ]
+    list_filter = ['status', 'payment_method', 'requested_at']
+    search_fields = ['affiliate__referral_code', 'account_number', 'account_name']
+    readonly_fields = ['affiliate', 'amount', 'requested_at']
+    
+    fieldsets = (
+        ('Withdrawal Information', {
+            'fields': ('affiliate', 'amount', 'status')
+        }),
+        ('Payment Details', {
+            'fields': ('payment_method', 'bank_name', 'account_number', 'account_name')
+        }),
+        ('Processing', {
+            'fields': ('processed_by', 'processed_at', 'payment_reference', 'rejection_reason')
+        }),
+        ('Timestamps', {
+            'fields': ('requested_at',)
+        }),
+    )
+    
+    actions = ['approve_withdrawals', 'mark_as_completed', 'reject_withdrawals']
+    
+    def affiliate_link(self, obj):
+        url = reverse('admin:Dashboard_affiliateprofile_change', args=[obj.affiliate.id])
+        return format_html('<a href="{}">{}</a>', url, obj.affiliate.referral_code)
+    affiliate_link.short_description = 'Affiliate'
+    
+    def amount_display(self, obj):
+        amount = f'{float(obj.amount):,.2f}'
+        return format_html('<span style="font-weight: bold;">N{}</span>', amount)
+    amount_display.short_description = 'Amount'
+    
+    def account_details(self, obj):
+        return f'{obj.bank_name} - {obj.account_number}'
+    account_details.short_description = 'Account'
+    
+    def approve_withdrawals(self, request, queryset):
+        updated = queryset.filter(status='pending').update(
+            status='approved',
+            processed_by=request.user,
+            processed_at=timezone.now()
+        )
+        self.message_user(request, f'{updated} withdrawal(s) approved.')
+    approve_withdrawals.short_description = "✅ Approve withdrawals"
+    
+    def mark_as_completed(self, request, queryset):
+        updated = queryset.filter(status__in=['pending', 'approved', 'processing']).update(
+            status='completed',
+            processed_by=request.user,
+            processed_at=timezone.now()
+        )
+        self.message_user(request, f'{updated} withdrawal(s) marked as completed.')
+    mark_as_completed.short_description = "✔️ Mark as completed"
+    
+    def reject_withdrawals(self, request, queryset):
+        updated = queryset.filter(status='pending').update(
+            status='rejected',
+            processed_by=request.user,
+            processed_at=timezone.now()
+        )
+        self.message_user(request, f'{updated} withdrawal(s) rejected.')
+    reject_withdrawals.short_description = "❌ Reject withdrawals"

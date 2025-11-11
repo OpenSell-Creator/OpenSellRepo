@@ -15,8 +15,9 @@ urlpatterns = [
     path('product/<uuid:pk>/update/', views.ProductUpdateView.as_view(), name='product_update'),
     path('product/<uuid:pk>/delete/', views.ProductDeleteView.as_view(), name='product_delete'),
     
+    # FIXED: Separate URLs for viewing own store vs other users' stores
+    path('my-store/', views.my_store, name='my_store'),  
     path('store/<str:username>/', views.my_store, name='user_store'),
-    path('my-store/', views.my_store, name='my_store'),
     
     path('review/<str:review_type>/<uuid:pk>/', views.submit_review, name='submit_review'),
     path('seller/<str:username>/reviews/', AllSellerReviewsView.as_view(), name='all_seller_reviews'),
@@ -40,10 +41,8 @@ urlpatterns = [
     path('api/lgas/<int:state_id>/', views.get_lgas, name='get_lgas'),
     path('cookie-policy/', views.cookie_policy_view, name='cookie_policy'),
     
-    
-    
-    #PWA
+    # PWA
     path('manifest.json', views.manifest_view, name='manifest'),
     path('sw.js', views.service_worker_view, name='service_worker'), 
     path('offline/', views.offline_view, name='offline'),
-    ]
+]

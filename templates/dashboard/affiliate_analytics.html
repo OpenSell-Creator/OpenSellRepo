@@ -1,0 +1,594 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Affiliate Analytics{% endblock %}
+
+{% block 'Body' %}
+<div class="affiliate-container">
+    <div class="container-fluid py-4">
+        <!-- Header -->
+        <div class="analytics-header mb-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                    <h2 class="page-title">
+                        <i class="bi bi-graph-up-arrow me-2"></i>Affiliate Analytics
+                    </h2>
+                    <p class="page-subtitle mb-0">Performance insights and statistics</p>
+                </div>
+                <div class="btn-group time-filter">
+                    <a href="?days=7" class="btn btn-sm {% if days == 7 %}btn-primary{% else %}btn-outline-primary{% endif %}">7 Days</a>
+                    <a href="?days=30" class="btn btn-sm {% if days == 30 %}btn-primary{% else %}btn-outline-primary{% endif %}">30 Days</a>
+                    <a href="?days=90" class="btn btn-sm {% if days == 90 %}btn-primary{% else %}btn-outline-primary{% endif %}">90 Days</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Metrics Grid -->
+        <div class="metrics-grid mb-4">
+            <div class="metric-card">
+                <div class="metric-icon bg-primary">
+                    <i class="bi bi-people-fill"></i>
+                </div>
+                <div class="metric-content">
+                    <h6 class="metric-label">Total Referrals</h6>
+                    <h2 class="metric-value">{{ total_referrals }}</h2>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-icon bg-success">
+                    <i class="bi bi-person-check-fill"></i>
+                </div>
+                <div class="metric-content">
+                    <h6 class="metric-label">Active Referrals</h6>
+                    <h2 class="metric-value text-success">{{ active_referrals }}</h2>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-icon bg-info">
+                    <i class="bi bi-graph-up"></i>
+                </div>
+                <div class="metric-content">
+                    <h6 class="metric-label">Conversion Rate</h6>
+                    <h2 class="metric-value text-primary">{{ conversion_rate|floatformat:1 }}%</h2>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-icon bg-success">
+                    <i class="bi bi-cash-stack"></i>
+                </div>
+                <div class="metric-content">
+                    <h6 class="metric-label">Total Earned</h6>
+                    <h2 class="metric-value text-success">₦{{ affiliate.total_earned|floatformat:2 }}</h2>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row g-4 mb-4">
+            <div class="col-lg-8">
+                <div class="card-custom">
+                    <div class="card-header-custom">
+                        <h5 class="card-title-custom">
+                            <i class="bi bi-bar-chart-line me-2"></i>
+                            Daily Earnings (Last {{ days }} Days)
+                        </h5>
+                    </div>
+                    <div class="card-body-custom">
+                        <div class="chart-container">
+                            <canvas id="earningsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card-custom">
+                    <div class="card-header-custom">
+                        <h5 class="card-title-custom">
+                            <i class="bi bi-pie-chart me-2"></i>
+                            Commission by Type
+                        </h5>
+                    </div>
+                    <div class="card-body-custom">
+                        <div class="chart-container">
+                            <canvas id="commissionTypeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Performing Referrals -->
+        <div class="card-custom">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-trophy-fill text-warning me-2"></i>Top Performing Referrals
+                </h5>
+            </div>
+            <div class="card-body-custom p-0">
+                {% if top_referrals %}
+                <div class="table-responsive">
+                    <table class="table table-custom mb-0">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>User</th>
+                                <th>Total Revenue</th>
+                                <th>Total Commission</th>
+                                <th>Joined</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for referral in top_referrals %}
+                            <tr>
+                                <td>
+                                    <span class="rank-badge rank-{{ forloop.counter }}">{{ forloop.counter }}</span>
+                                </td>
+                                <td>
+                                    <div class="user-info">
+                                        <strong>{{ referral.referred_user.username }}</strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    <strong>₦{{ referral.total_revenue_generated|floatformat:2 }}</strong>
+                                </td>
+                                <td>
+                                    <strong class="text-success">₦{{ referral.total_commission_earned|floatformat:2 }}</strong>
+                                </td>
+                                <td>
+                                    <small class="text-muted">{{ referral.signup_date|date:"M d, Y" }}</small>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-trophy display-4"></i>
+                    <p class="mt-3 mb-0">No active referrals yet</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Get theme colors
+const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+const textColor = isDark ? '#f8f9fa' : '#212529';
+const gridColor = isDark ? '#495057' : '#dee2e6';
+
+// Daily Earnings Chart
+const earningsCtx = document.getElementById('earningsChart').getContext('2d');
+const earningsChart = new Chart(earningsCtx, {
+    type: 'line',
+    data: {
+        labels: [
+            {% for item in daily_earnings %}
+                '{{ item.day|date:"M d" }}',
+            {% endfor %}
+        ],
+        datasets: [{
+            label: 'Earnings (₦)',
+            data: [
+                {% for item in daily_earnings %}
+                    {{ item.earnings }},
+                {% endfor %}
+            ],
+            borderColor: '#198754',
+            backgroundColor: 'rgba(25, 135, 84, 0.1)',
+            tension: 0.4,
+            fill: true,
+            borderWidth: 2,
+            pointRadius: 4,
+            pointBackgroundColor: '#198754',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2,
+            pointHoverRadius: 6
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 2.5,
+        plugins: {
+            legend: {
+                display: false
+            },
+            tooltip: {
+                backgroundColor: isDark ? '#212529' : '#ffffff',
+                titleColor: textColor,
+                bodyColor: textColor,
+                borderColor: gridColor,
+                borderWidth: 1,
+                padding: 12,
+                cornerRadius: 8
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: {
+                    color: gridColor,
+                    drawBorder: false
+                },
+                ticks: {
+                    color: textColor,
+                    callback: function(value) {
+                        return '₦' + value.toLocaleString();
+                    }
+                }
+            },
+            x: {
+                grid: {
+                    display: false,
+                    drawBorder: false
+                },
+                ticks: {
+                    color: textColor
+                }
+            }
+        }
+    }
+});
+
+// Commission Type Chart
+const typeCtx = document.getElementById('commissionTypeChart').getContext('2d');
+const typeChart = new Chart(typeCtx, {
+    type: 'doughnut',
+    data: {
+        labels: [
+            {% for item in commissions_by_type %}
+                '{{ item.transaction_type|title }}',
+            {% endfor %}
+        ],
+        datasets: [{
+            data: [
+                {% for item in commissions_by_type %}
+                    {{ item.total }},
+                {% endfor %}
+            ],
+            backgroundColor: [
+                'rgba(13, 110, 253, 0.8)',
+                'rgba(255, 193, 7, 0.8)',
+                'rgba(25, 135, 84, 0.8)',
+                'rgba(220, 53, 69, 0.8)'
+            ],
+            borderColor: isDark ? '#212529' : '#ffffff',
+            borderWidth: 2,
+            hoverOffset: 10
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 1.5,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    color: textColor,
+                    padding: 15,
+                    font: {
+                        size: 12,
+                        weight: '500'
+                    }
+                }
+            },
+            tooltip: {
+                backgroundColor: isDark ? '#212529' : '#ffffff',
+                titleColor: textColor,
+                bodyColor: textColor,
+                borderColor: gridColor,
+                borderWidth: 1,
+                padding: 12,
+                cornerRadius: 8,
+                callbacks: {
+                    label: function(context) {
+                        return context.label + ': ₦' + context.parsed.toLocaleString();
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Update charts on theme change
+const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'data-bs-theme') {
+            location.reload();
+        }
+    });
+});
+
+observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-bs-theme']
+});
+</script>
+
+<style>
+:root {
+    --affiliate-bg: #f8f9fa;
+    --affiliate-card-bg: #ffffff;
+    --affiliate-text: #212529;
+    --affiliate-text-muted: #6c757d;
+    --affiliate-border: #dee2e6;
+    --affiliate-hover: #f1f3f5;
+}
+
+[data-bs-theme="dark"] {
+    --affiliate-bg: #1a1d20;
+    --affiliate-card-bg: #212529;
+    --affiliate-text: #f8f9fa;
+    --affiliate-text-muted: #adb5bd;
+    --affiliate-border: #495057;
+    --affiliate-hover: #2c3034;
+}
+
+.affiliate-container {
+    background-color: var(--affiliate-bg);
+    min-height: 100vh;
+    color: var(--affiliate-text);
+}
+
+/* Header */
+.page-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--affiliate-text);
+    margin-bottom: 0.5rem;
+}
+
+.page-subtitle {
+    font-size: 0.95rem;
+    color: var(--affiliate-text-muted);
+}
+
+.time-filter {
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.time-filter .btn {
+    font-size: 0.9rem;
+    padding: 0.5rem 1.25rem;
+    font-weight: 500;
+}
+
+/* Metrics Grid */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.25rem;
+}
+
+.metric-card {
+    background-color: var(--affiliate-card-bg);
+    border: 1px solid var(--affiliate-border);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+[data-bs-theme="dark"] .metric-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.metric-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    color: white;
+    flex-shrink: 0;
+}
+
+.metric-icon.bg-primary { background-color: #0d6efd; }
+.metric-icon.bg-success { background-color: #198754; }
+.metric-icon.bg-info { background-color: #0dcaf0; }
+
+.metric-content {
+    flex: 1;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    color: var(--affiliate-text-muted);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.metric-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 0;
+    color: var(--affiliate-text);
+}
+
+/* Cards */
+.card-custom {
+    background-color: var(--affiliate-card-bg);
+    border: 1px solid var(--affiliate-border);
+    border-radius: 0.75rem;
+    overflow: hidden;
+}
+
+.card-header-custom {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--affiliate-border);
+    background-color: transparent;
+}
+
+.card-title-custom {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0;
+    color: var(--affiliate-text);
+}
+
+.card-body-custom {
+    padding: 1.25rem;
+}
+
+/* Chart Container */
+.chart-container {
+    position: relative;
+    height: 300px;
+}
+
+/* Table */
+.table-custom {
+    color: var(--affiliate-text);
+}
+
+.table-custom thead {
+    background-color: var(--affiliate-hover);
+}
+
+.table-custom th {
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 1rem;
+    color: var(--affiliate-text);
+    border-bottom: 2px solid var(--affiliate-border);
+}
+
+.table-custom td {
+    padding: 1rem;
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--affiliate-border);
+    vertical-align: middle;
+}
+
+.table-custom tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.table-custom tbody tr:hover {
+    background-color: var(--affiliate-hover);
+}
+
+.rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 0.875rem;
+    color: white;
+}
+
+.rank-badge.rank-1 { background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); }
+.rank-badge.rank-2 { background: linear-gradient(135deg, #C0C0C0 0%, #808080 100%); }
+.rank-badge.rank-3 { background: linear-gradient(135deg, #CD7F32 0%, #8B4513 100%); }
+.rank-badge:not(.rank-1):not(.rank-2):not(.rank-3) {
+    background-color: #6c757d;
+}
+
+.user-info strong {
+    color: var(--affiliate-text);
+    font-weight: 600;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--affiliate-text-muted);
+}
+
+.empty-state i {
+    opacity: 0.5;
+}
+
+/* Responsive Design */
+@media (max-width: 991px) {
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .page-title {
+        font-size: 1.5rem;
+    }
+    
+    .chart-container {
+        height: 250px;
+    }
+}
+
+@media (max-width: 767px) {
+    .metrics-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .metric-card {
+        padding: 1.25rem;
+    }
+    
+    .metric-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+    }
+    
+    .metric-value {
+        font-size: 1.5rem;
+    }
+    
+    .page-title {
+        font-size: 1.25rem;
+    }
+    
+    .time-filter {
+        width: 100%;
+    }
+    
+    .time-filter .btn {
+        flex: 1;
+    }
+    
+    .table-custom {
+        font-size: 0.85rem;
+    }
+    
+    .table-custom th,
+    .table-custom td {
+        padding: 0.75rem 0.5rem;
+    }
+    
+    .chart-container {
+        height: 200px;
+    }
+}
+
+@media (max-width: 575px) {
+    .rank-badge {
+        width: 28px;
+        height: 28px;
+        font-size: 0.75rem;
+    }
+}
+</style>
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

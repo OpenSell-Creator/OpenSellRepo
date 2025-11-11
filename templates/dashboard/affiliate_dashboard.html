@@ -1,0 +1,995 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Affiliate Dashboard{% endblock %}
+
+{% block 'Body' %}
+<div class="affiliate-container">
+    <div class="container-fluid py-4">
+        <!-- Header -->
+        <div class="affiliate-header mb-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                    <h2 class="page-title">
+                        <i class="bi bi-megaphone-fill me-2"></i>Affiliate Dashboard
+                    </h2>
+                    <p class="page-subtitle mb-0">
+                        Referral Code: <strong class="text-primary fs-5">{{ affiliate.referral_code }}</strong>
+                        <small class="text-muted ms-2">(@{{ affiliate.user.username }})</small>
+                        {% if affiliate.status == 'pending' %}
+                            <span class="badge bg-warning ms-2">Pending Approval</span>
+                        {% elif affiliate.status == 'active' %}
+                            <span class="badge bg-success ms-2"><i class="bi bi-check-circle-fill"></i> Active</span>
+                        {% elif affiliate.status == 'suspended' %}
+                            <span class="badge bg-danger ms-2">Suspended</span>
+                        {% endif %}
+                    </p>
+                </div>
+                {% if can_withdraw %}
+                <a href="{% url 'affiliate_withdraw' %}" class="btn btn-success btn-action">
+                    <i class="bi bi-cash-coin me-2"></i>Request Withdrawal
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-pills nav-custom mb-4" role="tablist">
+            <li class="nav-item" role="presentation">
+                <a class="nav-link active" href="{% url 'affiliate_dashboard' %}">
+                    <i class="bi bi-house-fill me-2"></i>Overview
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link" href="{% url 'affiliate_analytics' %}">
+                    <i class="bi bi-graph-up me-2"></i>Analytics
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link" href="{% url 'affiliate_withdraw' %}">
+                    <i class="bi bi-wallet2 me-2"></i>Withdrawals
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link" href="#">
+                    <i class="bi bi-book me-2"></i>Resources
+                </a>
+            </li>
+        </ul>
+
+
+        {% if affiliate.status == 'pending' %}
+        <!-- Pending Status Alert -->
+        <div class="alert alert-warning alert-custom mb-4">
+            <div class="d-flex align-items-start gap-3">
+                <div class="alert-icon">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <h5 class="alert-heading">
+                        <i class="bi bi-hourglass-split"></i> Application Pending Approval
+                    </h5>
+                    <p class="mb-3">
+                        Your affiliate application is being reviewed. We'll notify you via email within 1-2 business days.
+                    </p>
+                    <div class="alert-inner">
+                        <p class="mb-2"><strong>Good news! Your referral code is ready:</strong></p>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="badge bg-warning text-dark fs-6 px-3 py-2">{{ affiliate.referral_code }}</span>
+                            <button class="btn btn-sm btn-outline-warning" onclick="copyCode()">
+                                <i class="bi bi-clipboard"></i> Copy
+                            </button>
+                        </div>
+                        <small class="text-muted mt-2 d-block">
+                            <i class="bi bi-info-circle-fill"></i>
+                            You can start sharing now! Your referrals will be tracked, and commissions will begin once you're approved.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% elif affiliate.status == 'suspended' %}
+        <!-- Suspended Alert -->
+        <div class="alert alert-danger alert-custom mb-4">
+            <h5><i class="bi bi-exclamation-triangle-fill me-2"></i>Account Suspended</h5>
+            <p class="mb-0">Your affiliate account has been suspended. Please contact support for more information.</p>
+        </div>
+        {% elif affiliate.status == 'active' %}
+        <!-- Active Status Banner -->
+        <div class="alert alert-success alert-custom mb-4">
+            <div class="d-flex align-items-center gap-3">
+                <div class="alert-icon">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <h5 class="alert-heading mb-1">
+                        <i class="bi bi-patch-check-fill"></i> Affiliate Account Active
+                    </h5>
+                    <p class="mb-0">
+                        Your referral code: 
+                        <span class="badge bg-success fs-6">{{ affiliate.referral_code }}</span>
+                        • Start earning commissions from your referrals!
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Stats Cards Grid -->
+        <div class="stats-grid mb-4">
+            <!-- Available Balance -->
+            <div class="stat-card">
+                <div class="stat-card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="stat-info">
+                            <p class="stat-label">Available Balance</p>
+                            <h3 class="stat-value text-success">₦{{ affiliate.available_balance|floatformat:2 }}</h3>
+                            {% if can_withdraw %}
+                            <small class="stat-meta text-success">
+                                <i class="bi bi-check-circle-fill"></i> Ready to withdraw
+                            </small>
+                            {% else %}
+                            <small class="stat-meta">Min: ₦{{ affiliate.minimum_withdrawal|floatformat:0 }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="stat-icon bg-success">
+                            <i class="bi bi-cash-coin"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pending Balance -->
+            <div class="stat-card">
+                <div class="stat-card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="stat-info">
+                            <p class="stat-label">Pending Balance</p>
+                            <h3 class="stat-value text-warning">₦{{ affiliate.pending_balance|floatformat:2 }}</h3>
+                            <small class="stat-meta">7-day hold period</small>
+                            {% if releasing_soon > 0 %}
+                            <small class="stat-meta text-info d-block">
+                                <i class="bi bi-clock"></i> ₦{{ releasing_soon|floatformat:2 }} soon
+                            </small>
+                            {% endif %}
+                        </div>
+                        <div class="stat-icon bg-warning">
+                            <i class="bi bi-clock-history"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Earned -->
+            <div class="stat-card">
+                <div class="stat-card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="stat-info">
+                            <p class="stat-label">Total Earned</p>
+                            <h3 class="stat-value text-primary">₦{{ affiliate.total_earned|floatformat:2 }}</h3>
+                            <small class="stat-meta">All-time earnings</small>
+                        </div>
+                        <div class="stat-icon bg-primary">
+                            <i class="bi bi-graph-up-arrow"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Referrals -->
+            <div class="stat-card">
+                <div class="stat-card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="stat-info">
+                            <p class="stat-label">Referrals</p>
+                            <h3 class="stat-value">{{ total_referrals }}</h3>
+                            <small class="stat-meta text-success">{{ active_referrals }} active</small>
+                            {% if pending_referrals > 0 %}
+                            <small class="stat-meta"> • {{ pending_referrals }} pending</small>
+                            {% endif %}
+                        </div>
+                        <div class="stat-icon bg-info">
+                            <i class="bi bi-people-fill"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Commission Status Breakdown -->
+        {% if commission_breakdown %}
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-clock-history me-2"></i>Commission Status Breakdown
+                </h5>
+            </div>
+            <div class="card-body-custom">
+                <div class="commission-grid">
+                    {% for status_item in commission_breakdown %}
+                    <div class="commission-status-card status-{{ status_item.status }}">
+                        <h5 class="commission-amount">₦{{ status_item.total|floatformat:2|default:"0.00" }}</h5>
+                        <small class="commission-label">
+                            {{ status_item.status|title }} ({{ status_item.count }})
+                        </small>
+                    </div>
+                    {% endfor %}
+                </div>
+                <small class="info-text mt-3 d-block">
+                    <i class="bi bi-info-circle"></i> Commissions are held for 7 days before becoming available for withdrawal
+                </small>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Referral Link Section -->
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h5 class="card-title-custom mb-0">
+                        <i class="bi bi-link-45deg me-2"></i>Your Referral Code & Link
+                    </h5>
+                    {% if affiliate.status == 'active' %}
+                    <span class="badge bg-success">
+                        <i class="bi bi-broadcast"></i> Active & Earning
+                    </span>
+                    {% elif affiliate.status == 'pending' %}
+                    <span class="badge bg-warning text-dark">
+                        <i class="bi bi-clock"></i> Ready to Share
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body-custom">
+                <!-- Referral Code -->
+                <div class="mb-4">
+                    <label class="form-label-custom">
+                        <i class="bi bi-person-badge-fill"></i> Your Personal Referral Code:
+                    </label>
+                    <div class="input-group input-group-lg">
+                        <span class="input-group-text bg-primary text-white">
+                            <i class="bi bi-at"></i>
+                        </span>
+                        <input 
+                            type="text" 
+                            class="form-control text-center fw-bold fs-3" 
+                            id="referralCode" 
+                            value="{{ affiliate.referral_code }}" 
+                            readonly
+                            style="letter-spacing: 2px;"
+                        >
+                        <button 
+                            class="btn btn-outline-primary" 
+                            type="button"
+                            onclick="copyCode()"
+                        >
+                            <i class="bi bi-clipboard"></i>
+                            Copy Code
+                        </button>
+                    </div>
+                    <div class="mt-2">
+                        <small class="info-text">
+                            <i class="bi bi-info-circle-fill"></i>
+                            Share this code with friends - they enter it during signup!
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Full Link -->
+                <div class="mb-4">
+                    <label class="form-label-custom">
+                        <i class="bi bi-link-45deg"></i> Full Referral Link:
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="bi bi-globe"></i>
+                        </span>
+                        <input 
+                            type="text" 
+                            class="form-control" 
+                            id="referralLink" 
+                            value="{{ referral_link }}" 
+                            readonly
+                        >
+                        <button 
+                            class="btn btn-success" 
+                            type="button" 
+                            onclick="copyReferralLink()"
+                        >
+                            <i class="bi bi-clipboard me-1"></i>Copy Link
+                        </button>
+                    </div>
+                    <small class="info-text mt-2 d-block">
+                        Direct link that automatically applies your referral code
+                    </small>
+                </div>
+
+                <!-- Quick Share Buttons -->
+                <div>
+                    <label class="form-label-custom">Quick Share:</label>
+                    <div class="share-buttons">
+                        <a href="https://wa.me/?text=Join%20OpenSell%20using%20my%20referral%20code%3A%20{{ affiliate.referral_code }}%0A{{ referral_link|urlencode }}" 
+                           target="_blank" 
+                           class="btn btn-success">
+                            <i class="bi bi-whatsapp me-1"></i>WhatsApp
+                        </a>
+                        <a href="https://twitter.com/intent/tweet?text=Join%20OpenSell%20with%20my%20referral%20code%3A%20{{ affiliate.referral_code }}&url={{ referral_link|urlencode }}" 
+                           target="_blank" 
+                           class="btn btn-info text-white">
+                            <i class="bi bi-twitter-x me-1"></i>Twitter
+                        </a>
+                        <a href="https://www.facebook.com/sharer/sharer.php?u={{ referral_link|urlencode }}" 
+                           target="_blank" 
+                           class="btn btn-primary">
+                            <i class="bi bi-facebook me-1"></i>Facebook
+                        </a>
+                        <button 
+                            class="btn btn-secondary" 
+                            onclick="shareViaEmail()"
+                        >
+                            <i class="bi bi-envelope-fill me-1"></i>Email
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Recent Referrals -->
+            <div class="col-lg-6">
+                <div class="card-custom">
+                    <div class="card-header-custom">
+                        <h5 class="card-title-custom">
+                            <i class="bi bi-people me-2"></i>Recent Referrals
+                        </h5>
+                    </div>
+                    <div class="card-body-custom p-0">
+                        {% if referrals %}
+                        <div class="table-responsive">
+                            <table class="table table-custom mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Status</th>
+                                        <th>Joined</th>
+                                        <th>Revenue</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for referral in referrals %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ referral.referred_user.username }}</strong>
+                                        </td>
+                                        <td>
+                                            {% if referral.status == 'active' %}
+                                            <span class="badge bg-success">Active</span>
+                                            {% elif referral.status == 'pending' %}
+                                            <span class="badge bg-warning">Pending</span>
+                                            {% else %}
+                                            <span class="badge bg-secondary">{{ referral.status|title }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">{{ referral.signup_date|date:"M d, Y" }}</small>
+                                        </td>
+                                        <td>
+                                            <strong class="text-success">₦{{ referral.total_revenue_generated|floatformat:2 }}</strong>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <i class="bi bi-person-plus display-4"></i>
+                            <p class="mt-3">No referrals yet. Start sharing your code!</p>
+                            <p class="text-primary fw-bold">{{ affiliate.referral_code }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Commissions -->
+            <div class="col-lg-6">
+                <div class="card-custom">
+                    <div class="card-header-custom">
+                        <h5 class="card-title-custom">
+                            <i class="bi bi-cash-stack me-2"></i>Recent Commissions
+                        </h5>
+                    </div>
+                    <div class="card-body-custom p-0">
+                        {% if recent_commissions %}
+                        <div class="table-responsive">
+                            <table class="table table-custom mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for commission in recent_commissions %}
+                                    <tr>
+                                        <td>
+                                            {% if commission.transaction_type == 'funding' %}
+                                            <i class="bi bi-wallet2 text-primary"></i> Funding
+                                            {% elif commission.transaction_type == 'boost' %}
+                                            <i class="bi bi-rocket text-warning"></i> Boost
+                                            {% elif commission.transaction_type == 'subscription' %}
+                                            <i class="bi bi-star text-success"></i> Pro
+                                            {% else %}
+                                            <i class="bi bi-cash"></i> {{ commission.transaction_type|title }}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <strong class="text-success">₦{{ commission.commission_amount|floatformat:2 }}</strong>
+                                            <small class="text-muted d-block">{{ commission.commission_rate }}%</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge {{ commission.status_info.color }}">
+                                                <i class="bi {{ commission.status_info.icon }}"></i>
+                                                {{ commission.status_info.text }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">{{ commission.created_at|date:"M d" }}</small>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <i class="bi bi-cash-coin display-4"></i>
+                            <p class="mt-3">
+                                {% if affiliate.status == 'pending' %}
+                                Commissions will appear here once you're approved and your referrals make purchases.
+                                {% else %}
+                                No commissions yet. Share your code to start earning!
+                                {% endif %}
+                            </p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Commission Rates Info -->
+        <div class="card-custom mt-4">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-percent me-2"></i>Your Commission Rates
+                </h5>
+            </div>
+            <div class="card-body-custom">
+                <div class="rates-grid">
+                    <div class="rate-card">
+                        <div class="rate-icon">
+                            <i class="bi bi-wallet2 display-5 text-primary"></i>
+                        </div>
+                        <h4 class="rate-value">{{ affiliate.funding_commission_rate }}%</h4>
+                        <p class="rate-label">Account Funding</p>
+                        <small class="rate-meta">Min ₦100</small>
+                    </div>
+                    <div class="rate-card">
+                        <div class="rate-icon">
+                            <i class="bi bi-rocket display-5 text-warning"></i>
+                        </div>
+                        <h4 class="rate-value">{{ affiliate.boost_commission_rate }}%</h4>
+                        <p class="rate-label">Boost Purchases</p>
+                        <small class="rate-meta">All boosts</small>
+                    </div>
+                    <div class="rate-card">
+                        <div class="rate-icon">
+                            <i class="bi bi-star display-5 text-success"></i>
+                        </div>
+                        <h4 class="rate-value">{{ affiliate.subscription_commission_rate }}%</h4>
+                        <p class="rate-label">Pro Subscriptions</p>
+                        <small class="rate-meta">Monthly & 2-month</small>
+                    </div>
+                </div>
+                <div class="alert alert-info alert-custom mt-3 mb-0">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    <strong>7-Day Hold Period:</strong> All commissions are held for 7 days before becoming available for withdrawal to prevent fraud.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+:root {
+    /* Using site's theme variables */
+    --affiliate-bg: var(--light-background);
+    --affiliate-card-bg: var(--light-card-background);
+    --affiliate-text: var(--light-text-primary);
+    --affiliate-text-muted: var(--light-text-secondary);
+    --affiliate-border: var(--light-border-color);
+    --affiliate-hover: var(--light-hover-bg);
+}
+
+[data-bs-theme="dark"] {
+    --affiliate-bg: var(--dark-background);
+    --affiliate-card-bg: var(--dark-card-background);
+    --affiliate-text: var(--dark-text-primary);
+    --affiliate-text-muted: var(--dark-text-secondary);
+    --affiliate-border: var(--dark-border-color);
+    --affiliate-hover: var(--dark-hover-bg);
+}
+
+.affiliate-container {
+    background-color: var(--affiliate-bg);
+    min-height: 100vh;
+    color: var(--affiliate-text);
+}
+
+/* Typography */
+.page-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--affiliate-text);
+    margin-bottom: 0.5rem;
+}
+
+.page-subtitle {
+    font-size: 0.95rem;
+    color: var(--affiliate-text-muted);
+}
+
+/* Navigation Pills - FIXED */
+.nav-custom {
+    background-color: var(--card-background);
+    padding: 0.5rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+[data-bs-theme="dark"] .nav-custom {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Default state - ALL nav links visible */
+.nav-custom .nav-link {
+    color: #495057 !important; /* Medium gray - visible in light mode */
+    background-color: transparent;
+    border-radius: 0.5rem;
+    padding: 0.625rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+/* Dark mode - light text */
+[data-bs-theme="dark"] .nav-custom .nav-link {
+    color: #adb5bd !important; /* Light gray for dark mode */
+}
+
+/* Hover state */
+.nav-custom .nav-link:hover {
+    background-color: var(--hover-bg);
+    color: #212529 !important;
+    border-color: var(--border-color);
+}
+
+[data-bs-theme="dark"] .nav-custom .nav-link:hover {
+    color: #f8f9fa !important;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Active state - bright and visible */
+.nav-custom .nav-link.active {
+    background-color: var(--primary-color, #0d6efd) !important;
+    color: #ffffff !important;
+    border-color: var(--primary-color, #0d6efd);
+    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.3);
+}
+
+[data-bs-theme="dark"] .nav-custom .nav-link.active {
+    background-color: var(--primary-color, #0d6efd) !important;
+    color: #ffffff !important;
+}
+
+/* Alerts */
+.alert-custom {
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    border: 1px solid;
+    font-size: 0.95rem;
+}
+
+.alert-custom .alert-icon {
+    font-size: 2.5rem;
+    opacity: 0.9;
+}
+
+.alert-custom .alert-heading {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.alert-custom .alert-inner {
+    background-color: rgba(255, 255, 255, 0.5);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+[data-bs-theme="dark"] .alert-custom .alert-inner {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.25rem;
+}
+
+.stat-card {
+    background-color: var(--affiliate-card-bg);
+    border: 1px solid var(--affiliate-border);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+[data-bs-theme="dark"] .stat-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.stat-card-body {
+    padding: 1.25rem;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: var(--affiliate-text-muted);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    color: var(--affiliate-text);
+}
+
+.stat-meta {
+    font-size: 0.8rem;
+    color: var(--affiliate-text-muted);
+}
+
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+    opacity: 0.9;
+}
+
+.stat-icon.bg-success { background-color: #198754; }
+.stat-icon.bg-warning { background-color: #ffc107; }
+.stat-icon.bg-primary { background-color: #0d6efd; }
+.stat-icon.bg-info { background-color: #0dcaf0; }
+
+/* Cards */
+.card-custom {
+    background-color: var(--affiliate-card-bg);
+    border: 1px solid var(--affiliate-border);
+    border-radius: 0.75rem;
+    overflow: hidden;
+}
+
+.card-header-custom {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--affiliate-border);
+    background-color: transparent;
+}
+
+.card-title-custom {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0;
+    color: var(--affiliate-text);
+}
+
+.card-body-custom {
+    padding: 1.25rem;
+}
+
+/* Commission Grid */
+.commission-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.commission-status-card {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    text-align: center;
+    border: 1px solid var(--affiliate-border);
+    background-color: var(--affiliate-hover);
+}
+
+.commission-status-card.status-pending {
+    background-color: rgba(255, 193, 7, 0.1);
+    border-color: #ffc107;
+}
+
+.commission-status-card.status-available {
+    background-color: rgba(25, 135, 84, 0.1);
+    border-color: #198754;
+}
+
+.commission-status-card.status-paid {
+    background-color: rgba(108, 117, 125, 0.1);
+    border-color: #6c757d;
+}
+
+.commission-amount {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--affiliate-text);
+}
+
+.commission-label {
+    font-size: 0.85rem;
+    color: var(--affiliate-text-muted);
+}
+
+/* Form Elements */
+.form-label-custom {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--affiliate-text);
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.info-text {
+    font-size: 0.85rem;
+    color: var(--affiliate-text-muted);
+}
+
+/* Share Buttons */
+.share-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.share-buttons .btn {
+    font-size: 0.9rem;
+    padding: 0.625rem 1.25rem;
+    font-weight: 500;
+}
+
+/* Tables */
+.table-custom {
+    color: var(--affiliate-text);
+}
+
+.table-custom thead {
+    background-color: var(--affiliate-hover);
+    border-bottom: 2px solid var(--affiliate-border);
+}
+
+.table-custom th {
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 0.875rem 1rem;
+    color: var(--affiliate-text);
+    border-bottom: 1px solid var(--affiliate-border);
+}
+
+.table-custom td {
+    padding: 0.875rem 1rem;
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--affiliate-border);
+}
+
+.table-custom tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.table-custom tbody tr:hover {
+    background-color: var(--affiliate-hover);
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--affiliate-text-muted);
+}
+
+.empty-state i {
+    color: var(--affiliate-text-muted);
+    opacity: 0.5;
+}
+
+/* Rates Grid */
+.rates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.25rem;
+}
+
+.rate-card {
+    text-align: center;
+    padding: 1.5rem;
+    border: 1px solid var(--affiliate-border);
+    border-radius: 0.75rem;
+    background-color: var(--affiliate-hover);
+    transition: transform 0.3s ease;
+}
+
+.rate-card:hover {
+    transform: translateY(-5px);
+}
+
+.rate-icon {
+    margin-bottom: 1rem;
+}
+
+.rate-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--affiliate-text);
+}
+
+.rate-label {
+    font-size: 0.95rem;
+    color: var(--affiliate-text);
+    margin-bottom: 0.25rem;
+}
+
+.rate-meta {
+    font-size: 0.8rem;
+    color: var(--affiliate-text-muted);
+}
+
+/* Action Buttons */
+.btn-action {
+    font-size: 0.95rem;
+    padding: 0.625rem 1.5rem;
+    font-weight: 500;
+    border-radius: 0.5rem;
+}
+
+/* Responsive Design */
+@media (max-width: 991px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .page-title {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 767px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .commission-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .rates-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .page-title {
+        font-size: 1.25rem;
+    }
+    
+    .nav-custom {
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+    
+    .nav-custom .nav-item {
+        display: inline-block;
+    }
+}
+
+@media (max-width: 575px) {
+    .commission-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .share-buttons {
+        flex-direction: column;
+    }
+    
+    .share-buttons .btn {
+        width: 100%;
+    }
+}
+</style>
+
+<script>
+function copyCode() {
+    const codeInput = document.getElementById('referralCode');
+    codeInput.select();
+    codeInput.setSelectionRange(0, 99999);
+    
+    navigator.clipboard.writeText(codeInput.value).then(() => {
+        showToast('✓ Referral code copied: {{ affiliate.referral_code }}', 'success');
+    }).catch(() => {
+        document.execCommand('copy');
+        showToast('✓ Referral code copied!', 'success');
+    });
+}
+
+function copyReferralLink() {
+    const linkInput = document.getElementById('referralLink');
+    linkInput.select();
+    
+    navigator.clipboard.writeText(linkInput.value).then(() => {
+        showToast('✓ Referral link copied!', 'success');
+    }).catch(() => {
+        alert('Please copy the link manually.');
+    });
+}
+
+function shareViaEmail() {
+    const subject = encodeURIComponent('Join OpenSell with my referral code!');
+    const body = encodeURIComponent(
+        `Hi!\n\n` +
+        `I've been using OpenSell and thought you might like it too.\n\n` +
+        `Sign up and use my referral code: {{ affiliate.referral_code }}\n` +
+        `Or click this link: {{ referral_link }}\n\n` +
+        `OpenSell is a great marketplace for buying and selling products!\n\n` +
+        `See you there!`
+    );
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+}
+
+function showToast(message, type = 'success') {
+    const alertClass = type === 'success' ? 'alert-success' : 'alert-info';
+    const toast = document.createElement('div');
+    toast.className = `alert ${alertClass} alert-dismissible fade show position-fixed shadow-lg`;
+    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px; max-width: 500px;';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(toast);
+    
+    // Changed from 3000ms to 8000ms (8 seconds)
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 150);
+    }, 8000);
+}
+</script>
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

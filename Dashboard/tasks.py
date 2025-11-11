@@ -1,10 +1,14 @@
 from django_q.tasks import async_task, result
 from django_q.models import Schedule
+from django.db import transaction as db_transaction
 from django.utils import timezone
+from django.db.models import F
 from django.core.mail import send_mail
+from .models import AffiliateCommission
 from django.template.loader import render_to_string
 from django.conf import settings
 from django.utils.html import strip_tags
+from .models import AffiliateProfile
 import logging
 
 logger = logging.getLogger(__name__)
@@ -48,8 +52,7 @@ def deactivate_expired_boosts():
         logger.error(f"Error deactivating expired boosts: {str(e)}")
         raise
 
-
-def check_subscription_expiry():
+def check_subscription_renewals():
     """Check and handle expired subscriptions - runs daily"""
     from .models import UserAccount, AccountStatus
     
@@ -98,7 +101,7 @@ def check_subscription_expiry():
             # Send warning emails
             elif days_remaining in [7, 3, 1]:
                 async_task(
-                    'Dashboard.tasks.send_subscription_expiry_warning',
+                    'Dashboard.tasks.send_subscription_expiry_warnings',
                     account.user.id,
                     days_remaining,
                     task_name=f'subscription_warning_{account.user.id}_{days_remaining}d'
@@ -111,7 +114,6 @@ def check_subscription_expiry():
     except Exception as e:
         logger.error(f"Error checking subscription expiry: {str(e)}")
         raise
-
 
 def send_subscription_expired_email(user_id):
     """Send subscription expired notification"""
@@ -145,8 +147,7 @@ def send_subscription_expired_email(user_id):
         logger.error(f"Error sending subscription expired email: {str(e)}")
         raise
 
-
-def send_subscription_expiry_warning(user_id, days_remaining):
+def send_subscription_expiry_warnings(user_id, days_remaining):
     """Send subscription expiry warning"""
     from django.contrib.auth.models import User
     
@@ -178,7 +179,6 @@ def send_subscription_expiry_warning(user_id, days_remaining):
     except Exception as e:
         logger.error(f"Error sending subscription warning email: {str(e)}")
         raise
-
 
 def send_boost_expired_notification(user_id, product_title, boost_type):
     """Notify user when their boost expires"""
@@ -212,3 +212,84 @@ def send_boost_expired_notification(user_id, product_title, boost_type):
     except Exception as e:
         logger.error(f"Error sending boost expiry notification: {str(e)}")
         # Don't raise, just log - this is not critical
+        
+def release_pending_commissions():
+
+    try:
+        now = timezone.now()
+        
+        # Find commissions ready to be released
+        ready_commissions = AffiliateCommission.objects.filter(
+            status='pending',
+            available_at__lte=now
+        ).select_related('affiliate')
+        
+        released_count = 0
+        total_amount = 0
+        
+        for commission in ready_commissions:
+            try:
+                with db_transaction.atomic():
+                    # Lock affiliate record
+                    affiliate = AffiliateProfile.objects.select_for_update().get(
+                        id=commission.affiliate.id
+                    )
+                    
+                    # Transfer from pending to available
+                    affiliate.pending_balance -= commission.commission_amount
+                    affiliate.available_balance += commission.commission_amount
+                    affiliate.save(update_fields=['pending_balance', 'available_balance'])
+                    
+                    # Update commission status
+                    commission.status = 'available'
+                    commission.save(update_fields=['status'])
+                    
+                    released_count += 1
+                    total_amount += commission.commission_amount
+                    
+                    logger.info(
+                        f"✓ Commission released: ₦{commission.commission_amount:.2f} | "
+                        f"Affiliate: {affiliate.referral_code}"
+                    )
+                    
+            except Exception as e:
+                logger.error(
+                    f"Error releasing commission {commission.id}: {str(e)}",
+                    exc_info=True
+                )
+                continue
+        
+        if released_count > 0:
+            logger.info(
+                f"✓ Released {released_count} commissions | "
+                f"Total: ₦{total_amount:.2f}"
+            )
+        
+        return released_count
+        
+    except Exception as e:
+        logger.error(f"Error in release_pending_commissions: {str(e)}", exc_info=True)
+        return 0
+    
+def cleanup_old_tasks():
+    """Clean up old Django-Q task records - runs weekly"""
+    from django_q.models import Task, OrmQ
+    from datetime import timedelta
+    
+    try:
+        # Delete tasks older than 30 days
+        cutoff_date = timezone.now() - timedelta(days=30)
+        
+        old_tasks = Task.objects.filter(started__lt=cutoff_date)
+        count = old_tasks.count()
+        old_tasks.delete()
+        
+        # Clean up orphaned queue items
+        OrmQ.objects.all().delete()
+        
+        logger.info(f"Cleaned up {count} old tasks")
+        return f"Cleaned up {count} old tasks"
+        
+    except Exception as e:
+        logger.error(f"Error cleaning up old tasks: {str(e)}")
+        raise

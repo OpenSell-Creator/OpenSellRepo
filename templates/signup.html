@@ -96,6 +96,30 @@
                             {% endif %}
                         </div>
 
+                        
+                        <div class="form-floating mb-3">
+                            <input type="text" 
+                                class="form-control {% if form.referral_code.errors %}is-invalid{% endif %}" 
+                                id="id_referral_code" 
+                                name="referral_code" 
+                                placeholder="Referral Code"
+                                value="{{ form.referral_code.value|default:referral_code|default:'' }}">
+                            <label for="id_referral_code">Referral Code (Optional)</label>
+                            {% if form.referral_code.errors %}
+                                <div class="invalid-feedback">
+                                    {{ form.referral_code.errors.0 }}
+                                </div>
+                            {% else %}
+                                <div class="form-help-text">
+                                    {% if referral_code %}
+                                        <i class="bi bi-check-circle-fill text-success"></i> Referral code applied
+                                    {% else %}
+                                        Have a referral code? Enter it here for benefits
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+
                         <div class="form-floating mb-3 position-relative">
                             <input type="password" 
                                    class="form-control password-input {% if form.password1.errors %}is-invalid{% endif %}" 
@@ -318,6 +342,44 @@
                 }
             });
         });
+
+        //Referral
+        const referralField = document.getElementById('id_referral_code');
+        if (referralField) {
+            // Show if code is pre-filled from URL
+            if (referralField.value) {
+                referralField.classList.add('is-valid');
+            }
+            
+            // Optional: Real-time validation via AJAX
+            let referralTimeout;
+            referralField.addEventListener('input', function() {
+                clearTimeout(referralTimeout);
+                const code = this.value.trim();
+                
+                if (!code) {
+                    this.classList.remove('is-valid', 'is-invalid');
+                    return;
+                }
+                
+                referralTimeout = setTimeout(() => {
+                    fetch(`/api/validate-referral-code/?code=${encodeURIComponent(code)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.valid) {
+                                referralField.classList.remove('is-invalid');
+                                referralField.classList.add('is-valid');
+                            } else {
+                                referralField.classList.remove('is-valid');
+                                referralField.classList.add('is-invalid');
+                            }
+                        })
+                        .catch(() => {
+                            // Don't mark invalid on network error
+                        });
+                }, 500);
+            });
+        }
 
         // Password confirmation validation
         const password1 = document.getElementById('id_password1');

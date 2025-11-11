@@ -126,6 +126,54 @@ class Profile(models.Model):
     priority_support = models.BooleanField(default=False)
     featured_store = models.BooleanField(default=False)
     
+    total_services_listed = models.PositiveIntegerField(default=0, help_text="Total services ever listed")
+    total_service_inquiries = models.PositiveIntegerField(default=0, help_text="Total service inquiries received")
+    service_provider_rating = models.DecimalField(
+        max_digits=3, 
+        decimal_places=2, 
+        default=0.0,
+        help_text="Average rating as service provider"
+    )
+    total_service_reviews = models.PositiveIntegerField(default=0, help_text="Total reviews as service provider")
+    
+    # Buyer request statistics  
+    total_requests_posted = models.PositiveIntegerField(default=0, help_text="Total buyer requests posted")
+    buyer_rating = models.DecimalField(
+        max_digits=3, 
+        decimal_places=2, 
+        default=0.0,
+        help_text="Average rating as buyer"
+    )
+    total_buyer_reviews = models.PositiveIntegerField(default=0, help_text="Total reviews as buyer")
+    
+    # Professional information for service providers
+    professional_title = models.CharField(
+        max_length=100, 
+        blank=True,
+        help_text="Professional title (e.g., 'Graphic Designer', 'Web Developer')"
+    )
+    skills = models.TextField(
+        blank=True,
+        help_text="List of skills separated by commas"
+    )
+    years_of_experience = models.PositiveIntegerField(
+        null=True, 
+        blank=True,
+        help_text="Years of professional experience"
+    )
+    
+    # Service availability
+    available_for_services = models.BooleanField(
+        default=False,
+        help_text="Available to provide services"
+    )
+    service_availability_note = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Brief note about your availability"
+    )
+    
+    
     def __str__(self):
         return f"{self.user.username}'s Profile"
     
@@ -168,6 +216,147 @@ class Profile(models.Model):
         }
         return status_map.get(self.business_verification_status, 'Unknown')
     
+    @property
+    def service_provider_average_rating(self):
+        """Get average rating as service provider"""
+        try:
+            from Services.models import ServiceReview
+            reviews = ServiceReview.objects.filter(service__provider=self)
+            if reviews.exists():
+                avg_rating = reviews.aggregate(avg_rating=models.Avg('rating'))['avg_rating']
+                return round(avg_rating, 1) if avg_rating else 0
+            return 0
+        except ImportError:
+            return 0
+    
+    @property
+    def combined_rating(self):
+        """Get combined rating from products and services"""
+        product_rating = self.seller_average_rating
+        service_rating = self.service_provider_average_rating
+        product_count = self.total_seller_reviews
+        service_count = self.total_service_reviews
+        
+        if product_count + service_count == 0:
+            return 0
+        
+        total_rating = (product_rating * product_count) + (service_rating * service_count)
+        return round(total_rating / (product_count + service_count), 1)
+    
+    @property
+    def is_verified_provider(self):
+        """Check if user is a verified provider (business or high-rated)"""
+        return (
+            self.business_verification_status == 'verified' or
+            (self.combined_rating >= 4.5 and (self.total_seller_reviews + self.total_service_reviews) >= 10)
+        )
+    
+    @property
+    def provider_badge(self):
+        """Get provider badge based on performance"""
+        total_reviews = self.total_seller_reviews + self.total_service_reviews
+        avg_rating = self.combined_rating
+        
+        if self.business_verification_status == 'verified':
+            return 'verified_business'
+        elif avg_rating >= 4.8 and total_reviews >= 50:
+            return 'top_rated'
+        elif avg_rating >= 4.5 and total_reviews >= 20:
+            return 'highly_rated'
+        elif avg_rating >= 4.0 and total_reviews >= 10:
+            return 'rated'
+        else:
+            return 'new'
+    
+    def get_provider_badge_display(self):
+        """Get human-readable provider badge"""
+        badge_map = {
+            'verified_business': 'Verified Business',
+            'top_rated': 'Top Rated',
+            'highly_rated': 'Highly Rated', 
+            'rated': 'Rated',
+            'new': 'New Provider'
+        }
+        return badge_map.get(self.provider_badge, 'Provider')
+    
+    @property
+    def total_marketplace_activity(self):
+        """Get total marketplace activity count"""
+        return (
+            self.total_products_listed + 
+            self.total_services_listed + 
+            self.total_requests_posted
+        )
+    
+    @property
+    def is_active_provider(self):
+        """Check if user is actively providing products or services"""
+        try:
+            from Services.models import ServiceListing
+            active_services = ServiceListing.objects.filter(
+                provider=self, 
+                is_active=True, 
+                is_suspended=False
+            ).count()
+            
+            from Home.models import Product_Listing
+            active_products = Product_Listing.objects.filter(
+                seller=self,
+                is_suspended=False
+            ).exclude(
+                expiration_date__lte=timezone.now()
+            ).count()
+            
+            return (active_services + active_products) > 0
+        except ImportError:
+            return self.total_products_listed > 0
+    
+    def get_skills_list(self):
+        """Get skills as a list"""
+        if self.skills:
+            return [skill.strip() for skill in self.skills.split(',') if skill.strip()]
+        return []
+    
+    def set_skills_list(self, skills_list):
+        """Set skills from a list"""
+        if skills_list:
+            self.skills = ', '.join(skills_list)
+        else:
+            self.skills = ''
+    
+    def update_service_stats(self):
+        """Update service-related statistics"""
+        try:
+            from Services.models import ServiceListing, ServiceReview
+            
+            # Update service counts
+            self.total_services_listed = ServiceListing.objects.filter(provider=self).count()
+            
+            # Update service ratings
+            service_reviews = ServiceReview.objects.filter(service__provider=self)
+            self.total_service_reviews = service_reviews.count()
+            if service_reviews.exists():
+                self.service_provider_rating = service_reviews.aggregate(
+                    avg_rating=models.Avg('rating')
+                )['avg_rating'] or 0
+            
+            self.save(update_fields=[
+                'total_services_listed', 'total_service_reviews', 'service_provider_rating'
+            ])
+        except ImportError:
+            pass
+    
+    def update_request_stats(self):
+        """Update buyer request statistics"""
+        try:
+            from BuyerRequest.models import BuyerRequest
+            
+            # Update request counts
+            self.total_requests_posted = BuyerRequest.objects.filter(buyer=self).count()
+            
+            self.save(update_fields=['total_requests_posted'])
+        except ImportError:
+            pass
     
     def verify_business(self, verified_by_user, notes=None):
         """Verify the business profile"""

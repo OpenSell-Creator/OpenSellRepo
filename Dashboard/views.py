@@ -4,7 +4,9 @@ from django.contrib import messages
 from django.utils import timezone
 from datetime import timedelta, datetime
 from django.db.models import Sum, Count, Q, Avg
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+from django.contrib.admin.views.decorators import staff_member_required
+from django.core.paginator import Paginator
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
 from django.core.paginator import Paginator
@@ -13,6 +15,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from .models import UserAccount, Transaction, ProductBoost, AccountStatus
 from Home.models import Product_Listing
+from Dashboard.models import AffiliateProfile, AffiliateCommission, Referral
 from .models import VirtualAccount, MonnifyTransaction
 from .monnify_service import monnify_service
 from .forms import DepositForm, BoostProductForm
@@ -870,7 +873,8 @@ def deactivate_expired_boosts():
         
     except Exception as e:
         logger.error(f"Error deactivating expired boosts: {str(e)}")
-        
+
+#Monnify Setup
 @login_required
 def deposit_funds_monnify(request):
     """
@@ -902,7 +906,6 @@ def deposit_funds_monnify(request):
     }
     
     return render(request, 'dashboard/deposit_monnify.html', context)
-
 
 @login_required
 @require_http_methods(["POST"])
@@ -1300,3 +1303,610 @@ def test_monnify_connection(request):
         return JsonResponse({
             'error': str(e)
         }, status=500)
+
+#Affiliate Setup
+@login_required
+def affiliate_apply(request):
+    """
+    Apply to become an affiliate
+    - Referral code (username) is assigned IMMEDIATELY
+    - Affiliate account status is 'pending' until admin approval
+    - Users can see their code but can't earn until approved
+    """
+    # Check if already an affiliate
+    if hasattr(request.user, 'affiliate'):
+        messages.info(request, "You're already enrolled in the affiliate program!")
+        return redirect('affiliate_dashboard')
+    
+    if request.method == 'POST':
+        reason = request.POST.get('application_reason', '')
+        
+        from Dashboard.models import AffiliateProfile
+        
+        # Create affiliate profile - CODE IS ASSIGNED AUTOMATICALLY
+        affiliate = AffiliateProfile.objects.create(
+            user=request.user,
+            # referral_code is auto-generated from username in save()
+            status='pending',  # Requires admin approval
+            application_reason=reason
+        )
+        
+        messages.success(
+            request, 
+            f"✓ Your affiliate application has been submitted!\n\n"
+            f"Your referral code: {affiliate.referral_code}\n\n"
+            f"⏳ Status: Pending Approval\n"
+            f"Once approved, you can start earning commissions from your referrals."
+        )
+        return redirect('affiliate_dashboard')
+    
+    # Show preview of what their referral code will be
+    preview_code = request.user.username.lower()
+    
+    # Check if code would have a conflict (rare)
+    from Dashboard.models import AffiliateProfile
+    existing = AffiliateProfile.objects.filter(
+        referral_code__iexact=preview_code
+    ).exists()
+    
+    if existing:
+        # Show what their code will actually be
+        counter = 1
+        while AffiliateProfile.objects.filter(
+            referral_code__iexact=f"{preview_code}{counter}"
+        ).exists():
+            counter += 1
+        preview_code = f"{preview_code}{counter}"
+    
+    context = {
+        'preview_code': preview_code,
+        'code_available': not existing,
+        'has_conflict': existing,
+    }
+    
+    return render(request, 'dashboard/affiliate_apply.html', context)
+
+@login_required
+def affiliate_dashboard(request):
+    """
+    UPDATED: Affiliate dashboard with 7-day holding period display
+    """
+    try:
+        affiliate = request.user.affiliate
+    except AffiliateProfile.DoesNotExist:
+        return redirect('affiliate_apply')
+    
+    # Check if affiliate is approved
+    if affiliate.status == 'pending':
+        return render(request, 'dashboard/affiliate_pending.html', {
+            'affiliate': affiliate,
+            'message': 'Your affiliate application is pending approval. You will be notified once approved.'
+        })
+    elif affiliate.status not in ['active']:
+        return render(request, 'dashboard/affiliate_inactive.html', {
+            'affiliate': affiliate,
+            'status': affiliate.get_status_display()
+        })
+    
+    # Get referrals
+    referrals = Referral.objects.filter(
+        affiliate=affiliate
+    ).select_related('referred_user').order_by('-signup_date')
+    
+    # Get commissions with status breakdown
+    recent_commissions = AffiliateCommission.objects.filter(
+        affiliate=affiliate
+    ).select_related('referral', 'referral__referred_user').order_by('-created_at')[:10]
+    
+    # Get commissions by status for breakdown
+    from django.db.models import Sum, Count
+    commission_breakdown = AffiliateCommission.objects.filter(
+        affiliate=affiliate
+    ).values('status').annotate(
+        count=Count('id'),
+        total=Sum('commission_amount')
+    )
+    
+    # Stats
+    total_referrals = referrals.count()
+    active_referrals = referrals.filter(status='active').count()
+    pending_referrals = referrals.filter(status='pending').count()
+    
+    # Commission stats with status breakdown
+    pending_commissions = affiliate.pending_balance  # Locked for 7 days
+    available_commissions = affiliate.available_balance  # Ready to withdraw
+    
+    # Calculate commissions releasing soon (within 3 days)
+    from datetime import timedelta
+    three_days_from_now = timezone.now() + timedelta(days=3)
+    releasing_soon = AffiliateCommission.objects.filter(
+        affiliate=affiliate,
+        status='pending',
+        available_at__lte=three_days_from_now
+    ).aggregate(total=Sum('commission_amount'))['total'] or 0
+    
+    # Build referral URL
+    from django.urls import reverse
+    base_url = request.build_absolute_uri('/')
+    signup_path = reverse('signup')
+    referral_link = f"{base_url.rstrip('/')}{signup_path}?ref={affiliate.referral_code}"
+    
+    # Check withdrawal eligibility
+    can_withdraw = (
+        affiliate.status == 'active' and 
+        affiliate.available_balance >= affiliate.minimum_withdrawal
+    )
+    
+    # Commission history with status icons
+    for commission in recent_commissions:
+        if commission.status == 'pending':
+            days_remaining = (commission.available_at - timezone.now()).days
+            commission.status_info = {
+                'icon': 'bi-clock',
+                'color': 'warning',
+                'text': f'Releases in {days_remaining} days'
+            }
+        elif commission.status == 'available':
+            commission.status_info = {
+                'icon': 'bi-check-circle',
+                'color': 'success',
+                'text': 'Ready to withdraw'
+            }
+        elif commission.status == 'paid':
+            commission.status_info = {
+                'icon': 'bi-cash',
+                'color': 'info',
+                'text': 'Paid'
+            }
+        elif commission.status == 'cancelled':
+            commission.status_info = {
+                'icon': 'bi-x-circle',
+                'color': 'danger',
+                'text': 'Reversed/Cancelled'
+            }
+    
+    context = {
+        'affiliate': affiliate,
+        'referrals': referrals[:10],
+        'recent_commissions': recent_commissions,
+        'commission_breakdown': commission_breakdown,
+        'total_referrals': total_referrals,
+        'active_referrals': active_referrals,
+        'pending_referrals': pending_referrals,
+        'pending_commissions': pending_commissions,
+        'available_commissions': available_commissions,
+        'releasing_soon': releasing_soon,
+        'referral_link': referral_link,
+        'can_withdraw': can_withdraw,
+    }
+    
+    return render(request, 'dashboard/affiliate_dashboard.html', context)
+
+@login_required
+def affiliate_withdraw(request):
+    
+    """
+    FIXED: Withdrawal with proper validation
+    """
+    try:
+        affiliate = request.user.affiliate
+    except AffiliateProfile.DoesNotExist:
+        messages.error(request, "You are not an affiliate.")
+        return redirect('dashboard_home')
+    
+    # Check if affiliate is active
+    if affiliate.status != 'active':
+        messages.error(request, "Your affiliate account must be active to withdraw.")
+        return redirect('affiliate_dashboard')
+    
+    # Check minimum balance
+    can_withdraw = affiliate.available_balance >= affiliate.minimum_withdrawal
+    
+    if request.method == 'POST':
+        try:
+            amount = Decimal(request.POST.get('amount', 0))
+        except (ValueError, TypeError, InvalidOperation):
+            messages.error(request, "Invalid amount format.")
+            return redirect('affiliate_withdraw')
+        
+        bank_name = request.POST.get('bank_name', '').strip()
+        account_number = request.POST.get('account_number', '').strip()
+        account_name = request.POST.get('account_name', '').strip()
+        
+        # Validation
+        if not all([bank_name, account_number, account_name]):
+            messages.error(request, "All bank details are required.")
+            return redirect('affiliate_withdraw')
+        
+        if amount <= 0:
+            messages.error(request, "Amount must be greater than zero.")
+            return redirect('affiliate_withdraw')
+        
+        if amount < affiliate.minimum_withdrawal:
+            messages.error(
+                request, 
+                f"Minimum withdrawal is ₦{affiliate.minimum_withdrawal:,.2f}"
+            )
+            return redirect('affiliate_withdraw')
+        
+        if amount > affiliate.available_balance:
+            messages.error(
+                request, 
+                f"Insufficient balance. Available: ₦{affiliate.available_balance:,.2f}"
+            )
+            return redirect('affiliate_withdraw')
+        
+        # Validate account number
+        if not account_number.isdigit() or len(account_number) != 10:
+            messages.error(request, "Account number must be exactly 10 digits.")
+            return redirect('affiliate_withdraw')
+        
+        # Create withdrawal request
+        from Dashboard.models import AffiliateWithdrawal
+        from django.db import transaction as db_transaction
+        
+        try:
+            with db_transaction.atomic():
+                # Lock the affiliate record
+                affiliate = AffiliateProfile.objects.select_for_update().get(
+                    id=affiliate.id
+                )
+                
+                # Double-check balance
+                if amount > affiliate.available_balance:
+                    messages.error(request, "Insufficient balance.")
+                    return redirect('affiliate_withdraw')
+                
+                # Deduct from available balance
+                affiliate.available_balance -= amount
+                affiliate.save(update_fields=['available_balance'])
+                
+                # Create withdrawal request
+                withdrawal = AffiliateWithdrawal.objects.create(
+                    affiliate=affiliate,
+                    amount=amount,
+                    bank_name=bank_name,
+                    account_number=account_number,
+                    account_name=account_name,
+                    status='pending'
+                )
+                
+                messages.success(
+                    request,
+                    f"✅ Withdrawal request for ₦{amount:,.2f} submitted successfully! "
+                    f"Reference: WD-{withdrawal.id}. "
+                    "We'll process it within 1-2 business days."
+                )
+                
+                logger.info(
+                    f"Withdrawal requested: ₦{amount:.2f} | "
+                    f"Affiliate: {affiliate.referral_code} | "
+                    f"Withdrawal ID: {withdrawal.id}"
+                )
+                
+        except Exception as e:
+            logger.error(f"Withdrawal creation error: {str(e)}", exc_info=True)
+            messages.error(request, "An error occurred. Please try again.")
+            return redirect('affiliate_withdraw')
+        
+        return redirect('affiliate_dashboard')
+    
+    # GET request - show form
+    context = {
+        'affiliate': affiliate,
+        'can_withdraw': can_withdraw,
+    }
+    
+    return render(request, 'dashboard/affiliate_withdraw.html', context)
+
+@login_required
+def affiliate_analytics(request):
+    try:
+        affiliate = request.user.affiliate
+    except AffiliateProfile.DoesNotExist:
+        return redirect('affiliate_apply')
+    
+    # Date range filter
+    days = int(request.GET.get('days', 30))
+    start_date = timezone.now() - timedelta(days=days)
+    
+    # Referral statistics
+    total_referrals = affiliate.referrals.count()
+    active_referrals = affiliate.referrals.filter(status='active').count()
+    
+    # Commission statistics
+    commissions_by_type = AffiliateCommission.objects.filter(
+        affiliate=affiliate,
+        created_at__gte=start_date
+    ).values('transaction_type').annotate(
+        total=Sum('commission_amount'),
+        count=Count('id')
+    )
+    
+    # Daily earnings - FIXED: Use proper date truncation
+    from django.db.models.functions import TruncDate
+    daily_earnings = AffiliateCommission.objects.filter(
+        affiliate=affiliate,
+        created_at__gte=start_date
+    ).annotate(
+        day=TruncDate('created_at')
+    ).values('day').annotate(
+        earnings=Sum('commission_amount')
+    ).order_by('day')
+    
+    # Top performing referrals
+    top_referrals = affiliate.referrals.filter(
+        status='active'
+    ).order_by('-total_commission_earned')[:10]
+    
+    # Conversion rate
+    conversion_rate = 0
+    if total_referrals > 0:
+        conversion_rate = (active_referrals / total_referrals) * 100
+    
+    context = {
+        'affiliate': affiliate,
+        'days': days,
+        'total_referrals': total_referrals,
+        'active_referrals': active_referrals,
+        'conversion_rate': conversion_rate,
+        'commissions_by_type': commissions_by_type,
+        'daily_earnings': daily_earnings,
+        'top_referrals': top_referrals,
+    }
+    
+    return render(request, 'dashboard/affiliate_analytics.html', context)
+
+
+@require_http_methods(["GET"])
+def validate_referral_code(request):
+    """
+    AJAX endpoint to validate referral code
+    """
+    code = request.GET.get('code', '').strip()
+    
+    if not code:
+        return JsonResponse({
+            'valid': False, 
+            'message': 'Please enter a referral code'
+        })
+    
+    try:
+        # Case-insensitive lookup, only active affiliates
+        affiliate = AffiliateProfile.objects.get(
+            referral_code__iexact=code,
+            status='active'
+        )
+        
+        return JsonResponse({
+            'valid': True,
+            'message': f'Valid! Referred by @{affiliate.user.username}',
+            'affiliate_username': affiliate.user.username,
+            'affiliate_name': affiliate.user.get_full_name() or affiliate.user.username,
+            'code': affiliate.referral_code  # Return actual code (correct case)
+        })
+        
+    except AffiliateProfile.DoesNotExist:
+        # Check if it exists but is pending/suspended
+        try:
+            affiliate = AffiliateProfile.objects.get(referral_code__iexact=code)
+            return JsonResponse({
+                'valid': False,
+                'message': f'This referral code is not active (Status: {affiliate.get_status_display()})'
+            })
+        except AffiliateProfile.DoesNotExist:
+            return JsonResponse({
+                'valid': False,
+                'message': 'Invalid referral code'
+            })
+    except Exception as e:
+        logger.error(f"Error validating referral code: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'valid': False, 
+            'message': 'Validation error'
+        }, status=500)
+        
+        
+@staff_member_required
+def debug_affiliate_deposits(request):
+    """Admin view to debug affiliate-related deposit issues"""
+    from Dashboard.models import Referral, AffiliateCommission
+    
+    # Get recent deposits with referrals
+    recent_deposits = Transaction.objects.filter(
+        transaction_type='deposit',
+        created_at__gte=timezone.now() - timedelta(days=7)
+    ).select_related('account__user').order_by('-created_at')[:50]
+    
+    deposit_data = []
+    for deposit in recent_deposits:
+        try:
+            referral = Referral.objects.get(referred_user=deposit.account.user)
+            has_referral = True
+            referral_status = referral.status
+            commission_created = AffiliateCommission.objects.filter(
+                source_transaction=deposit
+            ).exists()
+        except Referral.DoesNotExist:
+            has_referral = False
+            referral_status = 'N/A'
+            commission_created = False
+        
+        deposit_data.append({
+            'user': deposit.account.user.username,
+            'amount': deposit.amount,
+            'date': deposit.created_at,
+            'has_referral': has_referral,
+            'referral_status': referral_status,
+            'commission_created': commission_created,
+            'deposit_successful': deposit.amount > 0,
+        })
+    
+    return render(request, 'admin/debug_deposits.html', {
+        'deposits': deposit_data
+    })
+    
+@staff_member_required
+def admin_affiliate_approvals(request):
+    """
+    Admin view to approve/reject affiliate applications
+    """
+    status_filter = request.GET.get('status', 'pending')
+    search_query = request.GET.get('search', '')
+    
+    # Base queryset
+    queryset = AffiliateProfile.objects.select_related('user').order_by('-created_at')
+    
+    # Apply filters
+    if status_filter and status_filter != 'all':
+        queryset = queryset.filter(status=status_filter)
+    
+    if search_query:
+        queryset = queryset.filter(
+            Q(user__username__icontains=search_query) |
+            Q(user__email__icontains=search_query) |
+            Q(referral_code__icontains=search_query)
+        )
+    
+    # Status counts
+    status_counts = {
+        'pending': AffiliateProfile.objects.filter(status='pending').count(),
+        'active': AffiliateProfile.objects.filter(status='active').count(),
+        'rejected': AffiliateProfile.objects.filter(status='rejected').count(),
+        'suspended': AffiliateProfile.objects.filter(status='suspended').count(),
+    }
+    status_counts['all'] = sum(status_counts.values())
+    
+    # Pagination
+    paginator = Paginator(queryset, 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Handle actions
+    if request.method == 'POST':
+        affiliate_id = request.POST.get('affiliate_id')
+        action = request.POST.get('action')
+        admin_notes = request.POST.get('admin_notes', '')
+        
+        try:
+            affiliate = AffiliateProfile.objects.get(id=affiliate_id)
+            
+            if action == 'approve':
+                affiliate.status = 'active'
+                affiliate.approved_by = request.user
+                affiliate.approved_at = timezone.now()
+                if admin_notes:
+                    affiliate.admin_notes = admin_notes
+                affiliate.save()
+                
+                messages.success(
+                    request,
+                    f"✓ Approved {affiliate.user.username} ({affiliate.referral_code}). "
+                    "They can now start earning commissions."
+                )
+                
+                # TODO: Send approval email to affiliate
+                
+            elif action == 'reject':
+                affiliate.status = 'rejected'
+                if admin_notes:
+                    affiliate.admin_notes = admin_notes
+                affiliate.save()
+                
+                messages.warning(
+                    request,
+                    f"Rejected {affiliate.user.username} ({affiliate.referral_code})."
+                )
+                
+                # TODO: Send rejection email
+                
+            elif action == 'suspend':
+                affiliate.status = 'suspended'
+                if admin_notes:
+                    affiliate.admin_notes = admin_notes
+                affiliate.save()
+                
+                messages.warning(
+                    request,
+                    f"Suspended {affiliate.user.username} ({affiliate.referral_code})."
+                )
+            
+            return redirect(f"{request.path}?status={status_filter}")
+            
+        except AffiliateProfile.DoesNotExist:
+            messages.error(request, "Affiliate not found.")
+    
+    context = {
+        'page_obj': page_obj,
+        'status_filter': status_filter,
+        'search_query': search_query,
+        'status_counts': status_counts,
+    }
+    
+    return render(request, 'admin/affiliate_approvals.html', context)
+
+@staff_member_required
+def admin_affiliate_detail(request, affiliate_id):
+    """
+    Detailed view of a single affiliate for review
+    """
+    affiliate = get_object_or_404(AffiliateProfile, id=affiliate_id)
+    
+    # Get referral stats
+    referrals = Referral.objects.filter(affiliate=affiliate).select_related('referred_user')
+    total_referrals = referrals.count()
+    active_referrals = referrals.filter(status='active').count()
+    
+    # Get commission stats
+    commissions = AffiliateCommission.objects.filter(affiliate=affiliate)
+    total_commissions = commissions.aggregate(
+        total=Sum('commission_amount')
+    )['total'] or 0
+    
+    pending_commissions = commissions.filter(status='pending').aggregate(
+        total=Sum('commission_amount')
+    )['total'] or 0
+    
+    # Get recent activity
+    recent_referrals = referrals.order_by('-signup_date')[:10]
+    recent_commissions = commissions.order_by('-created_at')[:10]
+    
+    # Flag suspicious patterns
+    warnings = []
+    
+    # Check for multiple referrals from same IP
+    ip_counts = referrals.values('signup_ip').annotate(
+        count=Count('id')
+    ).filter(count__gt=3, signup_ip__isnull=False)
+    
+    if ip_counts.exists():
+        warnings.append({
+            'type': 'ip_duplicate',
+            'message': f"Multiple referrals from same IP addresses detected",
+            'severity': 'warning'
+        })
+    
+    # Check for rapid signups (>10 in 24 hours)
+    from datetime import timedelta
+    one_day_ago = timezone.now() - timedelta(days=1)
+    recent_signup_count = referrals.filter(signup_date__gte=one_day_ago).count()
+    
+    if recent_signup_count > 10:
+        warnings.append({
+            'type': 'rapid_signups',
+            'message': f"{recent_signup_count} signups in last 24 hours",
+            'severity': 'danger'
+        })
+    
+    context = {
+        'affiliate': affiliate,
+        'total_referrals': total_referrals,
+        'active_referrals': active_referrals,
+        'total_commissions': total_commissions,
+        'pending_commissions': pending_commissions,
+        'recent_referrals': recent_referrals,
+        'recent_commissions': recent_commissions,
+        'warnings': warnings,
+    }
+    
+    return render(request, 'admin/affiliate_detail.html', context)
