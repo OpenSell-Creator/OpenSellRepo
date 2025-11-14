@@ -31,6 +31,7 @@ urlpatterns = [
     path('affiliate/dashboard/', views.affiliate_dashboard, name='affiliate_dashboard'),
     path('affiliate/withdraw/', views.affiliate_withdraw, name='affiliate_withdraw'),
     path('affiliate/analytics/', views.affiliate_analytics, name='affiliate_analytics'),
+    path('affiliate/leaderboard/', views.affiliate_leaderboard, name='affiliate_leaderboard'),
     
     path('admin/affiliates/', views.admin_affiliate_approvals, name='admin_affiliate_approvals'),
     path('admin/affiliates/<int:affiliate_id>/', views.admin_affiliate_detail, name='admin_affiliate_detail'),

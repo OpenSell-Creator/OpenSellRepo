@@ -1,0 +1,953 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Affiliate Leaderboard{% endblock %}
+
+{% block 'Body' %}
+<div class="affiliate-container">
+    <div class="container-fluid py-4">
+        <!-- Header -->
+        <div class="affiliate-header mb-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                    <h2 class="page-title">
+                        <i class="bi bi-trophy-fill text-warning me-2"></i>Affiliate Leaderboard
+                    </h2>
+                    <p class="page-subtitle mb-0">
+                        Top performing affiliates • {{ leaderboard_stats.total_affiliates }} active members
+                    </p>
+                </div>
+                {% if affiliate.available_balance >= affiliate.minimum_withdrawal %}
+                <a href="{% url 'affiliate_withdraw' %}" class="btn btn-success btn-action">
+                    <i class="bi bi-cash-coin me-2"></i>Request Withdrawal
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Navigation Tabs - FIXED STYLING -->
+        <ul class="nav nav-pills nav-custom mb-4" role="tablist">
+            <li class="nav-item" role="presentation">
+                <a class="nav-link" href="{% url 'affiliate_dashboard' %}">
+                    <i class="bi bi-house-fill me-2"></i>Overview
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link" href="{% url 'affiliate_analytics' %}">
+                    <i class="bi bi-graph-up me-2"></i>Analytics
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link active" href="{% url 'affiliate_leaderboard' %}">
+                    <i class="bi bi-trophy-fill me-2"></i>Leaderboard
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link" href="{% url 'affiliate_withdraw' %}">
+                    <i class="bi bi-wallet2 me-2"></i>Withdrawals
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link" href="#">
+                    <i class="bi bi-book me-2"></i>Resources
+                </a>
+            </li>
+        </ul>
+
+        <!-- Filters -->
+        <div class="card-custom mb-4">
+            <div class="card-body-custom">
+                <form method="get" class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label-custom">Timeframe</label>
+                        <select name="timeframe" class="form-select" onchange="this.form.submit()">
+                            <option value="all_time" {% if timeframe == 'all_time' %}selected{% endif %}>All Time</option>
+                            <option value="month" {% if timeframe == 'month' %}selected{% endif %}>Last 30 Days</option>
+                            <option value="week" {% if timeframe == 'week' %}selected{% endif %}>Last 7 Days</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label-custom">Sort By</label>
+                        <select name="metric" class="form-select" onchange="this.form.submit()">
+                            <option value="earnings" {% if metric == 'earnings' %}selected{% endif %}>Total Earnings</option>
+                            <option value="referrals" {% if metric == 'referrals' %}selected{% endif %}>Active Referrals</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-arrow-clockwise me-2"></i>Refresh
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Leaderboard Stats Overview -->
+        <div class="stats-grid mb-4">
+            <div class="stat-card">
+                <div class="stat-card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="stat-info">
+                            <p class="stat-label">Total Earnings</p>
+                            <h3 class="stat-value text-success">₦{{ leaderboard_stats.total_earnings|floatformat:2 }}</h3>
+                            <small class="stat-meta">All affiliates combined</small>
+                        </div>
+                        <div class="stat-icon bg-success">
+                            <i class="bi bi-cash-stack"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="stat-info">
+                            <p class="stat-label">Total Referrals</p>
+                            <h3 class="stat-value text-primary">{{ leaderboard_stats.total_referrals }}</h3>
+                            <small class="stat-meta">Active users referred</small>
+                        </div>
+                        <div class="stat-icon bg-primary">
+                            <i class="bi bi-people-fill"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="stat-info">
+                            <p class="stat-label">Average Earnings</p>
+                            <h3 class="stat-value text-info">₦{{ leaderboard_stats.avg_earnings|floatformat:2 }}</h3>
+                            <small class="stat-meta">Per affiliate</small>
+                        </div>
+                        <div class="stat-icon bg-info">
+                            <i class="bi bi-graph-up"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="stat-info">
+                            <p class="stat-label">Your Rank</p>
+                            <h3 class="stat-value text-warning">#{{ current_user_stats.rank }}</h3>
+                            <small class="stat-meta">Top {{ current_user_stats.percentile }}%</small>
+                        </div>
+                        <div class="stat-icon bg-warning">
+                            <i class="bi bi-award-fill"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Your Performance Card (if not in top 50) -->
+        {% if not current_user_stats.in_top_50 %}
+        <div class="card-custom mb-4">
+            <div class="card-body-custom">
+                <div class="row align-items-center">
+                    <div class="col-md-1 text-center">
+                        <span class="badge bg-primary fs-4 px-3 py-2">#{{ current_user_stats.rank }}</span>
+                    </div>
+                    <div class="col-md-11">
+                        <h5 class="mb-2">
+                            <i class="bi bi-person-badge-fill text-primary me-2"></i>Your Performance
+                        </h5>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <strong class="text-success">₦{{ current_user_stats.period_earnings|floatformat:2 }}</strong>
+                                <small class="text-muted d-block">Earnings ({{ timeframe|title }})</small>
+                            </div>
+                            <div class="col-md-4">
+                                <strong class="text-primary">{{ current_user_stats.active_referrals }}</strong>
+                                <small class="text-muted d-block">Active Referrals</small>
+                            </div>
+                            <div class="col-md-4">
+                                <strong class="text-info">Top {{ current_user_stats.percentile }}%</strong>
+                                <small class="text-muted d-block">Percentile</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Leaderboard Table -->
+        <div class="card-custom">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-list-ol me-2"></i>
+                    Top {{ top_affiliates|length }} Affiliates
+                    {% if timeframe == 'month' %}
+                        (Last 30 Days)
+                    {% elif timeframe == 'week' %}
+                        (Last 7 Days)
+                    {% else %}
+                        (All Time)
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body-custom p-0">
+                <div class="table-responsive">
+                    <table class="table table-custom leaderboard-table mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 100px;">Rank</th>
+                                <th>Affiliate</th>
+                                <th class="text-center">Active Referrals</th>
+                                <th class="text-end">Total Earnings</th>
+                                <th class="text-end">
+                                    {% if timeframe == 'month' %}
+                                        Last 30 Days
+                                    {% elif timeframe == 'week' %}
+                                        Last 7 Days
+                                    {% else %}
+                                        All Time
+                                    {% endif %}
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for top_affiliate in top_affiliates %}
+                            <tr {% if top_affiliate.is_current_user %}class="current-user-row"{% endif %}>
+                                <!-- Rank Column -->
+                                <td>
+                                    <div class="rank-wrapper">
+                                        {% if top_affiliate.rank == 1 %}
+                                            <span class="rank-badge rank-1">
+                                                <i class="bi bi-trophy-fill"></i> #1
+                                            </span>
+                                        {% elif top_affiliate.rank == 2 %}
+                                            <span class="rank-badge rank-2">
+                                                <i class="bi bi-award-fill"></i> #2
+                                            </span>
+                                        {% elif top_affiliate.rank == 3 %}
+                                            <span class="rank-badge rank-3">
+                                                <i class="bi bi-award-fill"></i> #3
+                                            </span>
+                                        {% else %}
+                                            <span class="rank-badge rank-default">
+                                                #{{ top_affiliate.rank }}
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+
+                                <!-- Affiliate Info -->
+                                <td>
+                                    <div class="affiliate-info">
+                                        <!-- Avatar -->
+                                        <div class="avatar-wrapper">
+                                            {% if top_affiliate.user.profile.profile_picture %}
+                                                <img src="{{ top_affiliate.user.profile.profile_picture.url }}" 
+                                                    alt="{{ top_affiliate.user.username }}"
+                                                    class="affiliate-avatar">
+                                            {% else %}
+                                                <div class="affiliate-avatar-placeholder">
+                                                    {{ top_affiliate.user.username|slice:":1"|upper }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <!-- Name and Code -->
+                                        <div class="affiliate-details">
+                                            <strong class="affiliate-name {% if top_affiliate.is_current_user %}text-primary{% endif %}">
+                                                {% if top_affiliate.is_current_user %}
+                                                    <i class="bi bi-star-fill text-warning me-1"></i>You
+                                                {% else %}
+                                                    @{{ top_affiliate.user.username }}
+                                                {% endif %}
+                                            </strong>
+                                            <small class="affiliate-code text-muted">
+                                                <i class="bi bi-tag-fill"></i> {{ top_affiliate.referral_code }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <!-- Active Referrals -->
+                                <td class="text-center">
+                                    <span class="badge bg-success bg-opacity-75 px-3 py-2">
+                                        <i class="bi bi-people-fill"></i> {{ top_affiliate.total_active_referrals }}
+                                    </span>
+                                </td>
+
+                                <!-- Total Earned -->
+                                <td class="text-end">
+                                    <strong class="text-success fs-5">
+                                        ₦{{ top_affiliate.total_earned|floatformat:2 }}
+                                    </strong>
+                                </td>
+
+                                <!-- Period Earnings -->
+                                <td class="text-end">
+                                    <strong class="text-primary fs-5">
+                                        ₦{{ top_affiliate.period_earnings|default:0|floatformat:2 }}
+                                    </strong>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-5">
+                                    <i class="bi bi-trophy display-4 text-muted"></i>
+                                    <p class="mt-3 text-muted">No affiliates found</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Call to Action -->
+        <div class="alert alert-info alert-custom mt-4">
+            <div class="d-flex align-items-start gap-3">
+                <i class="bi bi-lightbulb-fill display-4 text-primary"></i>
+                <div>
+                    <h5 class="alert-heading">Want to climb the leaderboard?</h5>
+                    <p class="mb-2">
+                        Share your referral code with more people and help them get started with OpenSell. 
+                        The more active referrals you have, the higher you'll rank!
+                    </p>
+                    <a href="{% url 'affiliate_dashboard' %}" class="btn btn-primary">
+                        <i class="bi bi-share-fill me-2"></i>View Your Referral Code
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* ===== BASE VARIABLES ===== */
+:root {
+    --affiliate-bg: var(--light-background);
+    --affiliate-card-bg: var(--light-card-background);
+    --affiliate-text: var(--light-text-primary);
+    --affiliate-text-muted: var(--light-text-secondary);
+    --affiliate-border: var(--light-border-color);
+    --affiliate-hover: var(--light-hover-bg);
+}
+
+[data-bs-theme="dark"] {
+    --affiliate-bg: var(--dark-background);
+    --affiliate-card-bg: var(--dark-card-background);
+    --affiliate-text: var(--dark-text-primary);
+    --affiliate-text-muted: var(--dark-text-secondary);
+    --affiliate-border: var(--dark-border-color);
+    --affiliate-hover: var(--dark-hover-bg);
+}
+
+.affiliate-container {
+    background-color: var(--affiliate-bg);
+    min-height: 100vh;
+    color: var(--affiliate-text);
+}
+
+/* ===== TYPOGRAPHY ===== */
+.page-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--affiliate-text);
+    margin-bottom: 0.5rem;
+}
+
+@media (max-width: 767px) {
+    .page-title {
+        font-size: 1.25rem;
+    }
+}
+
+.page-subtitle {
+    font-size: 0.95rem;
+    color: var(--affiliate-text-muted);
+}
+
+/* ===== NAVIGATION PILLS ===== */
+.nav-custom {
+    background-color: var(--card-background);
+    padding: 0.5rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+[data-bs-theme="dark"] .nav-custom {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.nav-custom .nav-link {
+    color: #495057 !important;
+    background-color: transparent;
+    border-radius: 0.5rem;
+    padding: 0.625rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+[data-bs-theme="dark"] .nav-custom .nav-link {
+    color: #adb5bd !important;
+}
+
+.nav-custom .nav-link:hover {
+    background-color: var(--hover-bg);
+    color: #212529 !important;
+    border-color: var(--border-color);
+}
+
+[data-bs-theme="dark"] .nav-custom .nav-link:hover {
+    color: #f8f9fa !important;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.nav-custom .nav-link.active {
+    background-color: var(--primary-color, #0d6efd) !important;
+    color: #ffffff !important;
+    border-color: var(--primary-color, #0d6efd);
+    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.3);
+}
+
+[data-bs-theme="dark"] .nav-custom .nav-link.active {
+    background-color: var(--primary-color, #0d6efd) !important;
+    color: #ffffff !important;
+}
+
+@media (max-width: 767px) {
+    .nav-custom {
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+    
+    .nav-custom .nav-item {
+        display: inline-block;
+    }
+}
+
+/* ===== CARDS ===== */
+.card-custom {
+    background-color: var(--affiliate-card-bg);
+    border: 1px solid var(--affiliate-border);
+    border-radius: 0.75rem;
+    overflow: hidden;
+}
+
+.card-header-custom {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--affiliate-border);
+    background-color: transparent;
+}
+
+.card-title-custom {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0;
+    color: var(--affiliate-text);
+}
+
+@media (max-width: 575px) {
+    .card-title-custom {
+        font-size: 0.95rem;
+    }
+}
+
+.card-body-custom {
+    padding: 1.25rem;
+}
+
+/* ===== STATS GRID - MOBILE OPTIMIZED ===== */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+@media (min-width: 768px) {
+    .stats-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.25rem;
+    }
+}
+
+.stat-card {
+    background-color: var(--affiliate-card-bg);
+    border: 1px solid var(--affiliate-border);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+[data-bs-theme="dark"] .stat-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.stat-card-body {
+    padding: 1rem;
+}
+
+@media (min-width: 768px) {
+    .stat-card-body {
+        padding: 1.25rem;
+    }
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--affiliate-text-muted);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+@media (min-width: 768px) {
+    .stat-label {
+        font-size: 0.875rem;
+    }
+}
+
+.stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    color: var(--affiliate-text);
+}
+
+@media (min-width: 768px) {
+    .stat-value {
+        font-size: 1.75rem;
+    }
+}
+
+.stat-meta {
+    font-size: 0.7rem;
+    color: var(--affiliate-text-muted);
+}
+
+@media (min-width: 768px) {
+    .stat-meta {
+        font-size: 0.8rem;
+    }
+}
+
+.stat-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    color: white;
+    opacity: 0.9;
+}
+
+@media (min-width: 768px) {
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+    }
+}
+
+.stat-icon.bg-success { background-color: #198754; }
+.stat-icon.bg-warning { background-color: #ffc107; }
+.stat-icon.bg-primary { background-color: #0d6efd; }
+.stat-icon.bg-info { background-color: #0dcaf0; }
+
+/* ===== ALERTS ===== */
+.alert-custom {
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    border: 1px solid;
+    font-size: 0.95rem;
+}
+
+.alert-custom .alert-heading {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+/* ===== TABLES ===== */
+.table-custom {
+    color: var(--affiliate-text);
+}
+
+.table-custom thead {
+    background-color: var(--affiliate-hover);
+    border-bottom: 2px solid var(--affiliate-border);
+}
+
+.table-custom th {
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 0.875rem 1rem;
+    color: var(--affiliate-text);
+    border-bottom: 1px solid var(--affiliate-border);
+    vertical-align: middle;
+}
+
+.table-custom td {
+    padding: 0.875rem 1rem;
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--affiliate-border);
+    vertical-align: middle;
+}
+
+.table-custom tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.table-custom tbody tr:hover {
+    background-color: var(--affiliate-hover);
+}
+
+/* ===== LEADERBOARD TABLE - FIXED ALIGNMENT ===== */
+.leaderboard-table {
+    color: var(--affiliate-text);
+}
+
+.leaderboard-table thead {
+    background-color: var(--affiliate-hover);
+}
+
+.leaderboard-table th {
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 1rem;
+    color: var(--affiliate-text);
+    border-bottom: 2px solid var(--affiliate-border);
+    vertical-align: middle;
+}
+
+.leaderboard-table td {
+    padding: 1rem;
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--affiliate-border);
+    vertical-align: middle;
+}
+
+.leaderboard-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.leaderboard-table tbody tr:hover {
+    background-color: var(--affiliate-hover);
+}
+
+/* Current User Row - NO POSITION/PADDING SHIFTS */
+.leaderboard-table tbody tr.current-user-row {
+    background-color: rgba(var(--bs-primary-rgb), 0.08);
+    border-left: 4px solid var(--bs-primary);
+}
+
+[data-bs-theme="dark"] .leaderboard-table tbody tr.current-user-row {
+    background-color: rgba(var(--bs-primary-rgb), 0.12);
+}
+
+/* Ensure all cells maintain consistent padding - NO OVERRIDES */
+.leaderboard-table tbody tr.current-user-row td {
+    padding: 1rem; /* Same as default */
+}
+
+/* Remove any positioning that could cause shifts */
+.leaderboard-table tbody tr.current-user-row {
+    position: relative; /* Only for border-left pseudo-element */
+}
+
+/* ===== RANK WRAPPER - CONSISTENT ALIGNMENT ===== */
+.rank-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 700;
+    font-size: 0.875rem;
+    color: white;
+    gap: 0.5rem;
+    white-space: nowrap;
+}
+
+.rank-badge.rank-1 {
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+}
+
+.rank-badge.rank-2 {
+    background: linear-gradient(135deg, #C0C0C0 0%, #808080 100%);
+    box-shadow: 0 2px 8px rgba(192, 192, 192, 0.4);
+}
+
+.rank-badge.rank-3 {
+    background: linear-gradient(135deg, #CD7F32 0%, #8B4513 100%);
+    box-shadow: 0 2px 8px rgba(205, 127, 50, 0.4);
+}
+
+.rank-badge.rank-default {
+    background-color: #6c757d;
+}
+
+/* ===== AFFILIATE INFO - FLEX LAYOUT ===== */
+.affiliate-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.avatar-wrapper {
+    flex-shrink: 0;
+}
+
+.affiliate-avatar {
+    width: 45px;
+    height: 45px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid var(--affiliate-border);
+}
+
+.affiliate-avatar-placeholder {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--bs-primary), var(--bs-info));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    border: 2px solid var(--affiliate-border);
+}
+
+.affiliate-details {
+    min-width: 0;
+    flex: 1;
+}
+
+.affiliate-name {
+    display: block;
+    font-size: 1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+}
+
+.affiliate-code {
+    display: block;
+    font-size: 0.8rem;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 991px) {
+    /* Hide fourth column (Total Earnings) on tablets */
+    .leaderboard-table th:nth-child(4),
+    .leaderboard-table td:nth-child(4) {
+        display: none;
+    }
+}
+
+@media (max-width: 767px) {
+    /* Hide third and fourth columns on mobile */
+    .leaderboard-table th:nth-child(3),
+    .leaderboard-table td:nth-child(3),
+    .leaderboard-table th:nth-child(4),
+    .leaderboard-table td:nth-child(4) {
+        display: none;
+    }
+    
+    .leaderboard-table th,
+    .leaderboard-table td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.85rem;
+    }
+    
+    /* Smaller avatars on mobile */
+    .affiliate-avatar,
+    .affiliate-avatar-placeholder {
+        width: 35px;
+        height: 35px;
+        font-size: 1rem;
+    }
+    
+    /* Adjust rank badges on mobile */
+    .rank-badge {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.75rem;
+    }
+    
+    .rank-badge i {
+        font-size: 0.85rem;
+    }
+    
+    .affiliate-name {
+        font-size: 0.875rem;
+    }
+    
+    .affiliate-code {
+        font-size: 0.7rem;
+    }
+    
+    .affiliate-info {
+        gap: 0.75rem;
+    }
+}
+
+@media (max-width: 575px) {
+    /* Extra small adjustments */
+    .rank-badge {
+        padding: 0.35rem 0.65rem;
+        font-size: 0.7rem;
+    }
+    
+    .affiliate-avatar,
+    .affiliate-avatar-placeholder {
+        width: 32px;
+        height: 32px;
+        font-size: 0.9rem;
+    }
+    
+    .affiliate-name {
+        font-size: 0.8rem;
+    }
+    
+    .affiliate-info {
+        gap: 0.5rem;
+    }
+}
+
+/* ===== ANIMATION FOR CURRENT USER (OPTIONAL) ===== */
+@keyframes highlightPulse {
+    0%, 100% { 
+        background-color: rgba(var(--bs-primary-rgb), 0.08);
+    }
+    50% { 
+        background-color: rgba(var(--bs-primary-rgb), 0.15);
+    }
+}
+
+/* Uncomment to enable subtle pulse animation */
+/*
+.leaderboard-table tbody tr.current-user-row {
+    animation: highlightPulse 3s ease-in-out infinite;
+}
+*/
+
+/* ===== DARK MODE ADJUSTMENTS ===== */
+[data-bs-theme="dark"] .affiliate-avatar,
+[data-bs-theme="dark"] .affiliate-avatar-placeholder {
+    border-color: var(--dark-border-color);
+}
+
+[data-bs-theme="dark"] .rank-badge.rank-2 {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+}
+/* Form elements */
+.form-label-custom {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--affiliate-text);
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+/* Action Buttons */
+.btn-action {
+    font-size: 0.95rem;
+    padding: 0.625rem 1.5rem;
+    font-weight: 500;
+    border-radius: 0.5rem;
+}
+
+/* Badge improvements */
+[data-bs-theme="dark"] .badge.bg-light {
+    background-color: #495057 !important;
+    color: #fff !important;
+}
+
+/* Animation for current user row */
+@keyframes highlightPulse {
+    0%, 100% { 
+        background-color: rgba(var(--bs-primary-rgb), 0.05);
+    }
+    50% { 
+        background-color: rgba(var(--bs-primary-rgb), 0.15);
+    }
+}
+
+.table-custom tbody tr.table-active {
+    animation: highlightPulse 2s ease-in-out infinite;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 991px) {
+    /* Hide fourth column on tablets */
+    .table-custom th:nth-child(4),
+    .table-custom td:nth-child(4) {
+        display: none;
+    }
+}
+
+@media (max-width: 767px) {
+    /* Hide third and fourth columns on mobile */
+    .table-custom th:nth-child(3),
+    .table-custom td:nth-child(3),
+    .table-custom th:nth-child(4),
+    .table-custom td:nth-child(4) {
+        display: none;
+    }
+    
+    /* Smaller avatars on mobile */
+    .avatar-circle img,
+    .avatar-circle > div {
+        width: 35px !important;
+        height: 35px !important;
+        font-size: 1rem !important;
+    }
+    
+    /* Adjust rank badges on mobile */
+    .leaderboard-rank .badge {
+        font-size: 0.8rem !important;
+        padding: 0.35rem 0.65rem !important;
+    }
+    
+    .leaderboard-rank i {
+        font-size: 1.25rem !important;
+    }
+}
+
+@media (max-width: 575px) {
+    /* Extra small adjustments */
+    .stat-value {
+        font-size: 1.1rem;
+    }
+    
+    .stat-icon {
+        width: 35px;
+        height: 35px;
+        font-size: 1.1rem;
+    }
+}
+</style>
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

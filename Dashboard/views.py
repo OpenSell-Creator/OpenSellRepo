@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
 from datetime import timedelta, datetime
-from django.db.models import Sum, Count, Q, Avg
+from django.db.models import Sum, Count, Q, Avg, F
 from decimal import Decimal, InvalidOperation
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.paginator import Paginator
@@ -1369,7 +1369,7 @@ def affiliate_apply(request):
 @login_required
 def affiliate_dashboard(request):
     """
-    UPDATED: Affiliate dashboard with 7-day holding period display
+    UPDATED: Affiliate dashboard with leaderboard showing top performers
     """
     try:
         affiliate = request.user.affiliate
@@ -1465,6 +1465,44 @@ def affiliate_dashboard(request):
                 'text': 'Reversed/Cancelled'
             }
     
+    # ===== NEW: LEADERBOARD DATA =====
+    # Get top 10 affiliates by total earnings (all time)
+    top_earners = AffiliateProfile.objects.filter(
+        status='active'
+    ).annotate(
+        total_active_referrals=Count(
+            'referrals',
+            filter=Q(referrals__status='active')
+        )
+    ).order_by('-total_earned')[:10]
+    
+    # Add rank and check if current user is in top 10
+    user_in_leaderboard = False
+    user_rank = None
+    
+    for idx, top_affiliate in enumerate(top_earners, start=1):
+        top_affiliate.rank = idx
+        top_affiliate.is_current_user = (top_affiliate.id == affiliate.id)
+        if top_affiliate.is_current_user:
+            user_in_leaderboard = True
+            user_rank = idx
+    
+    # If user not in top 10, calculate their rank
+    if not user_in_leaderboard:
+        higher_ranked = AffiliateProfile.objects.filter(
+            status='active',
+            total_earned__gt=affiliate.total_earned
+        ).count()
+        user_rank = higher_ranked + 1
+    
+    # Get user's position data
+    current_user_stats = {
+        'rank': user_rank,
+        'total_earned': affiliate.total_earned,
+        'active_referrals': active_referrals,
+        'in_top_10': user_in_leaderboard
+    }
+    
     context = {
         'affiliate': affiliate,
         'referrals': referrals[:10],
@@ -1478,6 +1516,8 @@ def affiliate_dashboard(request):
         'releasing_soon': releasing_soon,
         'referral_link': referral_link,
         'can_withdraw': can_withdraw,
+        'top_earners': top_earners,
+        'current_user_stats': current_user_stats,
     }
     
     return render(request, 'dashboard/affiliate_dashboard.html', context)
@@ -1657,6 +1697,124 @@ def affiliate_analytics(request):
     
     return render(request, 'dashboard/affiliate_analytics.html', context)
 
+# Add this to your views.py
+
+@login_required
+def affiliate_leaderboard(request):
+    """
+    Standalone leaderboard page showing top affiliates and user's position
+    """
+    try:
+        affiliate = request.user.affiliate
+    except AffiliateProfile.DoesNotExist:
+        messages.warning(request, "You must be an affiliate to view the leaderboard.")
+        return redirect('affiliate_apply')
+    
+    # Filter options
+    timeframe = request.GET.get('timeframe', 'all_time')  # all_time, month, week
+    metric = request.GET.get('metric', 'earnings')  # earnings, referrals
+    
+    # Base queryset - only active affiliates
+    queryset = AffiliateProfile.objects.filter(status='active')
+    
+    # Apply timeframe filter for earnings
+    if timeframe == 'month':
+        one_month_ago = timezone.now() - timedelta(days=30)
+        # Get earnings from last month
+        queryset = queryset.annotate(
+            period_earnings=Sum(
+                'commissions__commission_amount',
+                filter=Q(commissions__created_at__gte=one_month_ago)
+            )
+        )
+        sort_field = '-period_earnings'
+    elif timeframe == 'week':
+        one_week_ago = timezone.now() - timedelta(days=7)
+        queryset = queryset.annotate(
+            period_earnings=Sum(
+                'commissions__commission_amount',
+                filter=Q(commissions__created_at__gte=one_week_ago)
+            )
+        )
+        sort_field = '-period_earnings'
+    else:
+        # All time earnings
+        queryset = queryset.annotate(
+            period_earnings=F('total_earned')
+        )
+        sort_field = '-total_earned'
+    
+    # Add active referrals count
+    queryset = queryset.annotate(
+        total_active_referrals=Count(
+            'referrals',
+            filter=Q(referrals__status='active')
+        )
+    )
+    
+    # Sort by selected metric
+    if metric == 'referrals':
+        queryset = queryset.order_by('-total_active_referrals', '-total_earned')
+    else:
+        queryset = queryset.order_by(sort_field, '-total_active_referrals')
+    
+    # Get all affiliates for ranking
+    all_affiliates = list(queryset)
+    
+    # Add rank to each affiliate
+    for idx, aff in enumerate(all_affiliates, start=1):
+        aff.rank = idx
+        aff.is_current_user = (aff.id == affiliate.id)
+    
+    # Get top 50 for display
+    top_affiliates = all_affiliates[:50]
+    
+    # Find current user's position
+    user_rank = None
+    user_in_top_50 = False
+    
+    for aff in all_affiliates:
+        if aff.is_current_user:
+            user_rank = aff.rank
+            user_in_top_50 = (user_rank <= 50)
+            break
+    
+    # Get user's stats
+    current_user_stats = {
+        'rank': user_rank,
+        'total_earned': affiliate.total_earned,
+        'period_earnings': affiliate.period_earnings if hasattr(affiliate, 'period_earnings') else affiliate.total_earned,
+        'active_referrals': affiliate.total_active_referrals if hasattr(affiliate, 'total_active_referrals') else 0,
+        'in_top_50': user_in_top_50,
+        'total_affiliates': len(all_affiliates)
+    }
+    
+    # Calculate percentile
+    if user_rank and len(all_affiliates) > 0:
+        percentile = 100 - ((user_rank / len(all_affiliates)) * 100)
+        current_user_stats['percentile'] = round(percentile, 1)
+    else:
+        current_user_stats['percentile'] = 0
+    
+    # Get leaderboard statistics
+    leaderboard_stats = {
+        'total_affiliates': len(all_affiliates),
+        'total_earnings': sum(aff.period_earnings or 0 for aff in all_affiliates),
+        'total_referrals': sum(aff.total_active_referrals for aff in all_affiliates),
+        'avg_earnings': sum(aff.period_earnings or 0 for aff in all_affiliates) / max(len(all_affiliates), 1),
+    }
+    
+    context = {
+        'affiliate': affiliate,
+        'top_affiliates': top_affiliates,
+        'current_user_stats': current_user_stats,
+        'leaderboard_stats': leaderboard_stats,
+        'timeframe': timeframe,
+        'metric': metric,
+    }
+    
+    return render(request, 'dashboard/affiliate_leaderboard.html', context)
+
 
 @require_http_methods(["GET"])
 def validate_referral_code(request):
@@ -1705,7 +1863,6 @@ def validate_referral_code(request):
             'valid': False, 
             'message': 'Validation error'
         }, status=500)
-        
         
 @staff_member_required
 def debug_affiliate_deposits(request):

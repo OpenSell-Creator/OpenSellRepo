@@ -37,17 +37,26 @@
         <!-- Navigation Tabs -->
         <ul class="nav nav-pills nav-custom mb-4" role="tablist">
             <li class="nav-item" role="presentation">
-                <a class="nav-link active" href="{% url 'affiliate_dashboard' %}">
+                <a class="nav-link {% if request.resolver_match.url_name == 'affiliate_dashboard' %}active{% endif %}" 
+                href="{% url 'affiliate_dashboard' %}">
                     <i class="bi bi-house-fill me-2"></i>Overview
                 </a>
             </li>
             <li class="nav-item" role="presentation">
-                <a class="nav-link" href="{% url 'affiliate_analytics' %}">
+                <a class="nav-link {% if request.resolver_match.url_name == 'affiliate_analytics' %}active{% endif %}" 
+                href="{% url 'affiliate_analytics' %}">
                     <i class="bi bi-graph-up me-2"></i>Analytics
                 </a>
             </li>
             <li class="nav-item" role="presentation">
-                <a class="nav-link" href="{% url 'affiliate_withdraw' %}">
+                <a class="nav-link {% if request.resolver_match.url_name == 'affiliate_leaderboard' %}active{% endif %}" 
+                href="{% url 'affiliate_leaderboard' %}">
+                    <i class="bi bi-trophy-fill me-2"></i>Leaderboard
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link {% if request.resolver_match.url_name == 'affiliate_withdraw' %}active{% endif %}" 
+                href="{% url 'affiliate_withdraw' %}">
                     <i class="bi bi-wallet2 me-2"></i>Withdrawals
                 </a>
             </li>
@@ -57,6 +66,53 @@
                 </a>
             </li>
         </ul>
+
+        <!-- Optional: Mobile-friendly dropdown version for smaller screens -->
+        <div class="d-block d-md-none mb-4">
+            <div class="dropdown">
+                <button class="btn btn-outline-primary dropdown-toggle w-100" type="button" id="affiliateNavDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-list me-2"></i>
+                    {% if request.resolver_match.url_name == 'affiliate_dashboard' %}Overview
+                    {% elif request.resolver_match.url_name == 'affiliate_analytics' %}Analytics
+                    {% elif request.resolver_match.url_name == 'affiliate_leaderboard' %}Leaderboard
+                    {% elif request.resolver_match.url_name == 'affiliate_withdraw' %}Withdrawals
+                    {% else %}Menu
+                    {% endif %}
+                </button>
+                <ul class="dropdown-menu w-100" aria-labelledby="affiliateNavDropdown">
+                    <li>
+                        <a class="dropdown-item {% if request.resolver_match.url_name == 'affiliate_dashboard' %}active{% endif %}" 
+                        href="{% url 'affiliate_dashboard' %}">
+                            <i class="bi bi-house-fill me-2"></i>Overview
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item {% if request.resolver_match.url_name == 'affiliate_analytics' %}active{% endif %}" 
+                        href="{% url 'affiliate_analytics' %}">
+                            <i class="bi bi-graph-up me-2"></i>Analytics
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item {% if request.resolver_match.url_name == 'affiliate_leaderboard' %}active{% endif %}" 
+                        href="{% url 'affiliate_leaderboard' %}">
+                            <i class="bi bi-trophy-fill me-2"></i>Leaderboard
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item {% if request.resolver_match.url_name == 'affiliate_withdraw' %}active{% endif %}" 
+                        href="{% url 'affiliate_withdraw' %}">
+                            <i class="bi bi-wallet2 me-2"></i>Withdrawals
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item" href="#">
+                            <i class="bi bi-book me-2"></i>Resources
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
 
 
         {% if affiliate.status == 'pending' %}
@@ -310,18 +366,18 @@
                     <label class="form-label-custom">Quick Share:</label>
                     <div class="share-buttons">
                         <a href="https://wa.me/?text=Join%20OpenSell%20using%20my%20referral%20code%3A%20{{ affiliate.referral_code }}%0A{{ referral_link|urlencode }}" 
-                           target="_blank" 
-                           class="btn btn-success">
+                        target="_blank" 
+                        class="btn btn-success">
                             <i class="bi bi-whatsapp me-1"></i>WhatsApp
                         </a>
                         <a href="https://twitter.com/intent/tweet?text=Join%20OpenSell%20with%20my%20referral%20code%3A%20{{ affiliate.referral_code }}&url={{ referral_link|urlencode }}" 
-                           target="_blank" 
-                           class="btn btn-info text-white">
+                        target="_blank" 
+                        class="btn btn-info text-white">
                             <i class="bi bi-twitter-x me-1"></i>Twitter
                         </a>
                         <a href="https://www.facebook.com/sharer/sharer.php?u={{ referral_link|urlencode }}" 
-                           target="_blank" 
-                           class="btn btn-primary">
+                        target="_blank" 
+                        class="btn btn-primary">
                             <i class="bi bi-facebook me-1"></i>Facebook
                         </a>
                         <button 
@@ -505,6 +561,170 @@
     </div>
 </div>
 
+<!-- Affiliate Leaderboard -->
+<div class="card-custom mt-4">
+    <div class="card-header-custom">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="card-title-custom mb-0">
+                <i class="bi bi-trophy-fill text-warning me-2"></i>Top Performers Leaderboard
+            </h5>
+            <span class="badge bg-primary">
+                <i class="bi bi-people-fill"></i> {{ top_earners|length }} Affiliates
+            </span>
+        </div>
+    </div>
+    <div class="card-body-custom p-0">
+        <!-- Your Position (if not in top 10) -->
+        {% if not current_user_stats.in_top_10 %}
+        <div class="alert alert-info m-3 mb-0">
+            <div class="d-flex align-items-center gap-3">
+                <div class="leaderboard-rank" style="min-width: 60px;">
+                    <span class="badge bg-info fs-5 px-3 py-2">#{{ current_user_stats.rank }}</span>
+                </div>
+                <div class="flex-grow-1">
+                    <strong>Your Position</strong>
+                    <p class="mb-0 small text-muted">
+                        <i class="bi bi-people-fill"></i> {{ active_referrals }} active referrals 
+                        • <i class="bi bi-cash-coin"></i> ₦{{ current_user_stats.total_earned|floatformat:2 }} earned
+                    </p>
+                    {% if top_earners %}
+                        <small class="text-muted">
+                            Need ₦{{ top_earners.0.total_earned|floatformat:2 }} to reach #1
+                        </small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Leaderboard Table -->
+        {% if top_earners %}
+        <div class="table-responsive">
+            <table class="table table-custom leaderboard-table mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 100px;">Rank</th>
+                        <th>Affiliate</th>
+                        <th class="text-center">Active Referrals</th>
+                        <th class="text-end">Total Earned</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for top_affiliate in top_earners %}
+                    <tr {% if top_affiliate.is_current_user %}class="current-user-row"{% endif %}>
+                        <!-- Rank Column -->
+                        <td>
+                            <div class="rank-wrapper">
+                                {% if top_affiliate.rank == 1 %}
+                                    <span class="rank-badge rank-1">
+                                        <i class="bi bi-trophy-fill"></i> #1
+                                    </span>
+                                {% elif top_affiliate.rank == 2 %}
+                                    <span class="rank-badge rank-2">
+                                        <i class="bi bi-award-fill"></i> #2
+                                    </span>
+                                {% elif top_affiliate.rank == 3 %}
+                                    <span class="rank-badge rank-3">
+                                        <i class="bi bi-award-fill"></i> #3
+                                    </span>
+                                {% else %}
+                                    <span class="rank-badge rank-default">
+                                        #{{ top_affiliate.rank }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <!-- Affiliate Info -->
+                        <td>
+                            <div class="affiliate-info">
+                                <!-- Avatar -->
+                                <div class="avatar-wrapper">
+                                    {% if top_affiliate.user.profile.profile_picture %}
+                                        <img src="{{ top_affiliate.user.profile.profile_picture.url }}" 
+                                             alt="{{ top_affiliate.user.username }}"
+                                             class="affiliate-avatar">
+                                    {% else %}
+                                        <div class="affiliate-avatar-placeholder">
+                                            {{ top_affiliate.user.username|slice:":1"|upper }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Name and Code -->
+                                <div class="affiliate-details">
+                                    <strong class="affiliate-name {% if top_affiliate.is_current_user %}text-primary{% endif %}">
+                                        {% if top_affiliate.is_current_user %}
+                                            <i class="bi bi-star-fill text-warning me-1"></i>You
+                                        {% else %}
+                                            @{{ top_affiliate.user.username }}
+                                        {% endif %}
+                                    </strong>
+                                    <small class="affiliate-code text-muted">
+                                        <i class="bi bi-tag-fill"></i> {{ top_affiliate.referral_code }}
+                                    </small>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Active Referrals -->
+                        <td class="text-center">
+                            <span class="badge bg-success bg-opacity-75 px-3 py-2">
+                                <i class="bi bi-people-fill"></i> {{ top_affiliate.total_active_referrals }}
+                            </span>
+                        </td>
+
+                        <!-- Total Earned -->
+                        <td class="text-end">
+                            <strong class="text-success fs-5">
+                                ₦{{ top_affiliate.total_earned|floatformat:2 }}
+                            </strong>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Leaderboard Footer -->
+        <div class="card-body-custom border-top">
+            <div class="leaderboard-footer-grid">
+                <div class="text-center">
+                    <div class="stat-box">
+                        <i class="bi bi-trophy-fill text-warning"></i>
+                        <h4 class="mt-2 mb-0">₦{{ top_earners.0.total_earned|floatformat:2 }}</h4>
+                        <small class="text-muted">Top Earner</small>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <div class="stat-box">
+                        <i class="bi bi-graph-up-arrow text-primary"></i>
+                        <h4 class="mt-2 mb-0">
+                            {% widthratio top_earners|length 10 100 %}%
+                        </h4>
+                        <small class="text-muted">Top {% widthratio current_user_stats.rank 1 10 %}%</small>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <div class="stat-box">
+                        <i class="bi bi-people-fill text-success"></i>
+                        <h4 class="mt-2 mb-0">{{ top_earners.0.total_active_referrals }}</h4>
+                        <small class="text-muted">Most Refs</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <!-- Empty State -->
+        <div class="empty-state">
+            <i class="bi bi-trophy display-4"></i>
+            <p class="mt-3">No affiliates on the leaderboard yet.</p>
+            <p class="text-muted">Be the first to earn commissions!</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
 <style>
 :root {
     /* Using site's theme variables */
@@ -559,7 +779,7 @@
 
 /* Default state - ALL nav links visible */
 .nav-custom .nav-link {
-    color: #495057 !important; /* Medium gray - visible in light mode */
+    color: #495057 !important;
     background-color: transparent;
     border-radius: 0.5rem;
     padding: 0.625rem 1rem;
@@ -571,7 +791,7 @@
 
 /* Dark mode - light text */
 [data-bs-theme="dark"] .nav-custom .nav-link {
-    color: #adb5bd !important; /* Light gray for dark mode */
+    color: #adb5bd !important;
 }
 
 /* Hover state */
@@ -597,6 +817,29 @@
 [data-bs-theme="dark"] .nav-custom .nav-link.active {
     background-color: var(--primary-color, #0d6efd) !important;
     color: #ffffff !important;
+}
+
+@media (max-width: 767px) {
+    .nav-pills.nav-custom {
+        display: none !important;
+    }
+}
+
+/* Hide dropdown on desktop */
+@media (min-width: 768px) {
+    .d-block.d-md-none {
+        display: none !important;
+    }
+}
+
+/* Active state for dropdown items */
+.dropdown-item.active {
+    background-color: var(--bs-primary);
+    color: white;
+}
+
+.dropdown-item.active i {
+    color: white;
 }
 
 /* Alerts */
@@ -630,11 +873,18 @@
     border-color: rgba(255, 255, 255, 0.1);
 }
 
-/* Stats Grid */
+/* Stats Grid - MOBILE OPTIMIZED */
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1.25rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+@media (min-width: 768px) {
+    .stats-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.25rem;
+    }
 }
 
 .stat-card {
@@ -655,38 +905,70 @@
 }
 
 .stat-card-body {
-    padding: 1.25rem;
+    padding: 1rem;
+}
+
+@media (min-width: 768px) {
+    .stat-card-body {
+        padding: 1.25rem;
+    }
 }
 
 .stat-label {
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     color: var(--affiliate-text-muted);
     margin-bottom: 0.5rem;
     font-weight: 500;
 }
 
+@media (min-width: 768px) {
+    .stat-label {
+        font-size: 0.875rem;
+    }
+}
+
 .stat-value {
-    font-size: 1.75rem;
+    font-size: 1.25rem;
     font-weight: 700;
     margin-bottom: 0.25rem;
     color: var(--affiliate-text);
 }
 
+@media (min-width: 768px) {
+    .stat-value {
+        font-size: 1.75rem;
+    }
+}
+
 .stat-meta {
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     color: var(--affiliate-text-muted);
 }
 
+@media (min-width: 768px) {
+    .stat-meta {
+        font-size: 0.8rem;
+    }
+}
+
 .stat-icon {
-    width: 50px;
-    height: 50px;
+    width: 40px;
+    height: 40px;
     border-radius: 0.75rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     color: white;
     opacity: 0.9;
+}
+
+@media (min-width: 768px) {
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+    }
 }
 
 .stat-icon.bg-success { background-color: #198754; }
@@ -719,19 +1001,32 @@
     padding: 1.25rem;
 }
 
-/* Commission Grid */
+/* Commission Grid - MOBILE OPTIMIZED */
 .commission-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+
+@media (min-width: 576px) {
+    .commission-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+    }
 }
 
 .commission-status-card {
-    padding: 1rem;
+    padding: 0.75rem;
     border-radius: 0.5rem;
     text-align: center;
     border: 1px solid var(--affiliate-border);
     background-color: var(--affiliate-hover);
+}
+
+@media (min-width: 768px) {
+    .commission-status-card {
+        padding: 1rem;
+    }
 }
 
 .commission-status-card.status-pending {
@@ -750,15 +1045,27 @@
 }
 
 .commission-amount {
-    font-size: 1.25rem;
+    font-size: 1rem;
     font-weight: 700;
     margin-bottom: 0.5rem;
     color: var(--affiliate-text);
 }
 
+@media (min-width: 768px) {
+    .commission-amount {
+        font-size: 1.25rem;
+    }
+}
+
 .commission-label {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     color: var(--affiliate-text-muted);
+}
+
+@media (min-width: 768px) {
+    .commission-label {
+        font-size: 0.85rem;
+    }
 }
 
 /* Form Elements */
@@ -775,17 +1082,32 @@
     color: var(--affiliate-text-muted);
 }
 
-/* Share Buttons */
+/* Share Buttons - MOBILE OPTIMIZED GRID */
 .share-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+}
+
+@media (min-width: 576px) {
+    .share-buttons {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.75rem;
+    }
 }
 
 .share-buttons .btn {
-    font-size: 0.9rem;
-    padding: 0.625rem 1.25rem;
+    font-size: 0.85rem;
+    padding: 0.5rem 0.75rem;
     font-weight: 500;
+    width: 100%;
+}
+
+@media (min-width: 768px) {
+    .share-buttons .btn {
+        font-size: 0.9rem;
+        padding: 0.625rem 1.25rem;
+    }
 }
 
 /* Tables */
@@ -820,6 +1142,27 @@
     background-color: var(--affiliate-hover);
 }
 
+/* FIXED: Current user row alignment */
+.table-custom tbody tr.table-active {
+    position: relative;
+    background-color: rgba(var(--bs-primary-rgb), 0.05) !important;
+}
+
+.table-custom tbody tr.table-active td {
+    /* Ensure no padding/margin shifts */
+    padding: 0.875rem 1rem;
+}
+
+.table-custom tbody tr.table-active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--bs-primary);
+}
+
 /* Empty State */
 .empty-state {
     text-align: center;
@@ -832,20 +1175,33 @@
     opacity: 0.5;
 }
 
-/* Rates Grid */
+/* Rates Grid - MOBILE OPTIMIZED */
 .rates-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.25rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+
+@media (min-width: 576px) {
+    .rates-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.25rem;
+    }
 }
 
 .rate-card {
     text-align: center;
-    padding: 1.5rem;
+    padding: 1rem;
     border: 1px solid var(--affiliate-border);
     border-radius: 0.75rem;
     background-color: var(--affiliate-hover);
     transition: transform 0.3s ease;
+}
+
+@media (min-width: 768px) {
+    .rate-card {
+        padding: 1.5rem;
+    }
 }
 
 .rate-card:hover {
@@ -853,25 +1209,59 @@
 }
 
 .rate-icon {
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+@media (min-width: 768px) {
+    .rate-icon {
+        margin-bottom: 1rem;
+    }
+}
+
+.rate-icon i {
+    font-size: 2rem;
+}
+
+@media (min-width: 768px) {
+    .rate-icon i {
+        font-size: 3rem;
+    }
 }
 
 .rate-value {
-    font-size: 1.75rem;
+    font-size: 1.25rem;
     font-weight: 700;
     margin-bottom: 0.5rem;
     color: var(--affiliate-text);
 }
 
+@media (min-width: 768px) {
+    .rate-value {
+        font-size: 1.75rem;
+    }
+}
+
 .rate-label {
-    font-size: 0.95rem;
+    font-size: 0.8rem;
     color: var(--affiliate-text);
     margin-bottom: 0.25rem;
 }
 
+@media (min-width: 768px) {
+    .rate-label {
+        font-size: 0.95rem;
+    }
+}
+
 .rate-meta {
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     color: var(--affiliate-text-muted);
+}
+
+@media (min-width: 768px) {
+    .rate-meta {
+        font-size: 0.8rem;
+    }
 }
 
 /* Action Buttons */
@@ -882,30 +1272,295 @@
     border-radius: 0.5rem;
 }
 
-/* Responsive Design */
-@media (max-width: 991px) {
-    .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
+/* ===== LEADERBOARD TABLE - FIXED ALIGNMENT ===== */
+.leaderboard-table {
+    color: var(--affiliate-text);
+}
+
+.leaderboard-table thead {
+    background-color: var(--affiliate-hover);
+}
+
+.leaderboard-table th {
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 1rem;
+    color: var(--affiliate-text);
+    border-bottom: 2px solid var(--affiliate-border);
+    vertical-align: middle;
+}
+
+.leaderboard-table td {
+    padding: 1rem;
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--affiliate-border);
+    vertical-align: middle;
+}
+
+.leaderboard-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.leaderboard-table tbody tr:hover {
+    background-color: var(--affiliate-hover);
+}
+
+/* Current User Row - NO POSITION SHIFTS */
+.leaderboard-table tbody tr.current-user-row {
+    background-color: rgba(var(--bs-primary-rgb), 0.08);
+    border-left: 4px solid var(--bs-primary);
+}
+
+[data-bs-theme="dark"] .leaderboard-table tbody tr.current-user-row {
+    background-color: rgba(var(--bs-primary-rgb), 0.12);
+}
+
+/* Ensure all td elements maintain consistent padding */
+.leaderboard-table tbody tr.current-user-row td {
+    padding: 1rem;
+}
+
+/* ===== RANK WRAPPER - CENTERED CONSISTENTLY ===== */
+.rank-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 700;
+    font-size: 0.875rem;
+    color: white;
+    gap: 0.5rem;
+}
+
+.rank-badge.rank-1 {
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+}
+
+.rank-badge.rank-2 {
+    background: linear-gradient(135deg, #C0C0C0 0%, #808080 100%);
+    box-shadow: 0 2px 8px rgba(192, 192, 192, 0.4);
+}
+
+.rank-badge.rank-3 {
+    background: linear-gradient(135deg, #CD7F32 0%, #8B4513 100%);
+    box-shadow: 0 2px 8px rgba(205, 127, 50, 0.4);
+}
+
+.rank-badge.rank-default {
+    background-color: #6c757d;
+    padding: 0.5rem 1rem;
+}
+
+/* ===== AFFILIATE INFO - FLEX LAYOUT ===== */
+.affiliate-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.avatar-wrapper {
+    flex-shrink: 0;
+}
+
+.affiliate-avatar {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid var(--affiliate-border);
+}
+
+.affiliate-avatar-placeholder {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--bs-primary), var(--bs-info));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.1rem;
+    border: 2px solid var(--affiliate-border);
+}
+
+.affiliate-details {
+    min-width: 0;
+    flex: 1;
+}
+
+.affiliate-name {
+    display: block;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 0.25rem;
+}
+
+.affiliate-code {
+    display: block;
+    font-size: 0.8rem;
+}
+
+/* ===== LEADERBOARD FOOTER - MOBILE OPTIMIZED ===== */
+.leaderboard-footer-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.stat-box {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    background: var(--affiliate-hover);
+    transition: transform 0.2s;
+}
+
+.stat-box:hover {
+    transform: translateY(-3px);
+}
+
+.stat-box i {
+    font-size: 2rem;
+}
+
+.stat-box h4 {
+    font-size: 1.25rem;
+    margin-top: 0.5rem;
+    color: var(--affiliate-text);
+}
+
+.stat-box small {
+    font-size: 0.8rem;
+    color: var(--affiliate-text-muted);
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 767px) {
+    .leaderboard-table th,
+    .leaderboard-table td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.85rem;
     }
     
-    .page-title {
+    /* Hide Active Referrals column on mobile */
+    .leaderboard-table th:nth-child(3),
+    .leaderboard-table td:nth-child(3) {
+        display: none;
+    }
+    
+    .rank-badge {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.75rem;
+    }
+    
+    .affiliate-avatar,
+    .affiliate-avatar-placeholder {
+        width: 35px;
+        height: 35px;
+        font-size: 0.95rem;
+    }
+    
+    .affiliate-name {
+        font-size: 0.875rem;
+    }
+    
+    .affiliate-code {
+        font-size: 0.7rem;
+    }
+    
+    .stat-box {
+        padding: 0.75rem;
+    }
+    
+    .stat-box i {
         font-size: 1.5rem;
+    }
+    
+    .stat-box h4 {
+        font-size: 1rem;
     }
 }
 
+@media (max-width: 575px) {
+    .rank-badge {
+        padding: 0.35rem 0.65rem;
+        font-size: 0.7rem;
+    }
+    
+    .rank-badge i {
+        font-size: 0.8rem;
+    }
+    
+    .affiliate-avatar,
+    .affiliate-avatar-placeholder {
+        width: 32px;
+        height: 32px;
+        font-size: 0.9rem;
+    }
+    
+    .affiliate-info {
+        gap: 0.75rem;
+    }
+    
+    .leaderboard-footer-grid {
+        gap: 0.5rem;
+    }
+    
+    .stat-box {
+        padding: 0.5rem;
+    }
+    
+    .stat-box h4 {
+        font-size: 0.9rem;
+    }
+    
+    .stat-box small {
+        font-size: 0.7rem;
+    }
+}
+/* Trophy colors for top 3 */
+.leaderboard-rank .badge {
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* Animation for current user row */
+@keyframes highlightPulse {
+    0%, 100% { 
+        background-color: rgba(var(--bs-primary-rgb), 0.05);
+    }
+    50% { 
+        background-color: rgba(var(--bs-primary-rgb), 0.15);
+    }
+}
+
+.table-custom tbody tr.table-active {
+    animation: highlightPulse 2s ease-in-out infinite;
+}
+
+/* Dark mode adjustments */
+[data-bs-theme="dark"] .avatar-circle img,
+[data-bs-theme="dark"] .avatar-circle > div {
+    border-color: var(--dark-border-color);
+}
+
+[data-bs-theme="dark"] .badge.bg-light {
+    background-color: #495057 !important;
+    color: #fff !important;
+}
+
+/* Responsive Design */
 @media (max-width: 767px) {
-    .stats-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .commission-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .rates-grid {
-        grid-template-columns: 1fr;
-    }
-    
     .page-title {
         font-size: 1.25rem;
     }
@@ -918,19 +1573,17 @@
     .nav-custom .nav-item {
         display: inline-block;
     }
+    
+    /* Hide third column on mobile for leaderboard */
+    .table-custom.leaderboard-table th:nth-child(3),
+    .table-custom.leaderboard-table td:nth-child(3) {
+        display: none;
+    }
 }
 
 @media (max-width: 575px) {
-    .commission-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .share-buttons {
-        flex-direction: column;
-    }
-    
-    .share-buttons .btn {
-        width: 100%;
+    .card-title-custom {
+        font-size: 0.95rem;
     }
 }
 </style>
