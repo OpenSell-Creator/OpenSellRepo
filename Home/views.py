@@ -237,10 +237,14 @@ def home(request):
 
     random.seed(user_seed)
 
+    # In views.py, replace the quality_products queryset (around line 485-490)
+
     quality_products = Product_Listing.objects.filter(
         is_suspended=False,
-        expiration_date__gt=timezone.now(),
         price__gt=0,
+    ).filter(
+        Q(expiration_date__isnull=True) | 
+        Q(expiration_date__gt=timezone.now()) 
     )
 
     featured_products = get_sorted_products(quality_products, request.user, limit=20)
