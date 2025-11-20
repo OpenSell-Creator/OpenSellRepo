@@ -1841,8 +1841,8 @@ def delete_reply(request, pk, reply_id):
     }
     return render(request, 'delete_reply_confirm.html', context)
 
-@login_required
 def my_store(request, username=None):
+    
     if username:
         store_owner = get_object_or_404(
             User.objects.select_related(
@@ -1854,18 +1854,25 @@ def my_store(request, username=None):
             username=username
         )
     else:
-        store_owner = get_object_or_404(
-            User.objects.select_related(
-                'profile',
-                'profile__location',
-                'profile__location__state',
-                'profile__location__lga'
-            ),
-            username=request.user.username
-        )
+        # If no username provided and user is authenticated, show their store
+        # If not authenticated, redirect or show error
+        if request.user.is_authenticated:
+            store_owner = get_object_or_404(
+                User.objects.select_related(
+                    'profile',
+                    'profile__location',
+                    'profile__location__state',
+                    'profile__location__lga'
+                ),
+                username=request.user.username
+            )
+        else:
+            # Redirect to login or show 404
+            return redirect('login')  # Change 'login' to your login URL name
 
     user_products = Product_Listing.objects.filter(seller=store_owner.profile)
 
+    # Only process saved products if user is authenticated
     if request.user.is_authenticated:
         saved_products = SavedProduct.objects.filter(
             user=request.user
@@ -1873,6 +1880,11 @@ def my_store(request, username=None):
         saved_products = set(str(id) for id in saved_products)
         for product in user_products:
             product.is_saved = str(product.id) in saved_products
+            product.formatted_price = format_price(product.price)
+    else:
+        # Mark all products as not saved for non-authenticated users
+        for product in user_products:
+            product.is_saved = False
             product.formatted_price = format_price(product.price)
 
     location_display = None
@@ -1908,13 +1920,11 @@ def my_store(request, username=None):
             business_parts.append(store_owner.profile.location.state.name)
         business_location_display = ', '.join(filter(None, business_parts))
     
-    
     context = {
         'store_owner': store_owner,
         'products': user_products,
         'total_products': user_products.count(),
         'location_display': location_display,
-        
         'business_location_display': business_location_display,
         'is_verified_business': store_owner.profile.business_verification_status == 'verified',
         'has_pending_verification': store_owner.profile.business_verification_status == 'pending',
@@ -1931,7 +1941,6 @@ def my_store(request, username=None):
             'address_visible': store_owner.profile.business_address_visible,
         } if hasattr(store_owner.profile, 'business_verification_status') else None,
         
-        # Store verification status context
         'store_verification': {
             'business_verified': store_owner.profile.business_verification_status == 'verified',
             'business_pending': store_owner.profile.business_verification_status == 'pending',
@@ -1941,8 +1950,8 @@ def my_store(request, username=None):
         },
     }
     
-    # Only show account details if viewing own store
-    if store_owner == request.user:
+    # Only show account details if viewing own store AND user is authenticated
+    if request.user.is_authenticated and store_owner == request.user:
         try:
             context['account'] = request.user.account
             context['boost_count'] = ProductBoost.objects.filter(
