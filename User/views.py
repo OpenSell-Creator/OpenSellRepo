@@ -22,6 +22,8 @@ from django.views.generic.detail import DetailView
 from django.contrib import messages
 from django.urls import reverse_lazy
 from django.contrib.auth.forms import AuthenticationForm
+from django_ratelimit.decorators import ratelimit
+from django_ratelimit.exceptions import Ratelimited
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
@@ -95,6 +97,7 @@ class CustomSignupView(SignupView):
 
 custom_signup_view = CustomSignupView.as_view()
 
+@ratelimit(key='ip', rate='5/m', method='POST', block=True)
 def loginview(request):
     # Redirect if user is already authenticated
     if request.user.is_authenticated:
@@ -114,7 +117,8 @@ def loginview(request):
         if login_form.is_valid():
             username = login_form.cleaned_data.get('username')
             password = login_form.cleaned_data.get('password')
-            user = authenticate(username=username, password=password)
+
+            user = authenticate(request=request, username=username, password=password)
             if user is not None:
                 login(request, user)
                 messages.success(request, f'You are now logged in as {username}.')
@@ -131,7 +135,7 @@ def loginview(request):
     return render(request, 'login.html', {
         'login_form': login_form,
         'next': next_url,
-        'referral_code': referral_code  # NEW: Pass to template
+        'referral_code': referral_code
     })
 
 @login_required
@@ -140,6 +144,7 @@ def logoutview(request):
     messages.success(request, ("You Have Been Logged Out"))
     return redirect('home')
 
+@ratelimit(key='ip', rate='3/h', method='POST', block=True)
 def register_user(request):
 
     # Get referral code from URL or use default
@@ -175,7 +180,7 @@ def register_user(request):
             
             # STEP 3: Log user in (CRITICAL)
             try:
-                authenticated_user = authenticate(username=username, password=password)
+                authenticated_user = authenticate(request=request, username=username, password=password)
                 
                 if authenticated_user:
                     login(request, authenticated_user)
@@ -322,7 +327,6 @@ def profile_menu(request):
     }
     
     return render(request, 'profile_menu.html', context)
-
 
 @login_required
 @user_passes_test(lambda u: u.is_staff or u.is_superuser)
@@ -650,6 +654,7 @@ def admin_verify_business(request, profile_id):
     return render(request, 'admin/verify_business_detail.html', context)
 
 @login_required
+@ratelimit(key='user', rate='3/h', method='POST', block=True)
 def send_verification_otp(request):
     """Send verification OTP to the current user's email"""
     if request.method == 'POST':
@@ -789,3 +794,9 @@ def unsubscribe_all(request):
     except (User.DoesNotExist, Profile.DoesNotExist):
         messages.error(request, "User not found.")
         return redirect('home')
+    
+def handler429(request, exception=None):
+    """
+    Custom handler for rate limit exceeded (429 Too Many Requests)
+    """
+    return render(request, 'security/rate_limit.html', status=429)

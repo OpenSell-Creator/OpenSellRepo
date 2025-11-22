@@ -2,6 +2,8 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from .models import Location, Profile, LGA, BusinessVerificationDocument
+from django_recaptcha.fields import ReCaptchaField
+from django_recaptcha.widgets import ReCaptchaV2Checkbox
 import re
 
 class SignUpForm(UserCreationForm):
@@ -42,6 +44,30 @@ class SignUpForm(UserCreationForm):
             'id': 'id_referral_code'
         })
     )
+    
+    # Honeypot field (catches bots)
+    website = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'style': 'display:none !important',
+            'tabindex': '-1',
+            'autocomplete': 'off',
+            'aria-hidden': 'true'
+        })
+    )
+    
+    # reCAPTCHA field (NEW)
+    captcha = ReCaptchaField(
+        widget=ReCaptchaV2Checkbox(
+            attrs={
+                'data-theme': 'light',
+                'data-size': 'normal',
+            }
+        ),
+        error_messages={
+            'required': 'Please complete the reCAPTCHA verification'
+        }
+    )
 
     class Meta:
         model = User
@@ -79,6 +105,13 @@ class SignUpForm(UserCreationForm):
             raise forms.ValidationError("The two password fields didn't match.")
         
         return password2
+    
+    def clean_website(self):
+        """Honeypot: Reject if this field is filled (bots fill all fields)"""
+        website = self.cleaned_data.get('website')
+        if website:
+            raise forms.ValidationError('Bot detected. If you are human, please contact support.')
+        return website
 
     def clean_username(self):
         username = self.cleaned_data.get('username')

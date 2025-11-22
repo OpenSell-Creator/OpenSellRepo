@@ -23,6 +23,8 @@ from .robots import robots_txt
 from .sitemaps import StaticViewSitemap, ProductSitemap, CategorySitemap, SubcategorySitemap
 
 handler404 = 'Home.views.handler404'
+handler429 = 'User.views.handler429'
+
 sitemaps = {
     'static': StaticViewSitemap,
     'products': ProductSitemap,
