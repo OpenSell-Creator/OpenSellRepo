@@ -48,3 +48,41 @@ class ReferralCodeMiddleware:
         
         response = self.get_response(request)
         return response
+
+class SecurityBypassMiddleware:
+    """
+    ⭐ CRITICAL: Bypass security checks for OAuth and social auth paths
+    This prevents Axes and rate limiting from blocking Google OAuth
+    
+    This middleware MUST be placed BEFORE AxesMiddleware in settings.MIDDLEWARE
+    """
+    
+    # All paths that should bypass security checks
+    BYPASS_PATHS = [
+        '/accounts/google/',
+        '/accounts/socialaccount/',
+        '/accounts/profile/',
+        '/accounts/signup/',
+    ]
+    
+    def __init__(self, get_response):
+        self.get_response = get_response
+    
+    def __call__(self, request):
+        # Check if this is an OAuth/social auth request
+        is_oauth = (
+            # Check if path starts with any bypass path
+            any(request.path.startswith(path) for path in self.BYPASS_PATHS) or
+            # Check for OAuth callback parameters
+            'code' in request.GET or  # OAuth authorization code
+            'state' in request.GET    # OAuth state parameter
+        )
+        
+        if is_oauth:
+            # Mark request to bypass security checks
+            request.skip_axes = True  # Tell Axes to skip this request
+            request.skip_ratelimit = True  # Tell ratelimit to skip this request
+            logger.debug(f"🔓 OAuth path detected: {request.path} - bypassing security")
+        
+        response = self.get_response(request)
+        return response

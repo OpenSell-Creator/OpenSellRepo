@@ -97,7 +97,20 @@ class CustomSignupView(SignupView):
 
 custom_signup_view = CustomSignupView.as_view()
 
-@ratelimit(key='ip', rate='5/m', method='POST', block=True)
+from django.utils.decorators import method_decorator
+from django_ratelimit.decorators import ratelimit
+
+def skip_ratelimit_if_oauth(view_func):
+    """Decorator to skip rate limiting for OAuth requests"""
+    def wrapper(request, *args, **kwargs):
+        if getattr(request, 'skip_ratelimit', False):
+            # Skip rate limiting
+            return view_func(request, *args, **kwargs)
+        # Apply rate limiting
+        return ratelimit(key='ip', rate='5/m', method='POST', block=True)(view_func)(request, *args, **kwargs)
+    return wrapper
+
+@skip_ratelimit_if_oauth
 def loginview(request):
     # Redirect if user is already authenticated
     if request.user.is_authenticated:
