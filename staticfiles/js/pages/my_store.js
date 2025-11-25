@@ -403,6 +403,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
 // Enhanced JavaScript for my_store.html with fixed share functionality
 
+// Enhanced JavaScript for my_store.html with fixed share functionality
+
 document.addEventListener("DOMContentLoaded", function() {
     // Initialize tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -457,8 +459,9 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         });
 
-        // Get store information
-        const storeUrl = window.location.href;
+        // Get store information - USE THE SHAREABLE URL FROM CONTEXT
+        const storeUrlElement = document.getElementById('store-shareable-url');
+        const storeUrl = storeUrlElement ? storeUrlElement.value : window.location.href;
         const storeName = document.querySelector('.profile-username')?.textContent || 'This Store';
         const storeDescription = document.querySelector('.store-bio')?.textContent || 'Check out this amazing store!';
 
@@ -751,8 +754,6 @@ document.addEventListener("DOMContentLoaded", function() {
             element.style.transform = 'scale(1)';
         }, 150);
     }
-
-    
 
     // -------------------------
     // Enhanced Product Card Interactions

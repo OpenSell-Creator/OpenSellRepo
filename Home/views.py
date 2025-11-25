@@ -19,7 +19,7 @@ from django.db.models import Q, Avg, Exists, OuterRef, Count
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import View
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
 from .models import Subcategory,Category,Product_Listing,Brand,Product_Image,Banner
 from django.db.models import Prefetch
 from django.contrib.auth.models import User
@@ -1868,7 +1868,7 @@ def my_store(request, username=None):
             )
         else:
             # Redirect to login or show 404
-            return redirect('login')  # Change 'login' to your login URL name
+            return redirect('login')
 
     user_products = Product_Listing.objects.filter(seller=store_owner.profile)
 
@@ -1920,12 +1920,18 @@ def my_store(request, username=None):
             business_parts.append(store_owner.profile.location.state.name)
         business_location_display = ', '.join(filter(None, business_parts))
     
+    # Generate the shareable store URL
+    store_url = request.build_absolute_uri(
+        reverse('user_store', kwargs={'username': store_owner.username})
+    )
+    
     context = {
         'store_owner': store_owner,
         'products': user_products,
         'total_products': user_products.count(),
         'location_display': location_display,
         'business_location_display': business_location_display,
+        'store_url': store_url,
         'is_verified_business': store_owner.profile.business_verification_status == 'verified',
         'has_pending_verification': store_owner.profile.business_verification_status == 'pending',
         'business_info': {
@@ -1944,7 +1950,6 @@ def my_store(request, username=None):
         'store_verification': {
             'business_verified': store_owner.profile.business_verification_status == 'verified',
             'business_pending': store_owner.profile.business_verification_status == 'pending',
-            'email_verified': store_owner.profile.email_verified,
             'account_active': store_owner.is_active,
             'member_since': store_owner.date_joined,
         },
