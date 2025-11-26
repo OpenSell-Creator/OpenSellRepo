@@ -214,8 +214,17 @@ def send_boost_expired_notification(user_id, product_title, boost_type):
         # Don't raise, just log - this is not critical
         
 def release_pending_commissions():
-
+    """
+    Release commissions that have passed their 7-day holding period
+    Runs every hour
+    """
     try:
+        from Dashboard.models import AffiliateCommission, AffiliateProfile
+        from django.db import transaction as db_transaction
+        from django.utils import timezone
+        import logging
+        
+        logger = logging.getLogger(__name__)
         now = timezone.now()
         
         # Find commissions ready to be released
@@ -224,21 +233,41 @@ def release_pending_commissions():
             available_at__lte=now
         ).select_related('affiliate')
         
+        count = ready_commissions.count()
+        
+        if count == 0:
+            logger.info("No commissions ready for release")
+            return "No commissions to release"
+        
+        logger.info(f"Found {count} commissions ready for release")
+        
         released_count = 0
         total_amount = 0
+        errors = []
         
         for commission in ready_commissions:
             try:
                 with db_transaction.atomic():
-                    # Lock affiliate record
+                    # Lock affiliate record to prevent race conditions
                     affiliate = AffiliateProfile.objects.select_for_update().get(
                         id=commission.affiliate.id
                     )
                     
+                    # Verify pending balance has enough funds
+                    if affiliate.pending_balance < commission.commission_amount:
+                        error_msg = (
+                            f"⚠️ Insufficient pending balance for commission {commission.id}: "
+                            f"Need ₦{commission.commission_amount:.2f}, "
+                            f"Have ₦{affiliate.pending_balance:.2f}"
+                        )
+                        logger.error(error_msg)
+                        errors.append(error_msg)
+                        continue
+                    
                     # Transfer from pending to available
                     affiliate.pending_balance -= commission.commission_amount
                     affiliate.available_balance += commission.commission_amount
-                    affiliate.save(update_fields=['pending_balance', 'available_balance'])
+                    affiliate.save(update_fields=['pending_balance', 'available_balance', 'updated_at'])
                     
                     # Update commission status
                     commission.status = 'available'
@@ -249,28 +278,41 @@ def release_pending_commissions():
                     
                     logger.info(
                         f"✓ Commission released: ₦{commission.commission_amount:.2f} | "
-                        f"Affiliate: {affiliate.referral_code}"
+                        f"Affiliate: {affiliate.referral_code} | "
+                        f"New available balance: ₦{affiliate.available_balance:.2f}"
                     )
                     
+            except AffiliateProfile.DoesNotExist:
+                error_msg = f"⚠️ Affiliate not found for commission {commission.id}"
+                logger.error(error_msg)
+                errors.append(error_msg)
+                continue
+                
             except Exception as e:
-                logger.error(
-                    f"Error releasing commission {commission.id}: {str(e)}",
-                    exc_info=True
-                )
+                error_msg = f"⚠️ Error releasing commission {commission.id}: {str(e)}"
+                logger.error(error_msg, exc_info=True)
+                errors.append(error_msg)
                 continue
         
-        if released_count > 0:
-            logger.info(
-                f"✓ Released {released_count} commissions | "
-                f"Total: ₦{total_amount:.2f}"
-            )
+        # Summary
+        result_msg = (
+            f"✓ Released {released_count}/{count} commissions | "
+            f"Total: ₦{total_amount:.2f}"
+        )
         
-        return released_count
+        if errors:
+            result_msg += f" | Errors: {len(errors)}"
+            for error in errors[:3]:  # Log first 3 errors
+                logger.error(error)
+        
+        logger.info(result_msg)
+        return result_msg
         
     except Exception as e:
-        logger.error(f"Error in release_pending_commissions: {str(e)}", exc_info=True)
-        return 0
-    
+        error_msg = f"❌ Critical error in release_pending_commissions: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        return error_msg
+
 def cleanup_old_tasks():
     """Clean up old Django-Q task records - runs weekly"""
     from django_q.models import Task, OrmQ
