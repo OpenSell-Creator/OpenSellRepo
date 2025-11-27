@@ -13,7 +13,9 @@ from django.utils import timezone
 import logging
 from django.utils.html import strip_tags
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 def user_directory_path(instance, filename):
     return f'profile_pictures/{instance.user.username}/{filename}'
@@ -21,6 +23,10 @@ def user_directory_path(instance, filename):
 def send_otp_email(user):
     """Send OTP verification email to user"""
     try:
+        from django.core.mail import send_mail
+        from django.template.loader import render_to_string
+        from django.conf import settings
+        
         # Generate new OTP
         otp = user.profile.generate_otp()
         
@@ -32,7 +38,7 @@ def send_otp_email(user):
         message = f"Your OTP for email verification is: {otp}. It will expire in 10 minutes."
         
         # HTML version - ensure site_url is passed
-        site_url = settings.SITE_URL  # You need to add this to your settings.py
+        site_url = settings.SITE_URL
         html_message = render_to_string('otp_email.html', {
             'user': user,
             'otp': otp,
@@ -51,10 +57,16 @@ def send_otp_email(user):
     except Exception as e:
         logger.error(f"Failed to send OTP email: {str(e)}")
         return False
-    
+
 def send_business_verification_submitted_email(user):
     """Send confirmation email when business verification is submitted"""
     try:
+        from django.core.mail import send_mail
+        from django.template.loader import render_to_string
+        from django.utils.html import strip_tags
+        from django.conf import settings
+        from django.urls import reverse
+        
         subject = "Business Verification Application Submitted - OpenSell"
         
         email_context = {
@@ -86,6 +98,12 @@ def send_business_verification_submitted_email(user):
 
 def send_business_verification_approved_email(user, verified_by_admin):
     try:
+        from django.core.mail import send_mail
+        from django.template.loader import render_to_string
+        from django.utils.html import strip_tags
+        from django.conf import settings
+        from django.urls import reverse
+        
         subject = "🎉 Your Business Has Been Verified - OpenSell"
         
         email_context = {
@@ -127,6 +145,12 @@ def send_business_verification_approved_email(user, verified_by_admin):
 def send_business_verification_rejected_email(user, rejection_reason=None):
     """Send email when business verification is rejected"""
     try:
+        from django.core.mail import send_mail
+        from django.template.loader import render_to_string
+        from django.utils.html import strip_tags
+        from django.conf import settings
+        from django.urls import reverse
+        
         subject = "Business Verification Update - OpenSell"
         
         email_context = {
@@ -157,13 +181,19 @@ def send_business_verification_rejected_email(user, rejection_reason=None):
     except Exception as e:
         logger.error(f"Failed to send business verification rejected email to {user.email}: {str(e)}")
         return False
-    
+
+# ============================================================================
+# BULK EMAIL SYSTEM - FIXED VERSION
+# ============================================================================
+
 def send_bulk_email_task(email_id):
     """
     Background task to send bulk email
-    Uses chunking and batch processing for efficiency
+    FIXED: Removed .select_related('profile') which was causing the query error
     """
     from User.models import BulkEmail
+    from django.contrib.auth.models import User
+    from django.utils import timezone
     
     logger.info(f"Starting bulk email task for campaign {email_id}")
     
@@ -179,11 +209,11 @@ def send_bulk_email_task(email_id):
         recipients_query = email_campaign.get_recipients_query()
         
         # Process in chunks to avoid memory issues
-        CHUNK_SIZE = 50  # Reduced for better error handling
+        CHUNK_SIZE = 50
         total_sent = 0
         total_failed = 0
         
-        # FIXED: Use values_list to get just IDs, then fetch users one by one
+        # FIXED: Get just IDs first, then fetch users WITHOUT select_related
         user_ids = list(recipients_query.values_list('id', flat=True))
         total_users = len(user_ids)
         
@@ -193,9 +223,8 @@ def send_bulk_email_task(email_id):
         for i in range(0, total_users, CHUNK_SIZE):
             chunk_ids = user_ids[i:i + CHUNK_SIZE]
             
-            # Fetch users for this chunk
-            from django.contrib.auth.models import User
-            chunk_users = User.objects.filter(id__in=chunk_ids).select_related('profile')
+            # FIXED: Fetch users WITHOUT select_related to avoid conflict
+            chunk_users = User.objects.filter(id__in=chunk_ids)
             
             for user in chunk_users:
                 try:
@@ -244,6 +273,10 @@ def send_single_email(user, campaign):
     """
     Send email to single user - optimized for speed
     """
+    from django.core.mail import EmailMultiAlternatives
+    from django.conf import settings
+    import re
+    
     # Get user's email preferences to generate unsubscribe link
     try:
         prefs = user.profile.email_preferences
@@ -281,6 +314,9 @@ def wrap_email_simple(content, user):
     """
     Simple HTML wrapper - no template rendering for speed
     """
+    from django.conf import settings
+    from django.utils import timezone
+    
     # Get unsubscribe URL
     try:
         prefs = user.profile.email_preferences
@@ -325,7 +361,6 @@ def wrap_email_simple(content, user):
     
     return html
 
-
 def strip_html_simple(html):
     """Fast HTML stripping for plain text version"""
     import re
@@ -333,19 +368,22 @@ def strip_html_simple(html):
     text = re.sub(r'\s+', ' ', text)
     return text.strip()
 
-
 def schedule_bulk_email(campaign):
-    """Schedule email to be sent in background"""
+    """
+    Schedule email to be sent in background
+    FIXED: Using sync=False to prevent signature errors
+    """
     try:
         from django_q.tasks import async_task
         
         logger.info(f"Scheduling bulk email campaign {campaign.id}")
         
-        # Queue the task (returns immediately)
+        # FIXED: Use sync=False to ensure proper task serialization
         task_id = async_task(
             'User.utils.send_bulk_email_task',
             campaign.id,
             timeout=7200,  # 2 hours max
+            sync=False,  # CRITICAL: Prevent signature issues
             group=f'bulk_email_{campaign.id}'
         )
         
@@ -355,7 +393,7 @@ def schedule_bulk_email(campaign):
     except Exception as e:
         logger.error(f"Failed to schedule campaign {campaign.id}: {str(e)}", exc_info=True)
         return None
-    
+
 def ensure_all_users_have_email_preferences():
     """
     Create email preferences for users who don't have them yet
@@ -386,7 +424,6 @@ def get_email_preference_stats():
     Useful for checking before sending campaigns
     """
     from User.models import EmailPreferences, Profile
-    from django.db.models import Q
     
     total_users = Profile.objects.count()
     
@@ -409,4 +446,3 @@ def get_email_preference_stats():
         'announcements_opted_in': announcements_opted_in,
         'notifications_opted_in': notifications_opted_in,
     }
-    

@@ -551,7 +551,6 @@ class EmailPreferences(models.Model):
         return not (self.receive_marketing or self.receive_announcements or self.receive_notifications)
     
     def get_absolute_preferences_url(self):
-        return reverse('email_preferences') + f"?user={self.profile.user.id}&token={self.unsubscribe_token}"        return reverse('email_preferences') + f"?user={self.profile.user.id}&token={self.unsubscribe_token}"
         return reverse('email_preferences') + f"?user={self.profile.user.id}&token={self.unsubscribe_token}"
 
 class BulkEmail(models.Model):
@@ -598,12 +597,19 @@ class BulkEmail(models.Model):
         return f"{self.title} ({self.status})"
     
     def get_recipients_query(self):
-        """Get queryset of users who should receive this email - NO execution"""
-        # NO import needed - EmailPreferences is in same file
+        """
+        Get queryset of users who should receive this email - NO execution
+        FIXED: Removed select_related('profile') to prevent query conflict
+        """
+        from django.contrib.auth.models import User
+        from User.models import EmailPreferences
         
         users = User.objects.filter(is_active=True).select_related('profile')
+        # FIXED: Don't use select_related here - causes conflict with deferred fields
+        users = User.objects.filter(is_active=True)
         
         # CRITICAL: Filter by preferences (using EmailPreferences model above)
+        # CRITICAL: Filter by preferences (using EmailPreferences model)
         # Only users who opted IN for this type will receive emails
         if self.campaign_type == 'marketing':
             # Get profiles that have email_preferences with receive_marketing=True
@@ -634,7 +640,7 @@ class BulkEmail(models.Model):
         if self.business_only:
             users = users.filter(profile__business_verification_status='verified')
         
-        return users.only('id', 'email', 'first_name', 'username')  # Only load needed fields
+        return users
     
     def get_recipient_count(self):
         """Efficient count without loading all users"""
