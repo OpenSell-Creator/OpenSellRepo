@@ -163,7 +163,7 @@ def logoutview(request):
     messages.success(request, ("You Have Been Logged Out"))
     return redirect('home')
 
-@ratelimit(key='ip', rate='10/h', method='POST', block=True)
+@ratelimit(key='ip', rate='50/h', method='POST', block=True)
 def register_user(request):
     # Get referral code from URL or use default
     referral_code = request.GET.get('ref', '').strip() or 'opensell'
