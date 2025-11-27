@@ -163,110 +163,136 @@ def logoutview(request):
     messages.success(request, ("You Have Been Logged Out"))
     return redirect('home')
 
-@ratelimit(key='ip', rate='50/h', method='POST', block=True)
+@ratelimit(key='ip', rate='50/h', method='POST', block=False)  # Changed block=False
 def register_user(request):
+    """
+    User registration view with comprehensive error logging
+    """
     # Get referral code from URL or use default
     referral_code = request.GET.get('ref', '').strip() or 'opensell'
     
-    try:
-        # Check rate limit manually
-        from django_ratelimit.core import is_ratelimited
+    # Log the request
+    logger.info(f"Registration attempt from IP: {request.META.get('REMOTE_ADDR')}")
+    
+    if request.method == "POST":
+        # Check if rate limited FIRST (before form validation)
+        was_limited = getattr(request, 'limited', False)
         
-        if request.method == "POST":
-            # Check if rate limited
-            if is_ratelimited(request, group='register', key='ip', rate='3/h', method='POST', increment=True):
-                messages.error(
-                    request, 
-                    "Too many registration attempts. Please try again in an hour. "
-                    "If you need immediate assistance, contact support."
-                )
-                form = SignUpForm(request.POST)
+        if was_limited:
+            logger.warning(f"Rate limit hit for IP: {request.META.get('REMOTE_ADDR')}")
+            messages.error(
+                request, 
+                "⏱️ Too many registration attempts. Please wait before trying again."
+            )
+            form = SignUpForm(request.POST)
+            return render(request, "signup.html", {
+                'form': form, 
+                'referral_code': referral_code,
+                'rate_limited': True
+            }, status=429)
+        
+        # Log POST data (excluding sensitive fields)
+        logger.debug(f"POST keys: {list(request.POST.keys())}")
+        
+        form = SignUpForm(request.POST)
+        
+        # CRITICAL: Check if form is valid
+        if form.is_valid():
+            logger.info("✅ Form validation passed")
+            
+            # STEP 1: Create user
+            try:
+                user = form.save()
+                username = form.cleaned_data['username']
+                password = form.cleaned_data['password1']
+                
+                logger.info(f"✅ User created: {username}")
+                
+            except Exception as user_error:
+                logger.error(f"❌ User creation failed: {str(user_error)}", exc_info=True)
+                messages.error(request, f"Registration failed: {str(user_error)}")
                 return render(request, "signup.html", {
                     'form': form, 
-                    'referral_code': referral_code,
-                    'rate_limited': True
+                    'referral_code': referral_code
                 })
             
-            form = SignUpForm(request.POST)
+            # STEP 2: Handle referral tracking (optional)
+            ref_code = form.cleaned_data.get('referral_code', '').strip() or 'opensell'
             
-            if form.is_valid():
-                # STEP 1: Create user (MOST IMPORTANT - THIS MUST SUCCEED)
-                try:
-                    user = form.save()
-                    username = form.cleaned_data['username']
-                    password = form.cleaned_data['password1']
-                    
-                    logger.info(f"✓ User created: {username}")
-                    
-                except Exception as user_error:
-                    logger.error(f"User creation failed: {str(user_error)}", exc_info=True)
-                    messages.error(request, f"Registration failed: {str(user_error)}")
-                    return render(request, "signup.html", {'form': form, 'referral_code': referral_code})
+            if ref_code:
+                referral_created = create_referral_record(user, ref_code, request)
                 
-                # STEP 2: Handle referral tracking (OPTIONAL - Won't block user creation)
-                ref_code = form.cleaned_data.get('referral_code', '').strip() or 'opensell'
+                if referral_created:
+                    logger.info(f"✅ Referral created: {username} -> {ref_code}")
+                else:
+                    logger.warning(f"⚠️ Referral failed: {username} -> {ref_code}")
+            
+            # STEP 3: Log user in
+            try:
+                authenticated_user = authenticate(
+                    request=request, 
+                    username=username, 
+                    password=password
+                )
                 
-                if ref_code:
-                    referral_created = create_referral_record(user, ref_code, request)
-                    
-                    if referral_created:
-                        logger.info(f"✓ Referral created: {username} -> {ref_code}")
-                    else:
-                        logger.warning(f"⚠️ Referral failed (user still registered): {username} -> {ref_code}")
-                
-                # STEP 3: Log user in (CRITICAL)
-                try:
-                    authenticated_user = authenticate(request=request, username=username, password=password)
-                    
-                    if authenticated_user:
-                        login(request, authenticated_user)
-                        messages.success(request, "Welcome! Your account has been created successfully.")
-                        logger.info(f"✓ User logged in: {username}")
-                    else:
-                        logger.error(f"Authentication failed for {username}")
-                        messages.warning(request, "Account created but login failed. Please log in manually.")
-                        return redirect('login')
-                        
-                except Exception as login_error:
-                    logger.error(f"Login error: {str(login_error)}", exc_info=True)
+                if authenticated_user:
+                    login(request, authenticated_user)
+                    messages.success(request, "🎉 Welcome! Your account has been created successfully.")
+                    logger.info(f"✅ User logged in: {username}")
+                    return redirect('profile_update')
+                else:
+                    logger.error(f"❌ Authentication failed for {username}")
                     messages.warning(request, "Account created but login failed. Please log in manually.")
                     return redirect('login')
-                
-                return redirect('profile_update')
-            
-            else:
-                # Form validation failed
-                logger.warning(f"Form validation failed: {form.errors}")
+                    
+            except Exception as login_error:
+                logger.error(f"❌ Login error: {str(login_error)}", exc_info=True)
+                messages.warning(request, "Account created but login failed. Please log in manually.")
+                return redirect('login')
         
         else:
-            # GET request - show form
-            initial_data = {}
-            if referral_code:
-                initial_data['referral_code'] = referral_code
-            form = SignUpForm(initial=initial_data)
-        
-        return render(request, "signup.html", {
-            'form': form,
-            'referral_code': referral_code
-        })
+            # FORM VALIDATION FAILED - This is likely your issue
+            logger.error(f"❌ Form validation failed!")
+            logger.error(f"Form errors: {form.errors.as_json()}")
+            
+            # Log each field error
+            for field, errors in form.errors.items():
+                logger.error(f"Field '{field}': {errors}")
+                for error in errors:
+                    messages.error(request, f"{field}: {error}")
+            
+            # Check honeypot specifically
+            if 'website' in form.errors:
+                logger.warning("🤖 Honeypot triggered - possible bot")
+            
+            # Check captcha specifically
+            if 'captcha' in form.errors:
+                logger.warning("❌ reCAPTCHA validation failed")
+                messages.error(request, "Please complete the reCAPTCHA verification.")
+            
+            # Return form with errors
+            return render(request, "signup.html", {
+                'form': form,
+                'referral_code': referral_code
+            })
     
-    except Ratelimited:
-        # This catches the exception if @ratelimit decorator raises it
-        messages.error(
-            request,
-            "⏱️ Too many registration attempts from your location. "
-            "Please wait 1 hour before trying again, or contact support if you need help."
-        )
-        form = SignUpForm()
-        return render(request, "signup.html", {
-            'form': form,
-            'referral_code': referral_code,
-            'rate_limited': True
-        }, status=429)
+    else:
+        # GET request - show form
+        logger.debug("GET request - showing registration form")
+        initial_data = {}
+        if referral_code:
+            initial_data['referral_code'] = referral_code
+        form = SignUpForm(initial=initial_data)
+    
+    return render(request, "signup.html", {
+        'form': form,
+        'referral_code': referral_code
+    })
+
 
 def create_referral_record(user, referral_code, request):
     """
-    HELPER: Create referral record (separate function for clarity)
+    Create referral record (separate function for clarity)
     
     Returns:
         bool: True if successful, False otherwise
@@ -306,16 +332,15 @@ def create_referral_record(user, referral_code, request):
             )
             
             logger.info(
-                f"✓ Referral created: {user.username} by {affiliate.referral_code} "
+                f"✅ Referral created: {user.username} by {affiliate.referral_code} "
                 f"from IP {ip or 'unknown'}"
             )
             
-            # OPTIONAL: Run fraud check asynchronously (won't block anything)
+            # OPTIONAL: Run fraud check asynchronously
             try:
                 from django_q.tasks import async_task
                 async_task('Dashboard.utils.check_referral_fraud_async', referral.id)
             except Exception:
-                # Django-Q not available or failed - that's fine
                 pass
             
             return True

@@ -56,18 +56,17 @@ class SignUpForm(UserCreationForm):
         })
     )
     
-    # reCAPTCHA field (NEW)
-    captcha = ReCaptchaField(
-        widget=ReCaptchaV2Checkbox(
-            attrs={
-                'data-theme': 'light',
-                'data-size': 'normal',
-            }
-        ),
-        error_messages={
-            'required': 'Please complete the reCAPTCHA verification'
-        }
-    )
+    # captcha = ReCaptchaField(
+    #     widget=ReCaptchaV2Checkbox(
+    #         attrs={
+    #             'data-theme': 'light',
+    #             'data-size': 'normal',
+    #         }
+    #     ),
+    #     error_messages={
+    #         'required': 'Please complete the reCAPTCHA verification'
+    #     }
+    # )
 
     class Meta:
         model = User
