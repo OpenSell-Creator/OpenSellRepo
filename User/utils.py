@@ -165,17 +165,23 @@ def send_bulk_email_task(email_id):
     """
     from User.models import BulkEmail
     
+    logger.info(f"Starting bulk email task for campaign {email_id}")
+    
     try:
         email_campaign = BulkEmail.objects.get(id=email_id)
+        
+        # Update status to sending
         email_campaign.status = 'sending'
         email_campaign.save(update_fields=['status'])
+        logger.info(f"Campaign {email_id} status updated to 'sending'")
         
         # Get recipients query (NOT executed yet - very fast)
         recipients_query = email_campaign.get_recipients_query()
         
         # Process in chunks to avoid memory issues
-        CHUNK_SIZE = 100  # Process 100 users at a time
+        CHUNK_SIZE = 50  # Reduced for better error handling
         total_sent = 0
+        total_failed = 0
         
         # Use iterator() to avoid loading all users into memory
         for user in recipients_query.iterator(chunk_size=CHUNK_SIZE):
@@ -183,12 +189,14 @@ def send_bulk_email_task(email_id):
                 send_single_email(user, email_campaign)
                 total_sent += 1
                 
-                # Update progress every 100 emails
-                if total_sent % 100 == 0:
+                # Update progress every 50 emails
+                if total_sent % 50 == 0:
                     email_campaign.total_sent = total_sent
                     email_campaign.save(update_fields=['total_sent'])
+                    logger.info(f"Campaign {email_id}: Sent {total_sent} emails")
                     
             except Exception as e:
+                total_failed += 1
                 logger.error(f"Failed to send to {user.email}: {str(e)}")
                 continue
         
@@ -198,19 +206,40 @@ def send_bulk_email_task(email_id):
         email_campaign.sent_at = timezone.now()
         email_campaign.save(update_fields=['status', 'total_sent', 'sent_at'])
         
-        return {'success': True, 'sent': total_sent}
+        logger.info(f"Campaign {email_id} completed: {total_sent} sent, {total_failed} failed")
+        
+        return {
+            'success': True, 
+            'sent': total_sent, 
+            'failed': total_failed
+        }
+        
+    except BulkEmail.DoesNotExist:
+        logger.error(f"Campaign {email_id} not found")
+        return {'success': False, 'error': 'Campaign not found'}
         
     except Exception as e:
-        logger.error(f"Bulk email {email_id} failed: {str(e)}")
-        email_campaign.status = 'draft'
-        email_campaign.save(update_fields=['status'])
+        logger.error(f"Bulk email {email_id} failed: {str(e)}", exc_info=True)
+        try:
+            email_campaign.status = 'draft'
+            email_campaign.save(update_fields=['status'])
+        except:
+            pass
         return {'success': False, 'error': str(e)}
+
 
 def send_single_email(user, campaign):
     """
     Send email to single user - optimized for speed
-    No database writes, minimal processing
     """
+    # Get user's email preferences to generate unsubscribe link
+    try:
+        prefs = user.profile.email_preferences
+    except:
+        # If no preferences, skip this user (they shouldn't receive emails)
+        logger.warning(f"User {user.username} has no email preferences, skipping")
+        return
+    
     # Simple variable replacement (faster than template rendering)
     first_name = user.first_name or user.username
     
@@ -220,18 +249,22 @@ def send_single_email(user, campaign):
     message = message.replace('{{site_name}}', settings.SITE_NAME)
     message = message.replace('{{site_url}}', settings.SITE_URL)
     
-    # Wrap in simple template (no complex rendering)
+    # Wrap in simple template
     html_content = wrap_email_simple(message, user)
+    plain_content = strip_html_simple(message)
     
     # Send email
     email = EmailMultiAlternatives(
         subject=subject,
-        body=strip_html_simple(message),  # Plain text version
+        body=plain_content,
         from_email=settings.DEFAULT_FROM_EMAIL,
         to=[user.email]
     )
     email.attach_alternative(html_content, "text/html")
     email.send(fail_silently=False)
+    
+    logger.debug(f"Email sent to {user.email}")
+
 
 def wrap_email_simple(content, user):
     """
@@ -244,35 +277,43 @@ def wrap_email_simple(content, user):
     except:
         unsub_url = f"{settings.SITE_URL}/email-preferences/"
     
-    # Simple HTML structure (fast string concatenation)
+    # Simple HTML structure
     html = f"""<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }}
-        .header {{ background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%); color: white; padding: 30px 20px; text-align: center; border-radius: 8px 8px 0 0; }}
-        .content {{ background: #ffffff; padding: 30px 20px; }}
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background: #f5f5f5; }}
+        .container {{ background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+        .header {{ background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%); color: white; padding: 30px 20px; text-align: center; }}
+        .content {{ padding: 30px 20px; }}
         .footer {{ background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #6c757d; border-top: 1px solid #dee2e6; }}
         .footer a {{ color: #0d6efd; text-decoration: none; }}
+        .btn {{ display: inline-block; padding: 10px 20px; background: #0d6efd; color: white; text-decoration: none; border-radius: 5px; margin: 10px 0; }}
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>{settings.SITE_NAME}</h1>
-    </div>
-    <div class="content">
-        {content}
-    </div>
-    <div class="footer">
-        <p>© {timezone.now().year} {settings.SITE_NAME}</p>
-        <p><a href="{unsub_url}">Unsubscribe</a> | <a href="{settings.SITE_URL}">Visit Website</a></p>
+    <div class="container">
+        <div class="header">
+            <h1>{settings.SITE_NAME}</h1>
+        </div>
+        <div class="content">
+            {content}
+        </div>
+        <div class="footer">
+            <p>© {timezone.now().year} {settings.SITE_NAME}. All rights reserved.</p>
+            <p>
+                <a href="{unsub_url}">Manage Email Preferences</a> | 
+                <a href="{settings.SITE_URL}">Visit Website</a>
+            </p>
+        </div>
     </div>
 </body>
 </html>"""
     
     return html
+
 
 def strip_html_simple(html):
     """Fast HTML stripping for plain text version"""
@@ -281,19 +322,28 @@ def strip_html_simple(html):
     text = re.sub(r'\s+', ' ', text)
     return text.strip()
 
+
 def schedule_bulk_email(campaign):
     """Schedule email to be sent in background"""
-    from django_q.tasks import async_task
-    
-    # Queue the task (returns immediately)
-    task_id = async_task(
-        'User.utils.send_bulk_email_task',
-        campaign.id,
-        timeout=7200,  # 2 hours max
-        group=f'bulk_email_{campaign.id}'
-    )
-    
-    return task_id
+    try:
+        from django_q.tasks import async_task
+        
+        logger.info(f"Scheduling bulk email campaign {campaign.id}")
+        
+        # Queue the task (returns immediately)
+        task_id = async_task(
+            'User.utils.send_bulk_email_task',
+            campaign.id,
+            timeout=7200,  # 2 hours max
+            group=f'bulk_email_{campaign.id}'
+        )
+        
+        logger.info(f"Campaign {campaign.id} queued with task_id: {task_id}")
+        return task_id
+        
+    except Exception as e:
+        logger.error(f"Failed to schedule campaign {campaign.id}: {str(e)}", exc_info=True)
+        return None
     
 def ensure_all_users_have_email_preferences():
     """
