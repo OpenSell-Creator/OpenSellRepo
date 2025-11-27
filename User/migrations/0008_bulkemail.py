@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('User', '0007_profile_available_for_services_profile_buyer_rating_and_more'),
+        ('User', '0006_profile_business_last_verification_attempt_and_more.py'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
