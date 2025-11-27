@@ -552,6 +552,7 @@ class EmailPreferences(models.Model):
     
     def get_absolute_preferences_url(self):
         return reverse('email_preferences') + f"?user={self.profile.user.id}&token={self.unsubscribe_token}"        return reverse('email_preferences') + f"?user={self.profile.user.id}&token={self.unsubscribe_token}"
+        return reverse('email_preferences') + f"?user={self.profile.user.id}&token={self.unsubscribe_token}"
 
 class BulkEmail(models.Model):
     """Simplified email campaign model"""
@@ -598,11 +599,11 @@ class BulkEmail(models.Model):
     
     def get_recipients_query(self):
         """Get queryset of users who should receive this email - NO execution"""
-        from User.models import EmailPreferences
+        # NO import needed - EmailPreferences is in same file
         
         users = User.objects.filter(is_active=True).select_related('profile')
         
-        # CRITICAL: Filter by preferences (using your existing EmailPreferences model)
+        # CRITICAL: Filter by preferences (using EmailPreferences model above)
         # Only users who opted IN for this type will receive emails
         if self.campaign_type == 'marketing':
             # Get profiles that have email_preferences with receive_marketing=True
