@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block title %}Bulk Emails{% endblock %}
+
+{% block 'Body' %}
+<div class="container my-5">
+    <div class="d-flex justify-content-between mb-4">
+        <h2>📧 Bulk Emails</h2>
+        <div>
+            <a href="{% url 'quick_announcement' %}" class="btn btn-success">⚡ Quick Send</a>
+            <a href="{% url 'bulk_email_create' %}" class="btn btn-primary">📝 New Campaign</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Campaign</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Sent</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for email in page_obj %}
+                        <tr>
+                            <td>
+                                <strong>{{ email.title }}</strong><br>
+                                <small class="text-muted">{{ email.subject|truncatewords:8 }}</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ email.get_campaign_type_display }}</span>
+                            </td>
+                            <td>
+                                {% if email.status == 'draft' %}
+                                    <span class="badge bg-secondary">Draft</span>
+                                {% elif email.status == 'sending' %}
+                                    <span class="badge bg-warning">Sending...</span>
+                                {% else %}
+                                    <span class="badge bg-success">✓ Sent</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ email.total_sent }} users</td>
+                            <td>{{ email.created_at|date:"M d, Y" }}</td>
+                            <td>
+                                <a href="{% url 'bulk_email_detail' email.pk %}" class="btn btn-sm btn-outline-primary">
+                                    👁️ View
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+            <nav class="mt-3">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                    </li>
+                    {% endif %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                    </li>
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+            {% else %}
+            <div class="text-center py-5">
+                <p class="text-muted">No campaigns yet</p>
+                <a href="{% url 'bulk_email_create' %}" class="btn btn-primary">Create First Campaign</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

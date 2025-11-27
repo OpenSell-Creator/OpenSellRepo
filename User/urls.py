@@ -54,6 +54,15 @@ urlpatterns = [
     path('admin/business-verifications/', views.admin_business_verifications, name='admin_business_verifications'),
     path('admin/verify-business/<int:profile_id>/', views.admin_verify_business, name='admin_verify_business'),
     
+    path('admin/bulk-emails/', views.bulk_email_list, name='bulk_email_list'),
+    path('admin/bulk-emails/create/', views.bulk_email_create, name='bulk_email_create'),
+    path('admin/bulk-emails/<int:pk>/', views.bulk_email_detail, name='bulk_email_detail'),
+    path('admin/quick-announcement/', views.quick_announcement, name='quick_announcement'),
+    
+    path('admin/email-preferences/dashboard/', views.email_preference_dashboard, name='email_preference_dashboard'),
+    path('admin/email-preferences/create-missing/', views.create_missing_preferences, name='create_missing_preferences'),
+    path('admin/email-preferences/preview/', views.preview_recipients, name='preview_recipients'),
+    
     # API endpoints
     path('api/lgas/<int:state_id>/', views.load_lgas, name='load_lgas'),
 ]

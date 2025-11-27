@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{% block title %}Email Preferences Dashboard{% endblock %}
+
+{% block 'Body' %}
+<div class="container my-5">
+    <h2>📊 Email Preferences Dashboard</h2>
+    <p class="text-muted">See how many users have opted in for each type of email</p>
+
+    <!-- Warning if users missing preferences -->
+    {% if stats.users_without_preferences > 0 %}
+    <div class="alert alert-warning">
+        <strong>⚠️ Action Needed!</strong> 
+        {{ stats.users_without_preferences }} users don't have email preferences yet.
+        <a href="{% url 'create_missing_preferences' %}" class="btn btn-sm btn-warning ms-2">
+            Fix Now
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="text-primary">{{ stats.total_users }}</h3>
+                    <p class="mb-0">Total Users</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="text-success">{{ stats.users_with_preferences }}</h3>
+                    <p class="mb-0">With Preferences</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="text-warning">{{ stats.users_without_preferences }}</h3>
+                    <p class="mb-0">Missing Preferences</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Opted-In Statistics -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">📧 Opted-In Users by Email Type</h5>
+        </div>
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-4 mb-3">
+                    <div class="p-4 bg-light rounded">
+                        <i class="bi bi-megaphone" style="font-size: 2rem; color: #0d6efd;"></i>
+                        <h3 class="mt-3 mb-0">{{ stats.marketing_opted_in }}</h3>
+                        <p class="text-muted mb-0">Marketing Emails</p>
+                        <small class="text-muted">
+                            ({{ stats.marketing_opted_in|floatformat:0 }} / {{ stats.users_with_preferences }})
+                        </small>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <div class="p-4 bg-light rounded">
+                        <i class="bi bi-bell" style="font-size: 2rem; color: #198754;"></i>
+                        <h3 class="mt-3 mb-0">{{ stats.announcements_opted_in }}</h3>
+                        <p class="text-muted mb-0">Announcements</p>
+                        <small class="text-muted">
+                            ({{ stats.announcements_opted_in|floatformat:0 }} / {{ stats.users_with_preferences }})
+                        </small>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <div class="p-4 bg-light rounded">
+                        <i class="bi bi-info-circle" style="font-size: 2rem; color: #ffc107;"></i>
+                        <h3 class="mt-3 mb-0">{{ stats.notifications_opted_in }}</h3>
+                        <p class="text-muted mb-0">Notifications</p>
+                        <small class="text-muted">
+                            ({{ stats.notifications_opted_in|floatformat:0 }} / {{ stats.users_with_preferences }})
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-info mt-4">
+                <i class="bi bi-info-circle"></i>
+                <strong>How it works:</strong> 
+                When you create a campaign, only users who opted in for that specific type will receive it.
+                Users can manage their preferences at any time.
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">🚀 Quick Actions</h5>
+        </div>
+        <div class="card-body">
+            <div class="d-grid gap-2">
+                <a href="{% url 'bulk_email_create' %}" class="btn btn-primary btn-lg">
+                    📧 Create Email Campaign
+                </a>
+                <a href="{% url 'quick_announcement' %}" class="btn btn-success btn-lg">
+                    ⚡ Send Quick Announcement
+                </a>
+                {% if stats.users_without_preferences > 0 %}
+                <a href="{% url 'create_missing_preferences' %}" class="btn btn-warning btn-lg">
+                    🔧 Create Missing Preferences ({{ stats.users_without_preferences }} users)
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

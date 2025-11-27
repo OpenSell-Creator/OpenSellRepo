@@ -433,6 +433,18 @@ class Profile(models.Model):
             pass
         is_new = self.pk is None
         super().save(*args, **kwargs)
+        
+        # NEW: Auto-create email preferences for new profiles
+        if is_new:
+            from User.models import EmailPreferences
+            EmailPreferences.objects.get_or_create(
+                profile=self,
+                defaults={
+                    'receive_marketing': True,
+                    'receive_announcements': True,
+                    'receive_notifications': True,
+                }
+            )
     
     def delete(self, *args, **kwargs):
         if self.photo:
@@ -539,4 +551,90 @@ class EmailPreferences(models.Model):
         return not (self.receive_marketing or self.receive_announcements or self.receive_notifications)
     
     def get_absolute_preferences_url(self):
-        return reverse('email_preferences') + f"?user={self.profile.user.id}&token={self.unsubscribe_token}"
+        return reverse('email_preferences') + f"?user={self.profile.user.id}&token={self.unsubscribe_token}"        return reverse('email_preferences') + f"?user={self.profile.user.id}&token={self.unsubscribe_token}"
+
+class BulkEmail(models.Model):
+    """Simplified email campaign model"""
+    CAMPAIGN_TYPE_CHOICES = [
+        ('marketing', 'Marketing'),
+        ('announcement', 'Announcement'),
+        ('notification', 'Notification'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('sending', 'Sending'),
+        ('sent', 'Sent'),
+    ]
+    
+    # Basic info
+    title = models.CharField(max_length=255)
+    campaign_type = models.CharField(max_length=20, choices=CAMPAIGN_TYPE_CHOICES)
+    subject = models.CharField(max_length=255)
+    message = models.TextField(help_text="Plain HTML content")
+    
+    # Simple targeting
+    target_all = models.BooleanField(default=True)
+    verified_only = models.BooleanField(default=False)
+    business_only = models.BooleanField(default=False)
+    
+    # Status
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    total_sent = models.IntegerField(default=0)
+    
+    # Metadata
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', 'created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.title} ({self.status})"
+    
+    def get_recipients_query(self):
+        """Get queryset of users who should receive this email - NO execution"""
+        from User.models import EmailPreferences
+        
+        users = User.objects.filter(is_active=True).select_related('profile')
+        
+        # CRITICAL: Filter by preferences (using your existing EmailPreferences model)
+        # Only users who opted IN for this type will receive emails
+        if self.campaign_type == 'marketing':
+            # Get profiles that have email_preferences with receive_marketing=True
+            opted_in_profiles = EmailPreferences.objects.filter(
+                receive_marketing=True
+            ).values_list('profile_id', flat=True)
+            
+            users = users.filter(profile__id__in=opted_in_profiles)
+            
+        elif self.campaign_type == 'announcement':
+            opted_in_profiles = EmailPreferences.objects.filter(
+                receive_announcements=True
+            ).values_list('profile_id', flat=True)
+            
+            users = users.filter(profile__id__in=opted_in_profiles)
+            
+        elif self.campaign_type == 'notification':
+            opted_in_profiles = EmailPreferences.objects.filter(
+                receive_notifications=True
+            ).values_list('profile_id', flat=True)
+            
+            users = users.filter(profile__id__in=opted_in_profiles)
+        
+        # Additional filters
+        if self.verified_only:
+            users = users.filter(profile__email_verified=True)
+        
+        if self.business_only:
+            users = users.filter(profile__business_verification_status='verified')
+        
+        return users.only('id', 'email', 'first_name', 'username')  # Only load needed fields
+    
+    def get_recipient_count(self):
+        """Efficient count without loading all users"""
+        return self.get_recipients_query().count()

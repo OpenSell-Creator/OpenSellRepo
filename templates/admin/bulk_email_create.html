@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}Send Bulk Email{% endblock %}
+
+{% block 'Body' %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">📧 Send Bulk Email</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <!-- Campaign Name -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Campaign Name *</label>
+                            {{ form.title }}
+                            <small class="text-muted">Internal reference name</small>
+                        </div>
+
+                        <!-- Type -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Email Type *</label>
+                            {{ form.campaign_type }}
+                            <small class="text-muted">Determines who can receive based on preferences</small>
+                        </div>
+
+                        <!-- Subject -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Subject *</label>
+                            {{ form.subject }}
+                            <small class="text-muted">Use {{first_name}} for personalization</small>
+                        </div>
+
+                        <!-- Message -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Message *</label>
+                            {{ form.message }}
+                            <small class="text-muted">
+                                Variables: {{first_name}}, {{username}}, {{site_name}}, {{site_url}}
+                            </small>
+                        </div>
+
+                        <!-- Recipients -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Send To:</label>
+                            
+                            <div class="form-check mb-2">
+                                {{ form.target_all }}
+                                <label class="form-check-label">All users (who opted in)</label>
+                            </div>
+
+                            <div class="form-check mb-2">
+                                {{ form.verified_only }}
+                                <label class="form-check-label">Only verified emails</label>
+                            </div>
+
+                            <div class="form-check mb-3">
+                                {{ form.business_only }}
+                                <label class="form-check-label">Only verified businesses</label>
+                            </div>
+                        </div>
+
+                        <!-- Recipient Preview -->
+                        <div id="recipientPreview" class="alert alert-info">
+                            <strong>ℹ️ Checking recipients...</strong>
+                        </div>
+
+                        <!-- Info -->
+                        <div class="alert alert-secondary">
+                            <small>
+                                <strong>Note:</strong> Emails are sent in the background. Only users who opted in for this type will receive it.
+                            </small>
+                        </div>
+
+                        <!-- Buttons -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                📤 Send Email
+                            </button>
+                            <a href="{% url 'bulk_email_list' %}" class="btn btn-outline-secondary btn-lg">
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tips -->
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h6>💡 Tips:</h6>
+                    <ul class="mb-0 small">
+                        <li>Keep subject under 50 characters</li>
+                        <li>Use HTML tags: &lt;h2&gt;, &lt;p&gt;, &lt;strong&gt;, &lt;a&gt;</li>
+                        <li>Test by sending to yourself first (add your email to specific users)</li>
+                        <li>Emails process in background - won't slow down site</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Live recipient count preview
+function updateRecipientCount() {
+    const type = document.querySelector('select[name="campaign_type"]').value;
+    const verified = document.querySelector('input[name="verified_only"]').checked;
+    const business = document.querySelector('input[name="business_only"]').checked;
+    
+    const preview = document.getElementById('recipientPreview');
+    preview.innerHTML = '<strong>⏳ Checking recipients...</strong>';
+    
+    fetch(`/admin/email-preferences/preview/?type=${type}&verified=${verified}&business=${business}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.count > 0) {
+                preview.className = 'alert alert-success';
+                preview.innerHTML = `<strong>✅ Will send to ${data.count} users</strong><br><small>${data.message}</small>`;
+            } else {
+                preview.className = 'alert alert-danger';
+                preview.innerHTML = '<strong>⚠️ No users match these criteria!</strong><br><small>Try different filters or check if users have email preferences.</small>';
+            }
+        })
+        .catch(error => {
+            preview.className = 'alert alert-warning';
+            preview.innerHTML = '<strong>⚠️ Could not load recipient count</strong>';
+        });
+}
+
+// Update count on any change
+document.addEventListener('DOMContentLoaded', function() {
+    updateRecipientCount();
+    
+    document.querySelector('select[name="campaign_type"]').addEventListener('change', updateRecipientCount);
+    document.querySelector('input[name="verified_only"]').addEventListener('change', updateRecipientCount);
+    document.querySelector('input[name="business_only"]').addEventListener('change', updateRecipientCount);
+});
+</script>
+{% endblock %}

@@ -12,7 +12,6 @@ from django.db.models import Q, Avg, Exists, OuterRef, Count
 from .models import EmailPreferences, Profile
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
-from django.contrib.auth.decorators import user_passes_test
 from Home.models import Product_Listing, ProductReport
 from django.db import models
 from django.core.paginator import Paginator
@@ -36,6 +35,13 @@ from django.conf import settings
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from allauth.socialaccount.signals import pre_social_login
 from django.dispatch import receiver
+from django.contrib import messages
+from django.core.paginator import Paginator
+from User.models import BulkEmail
+from User.utils import schedule_bulk_email
+from django import forms
+from User.utils import get_email_preference_stats, ensure_all_users_have_email_preferences
+from django.contrib import messages
 import logging
 
 logger = logging.getLogger(__name__)
@@ -807,7 +813,197 @@ def unsubscribe_all(request):
     except (User.DoesNotExist, Profile.DoesNotExist):
         messages.error(request, "User not found.")
         return redirect('home')
+
+class BulkEmailForm(forms.ModelForm):
+    class Meta:
+        model = BulkEmail
+        fields = ['title', 'campaign_type', 'subject', 'message', 'target_all', 
+                  'verified_only', 'business_only']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Campaign name'}),
+            'campaign_type': forms.Select(attrs={'class': 'form-control'}),
+            'subject': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Email subject'}),
+            'message': forms.Textarea(attrs={'class': 'form-control', 'rows': 10, 'placeholder': 'Your message here...'}),
+            'target_all': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'verified_only': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'business_only': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+@user_passes_test(lambda u: u.is_staff)
+def bulk_email_list(request):
+    """List all bulk emails"""
+    emails = BulkEmail.objects.all().select_related('created_by')
+    paginator = Paginator(emails, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
     
+    return render(request, 'admin/bulk_emails.html', {
+        'page_obj': page_obj
+    })
+
+@user_passes_test(lambda u: u.is_staff)
+def bulk_email_create(request):
+    """Create and send bulk email - ONE PAGE"""
+    if request.method == 'POST':
+        form = BulkEmailForm(request.POST)
+        
+        if form.is_valid():
+            campaign = form.save(commit=False)
+            campaign.created_by = request.user
+            campaign.status = 'draft'
+            campaign.save()
+            
+            # Get recipient count (fast - just COUNT query)
+            count = campaign.get_recipient_count()
+            
+            if count == 0:
+                messages.error(request, 'No recipients match your criteria!')
+                return redirect('bulk_email_create')
+            
+            # Queue for sending (happens in background)
+            schedule_bulk_email(campaign)
+            
+            messages.success(
+                request,
+                f'✓ Email queued! Sending to {count} users in background.'
+            )
+            
+            return redirect('bulk_email_list')
+    else:
+        form = BulkEmailForm(initial={'target_all': True})
+    
+    return render(request, 'admin/bulk_email_create.html', {
+        'form': form
+    })
+
+@user_passes_test(lambda u: u.is_staff)
+def bulk_email_detail(request, pk):
+    """View email campaign details"""
+    campaign = get_object_or_404(BulkEmail, pk=pk)
+    
+    return render(request, 'admin/bulk_email_detail.html', {
+        'campaign': campaign
+    })
+
+# Optional: Super quick announcement sender
+@user_passes_test(lambda u: u.is_staff)
+def quick_announcement(request):
+    """Ultra-fast announcement sender - 3 fields only"""
+    if request.method == 'POST':
+        subject = request.POST.get('subject')
+        message = request.POST.get('message')
+        recipient_type = request.POST.get('recipient_type', 'all')
+        
+        # Create campaign
+        campaign = BulkEmail.objects.create(
+            title=f"Quick: {subject[:50]}",
+            campaign_type='announcement',
+            subject=subject,
+            message=message,
+            target_all=True,
+            verified_only=(recipient_type == 'verified'),
+            business_only=(recipient_type == 'business'),
+            created_by=request.user,
+            status='draft'
+        )
+        
+        # Send
+        count = campaign.get_recipient_count()
+        schedule_bulk_email(campaign)
+        
+        messages.success(request, f'✓ Sending to {count} users!')
+        return redirect('bulk_email_list')
+    
+    return render(request, 'admin/quick_announcement.html')
+
+@user_passes_test(lambda u: u.is_staff)
+def email_preference_dashboard(request):
+    """
+    Dashboard showing email preference statistics
+    Helps you know how many users will receive each type of email
+    """
+    stats = get_email_preference_stats()
+    
+    context = {
+        'stats': stats,
+    }
+    
+    return render(request, 'admin/email_preference_dashboard.html', context)
+
+@user_passes_test(lambda u: u.is_staff)
+def create_missing_preferences(request):
+    """
+    Create email preferences for users who don't have them
+    This is a one-click fix
+    """
+    if request.method == 'POST':
+        created = ensure_all_users_have_email_preferences()
+        
+        if created > 0:
+            messages.success(
+                request,
+                f'✓ Created email preferences for {created} users! They are opted-in by default.'
+            )
+        else:
+            messages.info(request, '✓ All users already have email preferences!')
+        
+        return redirect('email_preference_dashboard')
+    
+    # GET request - show confirmation
+    stats = get_email_preference_stats()
+    
+    return render(request, 'admin/create_missing_preferences.html', {
+        'missing_count': stats['users_without_preferences']
+    })
+
+@user_passes_test(lambda u: u.is_staff)
+def preview_recipients(request):
+    """
+    AJAX endpoint to preview how many users will receive an email
+    Called when creating a campaign
+    """
+    campaign_type = request.GET.get('type')
+    verified_only = request.GET.get('verified') == 'true'
+    business_only = request.GET.get('business') == 'true'
+    
+    from User.models import EmailPreferences
+    from django.contrib.auth.models import User
+    
+    # Build query
+    users = User.objects.filter(is_active=True).select_related('profile')
+    
+    # Filter by preferences
+    if campaign_type == 'marketing':
+        opted_in_profiles = EmailPreferences.objects.filter(
+            receive_marketing=True
+        ).values_list('profile_id', flat=True)
+        users = users.filter(profile__id__in=opted_in_profiles)
+        
+    elif campaign_type == 'announcement':
+        opted_in_profiles = EmailPreferences.objects.filter(
+            receive_announcements=True
+        ).values_list('profile_id', flat=True)
+        users = users.filter(profile__id__in=opted_in_profiles)
+        
+    elif campaign_type == 'notification':
+        opted_in_profiles = EmailPreferences.objects.filter(
+            receive_notifications=True
+        ).values_list('profile_id', flat=True)
+        users = users.filter(profile__id__in=opted_in_profiles)
+    
+    # Additional filters
+    if verified_only:
+        users = users.filter(profile__email_verified=True)
+    
+    if business_only:
+        users = users.filter(profile__business_verification_status='verified')
+    
+    count = users.count()
+    
+    return JsonResponse({
+        'count': count,
+        'message': f'Will send to {count} users who opted in for {campaign_type}'
+    })
+
 def handler429(request, exception=None):
     """
     Custom handler for rate limit exceeded (429 Too Many Requests)
