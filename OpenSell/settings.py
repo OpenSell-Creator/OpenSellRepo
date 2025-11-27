@@ -9,29 +9,27 @@ https://docs.djangoproject.com/en/5.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
+
 from pathlib import Path
 from django.contrib.messages import constants as messages
 import os
 import boto3
-from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY')
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = [
-    
-    'waldo-edaphic-rodger.ngrok-free.dev',
-    '.ngrok-free.app',
-    '.ngrok.io',
-] + os.environ.get('ALLOWED_HOSTS', '').split(',') if os.environ.get('ALLOWED_HOSTS') else []
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
 
+# Security settings for production
 SECURE_SSL_REDIRECT = False
 
 if not DEBUG:
@@ -39,20 +37,52 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    
-SESSION_COOKIE_AGE = 1209600  
-SESSION_COOKIE_SECURE = True  
-SESSION_COOKIE_HTTPONLY = True 
+
+# Session settings
+SESSION_COOKIE_AGE = 1209600  # 14 days
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
-    
-CSRF_COOKIE_SECURE = True 
-CSRF_COOKIE_HTTPONLY = False  
-CSRF_COOKIE_SAMESITE = 'Lax'  
-    
+
+# CSRF settings
+CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = 'Lax'
+
+# ==========================================
+# SECURITY CONFIGURATION
+# ==========================================
+
+# Django-Axes: Brute Force Protection
+AXES_FAILURE_LIMIT = 5  # Lock after 5 failed attempts
+AXES_COOLOFF_TIME = 1  # Lock for 1 hour
+AXES_LOCKOUT_TEMPLATE = 'security/lockout.html'
+AXES_RESET_ON_SUCCESS = True
+AXES_LOCKOUT_PARAMETERS = ['username', 'ip_address']
+AXES_ENABLE_ACCESS_FAILURE_LOG = True
+AXES_VERBOSE = True
+
+AXES_NEVER_LOCKOUT_WHITELIST = True
+AXES_IP_WHITELIST = []
+AXES_NEVER_LOCKOUT_GET = True
+
+AXES_ENABLED = True
+AXES_ONLY_ALLOW_LISTED_SCHEME = False
+
+# Django-Ratelimit Configuration
+RATELIMIT_ENABLE = True
+RATELIMIT_USE_CACHE = 'default'
+RATELIMIT_IP_META_KEY = 'HTTP_X_FORWARDED_FOR'
+
+# reCAPTCHA Configuration
+RECAPTCHA_PUBLIC_KEY = os.environ.get('RECAPTCHA_PUBLIC_KEY', '')
+RECAPTCHA_PRIVATE_KEY = os.environ.get('RECAPTCHA_PRIVATE_KEY', '')
+RECAPTCHA_REQUIRED_SCORE = 0.5
+SILENCED_SYSTEM_CHECKS = ['django_recaptcha.recaptcha_test_key_error']
+
 # Message encryption settings
 MESSAGE_ENCRYPTION_KEY = os.environ.get('MESSAGE_ENCRYPTION_KEY', None)
 
@@ -68,13 +98,10 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'User.apps.UserConfig',
     'Home.apps.HomeConfig',
-    'BuyerRequest.apps.BuyerRequestConfig',
-    'Services.apps.ServicesConfig',
     'Messages',
     'Notifications',
     'Dashboard',
     'Pages',
-
 
     # Third Party Apps
     'storages',
@@ -84,37 +111,42 @@ INSTALLED_APPS = [
     'crispy_forms',
     'compressor',
     'django_q',
+    
+    # Security Apps
+    'axes',
+    'django_recaptcha',
 
     # All Auths
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
-
 ]
 
+SOCIALACCOUNT_ADAPTER = 'User.views.CustomSocialAccountAdapter'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    'User.middleware.ReferralCodeMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
+    'User.middleware.SecurityBypassMiddleware',
+    'axes.middleware.AxesMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 SITE_ID = 1
 
 if DEBUG:
-    # Development configuration
     SITE_NAME = 'OpenSell Marketplace'
     SITE_DOMAIN = os.environ.get('SITE_DOMAIN', '127.0.0.1:8000')
     SITE_URL = os.environ.get('SITE_URL', 'http://127.0.0.1:8000')
 else:
-    # Production configuration
     SITE_NAME = 'OpenSell'
     SITE_DOMAIN = os.environ.get('SITE_DOMAIN')
     SITE_URL = os.environ.get('SITE_URL')
@@ -141,16 +173,12 @@ TEMPLATES = [
     },
 ]
 
-
-
 WSGI_APPLICATION = 'OpenSell.wsgi.application'
-
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 if DEBUG:
-    # Use SQLite for development
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -158,7 +186,6 @@ if DEBUG:
         }
     }
 else:
-    # Use production database settings
     DATABASES = {
         'default': {
             'ENGINE': os.environ.get('DB_ENGINE'),
@@ -173,21 +200,28 @@ else:
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
-AUTH_PASSWORD_VALIDATORS = []
-
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+]
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
-
-
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -195,10 +229,10 @@ USE_TZ = True
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
-
 
 # Authentication settings
 
@@ -214,9 +248,7 @@ ACCOUNT_EMAIL_VERIFICATION = 'none'
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_EMAIL_CONFIRMATION_HMAC = True
-
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+ACCOUNT_LOGOUT_ON_GET = True
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
@@ -228,10 +260,8 @@ SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_USERNAME_REQUIRED = True
 SOCIALACCOUNT_STORE_TOKENS = True
 SOCIALACCOUNT_LOGIN_ON_GET = True
-SOCIALACCOUNT_AUTO_SIGNUP = True
 
 # Google-specific settings
-
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'APP': {
@@ -245,7 +275,7 @@ SOCIALACCOUNT_PROVIDERS = {
         ],
         'AUTH_PARAMS': {
             'access_type': 'online',
-            'prompt': 'select_account consent',
+            'prompt': 'select_account',
         }
     }
 }
@@ -254,12 +284,11 @@ SOCIALACCOUNT_PROVIDERS = {
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https' if not DEBUG else 'http'
 ACCOUNT_SESSION_REMEMBER = None
 
-
 # Performance and UX improvements
 ACCOUNT_EMAIL_SUBJECT_PREFIX = ''
 ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
 
-
+# Logging configuration
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -307,7 +336,6 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': True,
         },
-        # Add these new loggers
         'django.core.mail': {
             'handlers': ['mail_file', 'console'],
             'level': 'DEBUG',
@@ -323,13 +351,12 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': True,
         },
-        'smtplib': {  # This will capture low-level SMTP operations
+        'smtplib': {
             'handlers': ['mail_file', 'console'],
             'level': 'DEBUG',
             'propagate': True,
         },
-        # Add a catch-all logger for your application
-        '': {  # Root logger
+        '': {
             'handlers': ['file', 'console'],
             'level': 'ERROR',
             'propagate': True,
@@ -357,6 +384,14 @@ if DEBUG:
                 'level': 'DEBUG',
                 'propagate': True,
             },
+            'User.views': {
+                'handlers': ['console'],
+                'level': 'INFO',
+            },
+            'Dashboard.models': {
+                'handlers': ['console'],
+                'level': 'INFO',
+            },
         },
     }
 
@@ -367,18 +402,14 @@ if not DEBUG:
     EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
     EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
     EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
-    
     EMAIL_USE_TLS = True
     EMAIL_USE_SSL = False
-    
     SERVER_EMAIL = 'no-reply@opensell.online'
     DEFAULT_FROM_EMAIL = 'OpenSell <no-reply@opensell.online>'
     SUPPORT_EMAIL = 'OpenSell Support <support@opensell.online>'
     NO_REPLY_EMAIL = 'OpenSell <no-reply@opensell.online>'
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-
-
 
 # Static files (CSS, JavaScript, Images)
 # Base directories
@@ -404,7 +435,7 @@ if DEBUG:
 
 # Production Settings (When DEBUG = False)
 else:
-    # AWS S3 Configuration for media files only
+    # AWS S3 Configuration
     AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
     AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME')
     AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
@@ -438,17 +469,15 @@ import mimetypes
 mimetypes.add_type("application/manifest+json", ".webmanifest", True)
 mimetypes.add_type("application/manifest+json", ".json", True)
 
-
 # Increase Django's file upload limits
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB 
-
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
 
 # Free API Keys (get from respective platforms)
 HUGGINGFACE_API_TOKEN = os.environ.get('HUGGINGFACE_API_TOKEN')
 
+# Django Q Configuration
 if DEBUG:
-    # Development configuration - using SQLite
     Q_CLUSTER = {
         'name': 'opensell-dev',
         'workers': 2,
@@ -460,14 +489,13 @@ if DEBUG:
         'cpu_affinity': 1,
         'label': 'OpenSell Dev',
         'sync': True,
-        'orm': 'default',  # Uses SQLite in development
-        'catch_up': True,  # Process old tasks on startup
+        'orm': 'default',
+        'catch_up': True,
         'max_attempts': 3,
         'retry': 120,
+
     }
 else:
-    # Production configuration
-    # Option 1: Using your PostgreSQL database (simplest)
     Q_CLUSTER = {
         'name': 'opensell-prod',
         'workers': 4,
@@ -478,24 +506,24 @@ else:
         'queue_limit': 500,
         'cpu_affinity': 1,
         'label': 'OpenSell Prod',
-        'orm': 'default',  
+        'orm': 'default',
         'catch_up': False,
         'max_attempts': 3,
         'retry': 180,
         'ack_failures': True,
         'bulk': 10,
     }
-    
+
 # Django Compressor Settings
 COMPRESS_ENABLED = not DEBUG
 
 # Common filters for both environments
 COMPRESS_CSS_FILTERS = [
     'compressor.filters.css_default.CssAbsoluteFilter',
-    'compressor.filters.cssmin.rCSSMinFilter', 
+    'compressor.filters.cssmin.rCSSMinFilter',
 ]
 COMPRESS_JS_FILTERS = [
-    'compressor.filters.jsmin.rJSMinFilter', 
+    'compressor.filters.jsmin.rJSMinFilter',
 ]
 
 # Always include the compressor finder
@@ -505,28 +533,18 @@ STATICFILES_FINDERS = [
     'compressor.finders.CompressorFinder',
 ]
 
-# Environment-specific settings
+# Cache configuration
 if DEBUG:
-    # Development: NO compression
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
     COMPRESS_OFFLINE = False
     COMPRESS_CACHE_BACKEND = None
-    
-    # Simple static file serving for development
     STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
-    
 else:
-    # Production: Full compression and optimization
-    COMPRESS_OFFLINE = True
-    COMPRESS_CACHE_BACKEND = 'default'
-    COMPRESS_REBUILD_TIMEOUT = 0 
-    
-    # Content-based hashing for cache busting
-    COMPRESS_CSS_HASHING_METHOD = 'content'
-    COMPRESS_JS_HASHING_METHOD = 'content'
-    
-    # Production static file storage with versioning
-    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
-
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
@@ -534,6 +552,13 @@ else:
             'TIMEOUT': 86400,
         }
     }
+    COMPRESS_OFFLINE = True
+    COMPRESS_CACHE_BACKEND = 'default'
+    COMPRESS_REBUILD_TIMEOUT = 0
+    COMPRESS_CSS_HASHING_METHOD = 'content'
+    COMPRESS_JS_HASHING_METHOD = 'content'
+    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
+
 COMPRESS_PRECOMPILERS = ()
 COMPRESS_ROOT = STATIC_ROOT
 COMPRESS_URL = STATIC_URL
@@ -547,8 +572,7 @@ MONNIFY_CONTRACT_CODE = os.getenv('MONNIFY_CONTRACT_CODE')
 MONNIFY_BASE_URL = os.getenv('MONNIFY_BASE_URL')
 
 # Webhook Configuration
-MONNIFY_WEBHOOK_SECRET = MONNIFY_SECRET_KEY 
+MONNIFY_WEBHOOK_SECRET = MONNIFY_SECRET_KEY
 MONNIFY_AUTO_PROCESS_PAYMENTS = True
 MONNIFY_SEND_EMAIL_NOTIFICATIONS = True
-
-SITE_URL = 'http://127.0.0.1:8000'
+MIN_DEPOSIT_AMOUNT = 100
