@@ -183,22 +183,35 @@ def send_bulk_email_task(email_id):
         total_sent = 0
         total_failed = 0
         
-        # Use iterator() to avoid loading all users into memory
-        for user in recipients_query.iterator(chunk_size=CHUNK_SIZE):
-            try:
-                send_single_email(user, email_campaign)
-                total_sent += 1
-                
-                # Update progress every 50 emails
-                if total_sent % 50 == 0:
-                    email_campaign.total_sent = total_sent
-                    email_campaign.save(update_fields=['total_sent'])
-                    logger.info(f"Campaign {email_id}: Sent {total_sent} emails")
+        # FIXED: Use values_list to get just IDs, then fetch users one by one
+        user_ids = list(recipients_query.values_list('id', flat=True))
+        total_users = len(user_ids)
+        
+        logger.info(f"Campaign {email_id}: Found {total_users} recipients")
+        
+        # Process in chunks
+        for i in range(0, total_users, CHUNK_SIZE):
+            chunk_ids = user_ids[i:i + CHUNK_SIZE]
+            
+            # Fetch users for this chunk
+            from django.contrib.auth.models import User
+            chunk_users = User.objects.filter(id__in=chunk_ids).select_related('profile')
+            
+            for user in chunk_users:
+                try:
+                    send_single_email(user, email_campaign)
+                    total_sent += 1
                     
-            except Exception as e:
-                total_failed += 1
-                logger.error(f"Failed to send to {user.email}: {str(e)}")
-                continue
+                    # Update progress every 50 emails
+                    if total_sent % 50 == 0:
+                        email_campaign.total_sent = total_sent
+                        email_campaign.save(update_fields=['total_sent'])
+                        logger.info(f"Campaign {email_id}: Sent {total_sent}/{total_users} emails")
+                        
+                except Exception as e:
+                    total_failed += 1
+                    logger.error(f"Failed to send to {user.email}: {str(e)}")
+                    continue
         
         # Mark as complete
         email_campaign.status = 'sent'
@@ -226,7 +239,6 @@ def send_bulk_email_task(email_id):
         except:
             pass
         return {'success': False, 'error': str(e)}
-
 
 def send_single_email(user, campaign):
     """
@@ -264,7 +276,6 @@ def send_single_email(user, campaign):
     email.send(fail_silently=False)
     
     logger.debug(f"Email sent to {user.email}")
-
 
 def wrap_email_simple(content, user):
     """
