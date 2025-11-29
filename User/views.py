@@ -898,7 +898,7 @@ def bulk_email_list(request):
 
 @user_passes_test(lambda u: u.is_staff)
 def bulk_email_create(request):
-    """Create and send bulk email - ONE PAGE"""
+    """Create and send bulk email - FIXED VERSION"""
     if request.method == 'POST':
         form = BulkEmailForm(request.POST)
         
@@ -908,20 +908,58 @@ def bulk_email_create(request):
             campaign.status = 'draft'
             campaign.save()
             
-            # Get recipient count (fast - just COUNT query)
+            # Get recipient count
             count = campaign.get_recipient_count()
             
             if count == 0:
-                messages.error(request, 'No recipients match your criteria!')
+                messages.error(request, '❌ No recipients match your criteria!')
+                campaign.delete()
                 return redirect('bulk_email_create')
             
-            # Queue for sending (happens in background)
-            schedule_bulk_email(campaign)
-            
-            messages.success(
-                request,
-                f'✓ Email queued! Sending to {count} users in background.'
-            )
+            # Try to queue, but fall back to direct send if it fails
+            try:
+                from django_q.tasks import async_task
+                
+                task_id = async_task(
+                    'User.utils.send_bulk_email_task',
+                    campaign.id,
+                    timeout=7200,
+                    group=f'bulk_email_{campaign.id}'
+                )
+                
+                if task_id:
+                    logger.info(f"Campaign {campaign.id} queued with task_id: {task_id}")
+                    messages.success(
+                        request,
+                        f'✅ Email queued! Sending to {count} users in background.'
+                    )
+                else:
+                    raise Exception("async_task returned None")
+                    
+            except Exception as e:
+                logger.error(f"Queue failed: {str(e)}. Using direct send.", exc_info=True)
+                
+                # Fall back to direct send
+                messages.info(
+                    request,
+                    f'⚠️ Queue unavailable. Sending directly to {count} users... (this may take a moment)'
+                )
+                
+                try:
+                    from User.utils import send_bulk_email_task
+                    result = send_bulk_email_task(campaign.id)
+                    
+                    if result.get('success'):
+                        messages.success(
+                            request,
+                            f'✅ Sent to {result["sent"]} users! ({result.get("failed", 0)} failed)'
+                        )
+                    else:
+                        messages.error(request, f'❌ Failed: {result.get("error")}')
+                        
+                except Exception as send_error:
+                    logger.error(f"Direct send failed: {str(send_error)}", exc_info=True)
+                    messages.error(request, f'❌ Send failed: {str(send_error)}')
             
             return redirect('bulk_email_list')
     else:
@@ -929,6 +967,62 @@ def bulk_email_create(request):
     
     return render(request, 'admin/bulk_email_create.html', {
         'form': form
+    })
+
+@user_passes_test(lambda u: u.is_staff)
+def bulk_email_send_now(request, pk):
+    """
+    Send a draft campaign immediately (synchronously)
+    Bypasses Django-Q completely
+    """
+    campaign = get_object_or_404(BulkEmail, pk=pk)
+    
+    if campaign.status != 'draft':
+        messages.error(request, '❌ Can only send draft campaigns!')
+        return redirect('bulk_email_detail', pk=pk)
+    
+    # Get recipient count
+    count = campaign.get_recipient_count()
+    
+    if count == 0:
+        messages.error(request, '❌ No recipients match criteria!')
+        return redirect('bulk_email_detail', pk=pk)
+    
+    if request.method == 'POST':
+        # Confirmation check
+        if not request.POST.get('confirmed'):
+            return render(request, 'admin/bulk_email_confirm_send.html', {
+                'campaign': campaign,
+                'recipient_count': count,
+            })
+        
+        # Send NOW
+        messages.info(request, f'📧 Sending to {count} users... Please wait.')
+        
+        from User.utils import send_bulk_email_task
+        
+        try:
+            result = send_bulk_email_task(campaign.id)
+            
+            if result.get('success'):
+                messages.success(
+                    request,
+                    f'✅ Successfully sent to {result["sent"]} users! '
+                    f'({result.get("failed", 0)} failed)'
+                )
+            else:
+                messages.error(request, f'❌ Send failed: {result.get("error")}')
+                
+        except Exception as e:
+            logger.error(f"Send now failed: {str(e)}", exc_info=True)
+            messages.error(request, f'❌ Error: {str(e)}')
+        
+        return redirect('bulk_email_detail', pk=pk)
+    
+    # GET - show confirmation page
+    return render(request, 'admin/bulk_email_confirm_send.html', {
+        'campaign': campaign,
+        'recipient_count': count,
     })
 
 @user_passes_test(lambda u: u.is_staff)
@@ -940,14 +1034,74 @@ def bulk_email_detail(request, pk):
         'campaign': campaign
     })
 
+@user_passes_test(lambda u: u.is_staff)
+def bulk_email_send_now(request, pk):
+    """
+    Send a draft campaign immediately (synchronously)
+    Bypasses Django-Q completely
+    """
+    campaign = get_object_or_404(BulkEmail, pk=pk)
+    
+    if campaign.status != 'draft':
+        messages.error(request, '❌ Can only send draft campaigns!')
+        return redirect('bulk_email_detail', pk=pk)
+    
+    # Get recipient count
+    count = campaign.get_recipient_count()
+    
+    if count == 0:
+        messages.error(request, '❌ No recipients match criteria!')
+        return redirect('bulk_email_detail', pk=pk)
+    
+    if request.method == 'POST':
+        # Confirmation check
+        if not request.POST.get('confirmed'):
+            return render(request, 'admin/bulk_email_confirm_send.html', {
+                'campaign': campaign,
+                'recipient_count': count,
+            })
+        
+        # Send NOW
+        messages.info(request, f'📧 Sending to {count} users... Please wait.')
+        
+        from User.utils import send_bulk_email_task
+        
+        try:
+            result = send_bulk_email_task(campaign.id)
+            
+            if result.get('success'):
+                messages.success(
+                    request,
+                    f'✅ Successfully sent to {result["sent"]} users! '
+                    f'({result.get("failed", 0)} failed)'
+                )
+            else:
+                messages.error(request, f'❌ Send failed: {result.get("error")}')
+                
+        except Exception as e:
+            logger.error(f"Send now failed: {str(e)}", exc_info=True)
+            messages.error(request, f'❌ Error: {str(e)}')
+        
+        return redirect('bulk_email_detail', pk=pk)
+    
+    # GET - show confirmation page
+    return render(request, 'admin/bulk_email_confirm_send.html', {
+        'campaign': campaign,
+        'recipient_count': count,
+    })
+
 # Optional: Super quick announcement sender
 @user_passes_test(lambda u: u.is_staff)
 def quick_announcement(request):
-    """Ultra-fast announcement sender - 3 fields only"""
+    """Ultra-fast announcement sender"""
     if request.method == 'POST':
         subject = request.POST.get('subject')
         message = request.POST.get('message')
         recipient_type = request.POST.get('recipient_type', 'all')
+        
+        if not subject or not message:
+            messages.error(request, 'Subject and message are required!')
+            return redirect('quick_announcement')
         
         # Create campaign
         campaign = BulkEmail.objects.create(
@@ -962,11 +1116,31 @@ def quick_announcement(request):
             status='draft'
         )
         
-        # Send
+        # Get count
         count = campaign.get_recipient_count()
-        schedule_bulk_email(campaign)
         
-        messages.success(request, f'✓ Sending to {count} users!')
+        if count == 0:
+            messages.error(request, '❌ No recipients!')
+            campaign.delete()
+            return redirect('quick_announcement')
+        
+        # Send immediately
+        from User.utils import send_bulk_email_task
+        
+        messages.info(request, f'📧 Sending to {count} users...')
+        
+        try:
+            result = send_bulk_email_task(campaign.id)
+            
+            if result.get('success'):
+                messages.success(request, f'✅ Sent to {result["sent"]} users!')
+            else:
+                messages.error(request, f'❌ Failed: {result.get("error")}')
+                
+        except Exception as e:
+            logger.error(f"Quick send failed: {str(e)}", exc_info=True)
+            messages.error(request, f'❌ Error: {str(e)}')
+        
         return redirect('bulk_email_list')
     
     return render(request, 'admin/quick_announcement.html')
