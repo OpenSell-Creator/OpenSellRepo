@@ -41,13 +41,26 @@
                                 {% if email.status == 'draft' %}
                                     <span class="badge bg-secondary">Draft</span>
                                 {% elif email.status == 'sending' %}
-                                    <span class="badge bg-warning">Sending...</span>
+                                    <span class="badge bg-warning">
+                                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                        Sending...
+                                    </span>
                                 {% else %}
                                     <span class="badge bg-success">✓ Sent</span>
                                 {% endif %}
                             </td>
-                            <td>{{ email.total_sent }} users</td>
-                            <td>{{ email.created_at|date:"M d, Y" }}</td>
+                            <td>
+                                <strong>{{ email.total_sent }}</strong> users
+                                {% if email.status == 'sending' %}
+                                <br><small class="text-muted">(in progress...)</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ email.created_at|date:"M d, Y" }}
+                                {% if email.sent_at %}
+                                <br><small class="text-success">✓ Sent: {{ email.sent_at|date:"M d, H:i" }}</small>
+                                {% endif %}
+                            </td>
                             <td>
                                 <a href="{% url 'bulk_email_detail' email.pk %}" class="btn btn-sm btn-outline-primary">
                                     👁️ View
@@ -88,6 +101,47 @@
         </div>
     </div>
 </div>
+
+<script>
+// Auto-refresh page every 10 seconds if any campaigns are currently sending
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if any campaigns are in "sending" status
+    const sendingBadges = document.querySelectorAll('.badge.bg-warning');
+    const hasSendingCampaigns = sendingBadges.length > 0;
+    
+    if (hasSendingCampaigns) {
+        console.log('Campaigns are sending... will refresh in 10 seconds');
+        
+        // Show a small indicator
+        const indicator = document.createElement('div');
+        indicator.className = 'alert alert-info position-fixed bottom-0 end-0 m-3';
+        indicator.style.zIndex = '9999';
+        indicator.innerHTML = `
+            <small>
+                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                Auto-refreshing in <span id="countdown">10</span>s...
+                <button class="btn btn-sm btn-link" onclick="clearInterval(refreshTimer); clearTimeout(refreshTimeout); this.parentElement.parentElement.remove();">Cancel</button>
+            </small>
+        `;
+        document.body.appendChild(indicator);
+        
+        // Countdown timer
+        let seconds = 10;
+        const countdownEl = document.getElementById('countdown');
+        
+        window.refreshTimer = setInterval(() => {
+            seconds--;
+            if (countdownEl) countdownEl.textContent = seconds;
+        }, 1000);
+        
+        // Refresh after 10 seconds
+        window.refreshTimeout = setTimeout(() => {
+            window.location.reload();
+        }, 10000);
+    }
+});
+</script>
 {% endblock %}
+
 {% block 'Footer'%}
 {% endblock%}
