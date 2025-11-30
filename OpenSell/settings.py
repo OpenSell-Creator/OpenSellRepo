@@ -457,8 +457,8 @@ mimetypes.add_type("application/manifest+json", ".webmanifest", True)
 mimetypes.add_type("application/manifest+json", ".json", True)
 
 # Increase Django's file upload limits
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 15 * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = 15 * 1024 * 1024
 
 # Free API Keys (get from respective platforms)
 HUGGINGFACE_API_TOKEN = os.environ.get('HUGGINGFACE_API_TOKEN')

@@ -1160,6 +1160,11 @@ def email_preference_dashboard(request):
     return render(request, 'admin/email_preference_dashboard.html', context)
 
 @user_passes_test(lambda u: u.is_staff)
+def email_template_library(request):
+    """Show email template library"""
+    return render(request, 'admin/email_template_library.html')
+
+@user_passes_test(lambda u: u.is_staff)
 def create_missing_preferences(request):
     """
     Create email preferences for users who don't have them

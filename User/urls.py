@@ -58,6 +58,7 @@ urlpatterns = [
     path('admin/bulk-emails/create/', views.bulk_email_create, name='bulk_email_create'),
     path('admin/bulk-emails/<int:pk>/', views.bulk_email_detail, name='bulk_email_detail'),
     path('admin/quick-announcement/', views.quick_announcement, name='quick_announcement'),
+    path('admin/email-templates/', views.email_template_library, name='email_template_library'),
     path('admin/bulk-emails/<int:pk>/send-now/', views.bulk_email_send_now, name='bulk_email_send_now'),
     
     path('admin/email-preferences/dashboard/', views.email_preference_dashboard, name='email_preference_dashboard'),
