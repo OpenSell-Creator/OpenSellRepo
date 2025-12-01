@@ -237,7 +237,6 @@ def home(request):
 
     random.seed(user_seed)
 
-    # In views.py, replace the quality_products queryset (around line 485-490)
 
     quality_products = Product_Listing.objects.filter(
         is_suspended=False,
@@ -247,7 +246,7 @@ def home(request):
         Q(expiration_date__gt=timezone.now()) 
     )
 
-    featured_products = get_sorted_products(quality_products, request.user, limit=20)
+    featured_products = get_sorted_products(quality_products, request.user, limit=50)
 
     local_products = []
     location_filter_params = {}
@@ -272,7 +271,7 @@ def home(request):
             local_quality_products = quality_products.filter(location_filters).exclude(
                 id__in=[p.id for p in featured_products[:10]]  # Exclude first 10 featured products
             )
-            local_products = get_sorted_products(local_quality_products, request.user, limit=10)
+            local_products = get_sorted_products(local_quality_products, request.user, limit=30)
         
 
     trending_products = []
@@ -798,7 +797,7 @@ class ProductDetailView(DetailView):
         related_products = Product_Listing.objects.filter(
             Q(category=self.object.category) | 
             Q(subcategory=self.object.subcategory)
-        ).exclude(id=self.object.id).distinct()[:4]
+        ).exclude(id=self.object.id).distinct()[:10]
         
         if self.request.user.is_authenticated:
             saved_products = SavedProduct.objects.filter(
