@@ -29,7 +29,7 @@ from django.contrib.auth.decorators import login_required
 from .forms import SignUpForm, ProfileUpdateForm, LocationForm, BusinessVerificationForm, BusinessDocumentForm
 from .models import Profile,LGA,State,Location, BusinessVerificationDocument
 from django.views.decorators.http import require_GET
-from .utils import send_otp_email, send_business_verification_approved_email, send_business_verification_rejected_email, send_business_verification_submitted_email
+from .utils import send_otp_email, send_business_verification_approved_email, send_business_verification_rejected_email, send_business_verification_submitted_email, send_welcome_email
 from django.utils import timezone
 from django.conf import settings
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
@@ -163,7 +163,7 @@ def logoutview(request):
     messages.success(request, ("You Have Been Logged Out"))
     return redirect('home')
 
-@ratelimit(key='ip', rate='50/h', method='POST', block=False)  # Changed block=False
+@ratelimit(key='ip', rate='50/h', method='POST', block=False)
 def register_user(request):
     """
     User registration view with comprehensive error logging
@@ -227,8 +227,24 @@ def register_user(request):
                 else:
                     logger.warning(f"⚠️ Referral failed: {username} -> {ref_code}")
             
-            # STEP 3: Log user in
+            # STEP 3: Send welcome email
             try:
+                from User.utils import send_welcome_email
+                
+                email_sent = send_welcome_email(user)
+                
+                if email_sent:
+                    logger.info(f"✅ Welcome email sent to: {user.email}")
+                else:
+                    logger.warning(f"⚠️ Welcome email failed for: {user.email}")
+                    
+            except Exception as email_error:
+                # Don't block registration if email fails
+                logger.error(f"❌ Welcome email error for {username}: {str(email_error)}", exc_info=True)
+            
+            # STEP 4: Log user in
+            try:
+                
                 authenticated_user = authenticate(
                     request=request, 
                     username=username, 
@@ -251,7 +267,6 @@ def register_user(request):
                 return redirect('login')
         
         else:
-            # FORM VALIDATION FAILED - This is likely your issue
             logger.error(f"❌ Form validation failed!")
             logger.error(f"Form errors: {form.errors.as_json()}")
             

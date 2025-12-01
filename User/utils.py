@@ -20,6 +20,98 @@ logger = logging.getLogger(__name__)
 def user_directory_path(instance, filename):
     return f'profile_pictures/{instance.user.username}/{filename}'
 
+def send_welcome_email(user):
+    """
+    Send welcome email to newly registered user
+    Introduces platform and encourages business verification
+    """
+    try:
+        from django.core.mail import EmailMultiAlternatives
+        from django.template.loader import render_to_string
+        from django.utils.html import strip_tags
+        from django.conf import settings
+        from django.urls import reverse
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        
+        # Get or create email preferences for unsubscribe links
+        preferences = user.profile.get_or_create_email_preferences()
+        
+        subject = f"Welcome to {settings.SITE_NAME} - Get Started!"
+        
+        # Context for email template
+        email_context = {
+            'user': user,
+            'first_name': user.first_name or user.username,
+            'site_url': settings.SITE_URL,
+            'site_name': settings.SITE_NAME,
+            'profile_url': settings.SITE_URL + reverse('profile_update'),
+            'store_url': settings.SITE_URL + reverse('user_store', kwargs={'username': user.username}),
+            'verification_url': settings.SITE_URL + reverse('business_verification_form'),
+            'product_create_url': settings.SITE_URL + reverse('product_create'),
+            'preferences_url': preferences.get_absolute_preferences_url() if preferences else '#',
+            'benefits': [
+                'Verified business badge on all your listings',
+                'Access to permanent retail listings (never expire)',
+                'Enhanced visibility in search results',
+                'Display business address and contact information',
+                'Priority in marketplace rankings',
+                'Build customer trust and credibility',
+                'Access to business-only features',
+                'Priority customer support'
+            ],
+            'quick_start_steps': [
+                {
+                    'icon': 'person-circle',
+                    'title': 'Complete Your Profile',
+                    'description': 'Add your photo, bio, and contact information',
+                    'url': reverse('profile_update')
+                },
+                {
+                    'icon': 'shield-check',
+                    'title': 'Verify Your Email',
+                    'description': 'Confirm your email address for security',
+                    'action': 'Check your inbox for verification'
+                },
+                {
+                    'icon': 'box-seam',
+                    'title': 'List Your First Product',
+                    'description': 'Start selling by creating your first listing',
+                    'url': reverse('product_create')
+                },
+                {
+                    'icon': 'building-check',
+                    'title': 'Get Business Verified',
+                    'description': 'Unlock premium features and build trust',
+                    'url': reverse('business_verification_form')
+                }
+            ]
+        }
+        
+        # Render HTML email
+        html_message = render_to_string('emails/welcome_email.html', email_context)
+        plain_message = strip_tags(html_message)
+        
+        # Create email
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=plain_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[user.email]
+        )
+        email.attach_alternative(html_message, "text/html")
+        
+        # Send email
+        email.send(fail_silently=False)
+        
+        logger.info(f"Welcome email sent successfully to {user.email}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to send welcome email to {user.email}: {str(e)}")
+        return False
+
 def send_otp_email(user):
     """Send OTP verification email to user"""
     try:
