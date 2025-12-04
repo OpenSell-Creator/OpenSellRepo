@@ -522,7 +522,19 @@ Usage: {% include 'banner.html' with banners=your_banner_list %}
                 }
             }
     
+            // Prevent carousel navigation when clicking on links
+            const links = bannerContainer.querySelectorAll('a');
+            links.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    // Allow the link to work normally, don't interfere
+                    stopAutoplay();
+                });
+            });
+
             bannerContainer.addEventListener('touchstart', (e) => {
+                // Don't interfere if clicking on a link
+                if (e.target.closest('a')) return;
+                
                 touchStartX = e.touches[0].clientX;
                 isDragging = true;
                 stopAutoplay();
@@ -530,12 +542,18 @@ Usage: {% include 'banner.html' with banners=your_banner_list %}
     
             bannerContainer.addEventListener('touchmove', (e) => {
                 if (!isDragging) return;
+                // Don't interfere if touching a link
+                if (e.target.closest('a')) return;
+                
                 e.preventDefault();
                 touchEndX = e.touches[0].clientX;
             }, { passive: false });
     
-            bannerContainer.addEventListener('touchend', () => {
+            bannerContainer.addEventListener('touchend', (e) => {
                 if (!isDragging) return;
+                // Don't interfere if clicking on a link
+                if (e.target.closest('a')) return;
+                
                 isDragging = false;
                 const diff = touchStartX - touchEndX;
     
