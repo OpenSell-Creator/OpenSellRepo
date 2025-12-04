@@ -443,139 +443,143 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialize ALL global banners (there might be multiple)
-        document.querySelectorAll('.global-banner-container').forEach(container => {
-            initializeBannerCarousel(container, {
-                slideSelector: '.global-banner-slide',
-                dotsSelector: '.global-progress-dot',
-                prevButtonSelector: '.global-prev-button',
-                nextButtonSelector: '.global-next-button',
-                progressInnerSelector: '.global-progress-inner'
-            });
+    // Initialize ALL global banners (there might be multiple)
+    document.querySelectorAll('.global-banner-container').forEach(container => {
+        initializeBannerCarousel(container, {
+            slideSelector: '.global-banner-slide',
+            dotsSelector: '.global-progress-dot',
+            prevButtonSelector: '.global-prev-button',
+            nextButtonSelector: '.global-next-button',
+            progressInnerSelector: '.global-progress-inner'
         });
-    
-        // Initialize ALL section banners (there might be multiple)
-        document.querySelectorAll('.section-banner-container').forEach(container => {
-            initializeBannerCarousel(container, {
-                slideSelector: '.section-banner-slide',
-                dotsSelector: '.section-progress-dot',
-                prevButtonSelector: '.section-prev-button',
-                nextButtonSelector: '.section-next-button',
-                progressInnerSelector: '.section-progress-inner'
-            });
+    });
+
+    // Initialize ALL section banners (there might be multiple)
+    document.querySelectorAll('.section-banner-container').forEach(container => {
+        initializeBannerCarousel(container, {
+            slideSelector: '.section-banner-slide',
+            dotsSelector: '.section-progress-dot',
+            prevButtonSelector: '.section-prev-button',
+            nextButtonSelector: '.section-next-button',
+            progressInnerSelector: '.section-progress-inner'
         });
-    
-        function initializeBannerCarousel(bannerContainer, selectors) {
-            // bannerContainer is now passed directly, not as a selector string
-            if (!bannerContainer) return;
-    
-            const slides = bannerContainer.querySelectorAll(selectors.slideSelector);
-            const progressDots = bannerContainer.querySelectorAll(selectors.dotsSelector);
-            const prevButton = bannerContainer.querySelector(selectors.prevButtonSelector);
-            const nextButton = bannerContainer.querySelector(selectors.nextButtonSelector);
+    });
+
+    function initializeBannerCarousel(bannerContainer, selectors) {
+        if (!bannerContainer) return;
+
+        // FIXED: Use bannerContainer.querySelectorAll to scope selections to THIS container only
+        const slides = bannerContainer.querySelectorAll(selectors.slideSelector);
+        const progressDots = bannerContainer.querySelectorAll(selectors.dotsSelector);
+        const prevButton = bannerContainer.querySelector(selectors.prevButtonSelector);
+        const nextButton = bannerContainer.querySelector(selectors.nextButtonSelector);
+        
+        // Only initialize carousel if there are multiple slides
+        if (slides.length <= 1) return;
+        
+        let currentSlide = 0;
+        let autoplayInterval;
+        let touchStartX = 0;
+        let touchEndX = 0;
+        let isDragging = false;
+
+        function showSlide(index, resetProgress = true) {
+            slides[currentSlide].classList.remove('active');
+            progressDots[currentSlide].classList.remove('active');
             
-            // Only initialize carousel if there are multiple slides
-            if (slides.length <= 1) return;
+            currentSlide = (index + slides.length) % slides.length;
             
-            let currentSlide = 0;
-            let autoplayInterval;
-            let touchStartX = 0;
-            let touchEndX = 0;
-            let isDragging = false;
-    
-            function showSlide(index, resetProgress = true) {
-                slides[currentSlide].classList.remove('active');
-                progressDots[currentSlide].classList.remove('active');
-                
-                currentSlide = (index + slides.length) % slides.length;
-                
-                slides[currentSlide].classList.add('active');
-                progressDots[currentSlide].classList.add('active');
-                
-                if (resetProgress) {
-                    const dot = progressDots[currentSlide];
-                    const inner = dot.querySelector(selectors.progressInnerSelector);
-                    if (inner) {
-                        inner.style.animation = 'none';
-                        inner.offsetHeight; // Trigger reflow
-                        inner.style.animation = null;
-                    }
+            slides[currentSlide].classList.add('active');
+            progressDots[currentSlide].classList.add('active');
+            
+            if (resetProgress) {
+                const dot = progressDots[currentSlide];
+                const inner = dot.querySelector(selectors.progressInnerSelector);
+                if (inner) {
+                    inner.style.animation = 'none';
+                    inner.offsetHeight; // Trigger reflow
+                    inner.style.animation = null;
                 }
             }
-    
-            function nextSlide() {
-                showSlide(currentSlide + 1);
+        }
+
+        function nextSlide() {
+            showSlide(currentSlide + 1);
+        }
+
+        function prevSlide() {
+            showSlide(currentSlide - 1);
+        }
+
+        function startAutoplay() {
+            stopAutoplay();
+            autoplayInterval = setInterval(nextSlide, 7000);
+        }
+
+        function stopAutoplay() {
+            if (autoplayInterval) {
+                clearInterval(autoplayInterval);
             }
-    
-            function prevSlide() {
-                showSlide(currentSlide - 1);
-            }
-    
-            function startAutoplay() {
-                stopAutoplay();
-                autoplayInterval = setInterval(nextSlide, 7000); // 4 second intervals for faster sliding
-            }
-    
-            function stopAutoplay() {
-                if (autoplayInterval) {
-                    clearInterval(autoplayInterval);
+        }
+
+        // Touch events for mobile swiping
+        bannerContainer.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            isDragging = true;
+            stopAutoplay();
+        }, { passive: true });
+
+        bannerContainer.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            touchEndX = e.touches[0].clientX;
+        }, { passive: false });
+
+        bannerContainer.addEventListener('touchend', () => {
+            if (!isDragging) return;
+            isDragging = false;
+            const diff = touchStartX - touchEndX;
+
+            if (Math.abs(diff) > 50) {
+                if (diff > 0) {
+                    nextSlide();
+                } else {
+                    prevSlide();
                 }
             }
-    
-            // Touch events for mobile swiping
-            bannerContainer.addEventListener('touchstart', (e) => {
-                touchStartX = e.touches[0].clientX;
-                isDragging = true;
-                stopAutoplay();
-            }, { passive: true });
-    
-            bannerContainer.addEventListener('touchmove', (e) => {
-                if (!isDragging) return;
-                e.preventDefault();
-                touchEndX = e.touches[0].clientX;
-            }, { passive: false });
-    
-            bannerContainer.addEventListener('touchend', () => {
-                if (!isDragging) return;
-                isDragging = false;
-                const diff = touchStartX - touchEndX;
-    
-                if (Math.abs(diff) > 50) { // Minimum swipe distance
-                    if (diff > 0) {
-                        nextSlide();
-                    } else {
-                        prevSlide();
-                    }
-                }
-                startAutoplay();
-            });
-    
-            // Button controls
-            prevButton?.addEventListener('click', () => {
+            startAutoplay();
+        });
+
+        // Button controls
+        if (prevButton) {
+            prevButton.addEventListener('click', () => {
                 prevSlide();
                 startAutoplay();
             });
-    
-            nextButton?.addEventListener('click', () => {
+        }
+
+        if (nextButton) {
+            nextButton.addEventListener('click', () => {
                 nextSlide();
                 startAutoplay();
             });
-    
-            // Progress dots click
-            progressDots.forEach((dot, index) => {
-                dot.addEventListener('click', () => {
-                    showSlide(index);
-                    startAutoplay();
-                });
-            });
-    
-            // Pause autoplay on hover, resume on leave
-            bannerContainer.addEventListener('mouseenter', stopAutoplay);
-            bannerContainer.addEventListener('mouseleave', startAutoplay);
-    
-            // Start autoplay
-            startAutoplay();
         }
-    });
+
+        // Progress dots click
+        progressDots.forEach((dot, index) => {
+            dot.addEventListener('click', () => {
+                showSlide(index);
+                startAutoplay();
+            });
+        });
+
+        // Pause autoplay on hover, resume on leave
+        bannerContainer.addEventListener('mouseenter', stopAutoplay);
+        bannerContainer.addEventListener('mouseleave', startAutoplay);
+
+        // Start autoplay
+        startAutoplay();
+    }
+});
 </script>
 {% endif %}
