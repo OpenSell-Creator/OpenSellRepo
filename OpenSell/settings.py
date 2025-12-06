@@ -384,19 +384,26 @@ if DEBUG:
 
 # Email settings
 if not DEBUG:
+    # Resend SMTP Configuration
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-    EMAIL_HOST = os.environ.get('EMAIL_HOST')
-    EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
-    EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
+    EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.resend.com')
+    EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 465))
+    EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'resend')
     EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
-    EMAIL_USE_TLS = True
-    EMAIL_USE_SSL = False
+    EMAIL_USE_TLS = False  # Important: False for port 465
+    EMAIL_USE_SSL = True   # Important: True for port 465
+    EMAIL_TIMEOUT = 10
+    
+    # From addresses - must use your verified domain
     SERVER_EMAIL = 'no-reply@opensell.online'
     DEFAULT_FROM_EMAIL = 'OpenSell <no-reply@opensell.online>'
     SUPPORT_EMAIL = 'OpenSell Support <support@opensell.online>'
     NO_REPLY_EMAIL = 'OpenSell <no-reply@opensell.online>'
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Resend API Key (for direct API usage if needed)
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY')
 
 # Static files (CSS, JavaScript, Images)
 # Base directories
