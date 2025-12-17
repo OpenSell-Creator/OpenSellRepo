@@ -2,49 +2,59 @@
  * Alert System - Handles system notifications and alerts
  */
 
-// Initialize alert system
+// Initialize alert system - ONLY after everything is loaded
 function initializeAlertSystem() {
     const alertContainer = document.getElementById('alertSystemContainer');
     if (!alertContainer) return;
     
     const alerts = alertContainer.querySelectorAll('.system-alert');
     
-    // Update container position based on actual navbar height
-    updateAlertContainerPosition();
+    // CRITICAL FIX: Wait for navbar to be fully rendered
+    // Use requestAnimationFrame to ensure layout is complete
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            updateAlertContainerPosition();
+        });
+    });
     
     // Handle each alert
     alerts.forEach((alert, index) => {
         setupAlert(alert, index);
     });
     
-    // Update position on window resize
-    window.addEventListener('resize', updateAlertContainerPosition);
+    // Update position on window resize with debouncing
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(updateAlertContainerPosition, 150);
+    });
 }
 
 function updateAlertContainerPosition() {
     const alertContainer = document.getElementById('alertSystemContainer');
     if (!alertContainer) return;
     
-    // Get actual navbar height
+    // Get actual navbar height - with fallback
     const navbar = document.getElementById('mainNavbar');
     if (navbar) {
-        const navbarHeight = navbar.offsetHeight;
-        const safeAreaTop = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-top') || '0px';
+        // Force reflow to ensure accurate measurement
+        void navbar.offsetHeight;
+        const navbarHeight = navbar.getBoundingClientRect().height;
         
-        // Set dynamic top position
-        alertContainer.style.paddingTop = `calc(${navbarHeight}px + ${safeAreaTop} + 0.5rem)`;
+        // Only update if we have a valid height
+        if (navbarHeight > 0) {
+            alertContainer.style.paddingTop = `${navbarHeight + 8}px`;
+        }
     }
 }
 
 function setupAlert(alert, index) {
-
     if (alert.hasAttribute('data-persist') || alert.hasAttribute('data-no-auto-dismiss')) {
         return;
     }
-    // Get auto-dismiss duration (default 3.5 seconds - moderate timing)
+    
     const autoDismissTime = parseInt(alert.dataset.autoDismiss) || 3500;
     
-    // Setup close button
     const closeBtn = alert.querySelector('.alert-close-btn');
     if (closeBtn) {
         closeBtn.addEventListener('click', function(e) {
@@ -53,14 +63,11 @@ function setupAlert(alert, index) {
         });
     }
     
-    // Auto-dismiss after moderate time
     setTimeout(() => {
         dismissAlert(alert);
     }, autoDismissTime);
     
-    // Allow click-to-dismiss on the alert itself
     alert.addEventListener('click', function(e) {
-        // Only dismiss if clicking the alert body, not close button
         if (e.target === alert || e.target.closest('.alert-content')) {
             dismissAlert(alert);
         }
@@ -77,7 +84,6 @@ function dismissAlert(alert) {
             alert.remove();
         }
         
-        // Clean up container if no more alerts
         const container = document.getElementById('alertSystemContainer');
         if (container && container.children.length === 0) {
             container.remove();
@@ -85,26 +91,26 @@ function dismissAlert(alert) {
     }, 300);
 }
 
-// Function to create new alerts programmatically (for AJAX responses, etc.)
 function showSystemAlert(message, type = 'info', duration = 3500) {
     let container = document.getElementById('alertSystemContainer');
     
-    // Create container if it doesn't exist
     if (!container) {
         container = document.createElement('div');
         container.id = 'alertSystemContainer';
         container.className = 'alert-system-container';
         document.body.appendChild(container);
-        updateAlertContainerPosition();
+        
+        // Update position after container is added
+        requestAnimationFrame(() => {
+            updateAlertContainerPosition();
+        });
     }
     
-    // Create alert element
     const alert = document.createElement('div');
     alert.className = `system-alert alert-${type}`;
     alert.setAttribute('role', 'alert');
     alert.setAttribute('data-auto-dismiss', duration.toString());
     
-    // Icon mapping
     const icons = {
         success: 'bi-check-circle-fill',
         error: 'bi-exclamation-circle-fill',
@@ -131,7 +137,6 @@ function showSystemAlert(message, type = 'info', duration = 3500) {
     return alert;
 }
 
-// Legacy alert handling for Bootstrap alerts
 function setupModernAlerts() {
     const alerts = document.querySelectorAll('.alert');
     
@@ -158,19 +163,27 @@ function dismissLegacyAlert(alert) {
     }
 }
 
+// CRITICAL FIX: Initialize ONLY after full page load
+// This prevents layout shifts during initial render
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add extra delay to ensure CSS is applied
+        requestAnimationFrame(() => {
+            initializeAlertSystem();
+            setupModernAlerts();
+        });
+    });
+} else {
+    // If script loads after DOMContentLoaded
+    requestAnimationFrame(() => {
+        initializeAlertSystem();
+        setupModernAlerts();
+    });
+}
 
-
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-    initializeAlertSystem();
-    setupModernAlerts();
-});
-
-// Make functions available globally
 window.showSystemAlert = showSystemAlert;
 window.dismissAlert = dismissAlert;
 
-// Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         initializeAlertSystem,

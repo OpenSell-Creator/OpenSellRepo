@@ -48,11 +48,6 @@ function initializePWADetection() {
         document.body.classList.add('browser-mode');
     }
 
-    // Safe area support for iOS
-    if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-        document.body.style.paddingTop = 'env(safe-area-inset-top)';
-        document.body.style.paddingBottom = 'env(safe-area-inset-bottom)';
-    }
 }
 
 // Cookie consent footer interaction
