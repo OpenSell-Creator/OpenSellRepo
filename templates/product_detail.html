@@ -355,7 +355,7 @@
     <div class="card-header py-3">
         <h5 class="mb-0 fw-bold">
             <i class="fas fa-user-circle me-2" style="color: var(--accent-color)"></i>
-            Seller Information
+            {% if product.seller_is_verified_business %}Business{% else %}Seller{% endif %} Information
         </h5>
     </div>
     
@@ -417,236 +417,221 @@
         </div>
     </div>
 
-    <!-- Business Information Section (Enhanced) -->
-    {% if product.seller_is_verified_business %}
-        <div class="business-info-section">
-            <div class="business-header">
-                <div class="business-name-section">
-                    <h6 class="business-name">{{ product.seller.business_name }}</h6>
-                    <div class="business-type">{{ product.seller.get_business_type_display|default:"Business" }}</div>
-                </div>
-                <div class="verified-badge">
-                    <i class="bi bi-patch-check-fill"></i>
-                    <span>Verified Business</span>
-                </div>
-            </div>
-            
-            {% if product.seller.business_description %}
-                <div class="business-description">
-                    <p>{{ product.seller.business_description|truncatechars:150 }}</p>
-                </div>
-            {% endif %}
-            
-            <div class="business-contact-grid">
-                {% if product.seller.business_phone %}
-                    <div class="contact-item">
-                        <i class="bi bi-telephone-fill"></i>
-                        <span>{{ product.seller.business_phone }}</span>
-                    </div>
-                {% endif %}
-                {% if product.seller.business_website %}
-                    <div class="contact-item">
-                        <i class="bi bi-globe"></i>
-                        <a href="{{ product.seller.business_website }}" target="_blank" class="business-link">
-                            Visit Website <i class="bi bi-box-arrow-up-right"></i>
-                        </a>
-                    </div>
-                {% endif %}
-                
-                <!-- Business Address (if visible and available) -->
-                {% if product.seller.business_address_visible and product.seller.location %}
-                    <div class="contact-item business-address">
-                        <i class="bi bi-geo-alt-fill"></i>
-                        <div class="address-details">
-                            {% if product.seller.location.address %}
-                                <div>{{ product.seller.location.address }}</div>
-                            {% endif %}
-                            {% if product.seller.location.address_2 %}
-                                <div>{{ product.seller.location.address_2 }}</div>
-                            {% endif %}
-                            <div>
-                                {% if product.seller.location.city %}
-                                    {{ product.seller.location.city }}{% if product.seller.location.lga %}, {% endif %}
-                                {% endif %}
-                                {% if product.seller.location.lga %}
-                                    {{ product.seller.location.lga.name }}{% if product.seller.location.state %}, {% endif %}
-                                {% endif %}
-                                {% if product.seller.location.state %}
-                                    {{ product.seller.location.state.name }}
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    {% endif %}
-
     <div class="card-body py-3">
-        <!-- Seller Profile Section -->
-        <div class="d-flex flex-column align-items-center gap-2 mb-3">
-            <div class="seller-avatar-wrapper">
-                {% if product.seller.user.profile.photo %}
-                    <img src="{{ product.seller.user.profile.photo.url }}" 
-                        alt="{{ product.seller.user.username }}" 
-                        class="seller-avatar1">
-                {% else %}
-                    <div class="seller-avatar-placeholder1">
-                        <span class="h5 mb-0">
-                            {{ product.seller.user.username|make_list|first|upper }}
-                        </span>
-                    </div>
-                {% endif %}
-            </div>
-            
-            <!-- Username with Pro Badge -->
-            <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
-                <h5 class="fw-bold mb-0" style="color: var(--text-primary)">
-                    {{ product.seller.user.username }}
-                </h5>
-                <!-- Pro Seller Icon -->
-                {% if product.is_pro_seller %}
-                    <i class="bi bi-patch-check-fill pro-seller-icon" 
-                    data-bs-toggle="tooltip" 
-                    data-bs-placement="top" 
-                    title="Verified Pro Seller"></i>
-                {% endif %}
-            </div>
-
-            <!-- Star Rating -->
-            <div class="rating-wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="stars">
-                        {% for i in "12345" %}
-                            {% if forloop.counter <= seller_average_rating|floatformat:0|add:0 %}
-                                <i class="fas fa-star" style="color: var(--accent-color);"></i>
-                            {% elif forloop.counter <= seller_average_rating|add:0.5 %}
-                                <i class="fas fa-star-half-alt" style="color: var(--accent-color);"></i>
-                            {% else %}
-                                <i class="far fa-star" style="color: var(--accent-color);"></i>
-                            {% endif %}
-                        {% endfor %}
-                    </div>
-                    <span class="rating-value fw-semibold small">
-                        {{ seller_average_rating|floatformat:1 }}/5
-                    </span>
-                </div>
-                <small class="text-muted d-block text-center mt-1" style="color: var(--text-secondary) !important;">
-                    Based on {{ total_seller_reviews }} reviews
-                </small>
-            </div>
-
-            <!-- Bio -->
-            <p class="bio-text small mb-0 text-center">
-                {{ product.seller.user.profile.bio|default:"No bio provided"|truncatechars:100 }}
-            </p>
-        </div>
-
-        <!-- Seller Details -->
-        <div class="seller-details mt-3">
+        <!-- Unified Profile Section -->
+        <div class="seller-profile-unified">
             <div class="row g-3">
-                <!-- Member Since -->
-                <div class="col-12">
-                    <div class="detail-item">
-                        <div class="d-flex align-items-center">
-                            <div class="icon-wrapper">
-                                <i class="fas fa-calendar-alt"></i>
-                            </div>
-                            <div class="content-wrapper">
-                                <small class="text-muted d-block">Member Since</small>
-                                <span class="fw-medium small">
-                                    {{ product.seller.user.date_joined|date:"F d, Y" }}
+                <!-- Left: Avatar & Basic Info -->
+                <div class="col-md-4">
+                    <div class="text-center">
+                        {% if product.seller.user.profile.photo %}
+                            <img src="{{ product.seller.user.profile.photo.url }}" 
+                                alt="{{ product.seller.user.username }}" 
+                                class="seller-avatar-unified mb-2">
+                        {% else %}
+                            <div class="seller-avatar-placeholder-unified mb-2">
+                                <span class="h4 mb-0">
+                                    {{ product.seller.user.username|make_list|first|upper }}
                                 </span>
                             </div>
+                        {% endif %}
+                        
+                        <!-- Username/Business Name -->
+                        <h5 class="fw-bold mb-1">
+                            {% if product.seller_is_verified_business %}
+                                {{ product.seller.business_name }}
+                            {% else %}
+                                {{ product.seller.user.username }}
+                            {% endif %}
+                            {% if product.is_pro_seller %}
+                                <i class="bi bi-patch-check-fill pro-seller-icon"></i>
+                            {% endif %}
+                        </h5>
+                        
+                        <!-- Business Type or Username -->
+                        <p class="text-muted small mb-2">
+                            {% if product.seller_is_verified_business %}
+                                {{ product.seller.get_business_type_display|default:"Business" }}
+                            {% else %}
+                                @{{ product.seller.user.username }}
+                            {% endif %}
+                        </p>
+                        
+                        <!-- Rating -->
+                        <div class="rating-wrapper mb-2">
+                            <div class="d-flex align-items-center justify-content-center gap-1">
+                                <div class="stars">
+                                    {% for i in "12345" %}
+                                        {% if forloop.counter <= seller_average_rating|floatformat:0|add:0 %}
+                                            <i class="fas fa-star"></i>
+                                        {% else %}
+                                            <i class="far fa-star"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                                <span class="rating-value fw-semibold small">
+                                    {{ seller_average_rating|floatformat:1 }}
+                                </span>
+                            </div>
+                            <small class="text-muted">{{ total_seller_reviews }} reviews</small>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Total Products Ever Listed -->
-                <div class="col-12">
-                    <div class="detail-item">
-                        <div class="d-flex align-items-center">
-                            <div class="icon-wrapper">
-                                <i class="fas fa-box"></i>
-                            </div>
-                            <div class="content-wrapper">
-                                <small class="text-muted d-block">Total Products Listed</small>
-                                <span class="fw-medium small">
-                                    {{ seller_product_stats.total_ever_listed }} listings
-                                </span>
-                            </div>
-                        </div>
+                <!-- Right: Details & Description -->
+                <div class="col-md-8">
+                    <!-- Description/Bio -->
+                    <div class="seller-description mb-3">
+                        <p class="small mb-0">
+                            {% if product.seller_is_verified_business and product.seller.business_description %}
+                                {{ product.seller.business_description|truncatechars:200 }}
+                            {% else %}
+                                {{ product.seller.user.profile.bio|default:"No bio provided"|truncatechars:200 }}
+                            {% endif %}
+                        </p>
                     </div>
-                </div>
-
-                <!-- Active Products -->
-                <div class="col-12">
-                    <div class="detail-item">
-                        <div class="d-flex align-items-center">
-                            <div class="icon-wrapper">
-                                <i class="fas fa-check-circle text-success"></i>
+                    
+                    <!-- Seller Details Grid -->
+                    <div class="seller-details-grid">
+                        <div class="row g-2">
+                            <!-- Member Since -->
+                            <div class="col-6">
+                                <div class="detail-item-compact">
+                                    <i class="fas fa-calendar-alt"></i>
+                                    <div>
+                                        <small class="text-muted">Member Since</small>
+                                        <div class="fw-medium small">{{ product.seller.user.date_joined|date:"M Y" }}</div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="content-wrapper">
-                                <small class="text-muted d-block">Currently Active</small>
-                                <span class="fw-medium small text-success">
-                                    {{ seller_product_stats.active_products }} active
-                                </span>
+                            
+                            <!-- Total Listed -->
+                            <div class="col-6">
+                                <div class="detail-item-compact">
+                                    <i class="fas fa-box"></i>
+                                    <div>
+                                        <small class="text-muted">Total Listed</small>
+                                        <div class="fw-medium small">{{ seller_product_stats.total_ever_listed }}</div>
+                                    </div>
+                                </div>
                             </div>
+                            
+                            <!-- Active Products -->
+                            <div class="col-6">
+                                <div class="detail-item-compact">
+                                    <i class="fas fa-check-circle text-success"></i>
+                                    <div>
+                                        <small class="text-muted">Active</small>
+                                        <div class="fw-medium small text-success">{{ seller_product_stats.active_products }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Business Phone (if verified) -->
+                            {% if product.seller_is_verified_business and product.seller.business_phone %}
+                            <div class="col-6">
+                                <div class="detail-item-compact">
+                                    <i class="fas fa-phone"></i>
+                                    <div>
+                                        <small class="text-muted">Business Phone</small>
+                                        <div class="fw-medium small">{{ product.seller.business_phone }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Business Website (if verified) -->
+                            {% if product.seller_is_verified_business and product.seller.business_website %}
+                            <div class="col-12">
+                                <div class="detail-item-compact">
+                                    <i class="fas fa-globe"></i>
+                                    <div>
+                                        <small class="text-muted">Website</small>
+                                        <a href="{{ product.seller.business_website }}" target="_blank" class="business-link small">
+                                            Visit Website <i class="bi bi-box-arrow-up-right"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Business Address (if visible) -->
+                            {% if product.seller_is_verified_business and product.seller.business_address_visible and product.seller.location %}
+                            <div class="col-12">
+                                <div class="detail-item-compact">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    <div>
+                                        <small class="text-muted">Address</small>
+                                        <div class="small">
+                                            {% if product.seller.location.city %}{{ product.seller.location.city }}, {% endif %}
+                                            {% if product.seller.location.state %}{{ product.seller.location.state.name }}{% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         
-        <!-- Enhanced Contact Buttons -->
-        <div class="contact-buttons mt-4">
+        <!-- Contact Buttons Grid -->
+        <div class="contact-buttons-grid mt-4">
             <div class="row g-2">
                 <div class="col-6">
                     <a href="javascript:void(0)" 
-                        class="btn btn-success w-100" 
+                        class="btn btn-success w-100 btn-contact" 
                         onclick="openWhatsAppWithMessage()"
                         data-seller-name="{{ product.seller.user.username }}"
                         data-seller-phone="{{ product.seller.phone_number }}"
                         data-product-title="{{ product.title }}"
                         data-product-price="{{ formatted_price }}"
                         data-product-url="{{ request.build_absolute_uri }}">
-                        <i class="fab fa-whatsapp me-2"></i>WhatsApp
+                        <i class="fab fa-whatsapp"></i>
+                        <span>WhatsApp</span>
                     </a>
                 </div>
                 <div class="col-6">
                     <a href="tel:{{ product.seller.phone_number }}" 
-                        class="btn btn-primary w-100">
-                        <i class="fas fa-phone me-2"></i>Call
+                        class="btn btn-primary w-100 btn-contact">
+                        <i class="fas fa-phone"></i>
+                        <span>Call</span>
                     </a>
                 </div>
-                <div class="col-12">
+                <div class="col-6">
                     <a href="{% url 'user_store' username=product.seller.user.username %}" 
-                        class="btn btn-secondary w-100">
-                        <i class="fas fa-store me-2"></i>Visit Store ({{ seller_product_stats.active_products }} items)
+                        class="btn btn-secondary w-100 btn-contact">
+                        <i class="fas fa-store"></i>
+                        <span>Store</span>
                     </a>
                 </div>
-                <div class="col-12">
+                <div class="col-6">
                     <a href="{% url 'send_message' product.id %}" 
-                        class="btn btn-outline-primary w-100">
-                        <i class="fas fa-envelope me-2"></i>Send Message
+                        class="btn btn-outline-primary w-100 btn-contact">
+                        <i class="fas fa-envelope"></i>
+                        <span>Message</span>
                     </a>
                 </div>
-                <div class="col-12">
+                <div class="col-6">
                     <a href="{% url 'all_seller_reviews' username=product.seller.user.username %}" 
-                        class="btn btn-outline-info w-100">
-                        <i class="fas fa-star me-2"></i>View All Reviews ({{ total_seller_reviews }})
+                        class="btn btn-outline-info w-100 btn-contact">
+                        <i class="fas fa-star"></i>
+                        <span>Reviews</span>
                     </a>
                 </div>
-                <div class="col-12">
+                <div class="col-6">
                     <a href="{% url 'report_product' product.id %}" 
-                        class="btn btn-outline-danger w-100">
-                        <i class="fas fa-flag me-2"></i>Report Product
+                        class="btn btn-outline-danger w-100 btn-contact">
+                        <i class="fas fa-flag"></i>
+                        <span>Report</span>
                     </a>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
 
 {% endif %}
 
