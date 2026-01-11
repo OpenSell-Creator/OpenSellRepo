@@ -1067,7 +1067,7 @@ class AffiliateProfile(models.Model):
     total_withdrawn = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     
     # Settings
-    minimum_withdrawal = models.DecimalField(max_digits=10, decimal_places=2, default=5000)  # ₦5,000
+    minimum_withdrawal = models.DecimalField(max_digits=10, decimal_places=2, default=2000)
     
     # Metadata
     approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_affiliates')
@@ -1221,7 +1221,7 @@ class AffiliateCommission(models.Model):
     
     # Timing
     created_at = models.DateTimeField(auto_now_add=True)
-    available_at = models.DateTimeField()  # When it becomes available (30 days later)
+    available_at = models.DateTimeField() 
     paid_at = models.DateTimeField(null=True, blank=True)
     
     class Meta:

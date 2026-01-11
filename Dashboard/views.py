@@ -1697,8 +1697,6 @@ def affiliate_analytics(request):
     
     return render(request, 'dashboard/affiliate_analytics.html', context)
 
-# Add this to your views.py
-
 @login_required
 def affiliate_leaderboard(request):
     """
