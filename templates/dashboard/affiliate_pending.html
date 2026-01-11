@@ -550,14 +550,24 @@ function copyCode() {
     codeInput.setSelectionRange(0, 99999);
     
     navigator.clipboard.writeText(codeInput.value).then(() => {
-        showToast('✓ Referral code copied: {{ affiliate.referral_code }}', 'success');
+        // Use system alert if available, otherwise fallback
+        if (typeof showSystemAlert === 'function') {
+            showSystemAlert('✓ Referral code copied: {{ affiliate.referral_code }}', 'success', 3500);
+        } else {
+            showFallbackToast('✓ Referral code copied: {{ affiliate.referral_code }}', 'success');
+        }
     }).catch(() => {
         document.execCommand('copy');
-        showToast('✓ Referral code copied!', 'success');
+        if (typeof showSystemAlert === 'function') {
+            showSystemAlert('✓ Referral code copied!', 'success', 3500);
+        } else {
+            showFallbackToast('✓ Referral code copied!', 'success');
+        }
     });
 }
 
-function showToast(message, type = 'success') {
+// Fallback toast for when alerts.js is not loaded
+function showFallbackToast(message, type = 'success') {
     const alertClass = type === 'success' ? 'alert-success' : 'alert-info';
     const toast = document.createElement('div');
     toast.className = `alert ${alertClass} alert-dismissible fade show position-fixed shadow-lg`;
@@ -568,11 +578,10 @@ function showToast(message, type = 'success') {
     `;
     document.body.appendChild(toast);
     
-    // Auto-dismiss after 8 seconds
     setTimeout(() => {
         toast.classList.remove('show');
         setTimeout(() => toast.remove(), 150);
-    }, 8000);
+    }, 3500);
 }
 </script>
 {% endblock %}
