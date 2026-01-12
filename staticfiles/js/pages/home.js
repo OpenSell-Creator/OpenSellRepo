@@ -57,11 +57,11 @@ function initializeHeroImageSlider() {
 // Text rotation for all users (authenticated and non-authenticated)
 function initializeTextRotation() {
     const phrases = [
-        "Buy and sell locally — simple, fast, and direct.",
-        "Transform unused items into cash — start selling today.",
+        "Buy and sell locally – simple, fast, and direct.",
+        "Transform unused items into cash – start selling today.",
         "Connect with buyers and sellers in your neighborhood.",
         "The easiest way to buy and sell anything, anywhere.",
-        "Your local marketplace — discover great deals near you.",
+        "Your local marketplace – discover great deals near you.",
         "Join thousands buying and selling in your community."
     ];
     
@@ -92,20 +92,7 @@ function initializeTextRotation() {
     }
 }
 
-// Scroll indicator management
-function initializeScrollIndicator() {
-    const scrollIndicator = document.querySelector('.scroll-indicator');
-    if (scrollIndicator && window.innerWidth <= 768) {
-        setTimeout(() => {
-            scrollIndicator.style.opacity = '0';
-            setTimeout(() => {
-                scrollIndicator.style.display = 'none';
-            }, 300);
-        }, 8000);
-    }
-}
-
-// Category grid scroll behavior
+// Category grid scroll behavior with navigation indicators
 function initializeCategoryScroll() {
     const categoriesGrid = document.querySelector('.categories-grid');
     if (categoriesGrid && window.innerWidth <= 767) {
@@ -115,6 +102,45 @@ function initializeCategoryScroll() {
         categoryItems.forEach(item => {
             item.style.scrollSnapAlign = 'start';
         });
+        
+        // Add navigation indicators
+        const prevIndicator = document.querySelector('.category-nav-prev');
+        const nextIndicator = document.querySelector('.category-nav-next');
+        
+        if (prevIndicator && nextIndicator) {
+            // Update indicators based on scroll position
+            function updateIndicators() {
+                const scrollLeft = categoriesGrid.scrollLeft;
+                const maxScroll = categoriesGrid.scrollWidth - categoriesGrid.clientWidth;
+                
+                // Hide prev at start
+                if (scrollLeft <= 10) {
+                    prevIndicator.classList.add('hidden');
+                } else {
+                    prevIndicator.classList.remove('hidden');
+                }
+                
+                // Hide next at end
+                if (scrollLeft >= maxScroll - 10) {
+                    nextIndicator.classList.add('hidden');
+                } else {
+                    nextIndicator.classList.remove('hidden');
+                }
+            }
+            
+            // Initial state
+            updateIndicators();
+            
+            // Update on scroll
+            categoriesGrid.addEventListener('scroll', updateIndicators);
+            
+            // Update on resize
+            window.addEventListener('resize', () => {
+                if (window.innerWidth <= 767) {
+                    updateIndicators();
+                }
+            });
+        }
     }
 }
 
@@ -185,7 +211,6 @@ function initializeProgressiveLoading() {
 function initializeHomePage() {
     initializeHeroImageSlider();
     initializeTextRotation();
-    initializeScrollIndicator();
     initializeCategoryScroll();
     initializeHeroSearch();
     initializeCreateListingButton();
