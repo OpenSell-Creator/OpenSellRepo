@@ -57,12 +57,11 @@ function initializeHeroImageSlider() {
 // Text rotation for all users (authenticated and non-authenticated)
 function initializeTextRotation() {
     const phrases = [
-        "Buy and sell locally – simple, fast, and direct.",
-        "Transform unused items into cash – start selling today.",
+        "Buy and sell locally, simple, fast, and direct.",
+        "Transform unused items into cash.",
         "Connect with buyers and sellers in your neighborhood.",
         "The easiest way to buy and sell anything, anywhere.",
-        "Your local marketplace – discover great deals near you.",
-        "Join thousands buying and selling in your community."
+        "Your local marketplace, discover great deals near you."
     ];
     
     const subtitleElement = document.getElementById('hero-subtitle-text');
