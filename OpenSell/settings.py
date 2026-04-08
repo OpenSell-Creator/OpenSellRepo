@@ -390,15 +390,15 @@ if not DEBUG:
     EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 465))
     EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'resend')
     EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
-    EMAIL_USE_TLS = False  # Important: False for port 465
-    EMAIL_USE_SSL = True   # Important: True for port 465
+    EMAIL_USE_TLS = False
+    EMAIL_USE_SSL = True
     EMAIL_TIMEOUT = 10
     
     # From addresses - must use your verified domain
-    SERVER_EMAIL = 'no-reply@opensell.online'
-    DEFAULT_FROM_EMAIL = 'OpenSell <no-reply@opensell.online>'
-    SUPPORT_EMAIL = 'OpenSell Support <support@opensell.online>'
-    NO_REPLY_EMAIL = 'OpenSell <no-reply@opensell.online>'
+    SERVER_EMAIL = 'no-reply@opensell.ng'
+    DEFAULT_FROM_EMAIL = 'OpenSell <no-reply@opensell.ng>'
+    SUPPORT_EMAIL = 'OpenSell Support <support@opensell.ng>'
+    NO_REPLY_EMAIL = 'OpenSell <no-reply@opensell.ng>'
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
