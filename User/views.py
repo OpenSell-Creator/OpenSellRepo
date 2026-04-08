@@ -602,7 +602,7 @@ OpenSell System
             subject=subject,
             message=message,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=['support@opensell.online'],
+            recipient_list=['support@opensell.ng'],
             fail_silently=True,
         )
         
