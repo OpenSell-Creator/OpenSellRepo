@@ -446,6 +446,7 @@ else:
     # Production: Local static files + S3 media files
     STATIC_URL = '/static/'
     STATIC_ROOT = '/home/ubuntu/OpenSellRepo/staticfiles/'
+    STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
     MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/media/"
 
     STORAGES = {
