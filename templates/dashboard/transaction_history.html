@@ -1,455 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block 'Body'%}
-<div class="dashboard-container">
-    <!-- Transaction History Header -->
-    <div class="dashboard-header">
-        <div class="container">
-            <div class="row align-items-center py-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h1 class="dashboard-title">
-                        <i class="bi bi-clock-history me-2"></i>Transaction History
-                    </h1>
-                    <a href="{% url 'dashboard_home' %}" class="btn btn-back">
-                        <i class="bi bi-arrow-left me-2"></i>Back
-                    </a>
-                </div>
-                <p class="dashboard-subtitle">View and manage all your account transactions</p>
-            </div>
-
-            <!-- Quick Stats -->
-            <div class="container pb-3">
-                <div class="row g-2">
-                    <div class="col-6 col-lg-3">
-                        <div class="stat-card">
-                            <div class="stat-icon deposits">
-                                <i class="bi bi-arrow-down-circle"></i>
-                            </div>
-                            <div class="stat-content">
-                                <span class="stat-label">Total Deposits</span>
-                                <span class="stat-value">₦{{ total_deposits|default:0|floatformat:0 }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-lg-3">
-                        <div class="stat-card">
-                            <div class="stat-icon spending">
-                                <i class="bi bi-arrow-up-circle"></i>
-                            </div>
-                            <div class="stat-content">
-                                <span class="stat-label">Total Spent</span>
-                                <span class="stat-value">₦{{ total_spent|default:0|floatformat:0 }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-lg-3">
-                        <div class="stat-card">
-                            <div class="stat-icon transactions">
-                                <i class="bi bi-list-ul"></i>
-                            </div>
-                            <div class="stat-content">
-                                <span class="stat-label">Total Transactions</span>
-                                <span class="stat-value">{{ total_transactions|default:0 }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-lg-3">
-                        <div class="stat-card">
-                            <div class="stat-icon balance">
-                                <i class="bi bi-wallet2"></i>
-                            </div>
-                            <div class="stat-content">
-                                <span class="stat-label">Current Balance</span>
-                                <span class="stat-value">₦{{ request.user.account.balance|floatformat:0 }}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Transaction History Content -->
-    <div class="container">
-        <!-- Filters and Search -->
-        <div class="row mb-3">
-            <div class="col-12">
-                <div class="dashboard-card filters-card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="card-title">
-                            <i class="bi bi-funnel me-2"></i>Filter Transactions
-                        </h5>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="clearFilters">
-                            <i class="bi bi-x-lg me-1"></i>Clear All
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <form method="get" id="filterForm">
-                            <div class="row g-3">
-                                <!-- Search -->
-                                <div class="col-12 col-md-6 col-lg-3">
-                                    <div class="filter-group">
-                                        <label class="filter-label">
-                                            <i class="bi bi-search me-1"></i>Search
-                                        </label>
-                                        <input type="text" 
-                                               class="form-control" 
-                                               name="search" 
-                                               placeholder="Search transactions..."
-                                               value="{{ request.GET.search }}">
-                                    </div>
-                                </div>
-
-                                <!-- Transaction Type -->
-                                <div class="col-12 col-md-6 col-lg-3">
-                                    <div class="filter-group">
-                                        <label class="filter-label">
-                                            <i class="bi bi-tag me-1"></i>Type
-                                        </label>
-                                        <select class="form-select" name="type">
-                                            <option value="">All Types</option>
-                                            <option value="deposit" {% if request.GET.type == 'deposit' %}selected{% endif %}>Deposits</option>
-                                            <option value="boost_fee" {% if request.GET.type == 'boost_fee' %}selected{% endif %}>Boost Fees</option>
-                                            <option value="subscription" {% if request.GET.type == 'subscription' %}selected{% endif %}>Subscriptions</option>
-                                            <option value="refund" {% if request.GET.type == 'refund' %}selected{% endif %}>Refunds</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <!-- Date Range -->
-                                <div class="col-12 col-md-6 col-lg-3">
-                                    <div class="filter-group">
-                                        <label class="filter-label">
-                                            <i class="bi bi-calendar-range me-1"></i>Date Range
-                                        </label>
-                                        <select class="form-select" name="date_range" id="dateRangeSelect">
-                                            <option value="">All Time</option>
-                                            <option value="today" {% if request.GET.date_range == 'today' %}selected{% endif %}>Today</option>
-                                            <option value="week" {% if request.GET.date_range == 'week' %}selected{% endif %}>This Week</option>
-                                            <option value="month" {% if request.GET.date_range == 'month' %}selected{% endif %}>This Month</option>
-                                            <option value="quarter" {% if request.GET.date_range == 'quarter' %}selected{% endif %}>This Quarter</option>
-                                            <option value="year" {% if request.GET.date_range == 'year' %}selected{% endif %}>This Year</option>
-                                            <option value="custom" {% if request.GET.date_range == 'custom' %}selected{% endif %}>Custom Range</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <!-- Amount Range -->
-                                <div class="col-12 col-md-6 col-lg-3">
-                                    <div class="filter-group">
-                                        <label class="filter-label">
-                                            <i class="bi bi-currency-exchange me-1"></i>Amount Range
-                                        </label>
-                                        <select class="form-select" name="amount_range">
-                                            <option value="">Any Amount</option>
-                                            <option value="0-1000" {% if request.GET.amount_range == '0-1000' %}selected{% endif %}>₦0 - ₦1,000</option>
-                                            <option value="1000-5000" {% if request.GET.amount_range == '1000-5000' %}selected{% endif %}>₦1,000 - ₦5,000</option>
-                                            <option value="5000-10000" {% if request.GET.amount_range == '5000-10000' %}selected{% endif %}>₦5,000 - ₦10,000</option>
-                                            <option value="10000-50000" {% if request.GET.amount_range == '10000-50000' %}selected{% endif %}>₦10,000 - ₦50,000</option>
-                                            <option value="50000+" {% if request.GET.amount_range == '50000+' %}selected{% endif %}>₦50,000+</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Custom Date Range -->
-                            <div class="row g-3 mt-2 custom-date-range {% if request.GET.date_range != 'custom' %}d-none{% endif %}">
-                                <div class="col-12 col-md-6">
-                                    <div class="filter-group">
-                                        <label class="filter-label">From Date</label>
-                                        <input type="date" 
-                                               class="form-control" 
-                                               name="date_from" 
-                                               value="{{ request.GET.date_from }}">
-                                    </div>
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <div class="filter-group">
-                                        <label class="filter-label">To Date</label>
-                                        <input type="date" 
-                                               class="form-control" 
-                                               name="date_to" 
-                                               value="{{ request.GET.date_to }}">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Filter Actions -->
-                            <div class="filter-actions mt-3">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="bi bi-search me-2"></i>Apply Filters
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary ms-2" id="exportBtn">
-                                    <i class="bi bi-download me-2"></i>Export CSV
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Transactions Table -->
-        <div class="row">
-            <div class="col-12">
-                <div class="dashboard-card transactions-card">
-                    <div class="card-header">
-                        <div class="d-flex justify-content-between align-items-center flex-wrap">
-                            <h5 class="card-title mb-2 mb-md-0">
-                                <i class="bi bi-list-ul me-2"></i>
-                                Transactions 
-                                {% if transactions %}
-                                    <span class="badge bg-primary ms-2">{{ transactions|length }} results</span>
-                                {% endif %}
-                            </h5>
-                            <div class="view-toggle">
-                                <div class="btn-group" role="group">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary active" data-view="table">
-                                        <i class="bi bi-table"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" data-view="cards">
-                                        <i class="bi bi-grid"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-body p-0">
-                        {% if transactions %}
-                        <!-- Table View -->
-                        <div class="table-view">
-                            <div class="table-responsive">
-                                <table class="table table-hover mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>Date</th>
-                                            <th>Type</th>
-                                            <th>Description</th>
-                                            <th>Amount</th>
-                                            <th>Balance After</th>
-                                            <th>Status</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for transaction in transactions %}
-                                        <tr class="transaction-row">
-                                            <td>
-                                                <div class="transaction-date">
-                                                    <div class="date-primary">{{ transaction.created_at|date:"M d, Y" }}</div>
-                                                    <div class="date-secondary">{{ transaction.created_at|date:"H:i" }}</div>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div class="transaction-type">
-                                                    <div class="type-icon {{ transaction.transaction_type }}">
-                                                        <i class="bi {% if transaction.transaction_type == 'deposit' %}bi-arrow-down-circle{% elif transaction.transaction_type == 'boost_fee' %}bi-rocket{% elif transaction.transaction_type == 'subscription' %}bi-star{% else %}bi-arrow-repeat{% endif %}"></i>
-                                                    </div>
-                                                    <span class="type-name">{{ transaction.get_transaction_type_display }}</span>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div class="transaction-description">
-                                                    {% if transaction.transaction_type == 'deposit' %}
-                                                        Fund deposit to account
-                                                    {% elif transaction.transaction_type == 'boost_fee' %}
-                                                        Product boost fee
-                                                    {% elif transaction.transaction_type == 'subscription' %}
-                                                        Pro subscription {% if transaction.amount < 0 %}purchase{% else %}refund{% endif %}
-                                                    {% else %}
-                                                        {{ transaction.get_transaction_type_display }}
-                                                    {% endif %}
-                                                    {% if transaction.reference %}
-                                                        <div class="transaction-reference">
-                                                            <small class="text-muted">Ref: {{ transaction.reference|truncatechars:20 }}</small>
-                                                        </div>
-                                                    {% endif %}
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div class="transaction-amount {% if transaction.amount > 0 %}positive{% else %}negative{% endif %}">
-                                                    {% if transaction.amount > 0 %}+{% endif %}₦{{ transaction.amount|floatformat:0 }}
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div class="balance-after">
-                                                    ₦{{ transaction.balance_after|default:0|floatformat:0 }}
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <span class="status-badge {{ transaction.status|default:'completed' }}">
-                                                    <i class="bi {% if transaction.status == 'completed' or not transaction.status %}bi-check-circle-fill{% elif transaction.status == 'pending' %}bi-clock-fill{% else %}bi-x-circle-fill{% endif %}"></i>
-                                                    {{ transaction.status|default:'Completed'|title }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div class="transaction-actions">
-                                                    <button type="button" 
-                                                            class="btn btn-sm btn-outline-primary" 
-                                                            data-bs-toggle="modal" 
-                                                            data-bs-target="#transactionModal"
-                                                            data-transaction="{{ transaction.id }}"
-                                                            onclick="loadTransactionDetails({{ transaction.id }})">
-                                                        <i class="bi bi-eye"></i>
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <!-- Cards View -->
-                        <div class="cards-view d-none">
-                            <div class="row g-3 p-3">
-                                {% for transaction in transactions %}
-                                <div class="col-12 col-md-6 col-lg-4">
-                                    <div class="transaction-card">
-                                        <div class="transaction-card-header">
-                                            <div class="transaction-type">
-                                                <div class="type-icon {{ transaction.transaction_type }}">
-                                                    <i class="bi {% if transaction.transaction_type == 'deposit' %}bi-arrow-down-circle{% elif transaction.transaction_type == 'boost_fee' %}bi-rocket{% elif transaction.transaction_type == 'subscription' %}bi-star{% else %}bi-arrow-repeat{% endif %}"></i>
-                                                </div>
-                                                <div class="type-details">
-                                                    <h6 class="type-name">{{ transaction.get_transaction_type_display }}</h6>
-                                                    <p class="transaction-date">{{ transaction.created_at|date:"M d, Y \a\t H:i" }}</p>
-                                                </div>
-                                            </div>
-                                            <div class="transaction-amount {% if transaction.amount > 0 %}positive{% else %}negative{% endif %}">
-                                                {% if transaction.amount > 0 %}+{% endif %}₦{{ transaction.amount|floatformat:0 }}
-                                            </div>
-                                        </div>
-                                        <div class="transaction-card-body">
-                                            <div class="transaction-description">
-                                                {% if transaction.transaction_type == 'deposit' %}
-                                                    Fund deposit to account
-                                                {% elif transaction.transaction_type == 'boost_fee' %}
-                                                    Product boost fee
-                                                {% elif transaction.transaction_type == 'subscription' %}
-                                                    Pro subscription {% if transaction.amount < 0 %}purchase{% else %}refund{% endif %}
-                                                {% else %}
-                                                    {{ transaction.get_transaction_type_display }}
-                                                {% endif %}
-                                            </div>
-                                            <div class="transaction-meta">
-                                                <div class="meta-item">
-                                                    <span class="meta-label">Balance After:</span>
-                                                    <span class="meta-value">₦{{ transaction.balance_after|default:0|floatformat:0 }}</span>
-                                                </div>
-                                                <div class="meta-item">
-                                                    <span class="meta-label">Status:</span>
-                                                    <span class="status-badge {{ transaction.status|default:'completed' }}">
-                                                        {{ transaction.status|default:'Completed'|title }}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="transaction-card-footer">
-                                            <button type="button" 
-                                                    class="btn btn-sm btn-outline-primary" 
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#transactionModal"
-                                                    onclick="loadTransactionDetails({{ transaction.id }})">
-                                                <i class="bi bi-eye me-1"></i>View Details
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-
-                        <!-- Pagination -->
-                        {% if transactions.has_other_pages %}
-                        <div class="pagination-container">
-                            <nav aria-label="Transaction pagination">
-                                <ul class="pagination justify-content-center">
-                                    {% if transactions.has_previous %}
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page={{ transactions.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}{% if request.GET.date_range %}&date_range={{ request.GET.date_range }}{% endif %}{% if request.GET.amount_range %}&amount_range={{ request.GET.amount_range }}{% endif %}">
-                                                <i class="bi bi-chevron-left"></i>
-                                            </a>
-                                        </li>
-                                    {% endif %}
-                                    
-                                    {% for num in transactions.paginator.page_range %}
-                                        {% if transactions.number == num %}
-                                            <li class="page-item active">
-                                                <span class="page-link">{{ num }}</span>
-                                            </li>
-                                        {% elif num > transactions.number|add:'-3' and num < transactions.number|add:'3' %}
-                                            <li class="page-item">
-                                                <a class="page-link" href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}{% if request.GET.date_range %}&date_range={{ request.GET.date_range }}{% endif %}{% if request.GET.amount_range %}&amount_range={{ request.GET.amount_range }}{% endif %}">{{ num }}</a>
-                                            </li>
-                                        {% endif %}
-                                    {% endfor %}
-                                    
-                                    {% if transactions.has_next %}
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page={{ transactions.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}{% if request.GET.date_range %}&date_range={{ request.GET.date_range }}{% endif %}{% if request.GET.amount_range %}&amount_range={{ request.GET.amount_range }}{% endif %}">
-                                                <i class="bi bi-chevron-right"></i>
-                                            </a>
-                                        </li>
-                                    {% endif %}
-                                </ul>
-                            </nav>
-                        </div>
-                        {% endif %}
-                        {% else %}
-                        <!-- Empty State -->
-                        <div class="empty-state">
-                            <div class="empty-icon">
-                                <i class="bi bi-clock-history"></i>
-                            </div>
-                            <h5>No transactions found</h5>
-                            <p>
-                                {% if request.GET.search or request.GET.type or request.GET.date_range or request.GET.amount_range %}
-                                    Try adjusting your filters to see more results.
-                                {% else %}
-                                    Your transaction history will appear here after your first transaction.
-                                {% endif %}
-                            </p>
-                            {% if not request.GET.search and not request.GET.type and not request.GET.date_range and not request.GET.amount_range %}
-                            <a href="{% url 'deposit_with_monnify' %}" class="btn btn-primary">
-                                <i class="bi bi-plus-circle me-2"></i>Add Your First Deposit
-                            </a>
-                            {% else %}
-                            <button type="button" class="btn btn-outline-primary" id="clearFiltersBtn">
-                                <i class="bi bi-x-lg me-2"></i>Clear Filters
-                            </button>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Transaction Details Modal -->
-<div class="modal fade" id="transactionModal" tabindex="-1" aria-labelledby="transactionModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="transactionModalLabel">
-                    <i class="bi bi-receipt me-2"></i>Transaction Details
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" id="transactionModalBody">
-                <div class="text-center py-4">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+{% block page_css %}
 
 <style>
     /* Base Styles */
@@ -1144,6 +696,458 @@
         }
     }
 </style>
+
+{% endblock %}
+
+{% block 'Body'%}
+<div class="dashboard-container">
+    <!-- Transaction History Header -->
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="row align-items-center py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h1 class="dashboard-title">
+                        <i class="bi bi-clock-history me-2"></i>Transaction History
+                    </h1>
+                    <a href="{% url 'dashboard_home' %}" class="btn btn-back">
+                        <i class="bi bi-arrow-left me-2"></i>Back
+                    </a>
+                </div>
+                <p class="dashboard-subtitle">View and manage all your account transactions</p>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="container pb-3">
+                <div class="row g-2">
+                    <div class="col-6 col-lg-3">
+                        <div class="stat-card">
+                            <div class="stat-icon deposits">
+                                <i class="bi bi-arrow-down-circle"></i>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-label">Total Deposits</span>
+                                <span class="stat-value">₦{{ total_deposits|default:0|floatformat:0 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="stat-card">
+                            <div class="stat-icon spending">
+                                <i class="bi bi-arrow-up-circle"></i>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-label">Total Spent</span>
+                                <span class="stat-value">₦{{ total_spent|default:0|floatformat:0 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="stat-card">
+                            <div class="stat-icon transactions">
+                                <i class="bi bi-list-ul"></i>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-label">Total Transactions</span>
+                                <span class="stat-value">{{ total_transactions|default:0 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="stat-card">
+                            <div class="stat-icon balance">
+                                <i class="bi bi-wallet2"></i>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-label">Current Balance</span>
+                                <span class="stat-value">₦{{ request.user.account.balance|floatformat:0 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction History Content -->
+    <div class="container">
+        <!-- Filters and Search -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="dashboard-card filters-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title">
+                            <i class="bi bi-funnel me-2"></i>Filter Transactions
+                        </h5>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="clearFilters">
+                            <i class="bi bi-x-lg me-1"></i>Clear All
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <form method="get" id="filterForm">
+                            <div class="row g-3">
+                                <!-- Search -->
+                                <div class="col-12 col-md-6 col-lg-3">
+                                    <div class="filter-group">
+                                        <label class="filter-label">
+                                            <i class="bi bi-search me-1"></i>Search
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               name="search" 
+                                               placeholder="Search transactions..."
+                                               value="{{ request.GET.search }}">
+                                    </div>
+                                </div>
+
+                                <!-- Transaction Type -->
+                                <div class="col-12 col-md-6 col-lg-3">
+                                    <div class="filter-group">
+                                        <label class="filter-label">
+                                            <i class="bi bi-tag me-1"></i>Type
+                                        </label>
+                                        <select class="form-select" name="type">
+                                            <option value="">All Types</option>
+                                            <option value="deposit" {% if request.GET.type == 'deposit' %}selected{% endif %}>Deposits</option>
+                                            <option value="boost_fee" {% if request.GET.type == 'boost_fee' %}selected{% endif %}>Boost Fees</option>
+                                            <option value="subscription" {% if request.GET.type == 'subscription' %}selected{% endif %}>Subscriptions</option>
+                                            <option value="refund" {% if request.GET.type == 'refund' %}selected{% endif %}>Refunds</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Date Range -->
+                                <div class="col-12 col-md-6 col-lg-3">
+                                    <div class="filter-group">
+                                        <label class="filter-label">
+                                            <i class="bi bi-calendar-range me-1"></i>Date Range
+                                        </label>
+                                        <select class="form-select" name="date_range" id="dateRangeSelect">
+                                            <option value="">All Time</option>
+                                            <option value="today" {% if request.GET.date_range == 'today' %}selected{% endif %}>Today</option>
+                                            <option value="week" {% if request.GET.date_range == 'week' %}selected{% endif %}>This Week</option>
+                                            <option value="month" {% if request.GET.date_range == 'month' %}selected{% endif %}>This Month</option>
+                                            <option value="quarter" {% if request.GET.date_range == 'quarter' %}selected{% endif %}>This Quarter</option>
+                                            <option value="year" {% if request.GET.date_range == 'year' %}selected{% endif %}>This Year</option>
+                                            <option value="custom" {% if request.GET.date_range == 'custom' %}selected{% endif %}>Custom Range</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Amount Range -->
+                                <div class="col-12 col-md-6 col-lg-3">
+                                    <div class="filter-group">
+                                        <label class="filter-label">
+                                            <i class="bi bi-currency-exchange me-1"></i>Amount Range
+                                        </label>
+                                        <select class="form-select" name="amount_range">
+                                            <option value="">Any Amount</option>
+                                            <option value="0-1000" {% if request.GET.amount_range == '0-1000' %}selected{% endif %}>₦0 - ₦1,000</option>
+                                            <option value="1000-5000" {% if request.GET.amount_range == '1000-5000' %}selected{% endif %}>₦1,000 - ₦5,000</option>
+                                            <option value="5000-10000" {% if request.GET.amount_range == '5000-10000' %}selected{% endif %}>₦5,000 - ₦10,000</option>
+                                            <option value="10000-50000" {% if request.GET.amount_range == '10000-50000' %}selected{% endif %}>₦10,000 - ₦50,000</option>
+                                            <option value="50000+" {% if request.GET.amount_range == '50000+' %}selected{% endif %}>₦50,000+</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Custom Date Range -->
+                            <div class="row g-3 mt-2 custom-date-range {% if request.GET.date_range != 'custom' %}d-none{% endif %}">
+                                <div class="col-12 col-md-6">
+                                    <div class="filter-group">
+                                        <label class="filter-label">From Date</label>
+                                        <input type="date" 
+                                               class="form-control" 
+                                               name="date_from" 
+                                               value="{{ request.GET.date_from }}">
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <div class="filter-group">
+                                        <label class="filter-label">To Date</label>
+                                        <input type="date" 
+                                               class="form-control" 
+                                               name="date_to" 
+                                               value="{{ request.GET.date_to }}">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Filter Actions -->
+                            <div class="filter-actions mt-3">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-search me-2"></i>Apply Filters
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary ms-2" id="exportBtn">
+                                    <i class="bi bi-download me-2"></i>Export CSV
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transactions Table -->
+        <div class="row">
+            <div class="col-12">
+                <div class="dashboard-card transactions-card">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap">
+                            <h5 class="card-title mb-2 mb-md-0">
+                                <i class="bi bi-list-ul me-2"></i>
+                                Transactions 
+                                {% if transactions %}
+                                    <span class="badge bg-primary ms-2">{{ transactions|length }} results</span>
+                                {% endif %}
+                            </h5>
+                            <div class="view-toggle">
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary active" data-view="table">
+                                        <i class="bi bi-table"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" data-view="cards">
+                                        <i class="bi bi-grid"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        {% if transactions %}
+                        <!-- Table View -->
+                        <div class="table-view">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Type</th>
+                                            <th>Description</th>
+                                            <th>Amount</th>
+                                            <th>Balance After</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for transaction in transactions %}
+                                        <tr class="transaction-row">
+                                            <td>
+                                                <div class="transaction-date">
+                                                    <div class="date-primary">{{ transaction.created_at|date:"M d, Y" }}</div>
+                                                    <div class="date-secondary">{{ transaction.created_at|date:"H:i" }}</div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="transaction-type">
+                                                    <div class="type-icon {{ transaction.transaction_type }}">
+                                                        <i class="bi {% if transaction.transaction_type == 'deposit' %}bi-arrow-down-circle{% elif transaction.transaction_type == 'boost_fee' %}bi-rocket{% elif transaction.transaction_type == 'subscription' %}bi-star{% else %}bi-arrow-repeat{% endif %}"></i>
+                                                    </div>
+                                                    <span class="type-name">{{ transaction.get_transaction_type_display }}</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="transaction-description">
+                                                    {% if transaction.transaction_type == 'deposit' %}
+                                                        Fund deposit to account
+                                                    {% elif transaction.transaction_type == 'boost_fee' %}
+                                                        Product boost fee
+                                                    {% elif transaction.transaction_type == 'subscription' %}
+                                                        Pro subscription {% if transaction.amount < 0 %}purchase{% else %}refund{% endif %}
+                                                    {% else %}
+                                                        {{ transaction.get_transaction_type_display }}
+                                                    {% endif %}
+                                                    {% if transaction.reference %}
+                                                        <div class="transaction-reference">
+                                                            <small class="text-muted">Ref: {{ transaction.reference|truncatechars:20 }}</small>
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="transaction-amount {% if transaction.amount > 0 %}positive{% else %}negative{% endif %}">
+                                                    {% if transaction.amount > 0 %}+{% endif %}₦{{ transaction.amount|floatformat:0 }}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="balance-after">
+                                                    ₦{{ transaction.balance_after|default:0|floatformat:0 }}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="status-badge {{ transaction.status|default:'completed' }}">
+                                                    <i class="bi {% if transaction.status == 'completed' or not transaction.status %}bi-check-circle-fill{% elif transaction.status == 'pending' %}bi-clock-fill{% else %}bi-x-circle-fill{% endif %}"></i>
+                                                    {{ transaction.status|default:'Completed'|title }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="transaction-actions">
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-outline-primary" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#transactionModal"
+                                                            data-transaction="{{ transaction.id }}"
+                                                            onclick="loadTransactionDetails({{ transaction.id }})">
+                                                        <i class="bi bi-eye"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Cards View -->
+                        <div class="cards-view d-none">
+                            <div class="row g-3 p-3">
+                                {% for transaction in transactions %}
+                                <div class="col-12 col-md-6 col-lg-4">
+                                    <div class="transaction-card">
+                                        <div class="transaction-card-header">
+                                            <div class="transaction-type">
+                                                <div class="type-icon {{ transaction.transaction_type }}">
+                                                    <i class="bi {% if transaction.transaction_type == 'deposit' %}bi-arrow-down-circle{% elif transaction.transaction_type == 'boost_fee' %}bi-rocket{% elif transaction.transaction_type == 'subscription' %}bi-star{% else %}bi-arrow-repeat{% endif %}"></i>
+                                                </div>
+                                                <div class="type-details">
+                                                    <h6 class="type-name">{{ transaction.get_transaction_type_display }}</h6>
+                                                    <p class="transaction-date">{{ transaction.created_at|date:"M d, Y \a\t H:i" }}</p>
+                                                </div>
+                                            </div>
+                                            <div class="transaction-amount {% if transaction.amount > 0 %}positive{% else %}negative{% endif %}">
+                                                {% if transaction.amount > 0 %}+{% endif %}₦{{ transaction.amount|floatformat:0 }}
+                                            </div>
+                                        </div>
+                                        <div class="transaction-card-body">
+                                            <div class="transaction-description">
+                                                {% if transaction.transaction_type == 'deposit' %}
+                                                    Fund deposit to account
+                                                {% elif transaction.transaction_type == 'boost_fee' %}
+                                                    Product boost fee
+                                                {% elif transaction.transaction_type == 'subscription' %}
+                                                    Pro subscription {% if transaction.amount < 0 %}purchase{% else %}refund{% endif %}
+                                                {% else %}
+                                                    {{ transaction.get_transaction_type_display }}
+                                                {% endif %}
+                                            </div>
+                                            <div class="transaction-meta">
+                                                <div class="meta-item">
+                                                    <span class="meta-label">Balance After:</span>
+                                                    <span class="meta-value">₦{{ transaction.balance_after|default:0|floatformat:0 }}</span>
+                                                </div>
+                                                <div class="meta-item">
+                                                    <span class="meta-label">Status:</span>
+                                                    <span class="status-badge {{ transaction.status|default:'completed' }}">
+                                                        {{ transaction.status|default:'Completed'|title }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="transaction-card-footer">
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-outline-primary" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#transactionModal"
+                                                    onclick="loadTransactionDetails({{ transaction.id }})">
+                                                <i class="bi bi-eye me-1"></i>View Details
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if transactions.has_other_pages %}
+                        <div class="pagination-container">
+                            <nav aria-label="Transaction pagination">
+                                <ul class="pagination justify-content-center">
+                                    {% if transactions.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ transactions.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}{% if request.GET.date_range %}&date_range={{ request.GET.date_range }}{% endif %}{% if request.GET.amount_range %}&amount_range={{ request.GET.amount_range }}{% endif %}">
+                                                <i class="bi bi-chevron-left"></i>
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                    
+                                    {% for num in transactions.paginator.page_range %}
+                                        {% if transactions.number == num %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ num }}</span>
+                                            </li>
+                                        {% elif num > transactions.number|add:'-3' and num < transactions.number|add:'3' %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}{% if request.GET.date_range %}&date_range={{ request.GET.date_range }}{% endif %}{% if request.GET.amount_range %}&amount_range={{ request.GET.amount_range }}{% endif %}">{{ num }}</a>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if transactions.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ transactions.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}{% if request.GET.date_range %}&date_range={{ request.GET.date_range }}{% endif %}{% if request.GET.amount_range %}&amount_range={{ request.GET.amount_range }}{% endif %}">
+                                                <i class="bi bi-chevron-right"></i>
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        </div>
+                        {% endif %}
+                        {% else %}
+                        <!-- Empty State -->
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <i class="bi bi-clock-history"></i>
+                            </div>
+                            <h5>No transactions found</h5>
+                            <p>
+                                {% if request.GET.search or request.GET.type or request.GET.date_range or request.GET.amount_range %}
+                                    Try adjusting your filters to see more results.
+                                {% else %}
+                                    Your transaction history will appear here after your first transaction.
+                                {% endif %}
+                            </p>
+                            {% if not request.GET.search and not request.GET.type and not request.GET.date_range and not request.GET.amount_range %}
+                            <a href="{% url 'deposit_with_monnify' %}" class="btn btn-primary">
+                                <i class="bi bi-plus-circle me-2"></i>Add Your First Deposit
+                            </a>
+                            {% else %}
+                            <button type="button" class="btn btn-outline-primary" id="clearFiltersBtn">
+                                <i class="bi bi-x-lg me-2"></i>Clear Filters
+                            </button>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transaction Details Modal -->
+<div class="modal fade" id="transactionModal" tabindex="-1" aria-labelledby="transactionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="transactionModalLabel">
+                    <i class="bi bi-receipt me-2"></i>Transaction Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="transactionModalBody">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

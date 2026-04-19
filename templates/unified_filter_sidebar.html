@@ -1,0 +1,1078 @@
+{% load static %}
+
+
+{% with get_query=request.GET.query|default:'' get_category=request.GET.category|default:'' get_subcategory=request.GET.subcategory|default:'' get_brand=request.GET.brand|default:'' get_condition=request.GET.condition|default:'' %}
+{% with get_service_type=request.GET.service_type|default:'' get_category_code=request.GET.category|default:'' get_request_type=request.GET.request_type|default:'' get_urgency=request.GET.urgency|default:'' get_status=request.GET.status|default:'' %}
+{% with get_verified_business=request.GET.verified_business|default:'' get_verified_only=request.GET.verified_only|default:'' get_state=request.GET.state|default:'' get_lga=request.GET.lga|default:'' get_budget_range=request.GET.budget_range|default:'' %}
+{% with get_min_price=request.GET.min_price|default:'' get_max_price=request.GET.max_price|default:'' get_experience_level=request.GET.experience_level|default:'' get_delivery_method=request.GET.delivery_method|default:'' get_availability_now=request.GET.available_only|default:'' get_availability_schedule=request.GET.availability|default:'' get_pricing_type=request.GET.pricing_type|default:'' get_sort=request.GET.sort|default:'' get_service_category=request.GET.service_category|default:'' %}
+
+{# ── Determine whether this include is inside the offcanvas (mobile) or not ── #}
+{% if filter_action_url %}{% else %}{% with filter_action_url=request.path %}{% endwith %}{% endif %}
+
+<div class="ufs-sidebar"
+     data-item-type="{{ item_type }}"
+     data-selected-category="{{ selected_category|default:get_category }}"
+     data-selected-subcategory="{{ selected_subcategory|default:get_subcategory }}"
+     data-selected-brand="{{ selected_brand|default:get_brand }}"
+     data-selected-state="{{ selected_state|default:get_state }}"
+     data-selected-lga="{{ selected_lga|default:get_lga }}">
+
+    {# ── Active filter chips ─────────────────────────────────────────────── #}
+    <div class="ufs-chips" id="ufs-chips-{{ item_type }}">
+        {% if get_query %}<span class="ufs-chip">🔍 "{{ get_query }}"<button type="button" class="ufs-chip-x" data-clear="query" title="Remove">×</button></span>{% endif %}
+        {% if get_request_type %}<span class="ufs-chip">{{ get_request_type|title }}<button type="button" class="ufs-chip-x" data-clear="request_type" title="Remove">×</button></span>{% endif %}
+        {% if get_category %}<span class="ufs-chip">Category<button type="button" class="ufs-chip-x" data-clear="category" title="Remove">×</button></span>{% endif %}
+        {% if get_subcategory %}<span class="ufs-chip">Subcategory<button type="button" class="ufs-chip-x" data-clear="subcategory" title="Remove">×</button></span>{% endif %}
+        {% if get_brand %}<span class="ufs-chip">Brand<button type="button" class="ufs-chip-x" data-clear="brand" title="Remove">×</button></span>{% endif %}
+        {% if get_service_type %}<span class="ufs-chip">{{ get_service_type|title }}<button type="button" class="ufs-chip-x" data-clear="service_type" title="Remove">×</button></span>{% endif %}
+        {% if get_condition %}<span class="ufs-chip">{{ get_condition|title }}<button type="button" class="ufs-chip-x" data-clear="condition" title="Remove">×</button></span>{% endif %}
+        {% if get_urgency %}<span class="ufs-chip">{{ get_urgency|title }}<button type="button" class="ufs-chip-x" data-clear="urgency" title="Remove">×</button></span>{% endif %}
+        {% if get_service_category %}<span class="ufs-chip">{{ get_service_category|title }}<button type="button" class="ufs-chip-x" data-clear="service_category" title="Remove">×</button></span>{% endif %}
+        {% if get_budget_range %}<span class="ufs-chip">Budget<button type="button" class="ufs-chip-x" data-clear="budget_range" title="Remove">×</button></span>{% endif %}
+        {% if get_min_price or get_max_price %}<span class="ufs-chip">₦{{ get_min_price|default:"0" }}–{{ get_max_price|default:"∞" }}<button type="button" class="ufs-chip-x" data-clear="price" title="Remove">×</button></span>{% endif %}
+        {% if get_state %}<span class="ufs-chip">Location<button type="button" class="ufs-chip-x" data-clear="state" title="Remove">×</button></span>{% endif %}
+        {% if get_verified_business == 'true' or get_verified_only == 'true' %}<span class="ufs-chip ufs-chip--green">✓ Verified<button type="button" class="ufs-chip-x" data-clear="verified" title="Remove">×</button></span>{% endif %}
+        {% if get_experience_level %}<span class="ufs-chip">{{ get_experience_level|title }}<button type="button" class="ufs-chip-x" data-clear="experience_level" title="Remove">×</button></span>{% endif %}
+        {% if get_delivery_method and item_type != 'requests' %}<span class="ufs-chip">{{ get_delivery_method|title }}<button type="button" class="ufs-chip-x" data-clear="delivery_method" title="Remove">×</button></span>{% endif %}
+        {% if get_status %}<span class="ufs-chip">{{ get_status|title }}<button type="button" class="ufs-chip-x" data-clear="status" title="Remove">×</button></span>{% endif %}
+        {% if get_availability_now == 'true' %}<span class="ufs-chip ufs-chip--green">Available Now<button type="button" class="ufs-chip-x" data-clear="available_only" title="Remove">×</button></span>{% endif %}
+        {% if get_availability_schedule %}<span class="ufs-chip">{{ get_availability_schedule|title }}<button type="button" class="ufs-chip-x" data-clear="availability" title="Remove">×</button></span>{% endif %}
+        {% if get_pricing_type %}<span class="ufs-chip">{{ get_pricing_type|title }}<button type="button" class="ufs-chip-x" data-clear="pricing_type" title="Remove">×</button></span>{% endif %}
+    </div>
+
+    <form method="get" action="{{ filter_action_url }}" class="ufs-form sidebar-filter-form"
+          data-item-type="{{ item_type }}"
+          data-selected-category="{{ selected_category|default:get_category }}"
+          data-selected-subcategory="{{ selected_subcategory|default:get_subcategory }}"
+          data-selected-brand="{{ selected_brand|default:get_brand }}"
+          data-selected-state="{{ selected_state|default:get_state }}"
+          data-selected-lga="{{ selected_lga|default:get_lga }}"
+          data-request-type="{{ get_request_type }}">
+
+    {# Preserve sort parameter silently across all filter submissions #}
+    {% if get_sort %}<input type="hidden" name="sort" value="{{ get_sort }}">{% endif %}
+
+    {# ── 1. SEARCH ─────────────────────────────────────────────────────── #}
+    <div class="ufs-section">
+        <div class="ufs-input-wrap">
+            <i class="bi bi-search ufs-input-icon"></i>
+            <input type="text" name="query"
+                   class="ufs-search-input sidebar-input-query"
+                   placeholder="Search {{ item_type }}…"
+                   value="{{ get_query }}"
+                   autocomplete="off">
+        </div>
+    </div>
+
+    {# ── 2. REQUEST TYPE (requests only) ──────────────────────────────── #}
+    {% if item_type == 'requests' %}
+    <div class="ufs-section">
+        <p class="ufs-label"><i class="bi bi-grid-3x3 me-2"></i>Request Type</p>
+        <div class="ufs-toggle-group">
+            <label class="ufs-toggle {% if not get_request_type %}ufs-toggle--on{% endif %}">
+                <input type="radio" name="request_type" value="" {% if not get_request_type %}checked{% endif %}>All
+            </label>
+            <label class="ufs-toggle {% if get_request_type == 'product' %}ufs-toggle--on{% endif %}">
+                <input type="radio" name="request_type" value="product" {% if get_request_type == 'product' %}checked{% endif %}>
+                <i class="bi bi-box-seam me-1"></i>Product
+            </label>
+            <label class="ufs-toggle {% if get_request_type == 'service' %}ufs-toggle--on{% endif %}">
+                <input type="radio" name="request_type" value="service" {% if get_request_type == 'service' %}checked{% endif %}>
+                <i class="bi bi-tools me-1"></i>Service
+            </label>
+        </div>
+    </div>
+    {% endif %}
+
+    {# ── 3. CATEGORY ──────────────────────────────────────────────────── #}
+
+    {# Products: dropdown + cascading subcategory #}
+    {% if item_type == 'products' %}
+    <div class="ufs-section ufs-coll {% if get_category %}ufs-open{% endif %}">
+        <button type="button" class="ufs-head">
+            <span><i class="bi bi-tag me-2"></i>Category</span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body">
+            <div class="form-floating mb-2">
+                <select name="category" class="form-select sidebar-select-category" id="ufs_cat_{{ item_type }}">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.slug|default:cat.id }}" data-id="{{ cat.id }}"
+                            {% if selected_category == cat.slug or get_category == cat.id|stringformat:"s" or get_category == cat.slug %}selected{% endif %}>{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+                <label for="ufs_cat_{{ item_type }}">Category</label>
+            </div>
+            <div class="form-floating">
+                <select name="subcategory" class="form-select sidebar-select-subcategory" id="ufs_sub_{{ item_type }}" {% if not subcategories %}disabled{% endif %}>
+                    <option value="">All Subcategories</option>
+                    {% for sub in subcategories %}
+                    <option value="{{ sub.slug|default:sub.id }}" data-id="{{ sub.id }}"
+                            {% if selected_subcategory == sub.slug or get_subcategory == sub.id|stringformat:"s" %}selected{% endif %}>{{ sub.name }}</option>
+                    {% endfor %}
+                </select>
+                <label for="ufs_sub_{{ item_type }}">Subcategory</label>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Services: pill-style category selector — uses category.code #}
+    {% if item_type == 'services' %}
+    <div class="ufs-section ufs-coll {% if get_category_code %}ufs-open{% endif %}">
+        <button type="button" class="ufs-head">
+            <span><i class="bi bi-tag me-2"></i>Category</span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body">
+            <div class="ufs-pills">
+                <label class="ufs-pill {% if not get_category_code %}ufs-pill--on{% endif %}">
+                    <input type="radio" name="category" value="" class="sidebar-select-category-radio" {% if not get_category_code %}checked{% endif %}>All
+                </label>
+                {% for cat in categories %}
+                <label class="ufs-pill {% if get_category_code == cat.code %}ufs-pill--on{% endif %}">
+                    <input type="radio" name="category" value="{{ cat.code }}" class="sidebar-select-category-radio" {% if get_category_code == cat.code %}checked{% endif %}>{{ cat.name }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Requests: product-category — JS reveals when request_type=product #}
+    {% if item_type == 'requests' %}
+    <div class="ufs-section ufs-coll js-req-cat {% if get_category and get_request_type == 'product' %}ufs-open{% endif %}" style="{% if get_request_type != 'product' %}display:none;{% endif %}">
+        <button type="button" class="ufs-head">
+            <span><i class="bi bi-tag me-2"></i>Product Category</span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body">
+            <div class="form-floating mb-2">
+                <select name="category" class="form-select sidebar-select-category">
+                    <option value="">All Categories</option>
+                    {% for cat in product_categories|default:categories %}
+                    <option value="{{ cat.id }}" data-id="{{ cat.id }}"
+                            {% if get_category == cat.id|stringformat:"s" and get_request_type == 'product' %}selected{% endif %}>{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+                <label>Category</label>
+            </div>
+            <div class="form-floating">
+                <select name="subcategory" class="form-select sidebar-select-subcategory js-req-prod-only" {% if not subcategories %}disabled{% endif %}>
+                    <option value="">All Subcategories</option>
+                    {% for sub in subcategories %}
+                    <option value="{{ sub.id }}" data-id="{{ sub.id }}"
+                            {% if get_subcategory == sub.id|stringformat:"s" %}selected{% endif %}>{{ sub.name }}</option>
+                    {% endfor %}
+                </select>
+                <label>Subcategory</label>
+            </div>
+        </div>
+    </div>
+
+    {# Requests: service category — JS reveals when request_type=service #}
+    <div class="ufs-section ufs-coll js-req-svc {% if get_service_category and get_request_type == 'service' %}ufs-open{% endif %}" style="{% if get_request_type != 'service' %}display:none;{% endif %}">
+        <button type="button" class="ufs-head">
+            <span><i class="bi bi-grid me-2"></i>Service Category</span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body">
+            <div class="ufs-pills">
+                <label class="ufs-pill {% if not get_service_category %}ufs-pill--on{% endif %}">
+                    <input type="radio" name="service_category" value="" {% if not get_service_category %}checked{% endif %}>All
+                </label>
+                {% for svc in service_categories %}
+                <label class="ufs-pill {% if get_service_category == svc.code %}ufs-pill--on{% endif %}">
+                    <input type="radio" name="service_category" value="{{ svc.code }}" {% if get_service_category == svc.code %}checked{% endif %}>{{ svc.name }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# ── 4. BRAND (products always; requests product-type via JS) ──────── #}
+    {% if item_type == 'products' or item_type == 'requests' %}
+    <div class="ufs-section ufs-coll {% if item_type == 'requests' %}js-req-prod-only{% endif %} {% if get_brand %}ufs-open{% endif %}"
+         {% if item_type == 'requests' %}style="{% if get_request_type != 'product' %}display:none;{% endif %}"{% endif %}>
+        <button type="button" class="ufs-head">
+            <span><i class="bi bi-award me-2"></i>Brand</span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body">
+            <div class="form-floating">
+                <select name="brand" class="form-select sidebar-select-brand" {% if not brands %}disabled{% endif %}>
+                    <option value="">All Brands</option>
+                    {% if brands %}{% for brand in brands %}
+                    {% if item_type == 'requests' %}
+                    <option value="{{ brand.id }}" data-id="{{ brand.id }}" {% if get_brand == brand.id|stringformat:"s" %}selected{% endif %}>{{ brand.name }}</option>
+                    {% else %}
+                    <option value="{{ brand.slug|default:brand.id }}" data-id="{{ brand.id }}" {% if selected_brand == brand.slug or get_brand == brand.id|stringformat:"s" %}selected{% endif %}>{{ brand.name }}</option>
+                    {% endif %}
+                    {% endfor %}{% endif %}
+                </select>
+                <label>Brand</label>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# ── 5. SERVICE TYPE (services page only) ─────────────────────────── #}
+    {% if item_type == 'services' %}
+    <div class="ufs-section ufs-coll {% if get_service_type %}ufs-open{% endif %}">
+        <button type="button" class="ufs-head">
+            <span><i class="bi bi-list-ul me-2"></i>Service Type</span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body">
+            <div class="ufs-checks">
+                <label class="ufs-chk"><input type="radio" name="service_type" value="" {% if not get_service_type %}checked{% endif %}><span>All Types</span></label>
+                <label class="ufs-chk"><input type="radio" name="service_type" value="skill" {% if get_service_type == 'skill' %}checked{% endif %}><span><i class="bi bi-person-badge me-1"></i>Professional Skill</span></label>
+                <label class="ufs-chk"><input type="radio" name="service_type" value="service" {% if get_service_type == 'service' %}checked{% endif %}><span><i class="bi bi-tools me-1"></i>Service Offering</span></label>
+                <label class="ufs-chk"><input type="radio" name="service_type" value="consultation" {% if get_service_type == 'consultation' %}checked{% endif %}><span><i class="bi bi-chat-square-text me-1"></i>Consultation</span></label>
+                <label class="ufs-chk"><input type="radio" name="service_type" value="maintenance" {% if get_service_type == 'maintenance' %}checked{% endif %}><span><i class="bi bi-wrench me-1"></i>Maintenance</span></label>
+                <label class="ufs-chk"><input type="radio" name="service_type" value="training" {% if get_service_type == 'training' %}checked{% endif %}><span><i class="bi bi-mortarboard me-1"></i>Training</span></label>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# ── 6. CONDITION (products always; requests product-type via JS) ──── #}
+    {% if item_type == 'products' or item_type == 'requests' %}
+    <div class="ufs-section ufs-coll {% if item_type == 'requests' %}js-req-prod-only{% endif %} {% if get_condition %}ufs-open{% endif %}"
+         {% if item_type == 'requests' %}style="{% if get_request_type != 'product' %}display:none;{% endif %}"{% endif %}>
+        <button type="button" class="ufs-head">
+            <span><i class="bi bi-shield-check me-2"></i>{% if item_type == 'products' %}Condition{% else %}Condition Wanted{% endif %}</span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body">
+            <div class="ufs-checks">
+                <label class="ufs-chk"><input type="radio" name="condition" value="" {% if not get_condition %}checked{% endif %}><span>Any</span></label>
+                <label class="ufs-chk"><input type="radio" name="condition" value="new" {% if get_condition == 'new' %}checked{% endif %}><span><i class="bi bi-star-fill me-1 text-warning"></i>New</span></label>
+                <label class="ufs-chk"><input type="radio" name="condition" value="used" {% if get_condition == 'used' %}checked{% endif %}><span>Used</span></label>
+                <label class="ufs-chk"><input type="radio" name="condition" value="refurbished" {% if get_condition == 'refurbished' %}checked{% endif %}><span>Refurbished</span></label>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# ── 7. URGENCY (requests only — shown for ALL request types) ────── #}
+    {% if item_type == 'requests' %}
+    <div class="ufs-section ufs-coll {% if get_urgency %}ufs-open{% endif %}">
+        <button type="button" class="ufs-head">
+            <span><i class="bi bi-lightning-charge me-2"></i>Urgency</span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body">
+            <div class="ufs-checks">
+                <label class="ufs-chk"><input type="radio" name="urgency" value="" {% if not get_urgency %}checked{% endif %}><span>Any Urgency</span></label>
+                <label class="ufs-chk"><input type="radio" name="urgency" value="urgent" {% if get_urgency == 'urgent' %}checked{% endif %}><span><span class="ufs-dot red"></span>Urgent — ASAP</span></label>
+                <label class="ufs-chk"><input type="radio" name="urgency" value="high" {% if get_urgency == 'high' %}checked{% endif %}><span><span class="ufs-dot orange"></span>High — 3 days</span></label>
+                <label class="ufs-chk"><input type="radio" name="urgency" value="medium" {% if get_urgency == 'medium' %}checked{% endif %}><span><span class="ufs-dot yellow"></span>Medium — 1 week</span></label>
+                <label class="ufs-chk"><input type="radio" name="urgency" value="low" {% if get_urgency == 'low' %}checked{% endif %}><span><span class="ufs-dot green"></span>Low — Can wait</span></label>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# ── 8. BUDGET / PRICE ────────────────────────────────────────────── #}
+
+    {# Products: numeric price range #}
+    {% if item_type == 'products' %}
+    <div class="ufs-section ufs-coll {% if get_min_price or get_max_price %}ufs-open{% endif %}">
+        <button type="button" class="ufs-head">
+            <span><i class="bi bi-currency-exchange me-2"></i>Price Range</span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body">
+            <div class="ufs-price-row">
+                <div class="form-floating"><input type="number" name="min_price" class="form-control" placeholder="0" min="0" step="100" value="{{ get_min_price }}"><label>Min ₦</label></div>
+                <span class="ufs-price-sep">–</span>
+                <div class="form-floating"><input type="number" name="max_price" class="form-control" placeholder="∞" min="0" step="100" value="{{ get_max_price }}"><label>Max ₦</label></div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Services: numeric price range — maps to ServiceSearchForm min_price / max_price #}
+    {% if item_type == 'services' %}
+    <div class="ufs-section ufs-coll {% if get_min_price or get_max_price %}ufs-open{% endif %}">
+        <button type="button" class="ufs-head">
+            <span><i class="bi bi-currency-exchange me-2"></i>Price Range</span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body">
+            <div class="ufs-price-row">
+                <div class="form-floating"><input type="number" name="min_price" class="form-control" placeholder="0" min="0" step="100" value="{{ get_min_price }}"><label>Min ₦</label></div>
+                <span class="ufs-price-sep">–</span>
+                <div class="form-floating"><input type="number" name="max_price" class="form-control" placeholder="∞" min="0" step="100" value="{{ get_max_price }}"><label>Max ₦</label></div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+
+    {% if item_type == 'requests' %}
+    <div class="ufs-section ufs-coll js-req-budget {% if get_min_price or get_max_price or get_budget_range %}ufs-open{% endif %}"
+         style="{% if not get_request_type %}display:none;{% endif %}">
+        <button type="button" class="ufs-head">
+            <span><i class="bi bi-currency-exchange me-2"></i>Budget Range</span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body">
+            {# Product request: numeric min/max #}
+            <div class="js-budget-prod" style="{% if get_request_type != 'product' %}display:none;{% endif %}">
+                <div class="ufs-price-row">
+                    <div class="form-floating"><input type="number" name="min_price" class="form-control" placeholder="0" min="0" step="100" value="{{ get_min_price }}"><label>Min ₦</label></div>
+                    <span class="ufs-price-sep">–</span>
+                    <div class="form-floating"><input type="number" name="max_price" class="form-control" placeholder="∞" min="0" step="100" value="{{ get_max_price }}"><label>Max ₦</label></div>
+                </div>
+            </div>
+            {# Service request: named range dropdown #}
+            <div class="js-budget-svc" style="{% if get_request_type != 'service' %}display:none;{% endif %}">
+                <div class="form-floating">
+                    <select name="budget_range" class="form-select">
+                        <option value="">Any Budget</option>
+                        <option value="under_5k"   {% if get_budget_range == 'under_5k'   %}selected{% endif %}>Under ₦5,000</option>
+                        <option value="5k_25k"     {% if get_budget_range == '5k_25k'     %}selected{% endif %}>₦5,000 – ₦25,000</option>
+                        <option value="25k_100k"   {% if get_budget_range == '25k_100k'   %}selected{% endif %}>₦25,000 – ₦100,000</option>
+                        <option value="100k_500k"  {% if get_budget_range == '100k_500k'  %}selected{% endif %}>₦100,000 – ₦500,000</option>
+                        <option value="500k_1m"    {% if get_budget_range == '500k_1m'    %}selected{% endif %}>₦500,000 – ₦1M</option>
+                        <option value="1m_plus"    {% if get_budget_range == '1m_plus'    %}selected{% endif %}>Above ₦1M</option>
+                        <option value="negotiable" {% if get_budget_range == 'negotiable' %}selected{% endif %}>Negotiable</option>
+                    </select>
+                    <label>Select Budget</label>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# ── 9. EXPERIENCE LEVEL (services only) ─────────────────────────── #}
+    {% if item_type == 'services' %}
+    <div class="ufs-section ufs-coll {% if get_experience_level %}ufs-open{% endif %}">
+        <button type="button" class="ufs-head">
+            <span><i class="bi bi-bar-chart-steps me-2"></i>Experience Level</span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body">
+            <div class="ufs-checks">
+                <label class="ufs-chk"><input type="radio" name="experience_level" value="" {% if not get_experience_level %}checked{% endif %}><span>Any Level</span></label>
+                <label class="ufs-chk"><input type="radio" name="experience_level" value="expert" {% if get_experience_level == 'expert' %}checked{% endif %}><span><i class="bi bi-award-fill me-1 text-warning"></i>Expert (10+ yrs)</span></label>
+                <label class="ufs-chk"><input type="radio" name="experience_level" value="experienced" {% if get_experience_level == 'experienced' %}checked{% endif %}><span>Experienced (5-10 yrs)</span></label>
+                <label class="ufs-chk"><input type="radio" name="experience_level" value="intermediate" {% if get_experience_level == 'intermediate' %}checked{% endif %}><span>Intermediate (2-5 yrs)</span></label>
+                <label class="ufs-chk"><input type="radio" name="experience_level" value="beginner" {% if get_experience_level == 'beginner' %}checked{% endif %}><span>Beginner (0-2 yrs)</span></label>
+            </div>
+        </div>
+    </div>
+
+    {# ── PRICING TYPE (services only) ── #}
+    <div class="ufs-section ufs-coll {% if get_pricing_type %}ufs-open{% endif %}">
+        <button type="button" class="ufs-head">
+            <span><i class="bi bi-tags me-2"></i>Pricing Type</span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body">
+            <div class="ufs-checks">
+                <label class="ufs-chk"><input type="radio" name="pricing_type" value="" {% if not get_pricing_type %}checked{% endif %}><span>Any</span></label>
+                <label class="ufs-chk"><input type="radio" name="pricing_type" value="fixed" {% if get_pricing_type == 'fixed' %}checked{% endif %}><span><i class="bi bi-lock me-1"></i>Fixed Price</span></label>
+                <label class="ufs-chk"><input type="radio" name="pricing_type" value="hourly" {% if get_pricing_type == 'hourly' %}checked{% endif %}><span><i class="bi bi-clock me-1"></i>Hourly Rate</span></label>
+                <label class="ufs-chk"><input type="radio" name="pricing_type" value="project" {% if get_pricing_type == 'project' %}checked{% endif %}><span><i class="bi bi-kanban me-1"></i>Per Project</span></label>
+                <label class="ufs-chk"><input type="radio" name="pricing_type" value="package" {% if get_pricing_type == 'package' %}checked{% endif %}><span><i class="bi bi-box-seam me-1"></i>Package Deal</span></label>
+                <label class="ufs-chk"><input type="radio" name="pricing_type" value="negotiable" {% if get_pricing_type == 'negotiable' %}checked{% endif %}><span><i class="bi bi-chat-dots me-1"></i>Negotiable</span></label>
+            </div>
+        </div>
+    </div>
+
+    {# ── AVAILABILITY TOGGLE (services only — maps to provider.available_for_services) ── #}
+    <div class="ufs-section">
+        <label class="ufs-verified-row" for="ufs_avail_{{ item_type }}">
+            <i class="bi bi-circle-fill ufs-avail-icon"></i>
+            <span class="ufs-verified-text">
+                <strong>Available Now</strong>
+                <small>Providers currently taking work</small>
+            </span>
+            <span class="ufs-switch">
+                <input class="ufs-sw-inp" type="checkbox" name="available_only" value="true"
+                       id="ufs_avail_{{ item_type }}" {% if get_availability_now == 'true' %}checked{% endif %}>
+                <span class="ufs-sw-track"></span>
+            </span>
+        </label>
+    </div>
+
+    {# ── AVAILABILITY SCHEDULE (services only — maps to ServiceListing.availability) ── #}
+    <div class="ufs-section ufs-coll {% if get_availability_schedule %}ufs-open{% endif %}">
+        <button type="button" class="ufs-head">
+            <span><i class="bi bi-calendar-week me-2"></i>Availability Schedule</span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body">
+            <div class="ufs-checks">
+                <label class="ufs-chk"><input type="radio" name="availability" value="" {% if not get_availability_schedule %}checked{% endif %}><span>Any Schedule</span></label>
+                <label class="ufs-chk"><input type="radio" name="availability" value="full_time" {% if get_availability_schedule == 'full_time' %}checked{% endif %}><span><i class="bi bi-briefcase me-1"></i>Full Time</span></label>
+                <label class="ufs-chk"><input type="radio" name="availability" value="part_time" {% if get_availability_schedule == 'part_time' %}checked{% endif %}><span><i class="bi bi-hourglass-split me-1"></i>Part Time</span></label>
+                <label class="ufs-chk"><input type="radio" name="availability" value="weekends" {% if get_availability_schedule == 'weekends' %}checked{% endif %}><span><i class="bi bi-calendar2-week me-1"></i>Weekends Only</span></label>
+                <label class="ufs-chk"><input type="radio" name="availability" value="flexible" {% if get_availability_schedule == 'flexible' %}checked{% endif %}><span><i class="bi bi-arrow-left-right me-1"></i>Flexible</span></label>
+                <label class="ufs-chk"><input type="radio" name="availability" value="by_appointment" {% if get_availability_schedule == 'by_appointment' %}checked{% endif %}><span><i class="bi bi-calendar-check me-1"></i>By Appointment</span></label>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# ── 10. DELIVERY METHOD (services only — maps to ServiceListing.delivery_method) ── #}
+    {% if item_type == 'services' %}
+    <div class="ufs-section ufs-coll {% if get_delivery_method %}ufs-open{% endif %}">
+        <button type="button" class="ufs-head">
+            <span><i class="bi bi-truck me-2"></i>Delivery Method</span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body">
+            <div class="ufs-checks">
+                <label class="ufs-chk"><input type="radio" name="delivery_method" value="" {% if not get_delivery_method %}checked{% endif %}><span>Any Method</span></label>
+                <label class="ufs-chk"><input type="radio" name="delivery_method" value="remote" {% if get_delivery_method == 'remote' %}checked{% endif %}><span><i class="bi bi-wifi me-1"></i>Remote / Online</span></label>
+                <label class="ufs-chk"><input type="radio" name="delivery_method" value="onsite" {% if get_delivery_method == 'onsite' %}checked{% endif %}><span><i class="bi bi-building me-1"></i>On-site</span></label>
+                <label class="ufs-chk"><input type="radio" name="delivery_method" value="both" {% if get_delivery_method == 'both' %}checked{% endif %}><span><i class="bi bi-arrows-collapse me-1"></i>Both (Remote & On-site)</span></label>
+                <label class="ufs-chk"><input type="radio" name="delivery_method" value="client_location" {% if get_delivery_method == 'client_location' %}checked{% endif %}><span><i class="bi bi-geo-alt me-1"></i>At Client Location</span></label>
+                <label class="ufs-chk"><input type="radio" name="delivery_method" value="my_location" {% if get_delivery_method == 'my_location' %}checked{% endif %}><span><i class="bi bi-house me-1"></i>At My Location</span></label>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# ── 11. LOCATION ─────────────────────────────────────────────────── #}
+    <div class="ufs-section ufs-coll {% if get_state %}ufs-open{% endif %}">
+        <button type="button" class="ufs-head">
+            <span><i class="bi bi-geo-alt me-2"></i>Location</span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body">
+            <div class="form-floating mb-2">
+                <select name="state" class="form-select sidebar-select-state" id="ufs_state_{{ item_type }}">
+                    <option value="">All States</option>
+                    {% for st in states %}
+                    <option value="{{ st.id }}" {% if get_state == st.id|stringformat:"s" %}selected{% endif %}>{{ st.name }}</option>
+                    {% endfor %}
+                </select>
+                <label for="ufs_state_{{ item_type }}">State</label>
+            </div>
+            <div class="form-floating">
+                <select name="lga" class="form-select sidebar-select-lga" id="ufs_lga_{{ item_type }}"
+                        {% if not get_state %}disabled{% endif %}>
+                    <option value="">All LGAs</option>
+                    {% if lgas %}
+                    {% for lga in lgas %}
+                    <option value="{{ lga.id }}" {% if get_lga == lga.id|stringformat:"s" %}selected{% endif %}>{{ lga.name }}</option>
+                    {% endfor %}
+                    {% endif %}
+                </select>
+                <label for="ufs_lga_{{ item_type }}">LGA</label>
+            </div>
+        </div>
+    </div>
+
+    {# ── 12. VERIFIED SELLER / BUYER ──────────────────────────────────── #}
+    <div class="ufs-section">
+        <label class="ufs-verified-row" for="ufs_verified_{{ item_type }}">
+            <i class="bi bi-patch-check-fill ufs-verified-icon"></i>
+            <span class="ufs-verified-text">
+                {% if item_type == 'products' %}
+                    <strong>Verified Sellers</strong><small>Listings from verified businesses</small>
+                {% elif item_type == 'services' %}
+                    <strong>Verified Providers</strong><small>Listings from verified businesses</small>
+                {% else %}
+                    <strong>Verified Buyers</strong><small>Requests from verified accounts</small>
+                {% endif %}
+            </span>
+            <span class="ufs-switch">
+                {% if item_type == 'products' %}
+                <input class="ufs-sw-inp" type="checkbox" name="verified_business" value="true"
+                       id="ufs_verified_{{ item_type }}" {% if get_verified_business == 'true' %}checked{% endif %}>
+                {% else %}
+                <input class="ufs-sw-inp" type="checkbox" name="verified_only" value="true"
+                       id="ufs_verified_{{ item_type }}" {% if get_verified_only == 'true' %}checked{% endif %}>
+                {% endif %}
+                <span class="ufs-sw-track"></span>
+            </span>
+        </label>
+    </div>
+
+    {# ── 13. REQUEST STATUS (requests only) ───────────────────────────── #}
+    {% if item_type == 'requests' %}
+    <div class="ufs-section ufs-coll {% if get_status %}ufs-open{% endif %}">
+        <button type="button" class="ufs-head">
+            <span><i class="bi bi-clock-history me-2"></i>Request Status</span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body">
+            <div class="ufs-checks">
+                <label class="ufs-chk"><input type="radio" name="status" value="" {% if not get_status %}checked{% endif %}><span>All</span></label>
+                <label class="ufs-chk"><input type="radio" name="status" value="active" {% if get_status == 'active' %}checked{% endif %}><span><i class="bi bi-check-circle me-1 text-success"></i>Active</span></label>
+                <label class="ufs-chk"><input type="radio" name="status" value="expired" {% if get_status == 'expired' %}checked{% endif %}><span><i class="bi bi-x-circle me-1 text-danger"></i>Expired</span></label>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# ── ACTIONS ──────────────────────────────────────────────────────── #}
+    <div class="ufs-actions">
+        <button type="submit" class="ufs-btn ufs-btn-apply">
+            <i class="bi bi-funnel-fill me-2"></i>Apply Filters
+        </button>
+        <button type="button" class="ufs-btn ufs-btn-clear js-clear-sidebar-filters">
+            <i class="bi bi-arrow-counterclockwise me-2"></i>Clear All
+        </button>
+    </div>
+
+    </form>
+</div>
+
+{% endwith %}
+{% endwith %}
+{% endwith %}
+{% endwith %}
+
+<style>
+/* ── Shell ───────────────────────────────────────────────────────────────── */
+.ufs-sidebar{background:var(--card-background);border-radius:14px;padding:.875rem;box-shadow:0 2px 10px var(--shadow-color);height:fit-content}
+
+/* ── Active chips ─────────────────────────────────────────────────────────── */
+.ufs-chips{display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.65rem}
+.ufs-chips:empty{display:none}
+.ufs-chip{display:inline-flex;align-items:center;gap:.3rem;background:var(--primary-color);color:#fff;font-size:.68rem;font-weight:600;padding:.2rem .5rem;border-radius:20px;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ufs-chip--green{background:#16a34a}
+.ufs-chip-x{cursor:pointer;opacity:.8;font-size:.8rem;color:inherit;background:none;border:none;padding:0;line-height:1;flex-shrink:0}
+.ufs-chip-x:hover{opacity:1}
+
+/* ── Section ─────────────────────────────────────────────────────────────── */
+.ufs-section{border-bottom:1px solid var(--border-color);padding-bottom:.8rem;margin-bottom:.8rem}
+.ufs-section:last-of-type{border-bottom:none;margin-bottom:0;padding-bottom:0}
+
+/* ── Collapsible ─────────────────────────────────────────────────────────── */
+.ufs-coll .ufs-body{display:none;margin-top:.55rem}
+.ufs-coll.ufs-open .ufs-body{display:block}
+.ufs-coll.ufs-open .ufs-chev{transform:rotate(-180deg)}
+.ufs-head{width:100%;display:flex;align-items:center;justify-content:space-between;background:none;border:none;padding:0;cursor:pointer;color:var(--text-primary);font-size:.78rem;font-weight:600;text-align:left}
+.ufs-head span{display:flex;align-items:center}
+.ufs-head i{color:var(--accent-color)}
+.ufs-chev{font-size:.68rem;opacity:.5;transition:transform .2s;flex-shrink:0}
+.ufs-label{font-size:.78rem;font-weight:600;color:var(--text-primary);margin:0 0 .5rem;display:flex;align-items:center}
+.ufs-label i{color:var(--accent-color)}
+
+/* ── Search ──────────────────────────────────────────────────────────────── */
+.ufs-input-wrap{position:relative}
+.ufs-input-icon{position:absolute;left:.65rem;top:50%;transform:translateY(-50%);color:var(--text-secondary);font-size:.78rem;pointer-events:none}
+.ufs-search-input{width:100%;padding:.52rem .75rem .52rem 2rem;border:1px solid var(--border-color);border-radius:10px;background:var(--background-color);color:var(--text-primary);font-size:.78rem;outline:none;transition:border-color .2s}
+.ufs-search-input:focus{border-color:var(--primary-color)}
+
+/* ── Request Type toggle tabs ─────────────────────────────────────────────── */
+.ufs-toggle-group{display:flex;gap:.3rem;flex-wrap:wrap}
+.ufs-toggle{flex:1;min-width:52px;display:flex;align-items:center;justify-content:center;padding:.42rem .4rem;border:1.5px solid var(--border-color);border-radius:8px;cursor:pointer;font-size:.72rem;font-weight:600;color:var(--text-secondary);transition:all .15s;background:var(--background-color);white-space:nowrap}
+.ufs-toggle input{display:none}
+.ufs-toggle:hover{border-color:var(--primary-color);color:var(--primary-color)}
+.ufs-toggle--on{background:var(--primary-color);border-color:var(--primary-color);color:#fff}
+
+/* ── Pill group ──────────────────────────────────────────────────────────── */
+.ufs-pills{display:flex;flex-wrap:wrap;gap:.3rem}
+.ufs-pill{padding:.28rem .6rem;border:1.5px solid var(--border-color);border-radius:20px;cursor:pointer;font-size:.7rem;font-weight:600;color:var(--text-secondary);transition:all .15s;background:var(--background-color);white-space:nowrap}
+.ufs-pill input{display:none}
+.ufs-pill:hover{border-color:var(--primary-color);color:var(--primary-color)}
+.ufs-pill--on{background:var(--primary-color);border-color:var(--primary-color);color:#fff}
+
+/* ── Check list ──────────────────────────────────────────────────────────── */
+.ufs-checks{display:flex;flex-direction:column;gap:.28rem}
+.ufs-chk{display:flex;align-items:center;gap:.45rem;cursor:pointer;padding:.3rem .45rem;border-radius:7px;font-size:.76rem;color:var(--text-primary);transition:background .12s}
+.ufs-chk:hover{background:var(--hover-bg)}
+.ufs-chk input{width:.95rem;height:.95rem;accent-color:var(--primary-color);flex-shrink:0;cursor:pointer}
+
+/* Urgency dots */
+.ufs-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}
+.ufs-dot.red{background:#ef4444}.ufs-dot.orange{background:#f97316}
+.ufs-dot.yellow{background:#eab308}.ufs-dot.green{background:#22c55e}
+
+/* ── Price row ───────────────────────────────────────────────────────────── */
+.ufs-price-row{display:flex;align-items:center;gap:.35rem}
+.ufs-price-row .form-floating{flex:1}
+.ufs-price-sep{color:var(--text-secondary);font-size:.8rem;flex-shrink:0}
+
+/* ── Verified / Availability rows ────────────────────────────────────────── */
+.ufs-verified-row{display:flex;align-items:center;gap:.6rem;cursor:pointer}
+.ufs-verified-icon{font-size:1.35rem;color:var(--primary-color);flex-shrink:0}
+.ufs-avail-icon{font-size:1.1rem;color:#22c55e;flex-shrink:0}
+.ufs-verified-text{flex:1}
+.ufs-verified-text strong{display:block;font-size:.77rem;color:var(--text-primary)}
+.ufs-verified-text small{font-size:.67rem;color:var(--text-secondary)}
+
+/* Custom switch */
+.ufs-switch{position:relative;width:34px;height:19px;flex-shrink:0}
+.ufs-sw-inp{opacity:0;width:0;height:0;position:absolute}
+.ufs-sw-track{position:absolute;inset:0;background:var(--border-color);border-radius:19px;cursor:pointer;transition:background .2s}
+.ufs-sw-track::after{content:'';position:absolute;top:2px;left:2px;width:15px;height:15px;background:#fff;border-radius:50%;transition:transform .2s}
+.ufs-sw-inp:checked~.ufs-sw-track{background:var(--primary-color)}
+.ufs-sw-inp:checked~.ufs-sw-track::after{transform:translateX(15px)}
+
+/* ── Form overrides ──────────────────────────────────────────────────────── */
+.ufs-sidebar .form-floating label{font-size:.68rem}
+.ufs-sidebar .form-select,.ufs-sidebar .form-control{font-size:.76rem;border-radius:10px;border-color:var(--border-color);min-height:40px;background-color:var(--background-color);color:var(--text-primary)}
+.ufs-sidebar .form-select:focus,.ufs-sidebar .form-control:focus{border-color:var(--primary-color);box-shadow:0 0 0 2px color-mix(in srgb,var(--primary-color) 15%,transparent)}
+
+/* ── Actions ─────────────────────────────────────────────────────────────── */
+.ufs-actions{display:flex;flex-direction:column;gap:.45rem;margin-top:.9rem}
+.ufs-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:.4rem;padding:.62rem;border-radius:10px;font-size:.78rem;font-weight:600;cursor:pointer;border:none;transition:all .18s}
+.ufs-btn-apply{background:var(--primary-color);color:#fff}
+.ufs-btn-apply:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.ufs-btn-clear{background:transparent;color:var(--text-secondary);border:1.5px solid var(--border-color)}
+.ufs-btn-clear:hover{border-color:var(--text-primary);color:var(--text-primary)}
+
+/* ── Dark theme ──────────────────────────────────────────────────────────── */
+[data-bs-theme="dark"] .ufs-sidebar{background:var(--dark-card-background)}
+[data-bs-theme="dark"] .ufs-toggle,[data-bs-theme="dark"] .ufs-pill{background:var(--dark-background-color)}
+[data-bs-theme="dark"] .ufs-search-input{background:var(--dark-background-color)}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media(max-width:991px){
+  /* Inside offcanvas: give the sidebar a proper scrollable layout */
+  .offcanvas-body .ufs-sidebar{border-radius:0;box-shadow:none;padding:1rem;height:auto;overflow-y:auto}
+}
+@media(max-width:768px){
+  .ufs-sidebar{padding:.7rem;border-radius:10px}
+  .ufs-section{margin-bottom:.65rem;padding-bottom:.65rem}
+  .ufs-head,.ufs-chk,.ufs-label{font-size:.74rem}
+  .ufs-toggle{font-size:.69rem;padding:.38rem}
+}
+
+/* Legacy selectors — kept for backward compat with any external CSS */
+.filter-sidebar{}
+.sidebar-filter-form{}
+</style>
+
+<script>
+(function(){
+'use strict';
+const DEBUG = false;
+const log = (...a) => DEBUG && console.log('🎯[UFS]', ...a);
+
+/* ── API endpoints ─────────────────────────────────────────────────────── */
+const API = {
+    sub:    id => `/api/subcategories/${id}/`,
+    brands: id => `/api/brands/${id}/`,
+    lgas:   id => `/api/lgas/${id}/`,
+};
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CHIP REMOVAL  (URL-manipulation, no page-reload issues)
+   ══════════════════════════════════════════════════════════════════════════ */
+function bindChips(){
+    document.querySelectorAll('.ufs-chip-x').forEach(x => {
+        if(x.dataset.ufsBound) return;
+        x.dataset.ufsBound = '1';
+        x.addEventListener('click', e => {
+            e.preventDefault();
+            const k   = x.dataset.clear;
+            const url = new URL(window.location.href);
+            if(k === 'price')    { url.searchParams.delete('min_price'); url.searchParams.delete('max_price'); }
+            else if(k === 'verified') { url.searchParams.delete('verified_business'); url.searchParams.delete('verified_only'); }
+            else if(k === 'service_category') { url.searchParams.delete('service_category'); }
+            else                 { url.searchParams.delete(k); }
+            if(k === 'category') { url.searchParams.delete('subcategory'); url.searchParams.delete('brand'); }
+            if(k === 'state')    { url.searchParams.delete('lga'); }
+            window.location.href = url.toString();
+        });
+    });
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   COLLAPSIBLE TOGGLE
+   Guard: both desktop + mobile copies share the same DOM after offcanvas
+   opens; we use data-ufs-bound to prevent double-binding.
+   ══════════════════════════════════════════════════════════════════════════ */
+function bindCollapsibles(){
+    document.querySelectorAll('.ufs-coll .ufs-head').forEach(btn => {
+        if(btn.dataset.ufsBound) return;
+        btn.dataset.ufsBound = '1';
+        btn.addEventListener('click', function(){
+            const section = this.closest('.ufs-coll');
+            section.classList.toggle('ufs-open');
+        });
+    });
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PER-FORM INITIALISATION
+   ══════════════════════════════════════════════════════════════════════════ */
+function initForm(form){
+    /* Guard: skip already-initialised forms */
+    if(form.dataset.ufsInit) return;
+    form.dataset.ufsInit = '1';
+
+    const type  = form.dataset.itemType || detectType();
+    const isIn  = !!form.closest('.offcanvas');   /* true = inside mobile offcanvas */
+
+    /* Element references */
+    const el = {
+        cat:   form.querySelector('.sidebar-select-category'),
+        sub:   form.querySelector('.sidebar-select-subcategory'),
+        brand: form.querySelector('.sidebar-select-brand'),
+        state: form.querySelector('.sidebar-select-state'),
+        lga:   form.querySelector('.sidebar-select-lga'),
+        clr:   form.querySelector('.js-clear-sidebar-filters'),
+        q:     form.querySelector('.sidebar-input-query'),
+    };
+
+    let debounceTimer = null;
+
+    /* ── apply / submit ─────────────────────────────────────────────── */
+    function apply(immediate = false){
+        clearTimeout(debounceTimer);
+        if(immediate){
+            go();
+        } else {
+            debounceTimer = setTimeout(go, 300);
+        }
+    }
+
+    function go(){
+        /*
+         * MOBILE FIX:
+         * On mobile, ONLY the offcanvas form exists in an interactive state.
+         * We simply submit the active form directly.
+         */
+        form.submit();
+    }
+
+    /* ── AJAX: load subcategories ────────────────────────────────────── */
+    function loadSub(catVal, preSelect){
+        if(!el.sub) return;
+        /* If subcategories were server-rendered, reuse them */
+        const existing = el.sub.querySelectorAll('option[value]:not([value=""])');
+        if(existing.length){
+            el.sub.disabled = false;
+            if(preSelect) el.sub.value = preSelect;
+            const catOption = el.cat ? el.cat.querySelector(`option[value="${CSS.escape(catVal)}"]`) : null;
+            loadBrands(catOption?.dataset.id || catVal, form.dataset.selectedBrand || '');
+            return;
+        }
+        /* Clear and fetch */
+        el.sub.innerHTML = '<option value="">All Subcategories</option>';
+        el.sub.disabled = true;
+        if(el.brand){ el.brand.innerHTML = '<option value="">All Brands</option>'; el.brand.disabled = true; }
+        if(!catVal) return;
+        const catOption = el.cat ? el.cat.querySelector(`option[value="${CSS.escape(catVal)}"]`) : null;
+        const catId = catOption?.dataset.id || catVal;
+        fetch(API.sub(catId))
+            .then(r => r.json())
+            .then(data => {
+                data.forEach(s => {
+                    const o = new Option(s.name, type === 'requests' ? s.id : (s.slug || s.id));
+                    o.dataset.id = s.id;
+                    el.sub.appendChild(o);
+                });
+                el.sub.disabled = !data.length;
+                if(preSelect){
+                    el.sub.value = preSelect;
+                    if(!el.sub.value){
+                        const m = el.sub.querySelector(`option[data-id="${preSelect}"]`);
+                        if(m) el.sub.value = m.value;
+                    }
+                }
+                loadBrands(catId, form.dataset.selectedBrand || '');
+            })
+            .catch(e => console.error('[UFS] sub', e));
+    }
+
+    /* ── AJAX: load brands ───────────────────────────────────────────── */
+    function loadBrands(catId, preSelect){
+        if(!el.brand) return;
+        const existing = el.brand.querySelectorAll('option[value]:not([value=""])');
+        if(existing.length){ el.brand.disabled = false; if(preSelect) el.brand.value = preSelect; return; }
+        el.brand.innerHTML = '<option value="">All Brands</option>';
+        el.brand.disabled = true;
+        if(!catId) return;
+        fetch(API.brands(catId))
+            .then(r => r.json())
+            .then(data => {
+                data.forEach(b => {
+                    const o = new Option(b.name, type === 'requests' ? b.id : (b.slug || b.id));
+                    o.dataset.id = b.id;
+                    el.brand.appendChild(o);
+                });
+                el.brand.disabled = !data.length;
+                if(preSelect){
+                    el.brand.value = preSelect;
+                    if(!el.brand.value){
+                        const m = el.brand.querySelector(`option[data-id="${preSelect}"]`);
+                        if(m) el.brand.value = m.value;
+                    }
+                }
+            })
+            .catch(e => console.error('[UFS] brands', e));
+    }
+
+    /* ── AJAX: load LGAs ─────────────────────────────────────────────── */
+    function loadLGAs(stateId, preSelect){
+        if(!el.lga) return;
+        el.lga.innerHTML = '<option value="">All LGAs</option>';
+        el.lga.disabled = true;
+        if(!stateId) return;
+        fetch(API.lgas(stateId))
+            .then(r => r.json())
+            .then(data => {
+                data.forEach(l => {
+                    el.lga.appendChild(new Option(l.name, l.id));
+                });
+                el.lga.disabled = !data.length;
+                if(preSelect) el.lga.value = preSelect;
+            })
+            .catch(e => console.error('[UFS] lgas', e));
+    }
+
+    /* ── Request-type visibility ─────────────────────────────────────── */
+    function setRT(rt){
+        if(type !== 'requests') return;
+
+        const catSec   = form.querySelector('.js-req-cat');
+        const svcSecs  = form.querySelectorAll('.js-req-svc');
+        const prodOnly = form.querySelectorAll('.js-req-prod-only');
+        const budSec   = form.querySelector('.js-req-budget');
+        const budProd  = form.querySelector('.js-budget-prod');
+        const budSvc   = form.querySelector('.js-budget-svc');
+
+        /* 
+         * KEY FIX:
+         * Urgency is always shown on the requests page regardless of request_type.
+         * It is NOT a js-req-any-type element anymore — it renders unconditionally.
+         * Budget is only shown when a specific type is chosen.
+         */
+
+        if(rt === 'product'){
+            if(catSec)  catSec.style.display = '';
+            svcSecs.forEach(s  => s.style.display = 'none');
+            prodOnly.forEach(s => s.style.display = '');
+            if(budSec)  budSec.style.display = '';
+            if(budProd) budProd.style.display = '';
+            if(budSvc){ budSvc.style.display = 'none'; const sel=budSvc.querySelector('select'); if(sel) sel.value=''; }
+        } else if(rt === 'service'){
+            if(catSec)  catSec.style.display = 'none';
+            svcSecs.forEach(s  => s.style.display = '');
+            prodOnly.forEach(s => s.style.display = 'none');
+            if(budSec)  budSec.style.display = '';
+            if(budProd){ budProd.style.display = 'none'; budProd.querySelectorAll('input[type="number"]').forEach(i => i.value = ''); }
+            if(budSvc)  budSvc.style.display = '';
+        } else {
+            /* "All" selected — hide category/sub/brand/condition (type-specific)
+               but keep urgency visible (it's always shown via Django template) */
+            if(catSec)  catSec.style.display = 'none';
+            svcSecs.forEach(s  => s.style.display = 'none');
+            prodOnly.forEach(s => s.style.display = 'none');
+            if(budSec)  budSec.style.display = 'none';
+            if(budProd) budProd.style.display = 'none';
+            if(budSvc)  budSvc.style.display = 'none';
+            /* Clear type-specific field values when switching back to "All" */
+            const catEl = form.querySelector('.sidebar-select-category');
+            if(catEl) catEl.value = '';
+            const svcCatInputs = form.querySelectorAll('input[name="service_category"]');
+            svcCatInputs.forEach(i => { if(i.value === '') i.checked = true; });
+        }
+    }
+
+    /* ── Restore pre-selected values on page load ────────────────────── */
+    function restore(){
+        const preCat   = form.dataset.selectedCategory   || '';
+        const preSub   = form.dataset.selectedSubcategory || '';
+        const preSt    = form.dataset.selectedState       || '';
+        const preLga   = form.dataset.selectedLga         || '';
+
+        if(preSt && el.state) el.state.value = preSt;
+
+        if(preCat && type !== 'services'){
+            loadSub(preCat, preSub);
+        }
+
+        /*
+         * MOBILE LGA FIX:
+         * The offcanvas form is rendered without server-side LGA options
+         * (only the desktop form has them).  We ALWAYS fetch via AJAX when
+         * a state is pre-selected so the mobile user sees the correct LGAs.
+         */
+        if(preSt){
+            loadLGAs(preSt, preLga);
+        }
+
+        if(type === 'requests'){
+            const checked = form.querySelector('input[name="request_type"]:checked');
+            setRT(checked ? checked.value : '');
+        }
+    }
+
+    /* ── Event bindings ──────────────────────────────────────────────── */
+
+    /* Category dropdown (products / requests) */
+    if(el.cat){
+        el.cat.addEventListener('change', function(){
+            if(type !== 'services'){
+                if(el.sub){  el.sub.innerHTML = '<option value="">All Subcategories</option>'; el.sub.disabled = true; }
+                if(el.brand){ el.brand.innerHTML = '<option value="">All Brands</option>'; el.brand.disabled = true; }
+                loadSub(this.value, '');
+            }
+            apply(true);
+        });
+    }
+
+    /* Category radio pills (services) */
+    form.querySelectorAll('.sidebar-select-category-radio').forEach(r => {
+        r.addEventListener('change', () => apply(true));
+    });
+
+    /* Subcategory + Brand */
+    if(el.sub)   el.sub.addEventListener('change',   () => apply(true));
+    if(el.brand) el.brand.addEventListener('change', () => apply(true));
+
+    /* State → load LGAs */
+    if(el.state){
+        el.state.addEventListener('change', function(){
+            if(el.lga){ el.lga.innerHTML = '<option value="">All LGAs</option>'; el.lga.disabled = true; }
+            loadLGAs(this.value, null);
+            apply(true);
+        });
+    }
+
+    /* LGA */
+    if(el.lga) el.lga.addEventListener('change', () => apply(true));
+
+    /* Request type radios */
+    form.querySelectorAll('input[name="request_type"]').forEach(r => {
+        r.addEventListener('change', function(){
+            setRT(this.value);
+            form.querySelectorAll('.ufs-toggle').forEach(t => {
+                const i = t.querySelector('input');
+                t.classList.toggle('ufs-toggle--on', i && i.checked);
+            });
+            apply(true);
+        });
+    });
+
+    /* All other radios + checkboxes (but NOT the ones already handled above) */
+    form.querySelectorAll('input[type="radio"]:not([name="request_type"]):not(.sidebar-select-category-radio), input[type="checkbox"]').forEach(i => {
+        i.addEventListener('change', () => apply(true));
+    });
+
+    /* Remaining selects not already bound */
+    const handledSelects = [el.cat, el.sub, el.brand, el.state, el.lga].filter(Boolean);
+    form.querySelectorAll('select').forEach(sel => {
+        if(!handledSelects.includes(sel)) sel.addEventListener('change', () => apply(true));
+    });
+
+    /* Search input (debounced 1.5s, Enter = immediate) */
+    if(el.q){
+        let searchTimer;
+        el.q.addEventListener('input', () => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => apply(true), 1500);
+        });
+        el.q.addEventListener('keydown', e => {
+            if(e.key === 'Enter'){ e.preventDefault(); clearTimeout(searchTimer); apply(true); }
+        });
+    }
+
+    /* Price inputs (Enter = immediate) */
+    form.querySelectorAll('input[type="number"]').forEach(i => {
+        i.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); apply(true); } });
+    });
+
+    /* Clear button */
+    if(el.clr){
+        el.clr.addEventListener('click', e => {
+            e.preventDefault();
+            form.querySelectorAll('input[type="radio"]').forEach(i => { if(i.value === '') i.checked = true; });
+            form.querySelectorAll('input[type="checkbox"]').forEach(i => i.checked = false);
+            form.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+            form.querySelectorAll('input[type="text"], input[type="number"]').forEach(i => i.value = '');
+            if(el.sub)   el.sub.disabled = true;
+            if(el.brand) el.brand.disabled = true;
+            if(el.lga)   el.lga.disabled = true;
+            if(type === 'requests'){
+                setRT('');
+                form.querySelectorAll('.ufs-toggle').forEach(t => {
+                    const i = t.querySelector('input');
+                    t.classList.toggle('ufs-toggle--on', i && i.value === '');
+                });
+            }
+            apply(true);
+        });
+    }
+
+    /* Pill visual sync on load */
+    form.querySelectorAll('.ufs-toggle').forEach(t => {
+        const i = t.querySelector('input');
+        t.classList.toggle('ufs-toggle--on', i && i.checked);
+    });
+    form.querySelectorAll('.ufs-pill').forEach(p => {
+        const i = p.querySelector('input');
+        p.classList.toggle('ufs-pill--on', i && i.checked);
+    });
+
+    restore();
+    log('✅ init', type, isIn ? 'mobile' : 'desktop');
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TYPE DETECTION (fallback when data-item-type is missing)
+   ══════════════════════════════════════════════════════════════════════════ */
+function detectType(){
+    const p = window.location.pathname;
+    if(p.includes('/services'))  return 'services';
+    if(p.includes('/requests') || p.includes('/buyer-requests')) return 'requests';
+    if(document.querySelector('#services-grid'))  return 'services';
+    if(document.querySelector('#requests-grid'))  return 'requests';
+    return 'products';
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   INIT  (runs once; also re-runs when the offcanvas opens to catch late DOM)
+   ══════════════════════════════════════════════════════════════════════════ */
+function init(){
+    document.querySelectorAll('.sidebar-filter-form').forEach(form => initForm(form));
+    bindCollapsibles();
+    bindChips();
+}
+
+if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
+
+/*
+ * Re-init when Bootstrap offcanvas opens.
+ */
+document.addEventListener('show.bs.offcanvas', () => {
+    setTimeout(() => {
+        document.querySelectorAll('.sidebar-filter-form:not([data-ufs-init])').forEach(form => initForm(form));
+        /* For already-init forms inside offcanvas, re-trigger LGA load if needed */
+        document.querySelectorAll('.offcanvas .sidebar-filter-form').forEach(form => {
+            const preSt  = form.dataset.selectedState || '';
+            const preLga = form.dataset.selectedLga   || '';
+            const lgaSel = form.querySelector('.sidebar-select-lga');
+            if(preSt && lgaSel){
+                const hasOpts = lgaSel.querySelectorAll('option[value]:not([value=""])').length;
+                if(!hasOpts){
+                    /* Fetch silently */
+                    fetch(`/api/lgas/${preSt}/`)
+                        .then(r => r.json())
+                        .then(data => {
+                            lgaSel.innerHTML = '<option value="">All LGAs</option>';
+                            data.forEach(l => lgaSel.appendChild(new Option(l.name, l.id)));
+                            lgaSel.disabled = !data.length;
+                            if(preLga) lgaSel.value = preLga;
+                        })
+                        .catch(() => {});
+                }
+            }
+            bindCollapsibles();
+            bindChips();
+        });
+    }, 50);
+});
+
+})();
+</script>

@@ -7,14 +7,9 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Count
 from datetime import timedelta, date
 
-from Home.models import Product_Listing, Review, SavedProduct, ReviewReply, ProductReport
-from .models import (
-    Notification,
-    NotificationPreference,
-    NotificationCategory,
-    NotificationPriority,
-    create_notification
-)
+from Home.models import Product_Listing, Review, ReviewReply
+from User.models import ItemReport, SavedItem
+from .models import Notification, NotificationPreference, NotificationCategory, NotificationPriority, create_notification
 
 # User Preference Signal
 @receiver(post_save, sender=User)
@@ -177,54 +172,138 @@ def handle_review_reply_notifications(sender, instance, created, **kwargs):
         )
 
 # Saved Product Signals
-@receiver(post_save, sender=SavedProduct)
-def handle_product_save_notifications(sender, instance, created, **kwargs):
-    """Handle notifications when someone saves a product"""
-    if created:
-        prefs = NotificationPreference.objects.filter(
-            user=instance.product.seller.user,
-            save_notifications=True
-        ).first()
-        
-        if prefs:
-            # Get total saves count
-            total_saves = SavedProduct.objects.filter(product=instance.product).count()
-            
-            create_notification(
-                user=instance.product.seller.user,
-                title="❤️ Product Saved",
-                message=f"Someone saved your listing '{instance.product.title}' ({total_saves} total saves)",
-                category=NotificationCategory.SAVES,
-                priority=NotificationPriority.LOW,
-                content_object=instance.product
-            )
-            
-            # Milestone notifications for saves
-            if total_saves in [5, 10, 25, 50, 100]:
-                create_notification(
-                    user=instance.product.seller.user,
-                    title=f"🔥 {total_saves} Saves Milestone!",
-                    message=f"Your listing '{instance.product.title}' has reached {total_saves} saves! It's really popular.",
-                    category=NotificationCategory.MILESTONES,
-                    priority=NotificationPriority.NORMAL,
-                    content_object=instance.product
-                )
+# REPLACE the handle_product_save_notifications function in Notifications/signals.py
 
-# Product Report Signals
-@receiver(post_save, sender=ProductReport)
-def handle_product_report_notifications(sender, instance, created, **kwargs):
-    """Handle notifications for product reports"""
-    if created:
-        # Notify seller about report (they should know their product was reported)
+@receiver(post_save, sender=SavedItem)
+def handle_product_save_notifications(sender, instance, created, **kwargs):
+    """
+    UNIFIED: Handle notifications when someone saves a product, service, or request
+    """
+    if not created:
+        return
+    
+    # Get the actual item using content_object (generic foreign key)
+    item = instance.content_object
+    
+    if not item:
+        return  # Item was deleted
+    
+    # Determine owner and item type based on what was saved
+    owner = None
+    item_type = None
+    item_title = None
+    
+    # Check if it's a Product
+    if hasattr(item, 'seller') and hasattr(item.seller, 'user'):
+        owner = item.seller.user
+        item_type = 'product'
+        item_title = getattr(item, 'title', str(item))
+    
+    # Check if it's a Service
+    elif hasattr(item, 'provider') and hasattr(item.provider, 'user'):
+        owner = item.provider.user
+        item_type = 'service'
+        item_title = getattr(item, 'title', str(item))
+    
+    # Check if it's a Buyer Request
+    elif hasattr(item, 'buyer') and hasattr(item.buyer, 'user'):
+        owner = item.buyer.user
+        item_type = 'request'
+        item_title = getattr(item, 'title', str(item))
+    
+    # If we couldn't determine the owner, skip notification
+    if not owner or owner == instance.user:
+        return  # Don't notify if owner saved their own item
+    
+    # Check if owner wants save notifications
+    prefs = NotificationPreference.objects.filter(
+        user=owner,
+        save_notifications=True
+    ).first()
+    
+    if not prefs:
+        return
+    
+    # Get total saves count for this item
+    from django.contrib.contenttypes.models import ContentType
+    content_type = ContentType.objects.get_for_model(item)
+    total_saves = SavedItem.objects.filter(
+        content_type=content_type,
+        object_id=str(item.id)
+    ).count()
+    
+    # Create notification based on item type
+    notification_messages = {
+        'product': f"Someone saved your product '{item_title}' ({total_saves} total saves)",
+        'service': f"Someone saved your service '{item_title}' ({total_saves} total saves)",
+        'request': f"A seller saved your request '{item_title}' ({total_saves} total saves)"
+    }
+    
+    notification_titles = {
+        'product': "❤️ Product Saved",
+        'service': "🔖 Service Saved",
+        'request': "🔍 Request Saved"
+    }
+    
+    create_notification(
+        user=owner,
+        title=notification_titles.get(item_type, "📌 Item Saved"),
+        message=notification_messages.get(item_type, f"Someone saved your {item_type}"),
+        category=NotificationCategory.SAVES,
+        priority=NotificationPriority.LOW,
+        content_object=item
+    )
+    
+    # Milestone notifications for saves (5, 10, 25, 50, 100)
+    if total_saves in [5, 10, 25, 50, 100]:
+        milestone_messages = {
+            'product': f"Your product '{item_title}' has reached {total_saves} saves! It's really popular.",
+            'service': f"Your service '{item_title}' has reached {total_saves} saves! Great interest!",
+            'request': f"Your request '{item_title}' has reached {total_saves} saves from sellers!"
+        }
+        
         create_notification(
-            user=instance.product.seller.user,
-            title="⚠️ Product Reported",
-            message=f"Your listing '{instance.product.title}' was reported for: {instance.get_reason_display()}. Our team will review it.",
+            user=owner,
+            title=f"🔥 {total_saves} Saves Milestone!",
+            message=milestone_messages.get(item_type, f"Your {item_type} reached {total_saves} saves!"),
+            category=NotificationCategory.MILESTONES,
+            priority=NotificationPriority.NORMAL,
+            content_object=item
+        )
+# Item Report Signals
+@receiver(post_save, sender=ItemReport)
+def handle_item_report_notifications(sender, instance, created, **kwargs):
+    """
+    UNIFIED: Handle notifications for product, service, and request reports
+    """
+    if not created:
+        return
+    
+    # Get the item owner
+    item = instance.content_object
+    if not item:
+        return  # Item was deleted
+    
+    # Determine owner based on item type
+    owner = None
+    if hasattr(item, 'seller'):  # Product
+        owner = item.seller.user
+    elif hasattr(item, 'provider'):  # Service
+        owner = item.provider.user
+    elif hasattr(item, 'buyer'):  # Buyer Request
+        owner = item.buyer.user
+    
+    if owner:
+        # Notify owner about report
+        create_notification(
+            user=owner,
+            title=f"⚠️ {instance.item_type_display} Reported",
+            message=f'Your {instance.item_type} "{instance.item_title}" was reported for: {instance.get_reason_display()}. Our team will review it.',
             category=NotificationCategory.ALERTS,
             priority=NotificationPriority.HIGH,
-            content_object=instance.product
+            content_object=item
         )
-
+        
 # View Milestone Notifications (call this from your product detail view)
 def check_view_milestones(product, current_views):
     """Call this function when a product view count is updated"""
@@ -271,12 +350,19 @@ def handle_price_change_notifications(sender, instance, **kwargs):
     if hasattr(instance, 'price') and hasattr(original, 'price'):
         if instance.price < original.price:
             # Price dropped - notify users who saved this product
-            saved_users = SavedProduct.objects.filter(product=instance).select_related('user')
+            # FIXED: Use content_type and object_id instead of product field
+            from django.contrib.contenttypes.models import ContentType
             
-            for saved_product in saved_users:
+            product_ct = ContentType.objects.get_for_model(Product_Listing)
+            saved_items = SavedItem.objects.filter(
+                content_type=product_ct,
+                object_id=str(instance.id)
+            ).select_related('user')
+            
+            for saved_item in saved_items:
                 # Check if user wants price drop alerts
                 prefs = NotificationPreference.objects.filter(
-                    user=saved_product.user,
+                    user=saved_item.user,
                     price_drop_alerts=True
                 ).first()
                 
@@ -285,7 +371,7 @@ def handle_price_change_notifications(sender, instance, **kwargs):
                     discount_percent = (price_diff / original.price) * 100
                     
                     create_notification(
-                        user=saved_product.user,
+                        user=saved_item.user,
                         title="💰 Price Drop Alert!",
                         message=f"'{instance.title}' price dropped by {discount_percent:.0f}%! Now: ₦{instance.price:,.0f} (was ₦{original.price:,.0f})",
                         category=NotificationCategory.NEWS,

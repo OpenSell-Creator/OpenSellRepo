@@ -1,258 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block 'Body'%}
-<div class="dashboard-container">
-    <!-- Dashboard Header -->
-    <div class="dashboard-header">
-        <div class="container">
-            <div class="row align-items-center py-4">
-                <div class="col">
-                    <h1 class="dashboard-title">Boost Your Product</h1>
-                    <p class="dashboard-subtitle">Increase visibility and sales for your listing</p>
-                </div>
-                <div class="col-auto back-button-container container-fluid">
-                    <button onclick="history.back()" class="btn btn-outline-primary">
-                        <i class="fas fa-arrow-left"></i>
-                        <span>Back</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Boost Product Content -->
-    <div class="container mt-4">
-        <div class="row">
-            <div class="col-md-4 mb-4">
-                <div class="dashboard-card h-100">
-                    <div class="card-header">
-                        <h5 class="card-title">Product Details</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="product-preview-horizontal">
-                            <div class="product-image-wrapper">
-                                {% if product.primary_image %}
-                                    <img src="{{ product.primary_image.image.url }}" alt="{{ product.title }}" class="product-image-side">
-                                {% else %}
-                                    <div class="product-no-image-side">
-                                        <i class="bi bi-image fs-3"></i>
-                                    </div>
-                                {% endif %}
-                            </div>
-                            
-                            <div class="product-info-side">
-                                <h4 class="product-title">{{ product.title }}</h4>
-                                <div class="product-price">₦{{ product.price }}</div>
-                                
-                                <div class="product-meta mt-3">
-                                    <div class="meta-item">
-                                        <i class="bi bi-tag me-2"></i>
-                                        {{ product.category.name }}
-                                    </div>
-                                    <div class="meta-item">
-                                        <i class="bi bi-eye me-2"></i>
-                                        {{ product.view_count }} views
-                                    </div>
-                                    <div class="meta-item">
-                                        <i class="bi bi-box me-2"></i>
-                                        {{ product.quantity }} in stock
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-md-8">
-                <div class="dashboard-card">
-                    <div class="card-header">
-                        <h5 class="card-title">Boost Options</h5>
-                    </div>
-                    <div class="card-body">
-                        <p class="text-muted mb-4">
-                            Boosting your product increases its visibility, helping you sell faster.
-                            Choose the boost option that works best for your listing:
-                        </p>
-                        
-                        <form method="post">
-                            {% csrf_token %}
-                            
-                            {% if form.non_field_errors %}
-                                <div class="alert alert-danger">
-                                    {% for error in form.non_field_errors %}
-                                        {{ error }}
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                            
-                            <div class="boost-types mb-4">
-                                <div class="boost-options-grid">
-                                    {% for boost_data in template_boost_data %}
-                                    <div class="boost-option-wrapper">
-                                        <div class="boost-option-card">
-                                            <div class="form-check card h-100 {% if form.boost_type.value == boost_data.type %}selected{% endif %}">
-                                                <div class="card-body">
-                                                    <input type="radio" name="{{ form.boost_type.name }}" 
-                                                           id="boost_{{ boost_data.type }}" value="{{ boost_data.type }}" 
-                                                           class="form-check-input" 
-                                                           {% if form.boost_type.value == boost_data.type %}checked{% endif %}>
-                                                    <label for="boost_{{ boost_data.type }}" class="form-check-label d-block">
-                                                        <div class="boost-icon mb-3">
-                                                            <i class="bi {{ boost_data.icon }} fs-2 {{ boost_data.color }}"></i>
-                                                        </div>
-                                                        <h5 class="boost-title">{{ boost_data.display_name }}</h5>
-                                                        <p class="boost-description">
-                                                            {{ boost_data.description }}
-                                                        </p>
-                                                        <div class="boost-price">
-                                                            {% if boost_data.has_discount %}
-                                                                <s class="text-muted">₦{{ boost_data.original_price|floatformat:0 }}</s>
-                                                                <span class="text-success">₦{{ boost_data.discounted_price|floatformat:0 }} per day</span>
-                                                                <small class="text-success d-block">{{ boost_data.discount_percent|floatformat:0 }}% Pro discount!</small>
-                                                            {% else %}
-                                                                ₦{{ boost_data.original_price|floatformat:0 }} per day
-                                                            {% endif %}
-                                                        </div>
-                                                    </label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            
-                            <div class="duration-selector mb-4">
-                                <label class="form-label fw-bold">Boost Duration</label>
-                                <div class="duration-options">
-                                    <div class="duration-grid">
-                                        {% for value, label in form.duration.field.choices %}
-                                            <div class="duration-option-wrapper">
-                                                <div class="form-check duration-option">
-                                                    <input type="radio" name="{{ form.duration.name }}" 
-                                                           id="duration_{{ value }}" value="{{ value }}" 
-                                                           class="form-check-input"
-                                                           {% if form.duration.value == value or forloop.first and not form.duration.value %}checked{% endif %}>
-                                                    <label for="duration_{{ value }}" class="form-check-label d-block text-center p-2">
-                                                        <span class="duration-days fw-bold">{{ value }}</span>
-                                                        <span class="duration-label d-block">day{% if value != 1 %}s{% endif %}</span>
-                                                    </label>
-                                                </div>
-                                            </div>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="boost-summary-box mb-4">
-                                <div class="card bg-light">
-                                    <div class="card-body">
-                                        <h5 class="summary-title">Boost Summary</h5>
-                                        <div class="summary-details">
-                                            <div class="row">
-                                                <div class="col-6">Account Balance:</div>
-                                                <div class="col-6 text-end fw-bold">₦{{ account_balance|floatformat:0 }}</div>
-                                            </div>
-                                            <hr>
-                                            <div class="row">
-                                                <div class="col-6" id="summary-label">Estimated cost:</div>
-                                                <div class="col-6 text-end fw-bold" id="summary-cost">
-                                                    <span id="cost-calculation">₦5.00 x 1 day</span> = 
-                                                    <span id="total-cost">₦5.00</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-primary btn-lg">
-                                    <i class="bi bi-rocket me-2"></i>
-                                    Boost Product Now
-                                </button>
-                                <div class="text-center mt-2">
-                                    <a href="{% url 'deposit_with_monnify' %}" class="btn btn-link add-funds-link">
-                                        <i class="bi bi-plus-circle me-1"></i>
-                                        Need to add more funds?
-                                    </a>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- JavaScript for calculating costs -->
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Get all boost type and duration radios
-        const boostRadios = document.querySelectorAll('input[name="{{ form.boost_type.name }}"]');
-        const durationRadios = document.querySelectorAll('input[name="{{ form.duration.name }}"]');
-        
-        // Set prices from Django context
-        const boostPrices = {
-            {% for boost_type, pricing in boost_prices.items %}
-            '{{ boost_type }}': {{ pricing.discounted }},
-            {% endfor %}
-        };
-        
-        // Function to update summary costs
-        function updateSummary() {
-            let selectedBoostInput = document.querySelector('input[name="{{ form.boost_type.name }}"]:checked');
-            let selectedDurationInput = document.querySelector('input[name="{{ form.duration.name }}"]:checked');
-            
-            if (!selectedBoostInput || !selectedDurationInput) {
-                return;
-            }
-            
-            let selectedBoost = selectedBoostInput.value;
-            let selectedDuration = parseInt(selectedDurationInput.value);
-            
-            let boostPrice = boostPrices[selectedBoost] || 5.00;
-            let totalCost = boostPrice * selectedDuration;
-            
-            document.getElementById('cost-calculation').textContent = 
-                `₦${boostPrice.toFixed(2)} x ${selectedDuration} day${selectedDuration > 1 ? 's' : ''}`;
-            document.getElementById('total-cost').textContent = `₦${totalCost.toFixed(2)}`;
-        }
-        
-        // Add event listeners
-        boostRadios.forEach(radio => {
-            radio.addEventListener('change', updateSummary);
-        });
-        
-        durationRadios.forEach(radio => {
-            radio.addEventListener('change', updateSummary);
-        });
-        
-        // Initialize on page load
-        updateSummary();
-        
-        // Add visual feedback for selected cards
-        const boostCards = document.querySelectorAll('.boost-option-card .card');
-        boostRadios.forEach(radio => {
-            radio.addEventListener('change', function() {
-                boostCards.forEach(card => {
-                    card.classList.remove('selected');
-                });
-                this.closest('.card').classList.add('selected');
-            });
-        });
-        
-        // Initialize selected card
-        const checkedBoost = document.querySelector('input[name="{{ form.boost_type.name }}"]:checked');
-        if (checkedBoost) {
-            checkedBoost.closest('.card').classList.add('selected');
-        }
-    });
-</script>
-
+{% block page_css %}
 <style>
     /* ===== BOOST PRODUCT PAGE STYLES ===== */
 
@@ -983,5 +732,259 @@
         outline-offset: 2px;
     }
 </style>
+{% endblock %}
+
+{% block 'Body'%}
+<div class="dashboard-container">
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="row align-items-center py-4">
+                <div class="col">
+                    <h1 class="dashboard-title">Boost Your Product</h1>
+                    <p class="dashboard-subtitle">Increase visibility and sales for your listing</p>
+                </div>
+                <div class="col-auto back-button-container container-fluid">
+                    <button onclick="history.back()" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>Back</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Boost Product Content -->
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-4 mb-4">
+                <div class="dashboard-card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title">Product Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="product-preview-horizontal">
+                            <div class="product-image-wrapper">
+                                {% if product.primary_image %}
+                                    <img src="{{ product.primary_image.image.url }}" alt="{{ product.title }}" class="product-image-side">
+                                {% else %}
+                                    <div class="product-no-image-side">
+                                        <i class="bi bi-image fs-3"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="product-info-side">
+                                <h4 class="product-title">{{ product.title }}</h4>
+                                <div class="product-price">₦{{ product.price }}</div>
+                                
+                                <div class="product-meta mt-3">
+                                    <div class="meta-item">
+                                        <i class="bi bi-tag me-2"></i>
+                                        {{ product.category.name }}
+                                    </div>
+                                    <div class="meta-item">
+                                        <i class="bi bi-eye me-2"></i>
+                                        {{ product.view_count }} views
+                                    </div>
+                                    <div class="meta-item">
+                                        <i class="bi bi-box me-2"></i>
+                                        {{ product.quantity }} in stock
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-8">
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h5 class="card-title">Boost Options</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-4">
+                            Boosting your product increases its visibility, helping you sell faster.
+                            Choose the boost option that works best for your listing:
+                        </p>
+                        
+                        <form method="post">
+                            {% csrf_token %}
+                            
+                            {% if form.non_field_errors %}
+                                <div class="alert alert-danger">
+                                    {% for error in form.non_field_errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            
+                            <div class="boost-types mb-4">
+                                <div class="boost-options-grid">
+                                    {% for boost_data in template_boost_data %}
+                                    <div class="boost-option-wrapper">
+                                        <div class="boost-option-card">
+                                            <div class="form-check card h-100 {% if form.boost_type.value == boost_data.type %}selected{% endif %}">
+                                                <div class="card-body">
+                                                    <input type="radio" name="{{ form.boost_type.name }}" 
+                                                           id="boost_{{ boost_data.type }}" value="{{ boost_data.type }}" 
+                                                           class="form-check-input" 
+                                                           {% if form.boost_type.value == boost_data.type %}checked{% endif %}>
+                                                    <label for="boost_{{ boost_data.type }}" class="form-check-label d-block">
+                                                        <div class="boost-icon mb-3">
+                                                            <i class="bi {{ boost_data.icon }} fs-2 {{ boost_data.color }}"></i>
+                                                        </div>
+                                                        <h5 class="boost-title">{{ boost_data.display_name }}</h5>
+                                                        <p class="boost-description">
+                                                            {{ boost_data.description }}
+                                                        </p>
+                                                        <div class="boost-price">
+                                                            {% if boost_data.has_discount %}
+                                                                <s class="text-muted">₦{{ boost_data.original_price|floatformat:0 }}</s>
+                                                                <span class="text-success">₦{{ boost_data.discounted_price|floatformat:0 }} per day</span>
+                                                                <small class="text-success d-block">{{ boost_data.discount_percent|floatformat:0 }}% Pro discount!</small>
+                                                            {% else %}
+                                                                ₦{{ boost_data.original_price|floatformat:0 }} per day
+                                                            {% endif %}
+                                                        </div>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            
+                            <div class="duration-selector mb-4">
+                                <label class="form-label fw-bold">Boost Duration</label>
+                                <div class="duration-options">
+                                    <div class="duration-grid">
+                                        {% for value, label in form.duration.field.choices %}
+                                            <div class="duration-option-wrapper">
+                                                <div class="form-check duration-option">
+                                                    <input type="radio" name="{{ form.duration.name }}" 
+                                                           id="duration_{{ value }}" value="{{ value }}" 
+                                                           class="form-check-input"
+                                                           {% if form.duration.value == value or forloop.first and not form.duration.value %}checked{% endif %}>
+                                                    <label for="duration_{{ value }}" class="form-check-label d-block text-center p-2">
+                                                        <span class="duration-days fw-bold">{{ value }}</span>
+                                                        <span class="duration-label d-block">day{% if value != 1 %}s{% endif %}</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="boost-summary-box mb-4">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h5 class="summary-title">Boost Summary</h5>
+                                        <div class="summary-details">
+                                            <div class="row">
+                                                <div class="col-6">Account Balance:</div>
+                                                <div class="col-6 text-end fw-bold">₦{{ account_balance|floatformat:0 }}</div>
+                                            </div>
+                                            <hr>
+                                            <div class="row">
+                                                <div class="col-6" id="summary-label">Estimated cost:</div>
+                                                <div class="col-6 text-end fw-bold" id="summary-cost">
+                                                    <span id="cost-calculation">₦5.00 x 1 day</span> = 
+                                                    <span id="total-cost">₦5.00</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-rocket me-2"></i>
+                                    Boost Product Now
+                                </button>
+                                <div class="text-center mt-2">
+                                    <a href="{% url 'deposit_with_monnify' %}" class="btn btn-link add-funds-link">
+                                        <i class="bi bi-plus-circle me-1"></i>
+                                        Need to add more funds?
+                                    </a>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for calculating costs -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get all boost type and duration radios
+        const boostRadios = document.querySelectorAll('input[name="{{ form.boost_type.name }}"]');
+        const durationRadios = document.querySelectorAll('input[name="{{ form.duration.name }}"]');
+        
+        // Set prices from Django context
+        const boostPrices = {
+            {% for boost_type, pricing in boost_prices.items %}
+            '{{ boost_type }}': {{ pricing.discounted }},
+            {% endfor %}
+        };
+        
+        // Function to update summary costs
+        function updateSummary() {
+            let selectedBoostInput = document.querySelector('input[name="{{ form.boost_type.name }}"]:checked');
+            let selectedDurationInput = document.querySelector('input[name="{{ form.duration.name }}"]:checked');
+            
+            if (!selectedBoostInput || !selectedDurationInput) {
+                return;
+            }
+            
+            let selectedBoost = selectedBoostInput.value;
+            let selectedDuration = parseInt(selectedDurationInput.value);
+            
+            let boostPrice = boostPrices[selectedBoost] || 5.00;
+            let totalCost = boostPrice * selectedDuration;
+            
+            document.getElementById('cost-calculation').textContent = 
+                `₦${boostPrice.toFixed(2)} x ${selectedDuration} day${selectedDuration > 1 ? 's' : ''}`;
+            document.getElementById('total-cost').textContent = `₦${totalCost.toFixed(2)}`;
+        }
+        
+        // Add event listeners
+        boostRadios.forEach(radio => {
+            radio.addEventListener('change', updateSummary);
+        });
+        
+        durationRadios.forEach(radio => {
+            radio.addEventListener('change', updateSummary);
+        });
+        
+        // Initialize on page load
+        updateSummary();
+        
+        // Add visual feedback for selected cards
+        const boostCards = document.querySelectorAll('.boost-option-card .card');
+        boostRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                boostCards.forEach(card => {
+                    card.classList.remove('selected');
+                });
+                this.closest('.card').classList.add('selected');
+            });
+        });
+        
+        // Initialize selected card
+        const checkedBoost = document.querySelector('input[name="{{ form.boost_type.name }}"]:checked');
+        if (checkedBoost) {
+            checkedBoost.closest('.card').classList.add('selected');
+        }
+    });
+</script>
+
 {% endblock %}
 {% block 'Footer' %}{% endblock %}

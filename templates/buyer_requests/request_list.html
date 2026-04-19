@@ -1,0 +1,798 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load compress %}
+
+{% block page_css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/pages/buyer_requests.css' %}">
+    <style>
+.brl-page { padding-top: 0.5rem; }
+
+.brl-offcanvas {
+    height: 88dvh;
+    max-height: 88dvh;
+    border-radius: 20px 20px 0 0;
+    overflow: hidden;
+}
+
+.brl-offcanvas-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.35rem 1.1rem 0.875rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--card-background);
+    /* Drag handle affordance */
+    background-image: linear-gradient(var(--border-color), var(--border-color));
+    background-size: 36px 3px;
+    background-repeat: no-repeat;
+    background-position: center 10px;
+}
+
+.brl-offcanvas-title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.brl-offcanvas-title-group .offcanvas-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.brl-offcanvas-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    background: var(--primary-color);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0 5px;
+}
+.brl-offcanvas-badge:empty { display: none; }
+
+.brl-offcanvas-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.brl-clear-all-link {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--danger, #dc3545);
+    text-decoration: none;
+    white-space: nowrap;
+}
+.brl-clear-all-link:hover { text-decoration: underline; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAGE HEADER
+   ═══════════════════════════════════════════════════════════════════════════ */
+.brl-page-header {
+    background: var(--card-background);
+    border-radius: 14px;
+    padding: 0.875rem 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 8px var(--shadow-color);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* Title row */
+.brl-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.brl-title-group { display: flex; flex-direction: column; gap: 0.1rem; }
+
+.brl-page-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.2;
+}
+
+.brl-page-subtitle {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.brl-post-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 14px;
+    background: var(--success, #28a745);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 0.18s ease;
+    border: none;
+}
+.brl-post-btn:hover {
+    background: #218838;
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(40,167,69,0.3);
+}
+
+/* Category strip */
+.brl-category-strip {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin: 0 -0.25rem;
+}
+.brl-category-strip::-webkit-scrollbar { display: none; }
+
+.brl-category-track {
+    display: flex;
+    gap: 6px;
+    padding: 2px 0.25rem 4px;
+    width: max-content;
+    min-width: 100%;
+}
+
+.brl-cat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    background: var(--background-color);
+    border: 1.5px solid var(--border-color);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-decoration: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+}
+.brl-cat-pill:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    text-decoration: none;
+}
+.brl-cat-pill--active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #fff;
+}
+.brl-cat-pill--active:hover { color: #fff; filter: brightness(1.08); }
+
+.brl-cat-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    background: var(--primary-color);
+    color: #fff;
+    border-radius: 9px;
+    font-size: 0.63rem;
+    font-weight: 700;
+    padding: 0 4px;
+    line-height: 1;
+}
+.brl-cat-pill--active .brl-cat-count {
+    background: rgba(255,255,255,0.25);
+}
+
+/* Controls bar */
+.brl-controls-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+.brl-controls-bar::-webkit-scrollbar { display: none; }
+
+/* Filter button */
+.brl-filter-btn {
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    background: var(--primary-color);
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+.brl-filter-btn:hover,
+.brl-filter-btn:active { filter: brightness(1.1); }
+
+.brl-filter-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    background: var(--accent-color, #ff6600);
+    color: #fff;
+    border-radius: 9px;
+    font-size: 0.63rem;
+    font-weight: 700;
+    padding: 0 4px;
+    line-height: 1;
+}
+.brl-filter-badge:empty { display: none; }
+
+/* Quick links */
+.brl-quick-links {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.brl-quick-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 11px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-decoration: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+    background: var(--background-color);
+}
+.brl-quick-link:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    text-decoration: none;
+}
+.brl-quick-link--active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #fff;
+}
+.brl-quick-link--urgent { border-color: rgba(220,53,69,0.3); color: var(--danger,#dc3545); }
+.brl-quick-link--urgent:hover { background: var(--danger,#dc3545); border-color: var(--danger,#dc3545); color: #fff; }
+.brl-quick-link--verified { border-color: rgba(34,197,94,0.35); color: #16a34a; }
+.brl-quick-link--verified:hover { background: #16a34a; border-color: #16a34a; color: #fff; }
+
+/* Sort */
+.brl-sort-control { display: flex; align-items: center; flex-shrink: 0; }
+
+.brl-sort-select {
+    padding: 6px 28px 6px 10px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 20px;
+    background: var(--background-color);
+    color: var(--text-primary);
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23666' viewBox='0 0 16 16'%3E%3Cpath d='M8 10.5l-4-4h8l-4 4z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    min-height: 34px;
+    white-space: nowrap;
+    transition: border-color 0.15s;
+}
+.brl-sort-select:focus { outline: none; border-color: var(--primary-color); }
+[data-bs-theme="dark"] .brl-sort-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23d4d4d4' viewBox='0 0 16 16'%3E%3Cpath d='M8 10.5l-4-4h8l-4 4z'/%3E%3C/svg%3E");
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FLOATING ACTION BUTTON
+   ═══════════════════════════════════════════════════════════════════════════ */
+.brl-fab {
+    position: fixed;
+    bottom: 76px;
+    right: 16px;
+    z-index: 1040;
+}
+
+.brl-fab-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 11px 18px;
+    background: var(--primary-color);
+    color: #fff;
+    border: none;
+    border-radius: 24px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+.brl-fab-btn:hover,
+.brl-fab-btn:active { filter: brightness(1.1); transform: scale(1.04); }
+
+.brl-fab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    background: var(--accent-color, #ff6600);
+    color: #fff;
+    border-radius: 9px;
+    font-size: 0.63rem;
+    font-weight: 700;
+    padding: 0 4px;
+    line-height: 1;
+}
+.brl-fab-badge:empty { display: none; }
+
+@media (max-width: 360px) {
+    .brl-fab-label { display: none; }
+    .brl-fab-btn   { padding: 13px; border-radius: 50%; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SIDEBAR WRAPPER (desktop sticky + scrollable)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.brl-sidebar-wrap {
+    position: sticky;
+    top: 80px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
+    border-radius: 14px;
+}
+.brl-sidebar-wrap::-webkit-scrollbar { width: 4px; }
+.brl-sidebar-wrap::-webkit-scrollbar-track { background: transparent; }
+.brl-sidebar-wrap::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESULTS META
+   ═══════════════════════════════════════════════════════════════════════════ */
+.brl-results-meta {
+    padding-bottom: 0.6rem;
+    margin-bottom: 0.25rem;
+}
+
+.brl-results-count {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+.brl-results-count strong { color: var(--text-primary); font-weight: 600; }
+.brl-results-count--empty { font-style: italic; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EMPTY STATE
+   ═══════════════════════════════════════════════════════════════════════════ */
+.brl-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 3rem 1.5rem;
+    background: var(--card-background);
+    border-radius: 14px;
+    border: 1px dashed var(--border-color);
+    gap: 0.5rem;
+}
+
+.brl-empty-icon {
+    font-size: 2.5rem;
+    color: var(--text-secondary);
+    opacity: 0.4;
+    margin-bottom: 0.25rem;
+}
+
+.brl-empty-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.brl-empty-text {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin: 0;
+    max-width: 320px;
+}
+
+.brl-empty-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 0.5rem;
+}
+
+.brl-empty-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 18px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    transition: all 0.18s ease;
+}
+.brl-empty-btn--primary { background: var(--primary-color); color: #fff; }
+.brl-empty-btn--primary:hover { filter: brightness(1.1); color: #fff; }
+.brl-empty-btn--outline { background: transparent; color: var(--text-secondary); border: 1.5px solid var(--border-color); }
+.brl-empty-btn--outline:hover { border-color: var(--primary-color); color: var(--primary-color); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .brl-page-header {
+        padding: 0.75rem;
+        gap: 0.6rem;
+        border-radius: 10px;
+        margin-bottom: 0.75rem;
+    }
+    .brl-page-title    { font-size: 0.95rem; }
+    .brl-cat-pill      { padding: 5px 10px; font-size: 0.72rem; }
+    .brl-controls-bar  { gap: 6px; }
+    .brl-filter-btn    { padding: 6px 12px; font-size: 0.74rem; }
+    .brl-sort-select   { font-size: 0.72rem; padding: 5px 26px 5px 9px; min-height: 32px; }
+    .brl-fab           { bottom: 72px; }
+}
+
+@media (max-width: 576px) {
+    .brl-page-header   { padding: 0.6rem 0.75rem; gap: 0.5rem; border-radius: 8px; }
+    .brl-page-title    { font-size: 0.9rem; }
+    .brl-post-btn span { display: none; }
+    .brl-post-btn      { padding: 8px 10px; }
+    .brl-offcanvas     { height: 92dvh; max-height: 92dvh; }
+    .brl-empty-state   { padding: 2.5rem 1rem; }
+    .brl-empty-title   { font-size: 0.9rem; }
+}
+</style>
+{% endblock %}
+
+{% block page_js %}
+    <script type="text/javascript" src="{% static 'js/pages/buyer_requests.js' %}"></script>
+{% endblock %}
+
+{% block 'Body' %}
+
+<div class="brl-page"
+     data-lgas-url="{% url 'buyer_requests:ajax_lgas' %}"
+     data-list-url="{% url 'buyer_requests:list' %}">
+
+
+    <div class="offcanvas offcanvas-bottom brl-offcanvas" tabindex="-1" id="mobileFilters"
+         aria-labelledby="mobileFiltersTitle">
+        <div class="offcanvas-header brl-offcanvas-header">
+            <div class="brl-offcanvas-title-group">
+                <h5 class="offcanvas-title" id="mobileFiltersTitle">
+                    <i class="bi bi-sliders me-2"></i>Filters
+                </h5>
+                <span class="brl-offcanvas-badge" id="offcanvasBadge"></span>
+            </div>
+            <div class="brl-offcanvas-actions">
+                {% if request.GET.category or request.GET.query or request.GET.state or request.GET.request_type or request.GET.status or request.GET.urgency or request.GET.verified_only or request.GET.budget_range or request.GET.subcategory or request.GET.brand or request.GET.lga or request.GET.condition or request.GET.sort %}
+                <a href="{% url 'buyer_requests:list' %}" class="brl-clear-all-link">Clear all</a>
+                {% endif %}
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+        </div>
+        <div class="offcanvas-body p-0">
+            {% include 'unified_filter_sidebar.html' with sidebar_id='mobile' item_type='requests' filter_action_url=request.path product_categories=product_categories service_categories=service_categories selected_category=request.GET.category selected_subcategory=request.GET.subcategory selected_brand=request.GET.brand selected_state=request.GET.state selected_lga=request.GET.lga subcategories=subcategories brands=brands states=states lgas=lgas %}
+        </div>
+    </div>
+
+
+    <div class="brl-page-header">
+
+        {# Title row + Post CTA #}
+        <div class="brl-title-row">
+            <div class="brl-title-group">
+                <h1 class="brl-page-title">Buyer Requests</h1>
+                <p class="brl-page-subtitle d-none d-sm-block">Find buyers looking for products &amp; services</p>
+            </div>
+            {% if user.is_authenticated %}
+            <a href="{% url 'buyer_requests:create' %}" class="brl-post-btn">
+                <i class="bi bi-plus-lg"></i>
+                <span>Post Request</span>
+            </a>
+            {% endif %}
+        </div>
+
+        {# Category strip — always visible, horizontal scroll #}
+        <nav class="brl-category-strip" aria-label="Browse by category">
+            <div class="brl-category-track">
+                <a href="{% url 'buyer_requests:list' %}"
+                   class="brl-cat-pill {% if not request.GET.category %}brl-cat-pill--active{% endif %}">
+                    All
+                </a>
+                {% for category in categories %}
+                {% if category.request_count > 0 %}
+                <a href="{% url 'buyer_requests:list' %}?category={{ category.id }}"
+                   class="brl-cat-pill {% if request.GET.category == category.id|stringformat:'s' %}brl-cat-pill--active{% endif %}">
+                    {{ category.name }}
+                    <span class="brl-cat-count">{{ category.request_count }}</span>
+                </a>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </nav>
+
+        {# Controls bar — filter button (mobile) + quick links + sort #}
+        <div class="brl-controls-bar">
+
+            {# Filter button — always present on mobile #}
+            <button type="button"
+                    class="brl-filter-btn d-flex d-lg-none"
+                    data-bs-toggle="offcanvas"
+                    data-bs-target="#mobileFilters"
+                    aria-controls="mobileFilters"
+                    aria-label="Open filters">
+                <i class="bi bi-sliders"></i>
+                <span>Filters</span>
+                <span class="brl-filter-badge" id="filterBadge"></span>
+            </button>
+
+            {# Quick-access links — shown only when no content filters are active #}
+            {% if not request.GET.category and not request.GET.query and not request.GET.state and not request.GET.request_type and not request.GET.status and not request.GET.urgency and not request.GET.verified_only %}
+            <div class="brl-quick-links d-flex d-lg-none">
+                <a href="{% url 'buyer_requests:list' %}?sort=-created_at"
+                   class="brl-quick-link {% if request.GET.sort == '-created_at' %}brl-quick-link--active{% endif %}">
+                    <i class="bi bi-clock-history"></i>Latest
+                </a>
+                <a href="{% url 'buyer_requests:list' %}?urgency=urgent"
+                   class="brl-quick-link brl-quick-link--urgent">
+                    <i class="bi bi-lightning-charge-fill"></i>Urgent
+                </a>
+                <a href="{% url 'buyer_requests:list' %}?verified_only=true"
+                   class="brl-quick-link brl-quick-link--verified">
+                    <i class="bi bi-shield-check"></i>Verified
+                </a>
+            </div>
+            {% endif %}
+
+            {# Sort — right side #}
+            <div class="brl-sort-control ms-auto">
+                <label for="sortSelect" class="visually-hidden">Sort results</label>
+                <select class="brl-sort-select" id="sortSelect" aria-label="Sort results">
+                    <option value=""           {% if not request.GET.sort %}selected{% endif %}>Smart Sort</option>
+                    <option value="-created_at" {% if request.GET.sort == '-created_at' %}selected{% endif %}>Newest</option>
+                    <option value="created_at"  {% if request.GET.sort == 'created_at'  %}selected{% endif %}>Oldest</option>
+                    <option value="-urgency"    {% if request.GET.sort == '-urgency'    %}selected{% endif %}>Most Urgent</option>
+                    <option value="-response_count" {% if request.GET.sort == '-response_count' %}selected{% endif %}>Most Responses</option>
+                    <option value="-view_count" {% if request.GET.sort == '-view_count' %}selected{% endif %}>Most Viewed</option>
+                    <option value="title"       {% if request.GET.sort == 'title'       %}selected{% endif %}>A → Z</option>
+                </select>
+            </div>
+
+        </div>
+    </div>{# /brl-page-header #}
+
+    {% if request.GET.category or request.GET.query or request.GET.state or request.GET.request_type or request.GET.status or request.GET.urgency or request.GET.verified_only or request.GET.budget_range or request.GET.subcategory or request.GET.brand or request.GET.lga or request.GET.condition %}
+    <div class="brl-fab d-lg-none">
+        <button type="button"
+                class="brl-fab-btn"
+                data-bs-toggle="offcanvas"
+                data-bs-target="#mobileFilters"
+                aria-label="Open filters">
+            <i class="bi bi-sliders"></i>
+            <span class="brl-fab-label">Filters</span>
+            <span class="brl-fab-badge" id="fabBadge"></span>
+        </button>
+    </div>
+    {% endif %}
+
+    <div class="row g-3 g-lg-4">
+
+        {# Desktop sidebar #}
+        <div class="col-lg-3 d-none d-lg-block">
+            <div class="brl-sidebar-wrap">
+                {% include 'unified_filter_sidebar.html' with item_type='requests' filter_action_url=request.path product_categories=product_categories service_categories=service_categories selected_category=request.GET.category selected_subcategory=request.GET.subcategory selected_brand=request.GET.brand selected_state=request.GET.state selected_lga=request.GET.lga subcategories=subcategories brands=brands states=states lgas=lgas %}
+            </div>
+        </div>
+
+        {# Results column #}
+        <div class="col-12 col-lg-9">
+
+            {# Results meta — count + context #}
+            <div class="brl-results-meta">
+                {% if requests %}
+                <span class="brl-results-count">
+                    {{ page_obj.start_index }}–{{ page_obj.end_index }}
+                    of {{ page_obj.paginator.count }}
+                    request{{ page_obj.paginator.count|pluralize }}
+                    {% if selected_category %}in <strong>{{ selected_category.name }}</strong>{% endif %}
+                </span>
+                {% elif selected_category or request.GET.query %}
+                <span class="brl-results-count brl-results-count--empty">No requests match your filters</span>
+                {% endif %}
+            </div>
+
+            {# Grid #}
+            <div class="row row-cols-2 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-2 g-lg-3"
+                 id="requests-grid">
+                {% for request_item in requests %}
+                <div class="col">
+                    {% include 'buyer_requests/request_card.html' with request=request_item %}
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="brl-empty-state">
+                        {% if selected_category or request.GET.query or request.GET.request_type or request.GET.state or request.GET.urgency %}
+                            <i class="bi bi-search brl-empty-icon"></i>
+                            <h5 class="brl-empty-title">No requests match your filters</h5>
+                            <p class="brl-empty-text">Try adjusting or clearing your filters to see more results.</p>
+                            <div class="brl-empty-actions">
+                                <a href="{% url 'buyer_requests:list' %}" class="brl-empty-btn brl-empty-btn--outline">
+                                    Clear all filters
+                                </a>
+                                <button type="button"
+                                        class="brl-empty-btn brl-empty-btn--primary d-lg-none"
+                                        data-bs-toggle="offcanvas"
+                                        data-bs-target="#mobileFilters">
+                                    <i class="bi bi-sliders me-1"></i>Adjust Filters
+                                </button>
+                            </div>
+                        {% else %}
+                            <i class="bi bi-chat-square-text brl-empty-icon"></i>
+                            <h5 class="brl-empty-title">Browse Buyer Requests</h5>
+                            <p class="brl-empty-text">Pick a category above, use the filters, or post your own request.</p>
+                            {% if user.is_authenticated %}
+                            <a href="{% url 'buyer_requests:create' %}" class="brl-empty-btn brl-empty-btn--primary">
+                                <i class="bi bi-plus-lg me-1"></i>Post a Request
+                            </a>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {# Pagination #}
+            {% if page_obj.has_other_pages %}
+            <nav aria-label="Requests pagination" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link"
+                           href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}"
+                           aria-label="Previous page">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active" aria-current="page">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link"
+                               href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ num }}">
+                                {{ num }}
+                            </a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link"
+                           href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}"
+                           aria-label="Next page">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+        </div>{# /col results #}
+    </div>{# /row #}
+
+    {# Daily access limit modal #}
+    {% if user.is_authenticated and daily_access_count >= daily_access_limit %}
+    <div class="modal fade" id="accessLimitModal" tabindex="-1"
+         aria-labelledby="accessLimitModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="accessLimitModalLabel">Daily Limit Reached</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <i class="bi bi-clock-fill mb-3" style="font-size: 3rem; color: var(--warning);"></i>
+                    <h5>You've reached your daily limit of {{ daily_access_limit }} request views.</h5>
+                    <p class="text-muted">Upgrade to Pro for unlimited access to buyer requests!</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <a href="{% url 'account_upgrade' %}" class="btn btn-primary">Upgrade to Pro</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>{# /brl-page #}
+
+
+
+<script>
+(function () {
+    'use strict';
+
+    document.addEventListener('DOMContentLoaded', function () {
+
+        var SKIP = { page: true, sort: true };
+        var params = new URLSearchParams(window.location.search);
+        var count = 0;
+        params.forEach(function (val, key) {
+            if (!SKIP[key] && val.trim()) { count++; }
+        });
+
+        if (count > 0) {
+            var str = String(count);
+            ['filterBadge', 'fabBadge', 'offcanvasBadge'].forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el) { el.textContent = str; }
+            });
+        }
+
+        /* ── Sort select → navigate ──────────────────────────────────────── */
+        var sortSelect = document.getElementById('sortSelect');
+        if (sortSelect) {
+            sortSelect.addEventListener('change', function () {
+                var url = new URL(window.location.href);
+                if (this.value) {
+                    url.searchParams.set('sort', this.value);
+                } else {
+                    url.searchParams.delete('sort');
+                }
+                url.searchParams.delete('page'); /* reset to page 1 */
+                window.location.href = url.toString();
+            });
+        }
+
+        /* ── Access limit modal ──────────────────────────────────────────── */
+        var limitModal = document.getElementById('accessLimitModal');
+        if (limitModal && typeof bootstrap !== 'undefined') {
+            new bootstrap.Modal(limitModal).show();
+        }
+
+    });
+}());
+</script>
+{% endblock %}
+
+{% block 'Footer'%}{% endblock %}

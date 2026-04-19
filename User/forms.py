@@ -3,7 +3,9 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from .models import Location, Profile, LGA, BusinessVerificationDocument
 from django_recaptcha.fields import ReCaptchaField
+from django.core.validators import MinLengthValidator
 from django_recaptcha.widgets import ReCaptchaV2Checkbox
+from User.models import ItemReport
 import re
 
 class SignUpForm(UserCreationForm):
@@ -283,3 +285,34 @@ class BusinessDocumentForm(forms.ModelForm):
                 'placeholder': 'Brief description of this document'
             }),
         }
+
+class ItemReportForm(forms.ModelForm):
+    """
+    Unified report form for Products, Services, and Buyer Requests
+    Works for all three content types
+    """
+    
+    class Meta:
+        model = ItemReport
+        fields = ['reason', 'details', 'reporter_email']
+        widgets = {
+            'reason': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+            'details': forms.Textarea(attrs={
+                'class': 'form-control', 
+                'rows': 4, 
+                'placeholder': 'Please provide additional details about your report'
+            }),
+            'reporter_email': forms.EmailInput(attrs={
+                'class': 'form-control', 
+                'placeholder': 'Your email (optional)'
+            })
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['reporter_email'].required = False
+        self.fields['details'].validators = [
+            MinLengthValidator(10, 'Please provide more details (at least 10 characters)')
+        ]

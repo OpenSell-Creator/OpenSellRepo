@@ -1,0 +1,971 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_css %}
+<style>
+    .section-card {
+        background: var(--card-background);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 1.5rem;
+        transition: border-color 0.3s ease;
+    }
+    
+    .section-card:hover {
+        border-color: var(--accent-color);
+    }
+    
+    .section-title {
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 1.1rem;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 0.5rem;
+    }
+    
+    .section-title i {
+        color: var(--accent-color);
+    }
+
+    .form-control, .form-select {
+        border-width: 2px;
+        border-style: solid;
+        border-color: var(--border-color);
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.2);
+    }
+
+    .form-check-input {
+        border-width: 2px;
+        border-color: var(--border-color);
+    }
+
+    .form-check-input:checked {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+
+    .file-input-wrapper {
+        background-color: var(--card-background);
+        border-radius: var(--radius-md);
+    }
+
+    .file-input-wrapper input[type="file"] {
+        border: none;
+        background: transparent;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        border: none;
+        font-weight: 600;
+        padding: 0.875rem 2rem;
+        border-radius: var(--radius-md);
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(13, 110, 253, 0.3);
+    }
+
+    .form-text i,
+    .alert i {
+        color: var(--accent-color);
+    }
+
+    .text-success i {
+        color: var(--success) !important;
+    }
+
+    .alert-sm {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+    }
+
+    [data-bs-theme="dark"] .section-card {
+        background: var(--dark-card-background);
+        border-color: var(--dark-border-color);
+    }
+
+    [data-bs-theme="dark"] .section-card:hover {
+        border-color: var(--dark-accent-color);
+    }
+
+    [data-bs-theme="dark"] .section-title {
+        border-bottom-color: var(--dark-border-color);
+    }
+
+    [data-bs-theme="dark"] .file-input-wrapper {
+        background-color: var(--dark-card-background);
+    }
+
+    [data-bs-theme="dark"] .form-control:focus, 
+    [data-bs-theme="dark"] .form-select:focus {
+        box-shadow: 0 0 0 3px rgba(205, 127, 50, 0.2);
+    }
+
+    .form-text {
+        font-size: 0.8rem;
+        margin-top: 0.25rem;
+        color: var(--text-secondary) !important;
+        padding-left: 0.5rem;
+    }
+    
+    .image-preview-container, .document-preview-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .image-preview, .document-preview {
+        width: 80px;
+        height: 80px;
+        border-radius: 4px;
+        object-fit: cover;
+        border: 2px solid var(--border-color);
+        position: relative;
+    }
+    
+    .image-preview.primary {
+        border-color: var(--primary-color);
+    }
+    
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(2px);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+    }
+    
+    .loading-overlay.show {
+        opacity: 1;
+        display: flex !important;
+    }
+    
+    .loading-content {
+        text-align: center;
+        padding: 2rem;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        max-width: 90vw;
+        width: 100%;
+        max-width: 400px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    
+    [data-bs-theme="dark"] .loading-overlay {
+        background-color: rgba(33, 37, 41, 0.95);
+    }
+    
+    [data-bs-theme="dark"] .loading-content {
+        background: #2d3748;
+        color: #fff;
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    @media (max-width: 768px) {
+        .section-card {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+        }
+        
+        .card-body {
+            padding: 1rem !important;
+        }
+        
+        .card-header {
+            padding: 1rem !important;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .form-label .d-flex {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 0.5rem;
+        }
+    }
+    </style>
+{% endblock %}
+
+{% block page_js %}
+    <script type="text/javascript" src="{% static 'js/pages/services.js' %}"></script>
+{% endblock %}
+
+{% block 'Body' %}
+    <!-- Enhanced Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-content">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <div id="uploadProgressText" class="fw-bold mb-2">Processing your service...</div>
+            <div id="uploadProgressBar" class="progress mb-2">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+            </div>
+            <div id="uploadStatusText" class="text-muted small">Please wait, we're submitting your service details</div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card">
+                    <div class="card-header bg-card-header py-3">
+                        <h3 class="mb-0">{{ title }}</h3>
+                        <p class="text-muted mb-0">Share your skills and expertise with clients</p>
+                    </div>
+                    <div class="card-body p-4 p-lg-5 position-relative">
+                        
+                        <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate id="serviceForm">
+                            {% csrf_token %}
+                            
+                            <div class="row g-4">
+                                <!-- Left Column -->
+                                <div class="col-md-6">
+                                    <!-- Basic Service Setup -->
+                                    <div class="section-card mb-4">
+                                        <h4 class="section-title mb-4">
+                                            <i class="bi bi-info-circle-fill me-2"></i>Basic Service Setup
+                                        </h4>
+                                        
+                                        <!-- Title Input -->
+                                        <div class="form-floating mb-3">
+                                            {{ form.title }}
+                                            <label for="id_title">Service Title</label>
+                                            {% for error in form.title.errors %}
+                                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                        
+                                        <!-- Service Type Input -->
+                                        <div class="form-floating mb-3">
+                                            {{ form.service_type }}
+                                            <label for="id_service_type">Service Type</label>
+                                            {% for error in form.service_type.errors %}
+                                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                        
+                                        <!-- Category Input -->
+                                        <div class="form-floating mb-3">
+                                            {{ form.category }}
+                                            <label for="id_category">Category</label>
+                                            {% for error in form.category.errors %}
+                                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                        
+                                        <!-- Experience Level Input -->
+                                        <div class="form-floating mb-3">
+                                            {{ form.experience_level }}
+                                            <label for="id_experience_level">Experience Level</label>
+                                            {% for error in form.experience_level.errors %}
+                                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                        
+                                        <!-- Availability Input -->
+                                        <div class="form-floating mb-3">
+                                            {{ form.availability }}
+                                            <label for="id_availability">Availability</label>
+                                            {% for error in form.availability.errors %}
+                                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                        
+                                        <!-- Delivery Method Input -->
+                                        <div class="form-floating mb-3">
+                                            {{ form.delivery_method }}
+                                            <label for="id_delivery_method">Delivery Method</label>
+                                            {% for error in form.delivery_method.errors %}
+                                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+
+                                        <!-- ✅ ADDED: Delivery Time -->
+                                        <div class="form-floating mb-3">
+                                            {{ form.delivery_time }}
+                                            <label for="id_delivery_time">Delivery Time</label>
+                                            {% for error in form.delivery_time.errors %}
+                                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+
+                                    <!-- Pricing & Terms -->
+                                    <div class="section-card">
+                                        <h4 class="section-title mb-4">
+                                            <i class="bi bi-currency-exchange me-2"></i>Pricing & Terms
+                                        </h4>
+                                        
+                                        <!-- Pricing Type Input -->
+                                        <div class="form-floating mb-3">
+                                            {{ form.pricing_type }}
+                                            <label for="id_pricing_type">Pricing Type</label>
+                                            {% for error in form.pricing_type.errors %}
+                                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                        
+                                        <!-- ✅ FIXED: Price Fields with correct IDs and structure -->
+                                        <div id="priceFields">
+                                            <!-- Base Price (for fixed, hourly, project) -->
+                                            <div class="form-floating mb-3" id="basePriceField">
+                                                {{ form.base_price }}
+                                                <label for="id_base_price">Price (₦)</label>
+                                                {% for error in form.base_price.errors %}
+                                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                            
+                                            <!-- Min/Max Price (for negotiable) -->
+                                            <div class="row g-3 mb-3" id="negotiablePriceFields" style="{% if form.pricing_type.value == 'negotiable' %}display: flex;{% else %}display: none;{% endif %}">
+                                                <div class="col-6">
+                                                    <div class="form-floating">
+                                                        {{ form.min_price }}
+                                                        <label for="id_min_price">Minimum Price (₦)</label>
+                                                        {% for error in form.min_price.errors %}
+                                                            <div class="invalid-feedback d-block">{{ error }}</div>
+                                                        {% endfor %}
+                                                    </div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <div class="form-floating">
+                                                        {{ form.max_price }}
+                                                        <label for="id_max_price">Maximum Price (₦)</label>
+                                                        {% for error in form.max_price.errors %}
+                                                            <div class="invalid-feedback d-block">{{ error }}</div>
+                                                        {% endfor %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Revision Limit Input -->
+                                        <div class="form-floating mb-3">
+                                            {{ form.revision_limit }}
+                                            <label for="id_revision_limit">Number of Revisions Included</label>
+                                            {% for error in form.revision_limit.errors %}
+                                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                        
+                                        <!-- Delivery Days Input -->
+                                        <div class="form-floating mb-3">
+                                            {{ form.delivery_days }}
+                                            <label for="id_delivery_days">Delivery Time (Days)</label>
+                                            {% for error in form.delivery_days.errors %}
+                                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+
+                                        <div class="form-floating mb-3">
+                                            {{ form.languages }}
+                                            <label for="id_languages">Languages</label>
+                                            {% for error in form.languages.errors %}
+                                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Column -->
+                                <div class="col-md-6">
+                                    <!-- Service Description -->
+                                    <div class="section-card mb-4">
+                                        <h4 class="section-title mb-4">
+                                            <i class="bi bi-card-text me-2"></i>Service Description
+                                        </h4>
+                                        
+                                        <!-- Description Input -->
+                                        <div class="mb-3">
+                                            <label class="form-label">Service Description</label>
+                                            <div class="form-floating position-relative">
+                                                {{ form.description }}
+                                                <label for="id_description">Describe your service in detail...</label>
+                                                {% for error in form.description.errors %}
+                                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                            <div class="form-text text-muted">
+                                                <i class="bi bi-lightbulb me-1"></i>
+                                                Include what you'll deliver, your process, and what makes your service unique.
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- What You Get Input -->
+                                        <div class="mb-3">
+                                            <label class="form-label">What Clients Get</label>
+                                            <div class="form-floating position-relative">
+                                                {{ form.what_you_get }}
+                                                <label for="id_what_you_get">List what clients will receive...</label>
+                                                {% for error in form.what_you_get.errors %}
+                                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                            <div class="form-text text-muted">
+                                                <i class="bi bi-gift me-1"></i>
+                                                List deliverables, files, or outcomes clients can expect.
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Skills Offered Input -->
+                                        <div class="mb-3">
+                                            <label class="form-label">Skills & Expertise</label>
+                                            <div class="form-floating position-relative">
+                                                {{ form.skills_offered }}
+                                                <label for="id_skills_offered">List your relevant skills...</label>
+                                                {% for error in form.skills_offered.errors %}
+                                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                            <div class="form-text text-muted">
+                                                <i class="bi bi-award me-1"></i>
+                                                Highlight your key skills and areas of expertise.
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Requirements Input -->
+                                        <div class="mb-3">
+                                            <label class="form-label">Requirements from Client</label>
+                                            <div class="form-floating position-relative">
+                                                {{ form.requirements }}
+                                                <label for="id_requirements">What do you need from clients?</label>
+                                                {% for error in form.requirements.errors %}
+                                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                            <div class="form-text text-muted">
+                                                <i class="bi bi-list-check me-1"></i>
+                                                Specify what information, files, or access you need from clients.
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Service Media -->
+                                    <div class="section-card">
+                                        <h4 class="section-title mb-4">
+                                            <i class="bi bi-image me-2"></i>Service Media & Documents
+                                        </h4>
+                                        
+                                        <!-- Images Upload -->
+                                        <div class="mb-4">
+                                            <label class="form-label">Service Images</label>
+                                            <div class="file-input-wrapper border rounded p-3">
+                                                {% if form.instance.pk and form.instance.images.all %}
+                                                <div class="existing-images mb-3">
+                                                    <p class="form-text">Current Images:</p>
+                                                    <div class="row g-2">
+                                                        {% for img in form.instance.images.all %}
+                                                        <div class="col-4 col-md-3">
+                                                            <div class="position-relative">
+                                                                <img src="{{ img.image.url }}" class="img-thumbnail" alt="Service image">
+                                                                {% if img.is_primary %}
+                                                                <span class="badge bg-primary position-absolute top-0 end-0">Primary</span>
+                                                                {% endif %}
+                                                            </div>
+                                                        </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                    <p class="form-text mt-2">Upload new images to replace existing ones, or leave empty to keep current images.</p>
+                                                </div>
+                                                {% endif %}
+                                                
+                                                <div class="image-preview-container mb-2" id="imagePreviewContainer">
+                                                    <!-- Image previews will be added here dynamically -->
+                                                </div>
+                                                
+                                                {{ form.images }}
+                                                {% for error in form.images.errors %}
+                                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                                {% endfor %}
+                                                <div class="form-text text-muted">
+                                                    Upload images showcasing your work or service (max 5 images)
+                                                </div>
+                                                <div id="imageUploadStats" class="mt-2 small text-muted d-none">
+                                                    <div>Files selected: <span id="numFiles">0</span>/5</div>
+                                                    <div>Total size: <span id="totalSize">0 KB</span> (Max 25MB)</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Documents Upload -->
+                                        <div class="mb-4">
+                                            <label class="form-label">Portfolio Documents</label>
+                                            <div class="file-input-wrapper border rounded p-3">
+                                                {% if form.instance.pk and form.instance.documents.all %}
+                                                <div class="existing-documents mb-3">
+                                                    <p class="form-text">Current Documents:</p>
+                                                    <div class="list-group">
+                                                        {% for doc in form.instance.documents.all %}
+                                                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                            <div>
+                                                                <i class="bi bi-file-earmark-text me-2"></i>
+                                                                {{ doc.title }}
+                                                            </div>
+                                                            <small class="text-muted">{{ doc.document.size|filesizeformat }}</small>
+                                                        </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                    <p class="form-text mt-2">Upload new documents to replace existing ones, or leave empty to keep current documents.</p>
+                                                </div>
+                                                {% endif %}
+                                                
+                                                <div class="document-preview-container mb-2" id="documentPreviewContainer">
+                                                    <!-- Document previews will be added here dynamically -->
+                                                </div>
+                                                
+                                                {{ form.documents }}
+                                                {% for error in form.documents.errors %}
+                                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                                {% endfor %}
+                                                <div class="form-text text-muted">
+                                                    Upload portfolio samples, certificates, or relevant documents (max 10 files)
+                                                </div>
+                                                <div id="documentUploadStats" class="mt-2 small text-muted d-none">
+                                                    <div>Files selected: <span id="numDocuments">0</span>/10</div>
+                                                    <div>Total size: <span id="totalDocSize">0 KB</span> (Max 50MB)</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-grid mt-4">
+                                <button type="submit" id="submitButton" class="btn btn-primary btn-lg">{{ save_button }}</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification System -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    <span id="successToastMessage">Service submitted successfully!</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+        
+        <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <span id="errorToastMessage">An error occurred. Please try again.</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Element references
+    const pricingTypeSelect = document.getElementById('id_pricing_type');
+    const basePriceField = document.getElementById('basePriceField');
+    const negotiablePriceFields = document.getElementById('negotiablePriceFields');
+    const basePriceInput = document.getElementById('id_base_price');
+    const minPriceInput = document.getElementById('id_min_price');
+    const maxPriceInput = document.getElementById('id_max_price');
+    const form = document.getElementById('serviceForm');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const progressBar = document.querySelector('#uploadProgressBar .progress-bar');
+    const progressText = document.getElementById('uploadProgressText');
+    const statusText = document.getElementById('uploadStatusText');
+    const imageField = document.querySelector('input[name="images"]');
+    const documentField = document.querySelector('input[name="documents"]');
+    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+    const documentPreviewContainer = document.getElementById('documentPreviewContainer');
+    const submitButton = document.getElementById('submitButton');
+    const imageUploadStats = document.getElementById('imageUploadStats');
+    const documentUploadStats = document.getElementById('documentUploadStats');
+
+    // Toast setup
+    const successToast = new bootstrap.Toast(document.getElementById('successToast'), { delay: 5000 });
+    const errorToast = new bootstrap.Toast(document.getElementById('errorToast'), { delay: 5000 });
+
+    function showSuccessToast(message) {
+        document.getElementById('successToastMessage').textContent = message;
+        successToast.show();
+    }
+
+    function showErrorToast(message) {
+        document.getElementById('errorToastMessage').textContent = message;
+        errorToast.show();
+    }
+
+    function showLoadingOverlay() {
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'flex';
+            loadingOverlay.classList.add('show');
+        }
+    }
+    
+    function hideLoadingOverlay() {
+        if (loadingOverlay) {
+            loadingOverlay.classList.remove('show');
+            setTimeout(() => {
+                loadingOverlay.style.display = 'none';
+            }, 300);
+        }
+    }
+
+    // ✅ SINGLE form submission handler
+    let isSubmitting = false; // Prevent double submission
+    
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // ✅ Prevent duplicate submissions
+            if (isSubmitting) {
+                console.warn('Form already submitting, ignoring duplicate submission');
+                return;
+            }
+            
+            // Validate form
+            if (!form.checkValidity()) {
+                e.stopPropagation();
+                form.classList.add('was-validated');
+                showErrorToast('Please fill in all required fields correctly.');
+                return;
+            }
+            
+            // ✅ Set flag to prevent re-submission
+            isSubmitting = true;
+            
+            // Disable submit button
+            submitButton.disabled = true;
+            showLoadingOverlay();
+            
+            const formData = new FormData(form);
+            
+            // Simulate upload progress
+            let progress = 0;
+            progressBar.style.width = '0%';
+            progressText.textContent = 'Processing your service...';
+            statusText.textContent = 'Please wait, we\'re submitting your service details';
+            
+            const progressInterval = setInterval(() => {
+                progress += 5;
+                if (progress >= 95) {
+                    clearInterval(progressInterval);
+                    progressBar.style.width = '95%';
+                    progressText.textContent = 'Finalizing...';
+                    
+                    // ✅ Submit ONLY once
+                    submitForm(formData);
+                } else {
+                    progressBar.style.width = progress + '%';
+                }
+            }, 100);
+        });
+    }
+
+    function submitForm(formData) {
+        // Use getAttribute so we get null (not a resolved URL) when no action
+        // attribute is set — then fall back to the current page URL.
+        // fetch(form.action) when action="" throws a network error in some browsers.
+        const submitUrl = form.getAttribute('action') || window.location.href;
+
+        fetch(submitUrl, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            // Always read as text first — if the server returns an HTML error page
+            // (e.g. Django debug page), JSON.parse will throw a clean error instead
+            // of the cryptic "Unexpected token '<'" message.
+            return response.text().then(text => {
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (_) {
+                    throw new Error('Server returned an unexpected response. Please try again.');
+                }
+                return { ok: response.ok, data };
+            });
+        })
+        .then(result => {
+            if (result.ok && result.data.status === 'success') {
+                progressBar.style.width = '100%';
+                progressBar.classList.remove('bg-danger');
+                progressBar.classList.add('bg-success');
+                progressText.textContent = 'Success!';
+                statusText.textContent = result.data.message || 'Service saved successfully.';
+
+                showSuccessToast(result.data.message || 'Service saved successfully!');
+
+                setTimeout(() => {
+                    window.location.href = result.data.redirect_url || '/services/my-services/';
+                }, 1000);
+            } else {
+                throw new Error(result.data.message || 'Failed to save service');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            
+            // Update UI to show error
+            progressBar.classList.remove('bg-success');
+            progressBar.classList.add('bg-danger');
+            progressBar.style.width = '100%';
+            progressText.textContent = 'Error!';
+            statusText.textContent = error.message || 'Failed to create service.';
+            
+            showErrorToast(error.message || 'Failed to create service. Please try again.');
+            
+            // ✅ Reset submission flag
+            isSubmitting = false;
+            
+            // Re-enable form after delay
+            setTimeout(() => {
+                hideLoadingOverlay();
+                submitButton.disabled = false;
+                progressBar.classList.remove('bg-danger');
+                progressBar.classList.add('bg-primary');
+                progressBar.style.width = '0%';
+                progressText.textContent = 'Processing your service...';
+                statusText.textContent = 'Please wait, we\'re submitting your service details';
+            }, 3000);
+        });
+    }
+
+    // Handle pricing type changes
+    function handlePricingTypeChange() {
+        const selectedType = pricingTypeSelect.value;
+        
+        if (selectedType === 'negotiable') {
+            basePriceField.style.display = 'none';
+            negotiablePriceFields.style.display = 'flex';
+            if (basePriceInput) basePriceInput.required = false;
+            if (minPriceInput) minPriceInput.required = true;
+            if (maxPriceInput) maxPriceInput.required = true;
+        } else {
+            basePriceField.style.display = 'block';
+            negotiablePriceFields.style.display = 'none';
+            if (basePriceInput) basePriceInput.required = true;
+            if (minPriceInput) minPriceInput.required = false;
+            if (maxPriceInput) maxPriceInput.required = false;
+        }
+    }
+    
+    if (pricingTypeSelect) {
+        handlePricingTypeChange();
+        pricingTypeSelect.addEventListener('change', handlePricingTypeChange);
+    }
+
+    // File size formatter
+    function formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        else return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    // Image preview
+    function createImagePreview(file, index) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const container = document.createElement('div');
+            container.className = 'position-relative';
+            
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.className = 'image-preview' + (index === 0 ? ' primary' : '');
+            img.title = file.name;
+            
+            container.appendChild(img);
+            
+            if (index === 0) {
+                const badge = document.createElement('span');
+                badge.className = 'badge bg-primary position-absolute top-0 end-0';
+                badge.textContent = 'Primary';
+                container.appendChild(badge);
+            }
+            
+            const sizeLabel = document.createElement('div');
+            sizeLabel.className = 'text-center small text-muted mt-1';
+            sizeLabel.textContent = formatFileSize(file.size);
+            container.appendChild(sizeLabel);
+            
+            imagePreviewContainer.appendChild(container);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // Document preview
+    function createDocumentPreview(file, index) {
+        const container = document.createElement('div');
+        container.className = 'document-preview p-2 border rounded';
+        
+        const icon = document.createElement('i');
+        icon.className = 'bi bi-file-earmark-text me-2';
+        
+        const name = document.createElement('span');
+        name.textContent = file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name;
+        name.className = 'small';
+        
+        const size = document.createElement('div');
+        size.className = 'text-muted small';
+        size.textContent = formatFileSize(file.size);
+        
+        container.appendChild(icon);
+        container.appendChild(name);
+        container.appendChild(size);
+        
+        documentPreviewContainer.appendChild(container);
+    }
+
+    // Image field handler
+    if (imageField) {
+        imageField.addEventListener('change', function() {
+            const maxFiles = 5;
+            const maxSize = 5 * 1024 * 1024;
+            const maxTotalSize = 25 * 1024 * 1024;
+            const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+            const files = this.files;
+            
+            imagePreviewContainer.innerHTML = '';
+            
+            if (files.length > maxFiles) {
+                showErrorToast(`Maximum ${maxFiles} images allowed.`);
+                this.value = '';
+                return;
+            }
+            
+            let totalSize = 0;
+            for (let i = 0; i < files.length; i++) {
+                totalSize += files[i].size;
+            }
+            
+            if (totalSize > maxTotalSize) {
+                showErrorToast(`Total size exceeds 25MB limit.`);
+                this.value = '';
+                return;
+            }
+
+            if (imageUploadStats) {
+                imageUploadStats.classList.remove('d-none');
+                document.getElementById('numFiles').textContent = files.length;
+                document.getElementById('totalSize').textContent = formatFileSize(totalSize);
+            }
+            
+            let hasError = false;
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                
+                if (file.size > maxSize) {
+                    showErrorToast(`"${file.name}" exceeds 5MB limit.`);
+                    hasError = true;
+                    break;
+                }
+                
+                if (!validTypes.includes(file.type)) {
+                    showErrorToast(`"${file.name}" must be JPG or PNG.`);
+                    hasError = true;
+                    break;
+                }
+                
+                createImagePreview(file, i);
+            }
+            
+            if (hasError) {
+                this.value = '';
+                imagePreviewContainer.innerHTML = '';
+                if (imageUploadStats) imageUploadStats.classList.add('d-none');
+            }
+        });
+    }
+
+    // Document field handler
+    if (documentField) {
+        documentField.addEventListener('change', function() {
+            const maxFiles = 10;
+            const maxSize = 10 * 1024 * 1024;
+            const maxTotalSize = 50 * 1024 * 1024;
+            const validTypes = ['application/pdf', 'application/msword', 
+                               'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 
+                               'text/plain'];
+            const files = this.files;
+            
+            documentPreviewContainer.innerHTML = '';
+            
+            if (files.length > maxFiles) {
+                showErrorToast(`Maximum ${maxFiles} documents allowed.`);
+                this.value = '';
+                return;
+            }
+            
+            let totalSize = 0;
+            for (let i = 0; i < files.length; i++) {
+                totalSize += files[i].size;
+            }
+            
+            if (totalSize > maxTotalSize) {
+                showErrorToast(`Total size exceeds 50MB limit.`);
+                this.value = '';
+                return;
+            }
+
+            if (documentUploadStats) {
+                documentUploadStats.classList.remove('d-none');
+                document.getElementById('numDocuments').textContent = files.length;
+                document.getElementById('totalDocSize').textContent = formatFileSize(totalSize);
+            }
+            
+            let hasError = false;
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                
+                if (file.size > maxSize) {
+                    showErrorToast(`"${file.name}" exceeds 10MB limit.`);
+                    hasError = true;
+                    break;
+                }
+                
+                if (!validTypes.includes(file.type)) {
+                    showErrorToast(`"${file.name}" format not supported.`);
+                    hasError = true;
+                    break;
+                }
+                
+                createDocumentPreview(file, i);
+            }
+            
+            if (hasError) {
+                this.value = '';
+                documentPreviewContainer.innerHTML = '';
+                if (documentUploadStats) documentUploadStats.classList.add('d-none');
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+{% block 'Footer'%}{% endblock %}

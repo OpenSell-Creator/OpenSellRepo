@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block 'Body' %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Report #{{ report.id }}</h2>
+                <a href="{% url 'admin_reports' %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Reports
+                </a>
+            </div>
+
+            <!-- Report Details Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4>Report Information</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Item Type:</strong> 
+                                <span class="badge bg-primary">{{ report.item_type_display }}</span>
+                            </p>
+                            <p><strong>Item Title:</strong> {{ report.item_title }}</p>
+                            <p><strong>Reason:</strong> {{ report.get_reason_display }}</p>
+                            <p><strong>Status:</strong> 
+                                <span class="badge 
+                                    {% if report.status == 'pending' %}bg-warning
+                                    {% elif report.status == 'resolved' %}bg-success
+                                    {% elif report.status == 'dismissed' %}bg-secondary
+                                    {% else %}bg-info{% endif %}">
+                                    {{ report.get_status_display }}
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Reported At:</strong> {{ report.reported_at }}</p>
+                            <p><strong>Reporter Email:</strong> {{ report.reporter_email|default:"Not provided" }}</p>
+                            {% if report.reviewed_by %}
+                                <p><strong>Reviewed By:</strong> {{ report.reviewed_by.username }}</p>
+                                <p><strong>Reviewed At:</strong> {{ report.reviewed_at }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <h5>Details:</h5>
+                    <p class="bg-light p-3 rounded">{{ report.details }}</p>
+                    
+                    {% if report.resolution_notes %}
+                        <h5>Resolution Notes:</h5>
+                        <p class="bg-light p-3 rounded">{{ report.resolution_notes }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Item Preview Card -->
+            {% if report.content_object %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4>Reported Item</h4>
+                </div>
+                <div class="card-body">
+                    <p><strong>Title:</strong> {{ report.content_object.title }}</p>
+                    <p><strong>Status:</strong> 
+                        {% if report.content_object.is_suspended %}
+                            <span class="badge bg-danger">SUSPENDED</span>
+                        {% else %}
+                            <span class="badge bg-success">ACTIVE</span>
+                        {% endif %}
+                    </p>
+                    <a href="{{ report.item_url }}" target="_blank" class="btn btn-primary">
+                        View Item <i class="bi bi-box-arrow-up-right"></i>
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Actions Card -->
+            {% if report.status == 'pending' and can_suspend %}
+            <div class="card mb-4">
+                <div class="card-header bg-warning">
+                    <h4>Actions</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'admin_suspend_item' report.id %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger" 
+                                onclick="return confirm('Are you sure you want to suspend this item?')">
+                            <i class="bi bi-x-circle"></i> Suspend Item
+                        </button>
+                    </form>
+                    
+                    <button type="button" class="btn btn-secondary" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#dismissModal">
+                        <i class="bi bi-check-circle"></i> Dismiss Report
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Related Reports -->
+            {% if related_reports %}
+            <div class="card">
+                <div class="card-header">
+                    <h4>Other Reports for This Item ({{ related_reports.count }})</h4>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for related_report in related_reports %}
+                        <a href="{% url 'admin_report_detail' related_report.id %}" 
+                           class="list-group-item list-group-item-action">
+                            <div class="d-flex justify-content-between">
+                                <span>{{ related_report.get_reason_display }}</span>
+                                <span class="badge bg-secondary">{{ related_report.reported_at|date:"M d, Y" }}</span>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Dismiss Modal -->
+<div class="modal fade" id="dismissModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Dismiss Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'admin_dismiss_report' report.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes (Optional)</label>
+                        <textarea name="notes" id="notes" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Dismiss Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block 'Footer'%}{% endblock %}

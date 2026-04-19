@@ -1,0 +1,169 @@
+<div class="message-bubble message-card-bubble
+    {% if msg.sender == request.user.profile %}message-sent-card{% else %}message-received-card{% endif %}
+    mb-3">
+
+    {# ── Card Header ──────────────────────────────────────────────────────── #}
+    <div class="structured-card-header d-flex align-items-center justify-content-between mb-2">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="badge badge-response-card">
+                <i class="fas fa-tag me-1"></i> Seller Response
+            </span>
+            {% if linked_response %}
+                <span class="badge badge-status-{{ linked_response.status }}">
+                    {{ linked_response.get_status_display }}
+                </span>
+            {% endif %}
+        </div>
+        <small class="card-timestamp">
+            {{ msg.timestamp|date:"g:i A, M d" }}
+            <i class="fas fa-lock ms-1 encryption-icon" title="Encrypted"></i>
+        </small>
+    </div>
+
+    {# ── Response Body ────────────────────────────────────────────────────── #}
+    {% if linked_response %}
+        <div class="structured-card-body">
+
+            <div class="response-type-label mb-2">
+                <small class="text-muted">
+                    <i class="fas fa-info-circle me-1"></i>
+                    {{ linked_response.get_response_type_display }}
+                </small>
+            </div>
+
+            <p class="inquiry-main-message mb-3">{{ linked_response.message }}</p>
+
+            <div class="inquiry-details-grid">
+
+                {% if linked_response.offered_price %}
+                <div class="inquiry-detail-row">
+                    <span class="detail-label"><i class="fas fa-tag me-1"></i>Offered Price</span>
+                    <span class="detail-value detail-value--highlight">{{ linked_response.formatted_price }}</span>
+                </div>
+                {% endif %}
+
+                {% if linked_response.delivery_time %}
+                <div class="inquiry-detail-row">
+                    <span class="detail-label"><i class="fas fa-truck me-1"></i>Delivery Time</span>
+                    <span class="detail-value">{{ linked_response.delivery_time }}</span>
+                </div>
+                {% endif %}
+
+                {% if linked_response.availability %}
+                <div class="inquiry-detail-row">
+                    <span class="detail-label"><i class="fas fa-calendar-check me-1"></i>Availability</span>
+                    <span class="detail-value">{{ linked_response.availability }}</span>
+                </div>
+                {% endif %}
+
+                {% if linked_response.service_includes %}
+                <div class="inquiry-detail-row inquiry-detail-row--full">
+                    <span class="detail-label"><i class="fas fa-check-square me-1"></i>What's Included</span>
+                    <span class="detail-value">{{ linked_response.service_includes }}</span>
+                </div>
+                {% endif %}
+
+                {% if linked_response.additional_info %}
+                <div class="inquiry-detail-row inquiry-detail-row--full">
+                    <span class="detail-label"><i class="fas fa-info me-1"></i>Additional Info</span>
+                    <span class="detail-value">{{ linked_response.additional_info }}</span>
+                </div>
+                {% endif %}
+
+            </div>
+
+            {# Linked listing shortcut #}
+            {% if linked_response.related_product %}
+            <div class="linked-item-row mt-2">
+                <a href="{{ linked_response.related_product.get_absolute_url }}"
+                   class="btn btn-sm btn-outline-primary" target="_blank">
+                    <i class="fas fa-box me-1"></i>View Product: {{ linked_response.related_product.title }}
+                </a>
+            </div>
+            {% elif linked_response.related_service %}
+            <div class="linked-item-row mt-2">
+                <a href="{{ linked_response.related_service.get_absolute_url }}"
+                   class="btn btn-sm btn-outline-success" target="_blank">
+                    <i class="fas fa-briefcase me-1"></i>View Service: {{ linked_response.related_service.title }}
+                </a>
+            </div>
+            {% endif %}
+
+        </div>
+
+        {# ── Buyer Actions: Accept / Decline (only when pending) ──────────── #}
+        {% if is_buyer and linked_response.status == 'pending' %}
+        <div class="structured-card-actions mt-3 d-flex gap-2 flex-wrap">
+            <form method="post"
+                  action="{% url 'buyer_requests:update_response_status' linked_response.id %}"
+                  class="d-inline accept-decline-form">
+                {% csrf_token %}
+                <input type="hidden" name="status" value="accepted">
+                <button type="submit" class="btn btn-sm btn-success">
+                    <i class="fas fa-check me-1"></i> Accept Response
+                </button>
+            </form>
+            <form method="post"
+                  action="{% url 'buyer_requests:update_response_status' linked_response.id %}"
+                  class="d-inline accept-decline-form">
+                {% csrf_token %}
+                <input type="hidden" name="status" value="declined">
+                <button type="submit" class="btn btn-sm btn-outline-danger">
+                    <i class="fas fa-times me-1"></i> Decline
+                </button>
+            </form>
+        </div>
+        {% endif %}
+
+        {# ── Role-aware terminal status notices ───────────────────────────── #}
+        {% if linked_response.status == 'accepted' %}
+            {% if is_buyer %}
+                <div class="structured-card-status-notice status-notice--accepted mt-3">
+                    <i class="fas fa-handshake me-1"></i>
+                    You accepted this response. Continue below to arrange the details.
+                </div>
+            {% else %}
+                <div class="structured-card-status-notice status-notice--accepted mt-3">
+                    <i class="fas fa-handshake me-1"></i>
+                    The buyer accepted your response. Continue below to arrange the details.
+                </div>
+            {% endif %}
+
+        {% elif linked_response.status == 'declined' %}
+            {% if is_buyer %}
+                <div class="structured-card-status-notice status-notice--declined mt-3">
+                    <i class="fas fa-times-circle me-1"></i>
+                    You declined this response.
+                </div>
+            {% else %}
+                <div class="structured-card-status-notice status-notice--declined mt-3">
+                    <i class="fas fa-times-circle me-1"></i>
+                    The buyer declined this response.
+                </div>
+            {% endif %}
+
+        {% elif linked_response.status == 'negotiating' %}
+            <div class="structured-card-status-notice" style="background:rgba(111,66,193,0.08);color:#6f42c1;border:1px solid rgba(111,66,193,0.2);" >
+                <i class="fas fa-comments-dollar me-1"></i>
+                {% if is_buyer %}
+                    You're negotiating this offer. Discuss the details in the conversation below.
+                {% else %}
+                    The buyer is negotiating this offer. Discuss the details in the conversation below.
+                {% endif %}
+            </div>
+        {% endif %}
+
+    {% else %}
+        <p class="text-muted fst-italic small mt-2">
+            <i class="fas fa-tag me-1"></i> Seller response — details unavailable.
+        </p>
+    {% endif %}
+
+    {# Sender label (only for received bubbles) #}
+    {% if msg.sender != request.user.profile %}
+    <div class="card-sender-label mt-2">
+        <small><i class="fas fa-user-circle me-1"></i>{{ msg.sender.user.username }}</small>
+    </div>
+    {% endif %}
+
+</div>

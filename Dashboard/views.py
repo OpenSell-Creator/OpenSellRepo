@@ -594,7 +594,7 @@ def boost_product(request, product_id):
                         f"({boost.discount_applied}% Pro discount)!"
                     )
                 
-                return redirect('dashboard_home')
+                return redirect('manage_listings')
                 
             except ValueError as e:
                 messages.error(request, str(e))

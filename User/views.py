@@ -12,7 +12,7 @@ from django.db.models import Q, Avg, Exists, OuterRef, Count
 from .models import EmailPreferences, Profile
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
-from Home.models import Product_Listing, ProductReport
+from Home.models import Product_Listing 
 from django.db import models
 from django.core.paginator import Paginator
 from allauth.socialaccount.views import SignupView
@@ -26,9 +26,9 @@ from django_ratelimit.exceptions import Ratelimited
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from .forms import SignUpForm, ProfileUpdateForm, LocationForm, BusinessVerificationForm, BusinessDocumentForm
+from .forms import SignUpForm, ProfileUpdateForm, LocationForm, BusinessVerificationForm, BusinessDocumentForm, ItemReportForm
 from .models import Profile,LGA,State,Location, BusinessVerificationDocument
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
 from .utils import send_otp_email, send_business_verification_approved_email, send_business_verification_rejected_email, send_business_verification_submitted_email, send_welcome_email
 from django.utils import timezone
 from django.conf import settings
@@ -37,15 +37,23 @@ from allauth.socialaccount.signals import pre_social_login
 from django.dispatch import receiver
 from django.contrib import messages
 from django.core.paginator import Paginator
-from User.models import BulkEmail
+from User.models import BulkEmail, ItemReport
 from User.utils import schedule_bulk_email
+from django.http import JsonResponse
+from django.contrib.contenttypes.models import ContentType
+from .models import SavedItem, ItemReport
+import uuid
 from django import forms
 from User.utils import get_email_preference_stats, ensure_all_users_have_email_preferences
 from django.contrib import messages
+from Notifications.models import (
+    create_notification,
+    NotificationCategory,
+    NotificationPriority
+)
 import logging
 
 logger = logging.getLogger(__name__)
-
 
 class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
     """Handle referral tracking for social signups"""
@@ -106,7 +114,7 @@ custom_signup_view = CustomSignupView.as_view()
 from django.utils.decorators import method_decorator
 from django_ratelimit.decorators import ratelimit
 
-def skip_ratelimit_if_oauth(view_func):
+'''def skip_ratelimit_if_oauth(view_func):
     """Decorator to skip rate limiting for OAuth requests"""
     def wrapper(request, *args, **kwargs):
         if getattr(request, 'skip_ratelimit', False):
@@ -116,7 +124,8 @@ def skip_ratelimit_if_oauth(view_func):
         return ratelimit(key='ip', rate='5/m', method='POST', block=True)(view_func)(request, *args, **kwargs)
     return wrapper
 
-@skip_ratelimit_if_oauth
+@skip_ratelimit_if_oauth'''
+
 def loginview(request):
     # Redirect if user is already authenticated
     if request.user.is_authenticated:
@@ -304,7 +313,6 @@ def register_user(request):
         'referral_code': referral_code
     })
 
-
 def create_referral_record(user, referral_code, request):
     """
     Create referral record (separate function for clarity)
@@ -367,7 +375,7 @@ def create_referral_record(user, referral_code, request):
     except Exception as outer_error:
         logger.error(f"Referral tracking error: {str(outer_error)}", exc_info=True)
         return False
-    
+
 def signup_options(request):
     next_url = request.GET.get('next', '')
     referral_code = request.GET.get('ref', '')
@@ -436,7 +444,7 @@ def admin_panel(request):
     ).count()
     
     # Pending product reports
-    pending_reports = ProductReport.objects.filter(
+    pending_reports = ItemReport.objects.filter(
         status='pending'
     ).count()
     
@@ -1263,3 +1271,860 @@ def handler429(request, exception=None):
         'error_message': 'Too many requests. Please try again later.',
     }
     return render(request, 'security/rate_limit.html', context, status=429)
+
+@login_required
+@require_POST
+def toggle_save_item(request):
+    """
+    UNIFIED: Toggle save for products, services, and buyer requests
+    Now with notifications for all types
+    """
+    item_id = request.POST.get('item_id')
+    item_type = request.POST.get('item_type')
+    
+    if not item_id or not item_type:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Missing item_id or item_type'
+        }, status=400)
+    
+    # Map item_type to model
+    model_map = {
+        'product': ('Home', 'Product_Listing'),
+        'service': ('Services', 'ServiceListing'),
+        'request': ('BuyerRequest', 'BuyerRequest'),
+    }
+    
+    if item_type not in model_map:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Invalid item_type: {item_type}'
+        }, status=400)
+    
+    try:
+        # Convert to UUID if needed
+        try:
+            item_id = uuid.UUID(item_id)
+        except ValueError:
+            pass
+        
+        # Get the model and ContentType
+        app_label, model_name = model_map[item_type]
+        content_type = ContentType.objects.get(app_label=app_label, model=model_name.lower())
+        
+        # Get the actual item to verify it exists
+        Model = content_type.model_class()
+        item = Model.objects.get(id=item_id)
+        
+        # Check if already saved
+        saved_item = SavedItem.objects.filter(
+            user=request.user,
+            content_type=content_type,
+            object_id=str(item_id)
+        ).first()
+        
+        if saved_item:
+            # Already saved - unsave it
+            saved_item.delete()
+            return JsonResponse({
+                'status': 'removed',
+                'message': f'{item_type.title()} removed from saved items'
+            })
+        else:
+            # Not saved - save it
+            SavedItem.objects.create(
+                user=request.user,
+                content_type=content_type,
+                object_id=str(item_id)
+            )
+            
+            # ✅ CREATE NOTIFICATION FOR OWNER
+            owner_user = get_item_owner(item, item_type)
+            
+            if owner_user and owner_user != request.user:
+                # Create notification with type-specific details
+                notification_data = get_save_notification_data(item, item_type, request.user)
+                
+                create_notification(
+                    user=owner_user,
+                    title=notification_data['title'],
+                    message=notification_data['message'],
+                    category=NotificationCategory.SAVES,
+                    priority=NotificationPriority.LOW,
+                    content_object=item,
+                    action_url=notification_data['action_url'],
+                    action_text=notification_data['action_text']
+                )
+                
+                logger.info(f"Created save notification: {item_type} #{item_id} saved by {request.user.username}")
+            
+            return JsonResponse({
+                'status': 'saved',
+                'message': f'{item_type.title()} saved successfully'
+            })
+            
+    except Model.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'{item_type.title()} not found'
+        }, status=404)
+    except Exception as e:
+        logger.error(f"Error toggling save: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'status': 'error',
+            'message': 'An error occurred while saving'
+        }, status=500)
+
+def get_item_owner(item, item_type):
+    """
+    Get the owner/creator of an item based on type
+    
+    Returns:
+        User: The owner's User object
+    """
+    if item_type == 'product':
+        # Product_Listing has 'seller' (Profile)
+        return item.seller.user
+    elif item_type == 'service':
+        # ServiceListing has 'provider' (Profile)
+        return item.provider.user
+    elif item_type == 'request':
+        # BuyerRequest has 'buyer' (Profile)
+        return item.buyer.user
+    
+    return None
+
+def get_save_notification_data(item, item_type, saver_user):
+    """
+    Generate notification data based on item type
+    
+    Args:
+        item: The item object (Product, Service, or Request)
+        item_type: String ('product', 'service', 'request')
+        saver_user: User who saved the item
+    
+    Returns:
+        dict: Notification data with title, message, action_url, action_text
+    """
+    notifications = {
+        'product': {
+            'title': f"Product Saved: {item.title}",
+            'message': f"{saver_user.username} saved your product to their favorites! They might contact you soon.",
+            'action_url': f'/product/{item.id}/',
+            'action_text': 'View Product',
+            'icon': '📦'
+        },
+        'service': {
+            'title': f"Service Saved: {item.title}",
+            'message': f"{saver_user.username} is interested in your service! They saved it to their favorites.",
+            'action_url': f'/services/{item.id}/',
+            'action_text': 'View Service',
+            'icon': '🔧'
+        },
+        'request': {
+            'title': f"Seller Interested: {item.title}",
+            'message': f"{saver_user.username} saved your request! They might have what you're looking for.",
+            'action_url': f'/buyer-requests/{item.id}/',
+            'action_text': 'View Request',
+            'icon': '🔍'
+        }
+    }
+    
+    return notifications.get(item_type, {
+        'title': "Item Saved",
+        'message': f"{saver_user.username} saved your item",
+        'action_url': '/',
+        'action_text': 'View'
+    })
+
+def get_item_title(item, item_type):
+    """
+    Safely get title from any item type
+    
+    Returns:
+        str: The item's title/name
+    """
+    if hasattr(item, 'title'):
+        return item.title
+    elif hasattr(item, 'name'):
+        return item.name
+    else:
+        return f"{item_type.title()} #{item.id}"
+
+@login_required
+def saved_items(request):
+    from django.core.paginator import Paginator
+    
+    # Get all saved items with related data
+    saved_items_qs = SavedItem.objects.filter(
+        user=request.user
+    ).select_related('content_type').order_by('-saved_at')
+    
+    # Prefetch actual objects efficiently
+    from django.contrib.contenttypes.models import ContentType
+    from Home.models import Product_Listing
+    from Services.models import ServiceListing
+    from BuyerRequest.models import BuyerRequest
+    
+    product_ct = ContentType.objects.get_for_model(Product_Listing)
+    service_ct = ContentType.objects.get_for_model(ServiceListing)
+    request_ct = ContentType.objects.get_for_model(BuyerRequest)
+    
+    # Get IDs for each type
+    product_ids = []
+    service_ids = []
+    request_ids = []
+    
+    for item in saved_items_qs:
+        if item.content_type == product_ct:
+            product_ids.append(item.object_id)
+        elif item.content_type == service_ct:
+            service_ids.append(item.object_id)
+        elif item.content_type == request_ct:
+            request_ids.append(item.object_id)
+    
+    # Prefetch all objects at once
+    products = {str(p.id): p for p in Product_Listing.objects.filter(id__in=product_ids).select_related('seller__user', 'category')}
+    services = {str(s.id): s for s in ServiceListing.objects.filter(id__in=service_ids).select_related('provider__user')}
+    requests = {str(r.id): r for r in BuyerRequest.objects.filter(id__in=request_ids).select_related('buyer__user', 'category')}
+    
+    # Attach objects to saved items
+    items_with_objects = []
+    for saved_item in saved_items_qs:
+        item_obj = None
+        
+        if saved_item.content_type == product_ct:
+            item_obj = products.get(saved_item.object_id)
+        elif saved_item.content_type == service_ct:
+            item_obj = services.get(saved_item.object_id)
+        elif saved_item.content_type == request_ct:
+            item_obj = requests.get(saved_item.object_id)
+        
+        if item_obj:  # Only include if object still exists
+            saved_item.item_object = item_obj
+            saved_item.is_saved = True
+            saved_item.item_object.is_saved = True
+            
+            # Format display properties
+            if hasattr(item_obj, 'price'):
+                saved_item.item_object.formatted_price = format_price(item_obj.price)
+            elif hasattr(item_obj, 'base_price'):
+                from Services.views import format_service_price
+                saved_item.item_object.formatted_price = format_service_price(
+                    item_obj.pricing_type, item_obj.base_price, 
+                    item_obj.min_price, item_obj.max_price
+                )
+            elif hasattr(item_obj, 'budget_range'):
+                from BuyerRequest.views import format_budget
+                saved_item.item_object.formatted_budget = format_budget(
+                    item_obj.budget_range, item_obj.budget_min, item_obj.budget_max
+                )
+            
+            items_with_objects.append(saved_item)
+    
+    # Pagination
+    paginator = Paginator(items_with_objects, 12)
+    page = request.GET.get('page', 1)
+    
+    try:
+        items = paginator.page(page)
+    except:
+        items = paginator.page(1)
+    
+    # Get counts for each type
+    from django.db.models import Count, Q
+    type_counts = {
+        'products': SavedItem.objects.filter(user=request.user, content_type=product_ct).count(),
+        'services': SavedItem.objects.filter(user=request.user, content_type=service_ct).count(),
+        'requests': SavedItem.objects.filter(user=request.user, content_type=request_ct).count(),
+    }
+    
+    context = {
+        'saved_items': items,
+        'type_counts': type_counts,
+        'total_count': sum(type_counts.values()),
+    }
+    
+    return render(request, 'saved_items.html', context)
+
+def create_save_milestone_notification(item, item_type, save_count):
+    """
+    Optional: Notify owner when their item reaches save milestones
+    
+    Call this after creating a SavedItem to check milestones
+    """
+    milestones = [5, 10, 25, 50, 100, 500]
+    
+    if save_count in milestones:
+        owner_user = get_item_owner(item, item_type)
+        
+        if owner_user:
+            title = f"🎉 {save_count} Saves Milestone!"
+            message = f"Your {item_type} '{get_item_title(item, item_type)}' has been saved {save_count} times! Keep up the great work."
+            
+            notification_data = get_save_notification_data(item, item_type, owner_user)
+            
+            create_notification(
+                user=owner_user,
+                title=title,
+                message=message,
+                category=NotificationCategory.MILESTONES,
+                priority=NotificationPriority.NORMAL,
+                content_object=item,
+                action_url=notification_data['action_url'],
+                action_text='View Details'
+            )
+            
+            logger.info(f"Created milestone notification: {item_type} #{item.id} reached {save_count} saves")
+
+@login_required
+@require_POST
+def toggle_save_item_with_milestones(request):
+    """
+    Enhanced version with milestone notifications
+    Use this if you want to notify owners about save milestones
+    """
+    item_id = request.POST.get('item_id')
+    item_type = request.POST.get('item_type')
+    
+    if not item_id or not item_type:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Missing item_id or item_type'
+        }, status=400)
+    
+    # Map item_type to model
+    model_map = {
+        'product': ('Home', 'Product_Listing'),
+        'service': ('Services', 'ServiceListing'),
+        'request': ('BuyerRequest', 'BuyerRequest'),
+    }
+    
+    if item_type not in model_map:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Invalid item_type: {item_type}'
+        }, status=400)
+    
+    try:
+        # Convert to UUID if needed
+        try:
+            item_id = uuid.UUID(item_id)
+        except ValueError:
+            pass
+        
+        # Get the model and ContentType
+        app_label, model_name = model_map[item_type]
+        content_type = ContentType.objects.get(app_label=app_label, model=model_name.lower())
+        
+        # Get the actual item to verify it exists
+        Model = content_type.model_class()
+        item = Model.objects.get(id=item_id)
+        
+        # Check if already saved
+        saved_item = SavedItem.objects.filter(
+            user=request.user,
+            content_type=content_type,
+            object_id=str(item_id)
+        ).first()
+        
+        if saved_item:
+            # Already saved - unsave it
+            saved_item.delete()
+            return JsonResponse({
+                'status': 'removed',
+                'message': f'{item_type.title()} removed from saved items'
+            })
+        else:
+            # Not saved - save it
+            SavedItem.objects.create(
+                user=request.user,
+                content_type=content_type,
+                object_id=str(item_id)
+            )
+            
+            # ✅ CREATE NOTIFICATION FOR OWNER
+            owner_user = get_item_owner(item, item_type)
+            
+            if owner_user and owner_user != request.user:
+                # Create save notification
+                notification_data = get_save_notification_data(item, item_type, request.user)
+                
+                create_notification(
+                    user=owner_user,
+                    title=notification_data['title'],
+                    message=notification_data['message'],
+                    category=NotificationCategory.SAVES,
+                    priority=NotificationPriority.LOW,
+                    content_object=item,
+                    action_url=notification_data['action_url'],
+                    action_text=notification_data['action_text']
+                )
+                
+                # ✅ CHECK FOR MILESTONE
+                total_saves = SavedItem.objects.filter(
+                    content_type=content_type,
+                    object_id=str(item_id)
+                ).count()
+                
+                create_save_milestone_notification(item, item_type, total_saves)
+                
+                logger.info(
+                    f"Created save notification: {item_type} #{item_id} saved by {request.user.username} "
+                    f"(Total saves: {total_saves})"
+                )
+            
+            return JsonResponse({
+                'status': 'saved',
+                'message': f'{item_type.title()} saved successfully'
+            })
+            
+    except Model.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'{item_type.title()} not found'
+        }, status=404)
+    except Exception as e:
+        logger.error(f"Error toggling save: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'status': 'error',
+            'message': 'An error occurred while saving'
+        }, status=500)
+
+@login_required
+def my_save_stats(request):
+    """
+    Show stats about who's saving your content
+    """
+    from django.db.models import Count
+    
+    # Get content types
+    product_ct = ContentType.objects.get(app_label='Home', model='product_listing')
+    service_ct = ContentType.objects.get(app_label='Services', model='servicelisting')
+    request_ct = ContentType.objects.get(app_label='BuyerRequest', model='buyerrequest')
+    
+    # Get user's products
+    from Home.models import Product_Listing
+    user_products = Product_Listing.objects.filter(
+        seller=request.user.profile
+    ).values_list('id', flat=True)
+    
+    product_saves = SavedItem.objects.filter(
+        content_type=product_ct,
+        object_id__in=[str(id) for id in user_products]
+    ).count()
+    
+    # Get user's services
+    try:
+        from Services.models import ServiceListing
+        user_services = ServiceListing.objects.filter(
+            provider=request.user.profile
+        ).values_list('id', flat=True)
+        
+        service_saves = SavedItem.objects.filter(
+            content_type=service_ct,
+            object_id__in=[str(id) for id in user_services]
+        ).count()
+    except ImportError:
+        service_saves = 0
+    
+    # Get user's requests
+    try:
+        from BuyerRequest.models import BuyerRequest
+        user_requests = BuyerRequest.objects.filter(
+            buyer=request.user.profile
+        ).values_list('id', flat=True)
+        
+        request_saves = SavedItem.objects.filter(
+            content_type=request_ct,
+            object_id__in=[str(id) for id in user_requests]
+        ).count()
+    except ImportError:
+        request_saves = 0
+    
+    # Get recent savers
+    recent_saves = SavedItem.objects.filter(
+        Q(content_type=product_ct, object_id__in=[str(id) for id in user_products]) |
+        Q(content_type=service_ct, object_id__in=[str(id) for id in user_services]) |
+        Q(content_type=request_ct, object_id__in=[str(id) for id in user_requests])
+    ).select_related('user').order_by('-saved_at')[:10]
+    
+    context = {
+        'product_saves': product_saves,
+        'service_saves': service_saves,
+        'request_saves': request_saves,
+        'total_saves': product_saves + service_saves + request_saves,
+        'recent_saves': recent_saves,
+    }
+    
+    return render(request, 'my_save_stats.html', context)
+
+def format_price(price):
+    """Helper function for price formatting"""
+    from decimal import Decimal
+    return f'₦ {Decimal(price):,.0f}'
+
+#Report Section
+@require_http_methods(["GET", "POST"])
+def report_item(request, content_type, item_id):
+    """
+    UNIFIED: Report any item (product, service, or buyer request)
+    
+    Args:
+        content_type: 'product', 'service', or 'request'
+        item_id: UUID of the item to report
+    
+    URL examples:
+        /report/product/<uuid>/
+        /report/service/<uuid>/
+        /report/request/<uuid>/
+    """
+    
+    # Map content_type string to Django model
+    content_type_map = {
+        'product': ('Home', 'product_listing'),
+        'service': ('Services', 'servicelisting'),
+        'request': ('BuyerRequest', 'buyerrequest'),
+    }
+    
+    if content_type not in content_type_map:
+        messages.error(request, f'Invalid content type: {content_type}')
+        return redirect('home')
+    
+    app_label, model_name = content_type_map[content_type]
+    
+    try:
+        # Get the ContentType and the actual item
+        ct = ContentType.objects.get(app_label=app_label, model=model_name)
+        Model = ct.model_class()
+        item = get_object_or_404(Model, id=item_id)
+        
+        # Check if already suspended
+        is_suspended = False
+        if hasattr(item, 'is_suspended'):
+            is_suspended = item.is_suspended
+        
+        # GET - Show report form
+        if request.method == 'GET':
+            form = ItemReportForm()
+            
+            # Determine item type display name
+            item_type_display = {
+                'product': 'Product',
+                'service': 'Service',
+                'request': 'Buyer Request'
+            }.get(content_type, content_type.title())
+            
+            return render(request, 'reports/report_item.html', {
+                'form': form,
+                'item': item,
+                'item_type': content_type,
+                'item_type_display': item_type_display,
+                'is_suspended': is_suspended
+            })
+        
+        # POST - Submit report
+        form = ItemReportForm(request.POST)
+        
+        if form.is_valid():
+            # Create report
+            report = form.save(commit=False)
+            report.content_type = ct
+            report.object_id = str(item_id)
+            report.save()
+            
+            # Get report count for this item
+            report_count = ItemReport.get_reports_for_item(item).count()
+            
+            # Send email to admins
+            try:
+                from django.core.mail import send_mail
+                from django.template.loader import render_to_string
+                
+                email_context = {
+                    'item': item,
+                    'item_type': content_type,
+                    'report': report,
+                    'report_count': report_count,
+                    'reporter_email': form.cleaned_data.get('reporter_email') or 'Anonymous',
+                    'settings': settings
+                }
+                
+                email_body = render_to_string('emails/item_report_email.html', email_context)
+                
+                send_mail(
+                    subject=f'{content_type.title()} Report: {item.title} (#{report_count})',
+                    message=email_body,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=['support@opensell.ng'],
+                    html_message=email_body,
+                    fail_silently=False,
+                )
+                
+                logger.info(f"Report email sent for {content_type} {item_id} (count: {report_count})")
+                
+                # Check auto-suspension threshold
+                should_suspend, count = ItemReport.check_auto_suspension_threshold(item)
+                
+                if should_suspend and hasattr(item, 'is_suspended') and not item.is_suspended:
+                    # Get a superuser for auto-suspension
+                    from django.contrib.auth.models import User
+                    superuser = User.objects.filter(is_superuser=True).first()
+                    
+                    if superuser:
+                        # Auto-suspend
+                        success = report.suspend_item(
+                            superuser,
+                            f"Auto-suspended after receiving {count} reports. Last report reason: {report.get_reason_display()}"
+                        )
+                        
+                        if success:
+                            # Mark all pending reports as resolved
+                            ItemReport.get_reports_for_item(item).filter(status='pending').update(
+                                status='resolved',
+                                reviewed_by=superuser,
+                                reviewed_at=timezone.now(),
+                                resolution_notes=f"Auto-resolved due to listing suspension after {count} reports."
+                            )
+                            
+                            logger.info(f"Auto-suspended {content_type} {item_id} after {count} reports")
+                
+                # AJAX response
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'Thank you for reporting this item. We will review it shortly.'
+                    })
+                
+                # Regular response
+                messages.success(request, 'Thank you for reporting this item. We will review it shortly.')
+                return redirect(item.get_absolute_url())
+                
+            except Exception as e:
+                logger.error(f"Error processing report: {e}", exc_info=True)
+                
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'An error occurred while processing your report. Please try again.'
+                    }, status=500)
+                
+                messages.error(request, 'An error occurred while processing your report. Please try again.')
+                return redirect(item.get_absolute_url())
+        
+        else:
+            # Form validation failed
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'errors': form.errors
+                }, status=400)
+            
+            # Re-render form with errors
+            item_type_display = {
+                'product': 'Product',
+                'service': 'Service',
+                'request': 'Buyer Request'
+            }.get(content_type, content_type.title())
+            
+            return render(request, 'reports/report_item.html', {
+                'form': form,
+                'item': item,
+                'item_type': content_type,
+                'item_type_display': item_type_display,
+                'is_suspended': is_suspended
+            })
+    
+    except Exception as e:
+        logger.error(f"Unexpected error in report_item: {e}", exc_info=True)
+        messages.error(request, 'An unexpected error occurred.')
+        return redirect('home')
+    
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def admin_reports_list(request):
+    """
+    UNIFIED: Admin panel showing all reports (products, services, requests)
+    """
+    # Filter by status
+    status_filter = request.GET.get('status', 'pending')
+    item_type_filter = request.GET.get('item_type', 'all')
+    search_query = request.GET.get('search', '')
+    
+    # Base queryset
+    queryset = ItemReport.objects.select_related(
+        'content_type', 
+        'reviewed_by'
+    ).prefetch_related(
+        'content_object'
+    )
+    
+    # Apply filters
+    if status_filter and status_filter != 'all':
+        queryset = queryset.filter(status=status_filter)
+    
+    # Filter by item type
+    if item_type_filter and item_type_filter != 'all':
+        type_map = {
+            'product': ('Home', 'product_listing'),
+            'service': ('Services', 'servicelisting'),
+            'request': ('BuyerRequest', 'buyerrequest'),
+        }
+        
+        if item_type_filter in type_map:
+            app_label, model_name = type_map[item_type_filter]
+            try:
+                ct = ContentType.objects.get(app_label=app_label, model=model_name)
+                queryset = queryset.filter(content_type=ct)
+            except ContentType.DoesNotExist:
+                pass
+    
+    # Search
+    if search_query:
+        # Note: Can't easily search across GenericForeignKey
+        # So we search by reason and details only
+        queryset = queryset.filter(
+            Q(details__icontains=search_query) |
+            Q(reporter_email__icontains=search_query) |
+            Q(reason__icontains=search_query)
+        )
+    
+    queryset = queryset.order_by('-reported_at')
+    
+    # Pagination
+    paginator = Paginator(queryset, 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Get status counts
+    status_counts = {
+        'pending': ItemReport.objects.filter(status='pending').count(),
+        'reviewing': ItemReport.objects.filter(status='reviewing').count(),
+        'resolved': ItemReport.objects.filter(status='resolved').count(),
+        'dismissed': ItemReport.objects.filter(status='dismissed').count(),
+    }
+    status_counts['all'] = sum(status_counts.values())
+    
+    # Get item type counts
+    from django.db.models import Count
+    type_counts = ItemReport.objects.values(
+        'content_type__model'
+    ).annotate(count=Count('id'))
+    
+    type_counts_dict = {}
+    for item in type_counts:
+        model_name = item['content_type__model']
+        if model_name == 'product_listing':
+            type_counts_dict['product'] = item['count']
+        elif model_name == 'servicelisting':
+            type_counts_dict['service'] = item['count']
+        elif model_name == 'buyerrequest':
+            type_counts_dict['request'] = item['count']
+    
+    context = {
+        'page_obj': page_obj,
+        'status_filter': status_filter,
+        'item_type_filter': item_type_filter,
+        'search_query': search_query,
+        'status_counts': status_counts,
+        'type_counts': type_counts_dict,
+        'total_pending': status_counts['pending'],
+    }
+    
+    return render(request, 'admin/reports_list.html', context)
+
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def admin_report_detail(request, report_id):
+    """
+    UNIFIED: View details of a specific report
+    """
+    report = get_object_or_404(
+        ItemReport.objects.select_related('content_type', 'reviewed_by'),
+        id=report_id
+    )
+    
+    # Get all reports for this item
+    related_reports = ItemReport.get_reports_for_item(report.content_object).exclude(
+        id=report_id
+    )
+    
+    context = {
+        'report': report,
+        'related_reports': related_reports,
+        'can_suspend': report.content_object and not report.content_object.is_suspended,
+    }
+    
+    return render(request, 'admin/report_detail.html', context)
+
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+@require_POST
+def admin_suspend_item(request, report_id):
+    """
+    UNIFIED: Suspend an item from a report
+    """
+    report = get_object_or_404(ItemReport, id=report_id)
+    
+    if not report.content_object:
+        messages.error(request, 'Item no longer exists.')
+        return redirect('admin_reports')
+    
+    if report.content_object.is_suspended:
+        messages.warning(request, 'Item is already suspended.')
+        return redirect('admin_report_detail', report_id=report_id)
+    
+    reason = request.POST.get('reason', report.details)
+    
+    # Suspend the item
+    if report.suspend_item(request.user, reason):
+        messages.success(
+            request,
+            f'{report.item_type_display} "{report.item_title}" has been suspended.'
+        )
+        
+        # Mark all pending reports for this item as resolved
+        ItemReport.get_reports_for_item(report.content_object).filter(
+            status='pending'
+        ).update(
+            status='resolved',
+            reviewed_by=request.user,
+            reviewed_at=timezone.now(),
+            resolution_notes=f'Item suspended by {request.user.username}'
+        )
+    else:
+        messages.error(request, 'Failed to suspend item.')
+    
+    return redirect('admin_reports')
+
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+@require_POST
+def admin_dismiss_report(request, report_id):
+    """
+    UNIFIED: Dismiss a report without action
+    """
+    report = get_object_or_404(ItemReport, id=report_id)
+    
+    notes = request.POST.get('notes', '')
+    
+    report.mark_as_reviewed(
+        request.user,
+        status='dismissed',
+        notes=notes or 'Report dismissed - no action required'
+    )
+    
+    messages.success(request, 'Report has been dismissed.')
+    return redirect('admin_reports')
+
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+@require_POST
+def admin_mark_reviewing(request, report_id):
+    """
+    UNIFIED: Mark report as under review
+    """
+    report = get_object_or_404(ItemReport, id=report_id)
+    
+    report.status = 'reviewing'
+    report.reviewed_by = request.user
+    report.reviewed_at = timezone.now()
+    report.save()
+    
+    messages.success(request, 'Report marked as under review.')
+    return redirect('admin_report_detail', report_id=report_id)

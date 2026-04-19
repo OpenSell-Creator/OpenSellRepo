@@ -98,6 +98,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'User.apps.UserConfig',
     'Home.apps.HomeConfig',
+    'BuyerRequest.apps.BuyerRequestConfig',
+    'Services.apps.ServicesConfig',
     'Messages',
     'Notifications',
     'Dashboard',

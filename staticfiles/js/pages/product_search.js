@@ -472,6 +472,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 const productElement = tempDiv.firstElementChild;
                 
                 if (productElement) {
+                    // ✅ CHECK: Does this product have the saved state correctly set?
+                    const saveButton = productElement.querySelector('.save-button');
+                    if (saveButton) {
+                        const isSaved = saveButton.classList.contains('saved');
+                        const itemId = saveButton.dataset.itemId;
+                        
+                        log(`Product ${itemId} saved status: ${isSaved}`);
+                        
+                        // ✅ Ensure the icon matches the saved state
+                        const icon = saveButton.querySelector('i');
+                        if (icon) {
+                            if (isSaved) {
+                                icon.className = 'bi bi-heart-fill';
+                                saveButton.setAttribute('data-saved', 'true');
+                            } else {
+                                icon.className = 'bi bi-heart';
+                                saveButton.setAttribute('data-saved', 'false');
+                            }
+                        }
+                    }
+                    
                     // Wrap in proper grid column for search
                     const colDiv = document.createElement('div');
                     colDiv.className = 'col-6 col-md-4 col-lg-3 col-xl-2';

@@ -9,9 +9,11 @@ from django.utils.crypto import get_random_string
 from django.urls import reverse
 from django.db.models import Avg
 import random
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+import logging
+logger = logging.getLogger(__name__)
 
-
-# Create your models here.
 class State(models.Model):
     name = models.CharField(max_length=100, unique=True)
     is_active = models.BooleanField(default=True)
@@ -126,55 +128,52 @@ class Profile(models.Model):
     priority_support = models.BooleanField(default=False)
     featured_store = models.BooleanField(default=False)
     
-    # TODO: Uncomment when Services app is ready
-    # total_services_listed = models.PositiveIntegerField(default=0, help_text="Total services ever listed")
-    # total_service_inquiries = models.PositiveIntegerField(default=0, help_text="Total service inquiries received")
-    # service_provider_rating = models.DecimalField(
-    #     max_digits=3, 
-    #     decimal_places=2, 
-    #     default=0.0,
-    #     help_text="Average rating as service provider"
-    # )
-    # total_service_reviews = models.PositiveIntegerField(default=0, help_text="Total reviews as service provider")
+    total_services_listed = models.PositiveIntegerField(default=0, help_text="Total services ever listed")
+    total_service_inquiries = models.PositiveIntegerField(default=0, help_text="Total service inquiries received")
+    service_provider_rating = models.DecimalField(
+        max_digits=3, 
+        decimal_places=2, 
+        default=0.0,
+        help_text="Average rating as service provider"
+    )
+    total_service_reviews = models.PositiveIntegerField(default=0, help_text="Total reviews as service provider")
     
-    # TODO: Uncomment when BuyerRequest app is ready
-    # # Buyer request statistics  
-    # total_requests_posted = models.PositiveIntegerField(default=0, help_text="Total buyer requests posted")
-    # buyer_rating = models.DecimalField(
-    #     max_digits=3, 
-    #     decimal_places=2, 
-    #     default=0.0,
-    #     help_text="Average rating as buyer"
-    # )
-    # total_buyer_reviews = models.PositiveIntegerField(default=0, help_text="Total reviews as buyer")
+    # Buyer request statistics  
+    total_requests_posted = models.PositiveIntegerField(default=0, help_text="Total buyer requests posted")
+    buyer_rating = models.DecimalField(
+        max_digits=3, 
+        decimal_places=2, 
+        default=0.0,
+        help_text="Average rating as buyer"
+    )
+    total_buyer_reviews = models.PositiveIntegerField(default=0, help_text="Total reviews as buyer")
     
-    # TODO: Uncomment when Services app is ready
-    # # Professional information for service providers
-    # professional_title = models.CharField(
-    #     max_length=100, 
-    #     blank=True,
-    #     help_text="Professional title (e.g., 'Graphic Designer', 'Web Developer')"
-    # )
-    # skills = models.TextField(
-    #     blank=True,
-    #     help_text="List of skills separated by commas"
-    # )
-    # years_of_experience = models.PositiveIntegerField(
-    #     null=True, 
-    #     blank=True,
-    #     help_text="Years of professional experience"
-    # )
+    # Professional information for service providers
+    professional_title = models.CharField(
+        max_length=100, 
+        blank=True,
+        help_text="Professional title (e.g., 'Graphic Designer', 'Web Developer')"
+    )
+    skills = models.TextField(
+        blank=True,
+        help_text="List of skills separated by commas"
+    )
+    years_of_experience = models.PositiveIntegerField(
+        null=True, 
+        blank=True,
+        help_text="Years of professional experience"
+    )
     
-    # # Service availability
-    # available_for_services = models.BooleanField(
-    #     default=False,
-    #     help_text="Available to provide services"
-    # )
-    # service_availability_note = models.CharField(
-    #     max_length=255,
-    #     blank=True,
-    #     help_text="Brief note about your availability"
-    # )
+    # Service availability
+    available_for_services = models.BooleanField(
+        default=False,
+        help_text="Available to provide services"
+    )
+    service_availability_note = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Brief note about your availability"
+    )
     
     
     def __str__(self):
@@ -219,148 +218,147 @@ class Profile(models.Model):
         }
         return status_map.get(self.business_verification_status, 'Unknown')
     
-    # TODO: Uncomment when Services app is ready
-    # @property
-    # def service_provider_average_rating(self):
-    #     """Get average rating as service provider"""
-    #     try:
-    #         from Services.models import ServiceReview
-    #         reviews = ServiceReview.objects.filter(service__provider=self)
-    #         if reviews.exists():
-    #             avg_rating = reviews.aggregate(avg_rating=models.Avg('rating'))['avg_rating']
-    #             return round(avg_rating, 1) if avg_rating else 0
-    #         return 0
-    #     except ImportError:
-    #         return 0
+    @property
+    def service_provider_average_rating(self):
+        """Get average rating as service provider"""
+        try:
+            from Services.models import ServiceReview
+            reviews = ServiceReview.objects.filter(service__provider=self)
+            if reviews.exists():
+                avg_rating = reviews.aggregate(avg_rating=models.Avg('rating'))['avg_rating']
+                return round(avg_rating, 1) if avg_rating else 0
+            return 0
+        except ImportError:
+            return 0
     
-    # @property
-    # def combined_rating(self):
-    #     """Get combined rating from products and services"""
-    #     product_rating = self.seller_average_rating
-    #     service_rating = self.service_provider_average_rating
-    #     product_count = self.total_seller_reviews
-    #     service_count = self.total_service_reviews
+    @property
+    def combined_rating(self):
+        """Get combined rating from products and services"""
+        product_rating = self.seller_average_rating
+        service_rating = self.service_provider_average_rating
+        product_count = self.total_seller_reviews
+        service_count = self.total_service_reviews
         
-    #     if product_count + service_count == 0:
-    #         return 0
+        if product_count + service_count == 0:
+            return 0
         
-    #     total_rating = (product_rating * product_count) + (service_rating * service_count)
-    #     return round(total_rating / (product_count + service_count), 1)
+        total_rating = (product_rating * product_count) + (service_rating * service_count)
+        return round(total_rating / (product_count + service_count), 1)
     
-    # @property
-    # def is_verified_provider(self):
-    #     """Check if user is a verified provider (business or high-rated)"""
-    #     return (
-    #         self.business_verification_status == 'verified' or
-    #         (self.combined_rating >= 4.5 and (self.total_seller_reviews + self.total_service_reviews) >= 10)
-    #     )
+    @property
+    def is_verified_provider(self):
+        """Check if user is a verified provider (business or high-rated)"""
+        return (
+            self.business_verification_status == 'verified' or
+            (self.combined_rating >= 4.5 and (self.total_seller_reviews + self.total_service_reviews) >= 10)
+        )
     
-    # @property
-    # def provider_badge(self):
-    #     """Get provider badge based on performance"""
-    #     total_reviews = self.total_seller_reviews + self.total_service_reviews
-    #     avg_rating = self.combined_rating
+    @property
+    def provider_badge(self):
+        """Get provider badge based on performance"""
+        total_reviews = self.total_seller_reviews + self.total_service_reviews
+        avg_rating = self.combined_rating
         
-    #     if self.business_verification_status == 'verified':
-    #         return 'verified_business'
-    #     elif avg_rating >= 4.8 and total_reviews >= 50:
-    #         return 'top_rated'
-    #     elif avg_rating >= 4.5 and total_reviews >= 20:
-    #         return 'highly_rated'
-    #     elif avg_rating >= 4.0 and total_reviews >= 10:
-    #         return 'rated'
-    #     else:
-    #         return 'new'
+        if self.business_verification_status == 'verified':
+            return 'verified_business'
+        elif avg_rating >= 4.8 and total_reviews >= 50:
+            return 'top_rated'
+        elif avg_rating >= 4.5 and total_reviews >= 20:
+            return 'highly_rated'
+        elif avg_rating >= 4.0 and total_reviews >= 10:
+            return 'rated'
+        else:
+            return 'new'
     
-    # def get_provider_badge_display(self):
-    #     """Get human-readable provider badge"""
-    #     badge_map = {
-    #         'verified_business': 'Verified Business',
-    #         'top_rated': 'Top Rated',
-    #         'highly_rated': 'Highly Rated', 
-    #         'rated': 'Rated',
-    #         'new': 'New Provider'
-    #     }
-    #     return badge_map.get(self.provider_badge, 'Provider')
+    def get_provider_badge_display(self):
+        """Get human-readable provider badge"""
+        badge_map = {
+            'verified_business': 'Verified Business',
+            'top_rated': 'Top Rated',
+            'highly_rated': 'Highly Rated', 
+            'rated': 'Rated',
+            'new': 'New Provider'
+        }
+        return badge_map.get(self.provider_badge, 'Provider')
     
-    # @property
-    # def total_marketplace_activity(self):
-    #     """Get total marketplace activity count"""
-    #     return (
-    #         self.total_products_listed + 
-    #         self.total_services_listed + 
-    #         self.total_requests_posted
-    #     )
+    @property
+    def total_marketplace_activity(self):
+        """Get total marketplace activity count"""
+        return (
+            self.total_products_listed + 
+            self.total_services_listed + 
+            self.total_requests_posted
+        )
     
-    # @property
-    # def is_active_provider(self):
-    #     """Check if user is actively providing products or services"""
-    #     try:
-    #         from Services.models import ServiceListing
-    #         active_services = ServiceListing.objects.filter(
-    #             provider=self, 
-    #             is_active=True, 
-    #             is_suspended=False
-    #         ).count()
+    @property
+    def is_active_provider(self):
+        """Check if user is actively providing products or services"""
+        try:
+            from Services.models import ServiceListing
+            active_services = ServiceListing.objects.filter(
+                provider=self, 
+                is_active=True, 
+                is_suspended=False
+            ).count()
             
-    #         from Home.models import Product_Listing
-    #         active_products = Product_Listing.objects.filter(
-    #             seller=self,
-    #             is_suspended=False
-    #         ).exclude(
-    #             expiration_date__lte=timezone.now()
-    #         ).count()
+            from Home.models import Product_Listing
+            active_products = Product_Listing.objects.filter(
+                seller=self,
+                is_suspended=False
+            ).exclude(
+                expiration_date__lte=timezone.now()
+            ).count()
             
-    #         return (active_services + active_products) > 0
-    #     except ImportError:
-    #         return self.total_products_listed > 0
+            return (active_services + active_products) > 0
+        except ImportError:
+            return self.total_products_listed > 0
     
-    # def get_skills_list(self):
-    #     """Get skills as a list"""
-    #     if self.skills:
-    #         return [skill.strip() for skill in self.skills.split(',') if skill.strip()]
-    #     return []
+    def get_skills_list(self):
+        """Get skills as a list"""
+        if self.skills:
+            return [skill.strip() for skill in self.skills.split(',') if skill.strip()]
+        return []
     
-    # def set_skills_list(self, skills_list):
-    #     """Set skills from a list"""
-    #     if skills_list:
-    #         self.skills = ', '.join(skills_list)
-    #     else:
-    #         self.skills = ''
+    def set_skills_list(self, skills_list):
+        """Set skills from a list"""
+        if skills_list:
+            self.skills = ', '.join(skills_list)
+        else:
+            self.skills = ''
     
-    # def update_service_stats(self):
-    #     """Update service-related statistics"""
-    #     try:
-    #         from Services.models import ServiceListing, ServiceReview
+    def update_service_stats(self):
+        """Update service-related statistics"""
+        try:
+            from Services.models import ServiceListing, ServiceReview
             
-    #         # Update service counts
-    #         self.total_services_listed = ServiceListing.objects.filter(provider=self).count()
+            # Update service counts
+            self.total_services_listed = ServiceListing.objects.filter(provider=self).count()
             
-    #         # Update service ratings
-    #         service_reviews = ServiceReview.objects.filter(service__provider=self)
-    #         self.total_service_reviews = service_reviews.count()
-    #         if service_reviews.exists():
-    #             self.service_provider_rating = service_reviews.aggregate(
-    #                 avg_rating=models.Avg('rating')
-    #             )['avg_rating'] or 0
+            # Update service ratings
+            service_reviews = ServiceReview.objects.filter(service__provider=self)
+            self.total_service_reviews = service_reviews.count()
+            if service_reviews.exists():
+                self.service_provider_rating = service_reviews.aggregate(
+                    avg_rating=models.Avg('rating')
+                )['avg_rating'] or 0
             
-    #         self.save(update_fields=[
-    #             'total_services_listed', 'total_service_reviews', 'service_provider_rating'
-    #         ])
-    #     except ImportError:
-    #         pass
+            self.save(update_fields=[
+                'total_services_listed', 'total_service_reviews', 'service_provider_rating'
+            ])
+        except ImportError:
+            pass
     
-    # def update_request_stats(self):
-    #     """Update buyer request statistics"""
-    #     try:
-    #         from BuyerRequest.models import BuyerRequest
+    def update_request_stats(self):
+        """Update buyer request statistics"""
+        try:
+            from BuyerRequest.models import BuyerRequest
             
-    #         # Update request counts
-    #         self.total_requests_posted = BuyerRequest.objects.filter(buyer=self).count()
+            # Update request counts
+            self.total_requests_posted = BuyerRequest.objects.filter(buyer=self).count()
             
-    #         self.save(update_fields=['total_requests_posted'])
-    #     except ImportError:
-    #         pass
+            self.save(update_fields=['total_requests_posted'])
+        except ImportError:
+            pass
     
     def verify_business(self, verified_by_user, notes=None):
         """Verify the business profile"""
@@ -518,7 +516,7 @@ class BusinessVerificationDocument(models.Model):
     
     def __str__(self):
         return f"{self.profile.user.username} - {self.get_document_type_display()}"
-    
+
 class EmailPreferences(models.Model):
 
     profile = models.OneToOneField('Profile', on_delete=models.CASCADE, related_name='email_preferences')
@@ -604,11 +602,9 @@ class BulkEmail(models.Model):
         from django.contrib.auth.models import User
         from User.models import EmailPreferences
         
-        users = User.objects.filter(is_active=True).select_related('profile')
         # FIXED: Don't use select_related here - causes conflict with deferred fields
         users = User.objects.filter(is_active=True)
         
-        # CRITICAL: Filter by preferences (using EmailPreferences model above)
         # CRITICAL: Filter by preferences (using EmailPreferences model)
         # Only users who opted IN for this type will receive emails
         if self.campaign_type == 'marketing':
@@ -645,3 +641,246 @@ class BulkEmail(models.Model):
     def get_recipient_count(self):
         """Efficient count without loading all users"""
         return self.get_recipients_query().count()
+
+class SavedItem(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saved_items')
+    
+    # GenericForeignKey setup - allows pointing to any model
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True,
+    blank=True)
+    object_id = models.CharField(max_length=255)
+    content_object = GenericForeignKey('content_type', 'object_id')
+    # Metadata
+    saved_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-saved_at']
+        # Ensure user can't save same item twice
+        unique_together = ('user', 'content_type', 'object_id')
+        indexes = [
+            models.Index(fields=['user', '-saved_at']),
+            models.Index(fields=['content_type', 'object_id']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.username} saved {self.content_type.model} #{self.object_id}"
+    
+    @property
+    def item_type(self):
+        """Returns 'product', 'service', or 'request' for template display"""
+        model_name = self.content_type.model
+        if model_name == 'product_listing':
+            return 'product'
+        elif model_name == 'servicelisting':
+            return 'service'
+        elif model_name == 'buyerrequest':
+            return 'request'
+        return model_name
+    
+    @property
+    def item_icon(self):
+        """Returns Bootstrap icon class for each type"""
+        icons = {
+            'product': 'bi-box-seam',
+            'service': 'bi-tools',
+            'request': 'bi-search'
+        }
+        return icons.get(self.item_type, 'bi-bookmark')
+    
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+        super().save(*args, **kwargs)
+
+class ItemReport(models.Model):
+    """
+    Unified report model for Products, Services, and Buyer Requests
+    Uses GenericForeignKey to point to any content type
+    """
+    
+    REPORT_STATUS = [
+        ('pending', 'Pending Review'),
+        ('reviewing', 'Under Review'),
+        ('resolved', 'Resolved'),
+        ('dismissed', 'Dismissed'),
+    ]
+    
+    REPORT_REASONS = [
+        ('spam', 'Spam or Misleading Content'),
+        ('fraud', 'Fraudulent Listing'),
+        ('inappropriate', 'Inappropriate Content'),
+        ('expired', 'Expired or Sold Item'),
+        ('scam', 'Suspected Scam'),
+        ('fake', 'Fake Listing'),
+        ('duplicate', 'Duplicate Listing'),
+        ('other', 'Other Reason')
+    ]
+    
+    # GenericForeignKey setup - points to Product, Service, or Request
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE,null=True,
+    blank=True)
+    object_id = models.CharField(max_length=255)
+    content_object = GenericForeignKey('content_type', 'object_id')
+    
+    # Report details
+    reason = models.CharField(max_length=20, choices=REPORT_REASONS)
+    details = models.TextField()
+    reporter_email = models.EmailField(blank=True, null=True)
+    reported_at = models.DateTimeField(auto_now_add=True)
+    
+    # Status tracking
+    status = models.CharField(max_length=10, choices=REPORT_STATUS, default='pending')
+    reviewed_by = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='reviewed_item_reports'
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    resolution_notes = models.TextField(blank=True, null=True)
+    
+    class Meta:
+        ordering = ['-reported_at']
+        indexes = [
+            models.Index(fields=['content_type', 'object_id']),
+            models.Index(fields=['status', '-reported_at']),
+            models.Index(fields=['reviewed_by', '-reviewed_at']),
+        ]
+        verbose_name = 'Item Report'
+        verbose_name_plural = 'Item Reports'
+    
+    def __str__(self):
+        item_type = self.content_type.model
+        return f"Report for {item_type} #{self.object_id} - {self.get_reason_display()}"
+    
+    @property
+    def item_type(self):
+        """Returns 'product', 'service', or 'request' for display"""
+        model_name = self.content_type.model
+        if model_name == 'product_listing':
+            return 'product'
+        elif model_name == 'servicelisting':
+            return 'service'
+        elif model_name == 'buyerrequest':
+            return 'request'
+        return model_name
+    
+    @property
+    def item_type_display(self):
+        """Human-readable item type"""
+        return {
+            'product': 'Product',
+            'service': 'Service',
+            'request': 'Buyer Request'
+        }.get(self.item_type, 'Item')
+    
+    @property
+    def item_title(self):
+        """Get title from the reported item"""
+        if self.content_object:
+            return getattr(self.content_object, 'title', f'{self.item_type} #{self.object_id}')
+        return f'{self.item_type} #{self.object_id}'
+    
+    @property
+    def item_url(self):
+        """Get URL to view the reported item"""
+        if not self.content_object:
+            return None
+        
+        try:
+            return self.content_object.get_absolute_url()
+        except AttributeError:
+            # Fallback URLs
+            urls = {
+                'product': f'/product/{self.object_id}/',
+                'service': f'/services/{self.object_id}/',
+                'request': f'/buyer-requests/{self.object_id}/'
+            }
+            return urls.get(self.item_type, '#')
+    
+    @property
+    def item_owner(self):
+        """Get the owner/creator of the reported item"""
+        if not self.content_object:
+            return None
+        
+        try:
+            # Products have 'seller'
+            if hasattr(self.content_object, 'seller'):
+                return self.content_object.seller.user
+            # Services have 'provider'
+            elif hasattr(self.content_object, 'provider'):
+                return self.content_object.provider.user
+            # Requests have 'buyer'
+            elif hasattr(self.content_object, 'buyer'):
+                return self.content_object.buyer.user
+        except AttributeError:
+            pass
+        
+        return None
+    
+    def mark_as_reviewed(self, admin_user, status='resolved', notes=None):
+        """Mark report as reviewed"""
+        self.status = status
+        self.reviewed_by = admin_user
+        self.reviewed_at = timezone.now()
+        if notes:
+            self.resolution_notes = notes
+        self.save()
+    
+    def suspend_item(self, admin_user, reason=None):
+        """Suspend the reported item"""
+        if not self.content_object:
+            return False
+        
+        try:
+            # All three models have suspend() method
+            if hasattr(self.content_object, 'suspend'):
+                self.content_object.suspend(admin_user, reason or self.details)
+                self.mark_as_reviewed(admin_user, 'resolved', f'Item suspended: {reason or self.details}')
+                return True
+        except Exception as e:
+            logger.error(f"Error suspending {self.item_type}: {str(e)}")
+            return False
+        
+        return False
+    
+    def unsuspend_item(self):
+        """Unsuspend the reported item"""
+        if not self.content_object:
+            return False
+        
+        try:
+            if hasattr(self.content_object, 'unsuspend'):
+                self.content_object.unsuspend()
+                return True
+        except Exception as e:
+            logger.error(f"Error unsuspending {self.item_type}: {str(e)}")
+            return False
+        
+        return False
+    
+    @classmethod
+    def get_reports_for_item(cls, item):
+        """Get all reports for a specific item"""
+        content_type = ContentType.objects.get_for_model(item)
+        return cls.objects.filter(
+            content_type=content_type,
+            object_id=str(item.id)
+        )
+    
+    @classmethod
+    def get_pending_count(cls):
+        """Get count of pending reports"""
+        return cls.objects.filter(status='pending').count()
+    
+    @classmethod
+    def check_auto_suspension_threshold(cls, item):
+        """
+        Check if item has reached auto-suspension threshold (5 reports)
+        Returns: (should_suspend: bool, report_count: int)
+        """
+        reports = cls.get_reports_for_item(item)
+        pending_count = reports.filter(status='pending').count()
+        
+        return (pending_count >= 5, pending_count)

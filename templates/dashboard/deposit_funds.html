@@ -1,439 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block 'Body'%}
-<div class="dashboard-container">
-    <!-- Deposit Funds Header -->
-    <div class="dashboard-header">
-        <div class="container">
-            <div class="row align-items-center py-4 py-md-5">
-                <div class="col-12 col-md-8">
-                    <div class="header-content">
-                        <h1 class="dashboard-title">
-                            <i class="bi bi-wallet-fill me-3"></i>Add Funds
-                        </h1>
-                        <p class="dashboard-subtitle">Deposit money to your OpenSell account</p>
-                        
-                        <!-- Security Info -->
-                        <div class="security-info mt-4">
-                            <div class="d-flex align-items-center">
-                                <div class="security-icon">
-                                    <i class="bi bi-shield-check"></i>
-                                </div>
-                                <div class="security-text ms-3">
-                                    <h6>Secure & Encrypted</h6>
-                                    <p>Your payment information is protected with bank-level security</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-12 col-md-4 text-md-end mt-3 mt-md-0">
-                    <div class="balance-info">
-                        <div class="current-balance-display">
-                            <span class="balance-label">Current Balance</span>
-                            <h3 class="balance-amount">₦{{ request.user.account.balance|floatformat:0 }}</h3>
-                        </div>
-                        <a href="{% url 'dashboard_home' %}" class="btn btn-back mt-3">
-                            <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Deposit Content -->
-    <div class="container mt-4">
-        <div class="row justify-content-center">
-            <div class="col-12 col-lg-8 col-xl-6">
-                <!-- Deposit Form Card -->
-                <div class="deposit-form-card">
-                    <div class="card-header">
-                        <h5 class="card-title">
-                            <i class="bi bi-credit-card me-2"></i>Deposit Form
-                        </h5>
-                        <p class="card-subtitle">
-                            Choose an amount to add to your account balance
-                        </p>
-                    </div>
-                    
-                    <div class="card-body">
-                        <!-- Quick Amount Selection -->
-                        <div class="quick-amounts-section mb-4">
-                            <h6 class="section-title">
-                                <i class="bi bi-lightning-fill me-2"></i>Quick Amounts
-                            </h6>
-                            <div class="quick-amounts">
-                                <div class="row g-2">
-                                    <div class="col-4">
-                                        <button type="button" class="btn-quick-amount" data-amount="1000">
-                                            ₦1,000
-                                        </button>
-                                    </div>
-                                    <div class="col-4">
-                                        <button type="button" class="btn-quick-amount" data-amount="2500">
-                                            ₦2,500
-                                        </button>
-                                    </div>
-                                    <div class="col-4">
-                                        <button type="button" class="btn-quick-amount" data-amount="5000">
-                                            ₦5,000
-                                        </button>
-                                    </div>
-                                    <div class="col-4">
-                                        <button type="button" class="btn-quick-amount" data-amount="10000">
-                                            ₦10,000
-                                        </button>
-                                    </div>
-                                    <div class="col-4">
-                                        <button type="button" class="btn-quick-amount recommended" data-amount="20000">
-                                            <span class="recommended-label">Popular</span>
-                                            ₦20,000
-                                        </button>
-                                    </div>
-                                    <div class="col-4">
-                                        <button type="button" class="btn-quick-amount" data-amount="50000">
-                                            ₦50,000
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Deposit Form -->
-                        <form method="post" id="depositForm">
-                            {% csrf_token %}
-                            
-                            {% if form.non_field_errors %}
-                                <div class="alert alert-danger">
-                                    {% for error in form.non_field_errors %}
-                                        {{ error }}
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                            
-                            <!-- Amount Input -->
-                            <div class="amount-section mb-4">
-                                <h6 class="section-title">
-                                    <i class="bi bi-currency-exchange me-2"></i>Custom Amount
-                                </h6>
-                                
-                                <div class="amount-input-group">
-                                    <div class="input-group">
-                                        <span class="input-group-text">₦</span>
-                                        <input type="number" 
-                                               class="form-control amount-input" 
-                                               name="{{ form.amount.name }}" 
-                                               id="id_amount"
-                                               placeholder="Enter amount (min: ₦100)"
-                                               min="100"
-                                               step="1"
-                                               value="{{ form.amount.value|default:'' }}">
-                                        <button type="button" class="btn btn-outline-secondary" id="clearAmount">
-                                            <i class="bi bi-x-lg"></i>
-                                        </button>
-                                    </div>
-                                    {% if form.amount.errors %}
-                                        <div class="invalid-feedback d-block">
-                                            {% for error in form.amount.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
-                                    <div class="amount-suggestions mt-2">
-                                        <small class="text-muted">
-                                            <i class="bi bi-info-circle me-1"></i>
-                                            Minimum deposit: ₦100 • Maximum: ₦1,000,000
-                                        </small>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Balance Preview -->
-                            <div class="balance-preview-section mb-4">
-                                <div class="balance-preview-card">
-                                    <div class="row align-items-center">
-                                        <div class="col-6">
-                                            <div class="balance-item">
-                                                <span class="balance-label">Current Balance</span>
-                                                <span class="balance-value current">₦{{ request.user.account.balance|floatformat:0 }}</span>
-                                            </div>
-                                        </div>
-                                        <div class="col-6">
-                                            <div class="balance-item">
-                                                <span class="balance-label">New Balance</span>
-                                                <span class="balance-value new" id="newBalance">₦{{ request.user.account.balance|floatformat:0 }}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="balance-increase" id="balanceIncrease">
-                                        <i class="bi bi-arrow-up-circle-fill"></i>
-                                        <span>+₦0 increase</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Payment Method Selection -->
-                            <div class="payment-method-section mb-4">
-                                <h6 class="section-title">
-                                    <i class="bi bi-credit-card-2-front me-2"></i>Payment Method
-                                </h6>
-                                
-                                <div class="payment-methods">
-                                    <div class="row g-3">
-                                        <!-- Bank Transfer -->
-                                        <div class="col-12 col-md-6">
-                                            <div class="payment-method-option">
-                                                <input type="radio" name="payment_method" id="bank_transfer" value="bank_transfer" checked>
-                                                <label for="bank_transfer" class="payment-method-label">
-                                                    <div class="payment-icon">
-                                                        <i class="bi bi-bank"></i>
-                                                    </div>
-                                                    <div class="payment-content">
-                                                        <h6>Bank Transfer</h6>
-                                                        <p>Transfer from your bank account</p>
-                                                        <div class="payment-features">
-                                                            <span class="feature-item">
-                                                                <i class="bi bi-check-circle-fill"></i>
-                                                                Instant processing
-                                                            </span>
-                                                            <span class="feature-item">
-                                                                <i class="bi bi-check-circle-fill"></i>
-                                                                No fees
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="payment-badge recommended">
-                                                        Recommended
-                                                    </div>
-                                                </label>
-                                            </div>
-                                        </div>
-
-                                        <!-- Card Payment -->
-                                        <div class="col-12 col-md-6">
-                                            <div class="payment-method-option">
-                                                <input type="radio" name="payment_method" id="card_payment" value="card_payment">
-                                                <label for="card_payment" class="payment-method-label">
-                                                    <div class="payment-icon">
-                                                        <i class="bi bi-credit-card"></i>
-                                                    </div>
-                                                    <div class="payment-content">
-                                                        <h6>Debit/Credit Card</h6>
-                                                        <p>Pay with your card instantly</p>
-                                                        <div class="payment-features">
-                                                            <span class="feature-item">
-                                                                <i class="bi bi-check-circle-fill"></i>
-                                                                Instant processing
-                                                            </span>
-                                                            <span class="feature-item">
-                                                                <i class="bi bi-check-circle-fill"></i>
-                                                                Secure encryption
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Security Notice -->
-                            <div class="security-notice mb-4">
-                                <div class="notice-content">
-                                    <div class="notice-icon">
-                                        <i class="bi bi-shield-check"></i>
-                                    </div>
-                                    <div class="notice-text">
-                                        <h6>Your Security is Our Priority</h6>
-                                        <p>All transactions are encrypted with SSL technology and processed through secure payment gateways. Your financial information is never stored on our servers.</p>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Submit Section -->
-                            <div class="submit-section">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div class="terms-info">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="agreeTerms" required>
-                                            <label class="form-check-label" for="agreeTerms">
-                                                <small>I agree to the <a href="#" class="text-primary">Terms of Service</a> and <a href="#" class="text-primary">Privacy Policy</a></small>
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div class="submit-actions">
-                                        <a href="{% url 'dashboard_home' %}" class="btn btn-outline-secondary me-3">
-                                            Cancel
-                                        </a>
-                                        <button type="submit" class="btn btn-deposit" id="submitDeposit" disabled>
-                                            <i class="bi bi-wallet-fill me-2"></i>
-                                            <span class="btn-text">Add ₦<span id="depositAmount">0</span></span>
-                                            <div class="btn-loader d-none">
-                                                <div class="spinner-border spinner-border-sm me-2"></div>
-                                                Processing...
-                                            </div>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Deposit History -->
-                <div class="deposit-history-card mt-4">
-                    <div class="card-header">
-                        <h5 class="card-title">
-                            <i class="bi bi-clock-history me-2"></i>Recent Deposits
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        {% if recent_deposits %}
-                        <div class="deposits-list">
-                            {% for deposit in recent_deposits %}
-                            <div class="deposit-item">
-                                <div class="deposit-icon">
-                                    <i class="bi bi-arrow-down-circle-fill"></i>
-                                </div>
-                                <div class="deposit-details">
-                                    <h6 class="deposit-title">Deposit</h6>
-                                    <p class="deposit-date">{{ deposit.created_at|date:"M d, Y \a\t H:i" }}</p>
-                                </div>
-                                <div class="deposit-amount">
-                                    +₦{{ deposit.amount|floatformat:0 }}
-                                </div>
-                                <div class="deposit-status">
-                                    <span class="status-badge success">
-                                        <i class="bi bi-check-circle-fill"></i>
-                                        Completed
-                                    </span>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        <div class="text-center mt-3">
-                            <a href="{% url 'transaction_history' %}" class="btn btn-outline-primary btn-sm">
-                                View All Transactions
-                            </a>
-                        </div>
-                        {% else %}
-                        <div class="empty-state">
-                            <div class="empty-icon">
-                                <i class="bi bi-wallet"></i>
-                            </div>
-                            <h6>No deposits yet</h6>
-                            <p>Your deposit history will appear here after your first deposit.</p>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Help Section -->
-            <div class="col-12 col-lg-4">
-                <div class="help-section">
-                    <!-- FAQ Card -->
-                    <div class="help-card">
-                        <div class="card-header">
-                            <h6 class="card-title">
-                                <i class="bi bi-question-circle me-2"></i>Frequently Asked Questions
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="faq-list">
-                                <div class="faq-item">
-                                    <div class="faq-question" data-bs-toggle="collapse" data-bs-target="#faq1">
-                                        <span>How long does it take to process deposits?</span>
-                                        <i class="bi bi-chevron-down"></i>
-                                    </div>
-                                    <div class="faq-answer collapse" id="faq1">
-                                        <p>Bank transfers are usually processed instantly. Card payments are processed immediately upon successful verification.</p>
-                                    </div>
-                                </div>
-
-                                <div class="faq-item">
-                                    <div class="faq-question" data-bs-toggle="collapse" data-bs-target="#faq2">
-                                        <span>Are there any fees for deposits?</span>
-                                        <i class="bi bi-chevron-down"></i>
-                                    </div>
-                                    <div class="faq-answer collapse" id="faq2">
-                                        <p>We don't charge any fees for deposits. However, your bank or card provider may charge their own transaction fees.</p>
-                                    </div>
-                                </div>
-
-                                <div class="faq-item">
-                                    <div class="faq-question" data-bs-toggle="collapse" data-bs-target="#faq3">
-                                        <span>What is the minimum deposit amount?</span>
-                                        <i class="bi bi-chevron-down"></i>
-                                    </div>
-                                    <div class="faq-answer collapse" id="faq3">
-                                        <p>The minimum deposit amount is ₦100. There's no maximum limit, but deposits over ₦1,000,000 may require additional verification.</p>
-                                    </div>
-                                </div>
-
-                                <div class="faq-item">
-                                    <div class="faq-question" data-bs-toggle="collapse" data-bs-target="#faq4">
-                                        <span>Can I get a refund for my deposit?</span>
-                                        <i class="bi bi-chevron-down"></i>
-                                    </div>
-                                    <div class="faq-answer collapse" id="faq4">
-                                        <p>Deposits can be withdrawn back to your bank account. Please contact support for withdrawal requests.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Support Card -->
-                    <div class="help-card mt-4">
-                        <div class="card-header">
-                            <h6 class="card-title">
-                                <i class="bi bi-headset me-2"></i>Need Help?
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="support-options">
-                                <a href="#" class="support-option">
-                                    <div class="support-icon">
-                                        <i class="bi bi-chat-dots"></i>
-                                    </div>
-                                    <div class="support-content">
-                                        <h6>Live Chat</h6>
-                                        <p>Get instant help from our support team</p>
-                                    </div>
-                                </a>
-
-                                <a href="mailto:support@opensell.online" class="support-option">
-                                    <div class="support-icon">
-                                        <i class="bi bi-envelope"></i>
-                                    </div>
-                                    <div class="support-content">
-                                        <h6>Email Support</h6>
-                                        <p>Send us an email and we'll respond within 24 hours</p>
-                                    </div>
-                                </a>
-
-                                <a href="tel:+2341234567890" class="support-option">
-                                    <div class="support-icon">
-                                        <i class="bi bi-telephone"></i>
-                                    </div>
-                                    <div class="support-content">
-                                        <h6>Phone Support</h6>
-                                        <p>Call us during business hours (9 AM - 6 PM)</p>
-                                    </div>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
+{% block page_css %}
 <style>
     /* Enhanced Deposit Funds Styles */
     .dashboard-container {
@@ -1239,6 +807,440 @@
         }
     }
 </style>
+{% endblock %}
+
+{% block 'Body'%}
+<div class="dashboard-container">
+    <!-- Deposit Funds Header -->
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="row align-items-center py-4 py-md-5">
+                <div class="col-12 col-md-8">
+                    <div class="header-content">
+                        <h1 class="dashboard-title">
+                            <i class="bi bi-wallet-fill me-3"></i>Add Funds
+                        </h1>
+                        <p class="dashboard-subtitle">Deposit money to your OpenSell account</p>
+                        
+                        <!-- Security Info -->
+                        <div class="security-info mt-4">
+                            <div class="d-flex align-items-center">
+                                <div class="security-icon">
+                                    <i class="bi bi-shield-check"></i>
+                                </div>
+                                <div class="security-text ms-3">
+                                    <h6>Secure & Encrypted</h6>
+                                    <p>Your payment information is protected with bank-level security</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4 text-md-end mt-3 mt-md-0">
+                    <div class="balance-info">
+                        <div class="current-balance-display">
+                            <span class="balance-label">Current Balance</span>
+                            <h3 class="balance-amount">₦{{ request.user.account.balance|floatformat:0 }}</h3>
+                        </div>
+                        <a href="{% url 'dashboard_home' %}" class="btn btn-back mt-3">
+                            <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Deposit Content -->
+    <div class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-12 col-lg-8 col-xl-6">
+                <!-- Deposit Form Card -->
+                <div class="deposit-form-card">
+                    <div class="card-header">
+                        <h5 class="card-title">
+                            <i class="bi bi-credit-card me-2"></i>Deposit Form
+                        </h5>
+                        <p class="card-subtitle">
+                            Choose an amount to add to your account balance
+                        </p>
+                    </div>
+                    
+                    <div class="card-body">
+                        <!-- Quick Amount Selection -->
+                        <div class="quick-amounts-section mb-4">
+                            <h6 class="section-title">
+                                <i class="bi bi-lightning-fill me-2"></i>Quick Amounts
+                            </h6>
+                            <div class="quick-amounts">
+                                <div class="row g-2">
+                                    <div class="col-4">
+                                        <button type="button" class="btn-quick-amount" data-amount="1000">
+                                            ₦1,000
+                                        </button>
+                                    </div>
+                                    <div class="col-4">
+                                        <button type="button" class="btn-quick-amount" data-amount="2500">
+                                            ₦2,500
+                                        </button>
+                                    </div>
+                                    <div class="col-4">
+                                        <button type="button" class="btn-quick-amount" data-amount="5000">
+                                            ₦5,000
+                                        </button>
+                                    </div>
+                                    <div class="col-4">
+                                        <button type="button" class="btn-quick-amount" data-amount="10000">
+                                            ₦10,000
+                                        </button>
+                                    </div>
+                                    <div class="col-4">
+                                        <button type="button" class="btn-quick-amount recommended" data-amount="20000">
+                                            <span class="recommended-label">Popular</span>
+                                            ₦20,000
+                                        </button>
+                                    </div>
+                                    <div class="col-4">
+                                        <button type="button" class="btn-quick-amount" data-amount="50000">
+                                            ₦50,000
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Deposit Form -->
+                        <form method="post" id="depositForm">
+                            {% csrf_token %}
+                            
+                            {% if form.non_field_errors %}
+                                <div class="alert alert-danger">
+                                    {% for error in form.non_field_errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            
+                            <!-- Amount Input -->
+                            <div class="amount-section mb-4">
+                                <h6 class="section-title">
+                                    <i class="bi bi-currency-exchange me-2"></i>Custom Amount
+                                </h6>
+                                
+                                <div class="amount-input-group">
+                                    <div class="input-group">
+                                        <span class="input-group-text">₦</span>
+                                        <input type="number" 
+                                               class="form-control amount-input" 
+                                               name="{{ form.amount.name }}" 
+                                               id="id_amount"
+                                               placeholder="Enter amount (min: ₦100)"
+                                               min="100"
+                                               step="1"
+                                               value="{{ form.amount.value|default:'' }}">
+                                        <button type="button" class="btn btn-outline-secondary" id="clearAmount">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                    </div>
+                                    {% if form.amount.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {% for error in form.amount.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    <div class="amount-suggestions mt-2">
+                                        <small class="text-muted">
+                                            <i class="bi bi-info-circle me-1"></i>
+                                            Minimum deposit: ₦100 • Maximum: ₦1,000,000
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Balance Preview -->
+                            <div class="balance-preview-section mb-4">
+                                <div class="balance-preview-card">
+                                    <div class="row align-items-center">
+                                        <div class="col-6">
+                                            <div class="balance-item">
+                                                <span class="balance-label">Current Balance</span>
+                                                <span class="balance-value current">₦{{ request.user.account.balance|floatformat:0 }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="balance-item">
+                                                <span class="balance-label">New Balance</span>
+                                                <span class="balance-value new" id="newBalance">₦{{ request.user.account.balance|floatformat:0 }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="balance-increase" id="balanceIncrease">
+                                        <i class="bi bi-arrow-up-circle-fill"></i>
+                                        <span>+₦0 increase</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Payment Method Selection -->
+                            <div class="payment-method-section mb-4">
+                                <h6 class="section-title">
+                                    <i class="bi bi-credit-card-2-front me-2"></i>Payment Method
+                                </h6>
+                                
+                                <div class="payment-methods">
+                                    <div class="row g-3">
+                                        <!-- Bank Transfer -->
+                                        <div class="col-12 col-md-6">
+                                            <div class="payment-method-option">
+                                                <input type="radio" name="payment_method" id="bank_transfer" value="bank_transfer" checked>
+                                                <label for="bank_transfer" class="payment-method-label">
+                                                    <div class="payment-icon">
+                                                        <i class="bi bi-bank"></i>
+                                                    </div>
+                                                    <div class="payment-content">
+                                                        <h6>Bank Transfer</h6>
+                                                        <p>Transfer from your bank account</p>
+                                                        <div class="payment-features">
+                                                            <span class="feature-item">
+                                                                <i class="bi bi-check-circle-fill"></i>
+                                                                Instant processing
+                                                            </span>
+                                                            <span class="feature-item">
+                                                                <i class="bi bi-check-circle-fill"></i>
+                                                                No fees
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="payment-badge recommended">
+                                                        Recommended
+                                                    </div>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Card Payment -->
+                                        <div class="col-12 col-md-6">
+                                            <div class="payment-method-option">
+                                                <input type="radio" name="payment_method" id="card_payment" value="card_payment">
+                                                <label for="card_payment" class="payment-method-label">
+                                                    <div class="payment-icon">
+                                                        <i class="bi bi-credit-card"></i>
+                                                    </div>
+                                                    <div class="payment-content">
+                                                        <h6>Debit/Credit Card</h6>
+                                                        <p>Pay with your card instantly</p>
+                                                        <div class="payment-features">
+                                                            <span class="feature-item">
+                                                                <i class="bi bi-check-circle-fill"></i>
+                                                                Instant processing
+                                                            </span>
+                                                            <span class="feature-item">
+                                                                <i class="bi bi-check-circle-fill"></i>
+                                                                Secure encryption
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Security Notice -->
+                            <div class="security-notice mb-4">
+                                <div class="notice-content">
+                                    <div class="notice-icon">
+                                        <i class="bi bi-shield-check"></i>
+                                    </div>
+                                    <div class="notice-text">
+                                        <h6>Your Security is Our Priority</h6>
+                                        <p>All transactions are encrypted with SSL technology and processed through secure payment gateways. Your financial information is never stored on our servers.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Submit Section -->
+                            <div class="submit-section">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="terms-info">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="agreeTerms" required>
+                                            <label class="form-check-label" for="agreeTerms">
+                                                <small>I agree to the <a href="#" class="text-primary">Terms of Service</a> and <a href="#" class="text-primary">Privacy Policy</a></small>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="submit-actions">
+                                        <a href="{% url 'dashboard_home' %}" class="btn btn-outline-secondary me-3">
+                                            Cancel
+                                        </a>
+                                        <button type="submit" class="btn btn-deposit" id="submitDeposit" disabled>
+                                            <i class="bi bi-wallet-fill me-2"></i>
+                                            <span class="btn-text">Add ₦<span id="depositAmount">0</span></span>
+                                            <div class="btn-loader d-none">
+                                                <div class="spinner-border spinner-border-sm me-2"></div>
+                                                Processing...
+                                            </div>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Deposit History -->
+                <div class="deposit-history-card mt-4">
+                    <div class="card-header">
+                        <h5 class="card-title">
+                            <i class="bi bi-clock-history me-2"></i>Recent Deposits
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if recent_deposits %}
+                        <div class="deposits-list">
+                            {% for deposit in recent_deposits %}
+                            <div class="deposit-item">
+                                <div class="deposit-icon">
+                                    <i class="bi bi-arrow-down-circle-fill"></i>
+                                </div>
+                                <div class="deposit-details">
+                                    <h6 class="deposit-title">Deposit</h6>
+                                    <p class="deposit-date">{{ deposit.created_at|date:"M d, Y \a\t H:i" }}</p>
+                                </div>
+                                <div class="deposit-amount">
+                                    +₦{{ deposit.amount|floatformat:0 }}
+                                </div>
+                                <div class="deposit-status">
+                                    <span class="status-badge success">
+                                        <i class="bi bi-check-circle-fill"></i>
+                                        Completed
+                                    </span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="text-center mt-3">
+                            <a href="{% url 'transaction_history' %}" class="btn btn-outline-primary btn-sm">
+                                View All Transactions
+                            </a>
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <i class="bi bi-wallet"></i>
+                            </div>
+                            <h6>No deposits yet</h6>
+                            <p>Your deposit history will appear here after your first deposit.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Help Section -->
+            <div class="col-12 col-lg-4">
+                <div class="help-section">
+                    <!-- FAQ Card -->
+                    <div class="help-card">
+                        <div class="card-header">
+                            <h6 class="card-title">
+                                <i class="bi bi-question-circle me-2"></i>Frequently Asked Questions
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="faq-list">
+                                <div class="faq-item">
+                                    <div class="faq-question" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                        <span>How long does it take to process deposits?</span>
+                                        <i class="bi bi-chevron-down"></i>
+                                    </div>
+                                    <div class="faq-answer collapse" id="faq1">
+                                        <p>Bank transfers are usually processed instantly. Card payments are processed immediately upon successful verification.</p>
+                                    </div>
+                                </div>
+
+                                <div class="faq-item">
+                                    <div class="faq-question" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                        <span>Are there any fees for deposits?</span>
+                                        <i class="bi bi-chevron-down"></i>
+                                    </div>
+                                    <div class="faq-answer collapse" id="faq2">
+                                        <p>We don't charge any fees for deposits. However, your bank or card provider may charge their own transaction fees.</p>
+                                    </div>
+                                </div>
+
+                                <div class="faq-item">
+                                    <div class="faq-question" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                        <span>What is the minimum deposit amount?</span>
+                                        <i class="bi bi-chevron-down"></i>
+                                    </div>
+                                    <div class="faq-answer collapse" id="faq3">
+                                        <p>The minimum deposit amount is ₦100. There's no maximum limit, but deposits over ₦1,000,000 may require additional verification.</p>
+                                    </div>
+                                </div>
+
+                                <div class="faq-item">
+                                    <div class="faq-question" data-bs-toggle="collapse" data-bs-target="#faq4">
+                                        <span>Can I get a refund for my deposit?</span>
+                                        <i class="bi bi-chevron-down"></i>
+                                    </div>
+                                    <div class="faq-answer collapse" id="faq4">
+                                        <p>Deposits can be withdrawn back to your bank account. Please contact support for withdrawal requests.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Support Card -->
+                    <div class="help-card mt-4">
+                        <div class="card-header">
+                            <h6 class="card-title">
+                                <i class="bi bi-headset me-2"></i>Need Help?
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="support-options">
+                                <a href="#" class="support-option">
+                                    <div class="support-icon">
+                                        <i class="bi bi-chat-dots"></i>
+                                    </div>
+                                    <div class="support-content">
+                                        <h6>Live Chat</h6>
+                                        <p>Get instant help from our support team</p>
+                                    </div>
+                                </a>
+
+                                <a href="mailto:support@opensell.online" class="support-option">
+                                    <div class="support-icon">
+                                        <i class="bi bi-envelope"></i>
+                                    </div>
+                                    <div class="support-content">
+                                        <h6>Email Support</h6>
+                                        <p>Send us an email and we'll respond within 24 hours</p>
+                                    </div>
+                                </a>
+
+                                <a href="tel:+2341234567890" class="support-option">
+                                    <div class="support-icon">
+                                        <i class="bi bi-telephone"></i>
+                                    </div>
+                                    <div class="support-content">
+                                        <h6>Phone Support</h6>
+                                        <p>Call us during business hours (9 AM - 6 PM)</p>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

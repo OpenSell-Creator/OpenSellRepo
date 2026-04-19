@@ -192,3 +192,32 @@ if (typeof module !== 'undefined' && module.exports) {
         setupModernAlerts
     };
 }
+
+// Count and display active filters
+function updateFilterCount() {
+    const form = document.getElementById('sidebarFilterForm') || document.getElementById('advancedSearchForm');
+    if (!form) return;
+    
+    let count = 0;
+    const inputs = form.querySelectorAll('input, select');
+    
+    inputs.forEach(input => {
+        if (input.type === 'radio' && input.checked && input.value !== '') {
+            count++;
+        } else if (input.type === 'checkbox' && input.checked) {
+            count++;
+        } else if (input.tagName === 'SELECT' && input.value !== '') {
+            count++;
+        } else if (input.type === 'text' && input.value.trim() !== '') {
+            count++;
+        }
+    });
+    
+    const badge = document.getElementById('activeFilterCount') || document.getElementById('activeFiltersCount');
+    if (badge) {
+        badge.textContent = count;
+        badge.style.display = count > 0 ? 'inline-block' : 'none';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', updateFilterCount);

@@ -1,75 +1,138 @@
 {% extends 'messages/base.html' %}
 
 {% block messages_content %}
-<div class="back-link mb-3">
-    <a href="{% url 'inbox' %}" class="text-decoration-none back-button">
-        <i class="fas fa-arrow-left"></i> Back to Messages
+
+{# ── Back link ──────────────────────────────────────────────────────────── #}
+<div class="mb-3">
+    <a href="{% url 'inbox' %}" class="back-button text-decoration-none">
+        <i class="fas fa-arrow-left me-1"></i> Back to Inbox
     </a>
 </div>
 
-<div class="product-summary card mb-4">
-    <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center">
-            <h5 class="card-title product-title mb-0">{{ conversation.product.title }}</h5>
-            <div class="text-end">
-                <div class="product-price fs-6">{{ formatted_price }}.00</div>
-                <small class="seller-info">
-                    Seller: {{ conversation.product.seller.user.username }}
+{# ── Content summary card ─────────────────────────────────────────────────── #}
+<div class="content-summary card mb-3">
+    <div class="card-body py-3">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+
+            <div class="flex-grow-1">
+                {# Type + status badges #}
+                <div class="d-flex flex-wrap gap-1 align-items-center mb-2">
+                    <span class="badge content-type-badge
+                        {% if conversation.content_type.model == 'product_listing' %}badge-product
+                        {% elif conversation.content_type.model == 'servicelisting' %}badge-service
+                        {% elif conversation.content_type.model == 'buyerrequest' %}badge-request
+                        {% endif %}">
+                        <i class="fas
+                            {% if conversation.content_type.model == 'product_listing' %}fa-box
+                            {% elif conversation.content_type.model == 'servicelisting' %}fa-briefcase
+                            {% elif conversation.content_type.model == 'buyerrequest' %}fa-search
+                            {% endif %} me-1"></i>
+                        {{ conversation.get_content_type_display }}
+                    </span>
+                    {% if linked_inquiry %}
+                        <span class="badge badge-status-{{ linked_inquiry.status }}">
+                            Inquiry: {{ linked_inquiry.get_status_display }}
+                        </span>
+                    {% elif linked_response %}
+                        <span class="badge badge-status-{{ linked_response.status }}">
+                            Response: {{ linked_response.get_status_display }}
+                        </span>
+                    {% endif %}
+                </div>
+
+                <h5 class="content-title mb-1">{{ conversation.get_content_title }}</h5>
+
+                <small class="owner-info">
+                    {% if conversation.content_type.model == 'product_listing' %}
+                        Seller: <strong>{{ conversation.content_object.seller.user.username }}</strong>
+                        {% if conversation.content_object.seller_is_verified_business %}
+                            <i class="fas fa-check-circle text-primary ms-1" title="Verified"></i>
+                        {% endif %}
+                    {% elif conversation.content_type.model == 'servicelisting' %}
+                        Provider: <strong>{{ conversation.content_object.provider.user.username }}</strong>
+                        {% if conversation.content_object.provider_is_verified_business %}
+                            <i class="fas fa-check-circle text-primary ms-1" title="Verified"></i>
+                        {% endif %}
+                    {% elif conversation.content_type.model == 'buyerrequest' %}
+                        Posted by: <strong>{{ conversation.content_object.buyer.user.username }}</strong>
+                    {% endif %}
                 </small>
             </div>
-        </div>
-    </div>
-</div>
 
-<!-- Encryption notice banner -->
-<div class="encryption-banner mb-3">
-    <div class="d-flex align-items-center">
-        <i class="fas fa-lock me-2"></i>
-        <div>
-            <span class="fw-bold">End-to-end encrypted conversation</span>
-            <span class="encryption-info-text d-block">Your messages are secured and can only be seen by you and the other participant</span>
-        </div>
-    </div>
-</div>
-
-<div class="chat-container mb-4">
-    {% for message in messages %}
-        <div class="message-bubble {% if message.sender == request.user.profile %}message-sent{% else %}message-received{% endif %}">
-            <div class="message-content">{{ message.content|default:message.decrypt_content|linebreaks }}</div>
-            <div class="message-timestamp">
-                {% if message.sender != request.user.profile %}
-                    {{ message.sender.user.username }} • 
+            <div class="text-end">
+                {% if conversation.content_type.model == 'product_listing' %}
+                    <div class="summary-price">{{ formatted_price }}</div>
+                    <small class="text-muted d-block">Product Price</small>
+                {% elif conversation.content_type.model == 'servicelisting' %}
+                    <div class="summary-price">{{ conversation.content_object.price_display }}</div>
+                    <small class="text-muted d-block">Service Rate</small>
+                {% elif conversation.content_type.model == 'buyerrequest' %}
+                    <div class="summary-price">{{ conversation.content_object.budget_display }}</div>
+                    <small class="text-muted d-block">Budget</small>
                 {% endif %}
-                {{ message.timestamp|date:"g:i A, M d" }}
-                {% if message.sender == request.user.profile %}
-                <i class="fas fa-lock-alt encryption-icon" title="Encrypted message"></i>
+                {% if conversation.content_object %}
+                    <a href="{{ conversation.content_object.get_absolute_url }}"
+                       class="btn btn-sm btn-outline-primary mt-2" target="_blank">
+                        <i class="fas fa-external-link-alt me-1"></i>View Listing
+                    </a>
                 {% endif %}
             </div>
+
         </div>
+    </div>
+</div>
+
+{# ── Encryption notice ──────────────────────────────────────────────────────── #}
+<div class="enc-bar mb-3">
+    <i class="fas fa-lock me-2"></i>
+    <span>End-to-end encrypted &mdash; only you and your conversation partner can read these messages.</span>
+</div>
+
+{# ── Chat thread ────────────────────────────────────────────────────────────── #}
+<div class="chat-container mb-3" id="chatContainer">
+    {% for msg in messages %}
+
+        {% if msg.inquiry_type == 'SERVICE_INQUIRY_CARD' %}
+            {% include "messages/partials/inquiry_card.html" with msg=msg linked_inquiry=linked_inquiry is_buyer=is_buyer %}
+
+        {% elif msg.inquiry_type == 'SELLER_RESPONSE_CARD' %}
+            {% include "messages/partials/response_card.html" with msg=msg linked_response=linked_response is_buyer=is_buyer %}
+
+        {% else %}
+            {% include "messages/partials/plain_message.html" with msg=msg %}
+        {% endif %}
+
     {% empty %}
-        <div class="empty-chat text-center">
-            <p>Start the conversation by sending a message.</p>
+        <div class="empty-chat text-center py-4">
+            <i class="fas fa-comments fa-3x mb-3 text-muted"></i>
+            <p class="text-muted">Start the conversation by sending a message below.</p>
         </div>
     {% endfor %}
 </div>
 
-<div class="message-composer card">
+{# ── Reply composer ──────────────────────────────────────────────────────────── #}
+<div class="composer card">
     <div class="card-body">
         <form method="post" id="messageForm">
             {% csrf_token %}
-            {% if is_buyer %}
-                <div class="mb-3">
+
+            {# Show inquiry_type selector only for non-plain conversations where it makes sense #}
+            {% if not is_buyer and conversation.content_type.model == 'servicelisting' %}
+                {# Provider replying — no type dropdown, just plain reply #}
+            {% elif is_buyer or conversation.content_type.model == 'buyerrequest' and request.user.profile != conversation.content_object.buyer %}
+                <div class="mb-2">
                     {{ form.inquiry_type }}
                 </div>
             {% endif %}
-            <div class="message-form">
+
+            <div class="composer-body">
                 {{ form.content }}
-                <div class="mt-3 d-flex justify-content-between align-items-center">
-                    <small class="text-muted encryption-note">
-                        <i class="fas fa-lock"></i> Messages are encrypted for privacy
+                <div class="composer-footer mt-2 d-flex justify-content-between align-items-center">
+                    <small class="text-muted enc-note">
+                        <i class="fas fa-lock me-1"></i>Messages are encrypted
                     </small>
-                    <button type="submit" class="btn send-button">
-                        Send Message
+                    <button type="submit" class="btn send-btn">
+                        <i class="fas fa-paper-plane me-1"></i>Send
                     </button>
                 </div>
             </div>
@@ -77,233 +140,268 @@
     </div>
 </div>
 
+{# ── Inquiry Response Modal (provider only, pending inquiry) ─────────────────── #}
+{% if linked_inquiry and not is_buyer and linked_inquiry.status == 'pending' %}
+<div class="modal fade" id="inquiryResponseModal" tabindex="-1" aria-labelledby="inquiryResponseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background-color: var(--card-background); border-color: var(--border-color);">
+            <div class="modal-header" style="border-color: var(--border-color);">
+                <h5 class="modal-title" id="inquiryResponseModalLabel" style="color: var(--text-primary);">
+                    <i class="fas fa-reply me-2"></i>Respond to Inquiry
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post"
+                  action="{% url 'services:respond_to_inquiry' linked_inquiry.pk %}"
+                  id="inquiryResponseForm">
+                {% csrf_token %}
+                <div class="modal-body">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-medium" style="color: var(--text-primary);">Your Response</label>
+                        <textarea name="provider_response" class="form-control" rows="4" required
+                                  placeholder="Describe how you can help, your availability, and any questions..."
+                                  style="background:var(--card-background);color:var(--text-primary);border-color:var(--border-color);"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-medium" style="color: var(--text-primary);">Your Quote <span class="text-muted fw-normal">(optional)</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text" style="background:var(--card-background);color:var(--text-primary);border-color:var(--border-color);">₦</span>
+                            <input type="number" name="provider_quote" class="form-control"
+                                   placeholder="0.00" step="0.01" min="0"
+                                   style="background:var(--card-background);color:var(--text-primary);border-color:var(--border-color);">
+                        </div>
+                    </div>
+
+                    <div class="mb-1">
+                        <label class="form-label fw-medium" style="color: var(--text-primary);">Update Status</label>
+                        <select name="status" class="form-select"
+                                style="background:var(--card-background);color:var(--text-primary);border-color:var(--border-color);">
+                            <option value="responded">Responded</option>
+                            <option value="negotiating">Negotiating</option>
+                        </select>
+                    </div>
+
+                </div>
+                <div class="modal-footer" style="border-color: var(--border-color);">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="fas fa-paper-plane me-1"></i>Send Response
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{# ── Styles ──────────────────────────────────────────────────────────────────── #}
 <style>
-    /* Encryption Banner */
-    .encryption-banner {
-        background-color: rgba(var(--primary-rgb), 0.1);
-        border: 1px solid var(--primary-color);
-        border-radius: var(--radius-md);
-        padding: 0.75rem 1rem;
-        color: var(--text-primary);
-    }
-    
-    .encryption-info-text {
-        font-size: var(--font-size-sm);
-        color: var(--text-secondary);
-        margin-top: 0.25rem;
-    }
-    
-    .encryption-icon {
-        font-size: var(--font-size-xs);
-        margin-left: 0.25rem;
-        opacity: 0.8;
-    }
-    
-    .encryption-note {
-        font-size: var(--font-size-xs);
-    }
-    
-    /* Back Button */
-    .back-button {
-        color: var(--primary-color);
-        font-weight: 500;
-        transition: color 0.2s ease;
-    }
-    
-    .back-button:hover {
-        color: var(--accent-color);
-    }
-    
-    /* Product Summary Card */
-    .product-summary {
-        border: 1px solid var(--border-color);
-        background-color: var(--card-background);
-        border-radius: var(--radius-md);
-        box-shadow: 0 2px 8px var(--shadow-color);
-    }
-    
-    .product-title {
-        color: var(--text-primary);
-        font-weight: 600;
-    }
-    
-    .product-price {
-        color: var(--accent-color);
-        font-weight: 600;
-    }
-    
-    .seller-info {
-        color: var(--text-secondary);
-    }
-    
-    /* Chat Container */
-    .chat-container {
-        height: 400px;
-        overflow-y: auto;
-        padding: 1rem;
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-md);
-        background-color: var(--background-color);
-        margin-bottom: 1rem;
-    }
-    
-    /* Message Bubbles */
-    .message-bubble {
-        max-width: 80%;
-        margin-bottom: 1rem;
-        padding: 0.75rem 1rem;
-        border-radius: 1rem;
-        position: relative;
-        line-height: 1.4;
-        overflow-wrap: break-word;
-    }
-    
-    .message-sent {
-        background-color: var(--primary-color);
-        color: white;
-        margin-left: auto;
-        border-bottom-right-radius: 0.25rem;
-    }
-    
-    .message-received {
-        background-color: var(--card-background);
-        color: var(--text-primary);
-        margin-right: auto;
-        border-bottom-left-radius: 0.25rem;
-        border: 1px solid var(--border-color);
-    }
-    
-    .message-content {
-        margin-bottom: 0.25rem;
-    }
-    
-    .message-content p:last-child {
-        margin-bottom: 0;
-    }
-    
-    .message-timestamp {
-        font-size: var(--font-size-xs);
-        opacity: 0.8;
-        text-align: right;
-    }
-    
-    .message-sent .message-timestamp {
-        color: rgba(255, 255, 255, 0.9);
-    }
-    
-    .message-received .message-timestamp {
-        color: var(--text-secondary);
-    }
-    
-    /* Empty Chat State */
-    .empty-chat {
-        color: var(--text-secondary);
-        font-style: italic;
-        padding: 2rem 0;
-    }
-    
-    /* Message Composer */
-    .message-composer {
-        border: 1px solid var(--border-color);
-        background-color: var(--card-background);
-        border-radius: var(--radius-md);
-        box-shadow: 0 2px 8px var(--shadow-color);
-    }
-    
-    .message-form textarea {
-        width: 100%;
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-sm);
-        padding: 0.75rem;
-        background-color: var(--card-background);
-        color: var(--text-primary);
-        resize: vertical;
-        min-height: 100px;
-    }
-    
-    .message-form textarea:focus {
-        border-color: var(--primary-color);
-        outline: none;
-        box-shadow: 0 0 0 2px rgba(0, 51, 102, 0.25);
-    }
-    
-    .send-button {
-        background-color: var(--accent-color);
-        border-color: var(--accent-color);
-        color: white;
-        font-weight: 500;
-        transition: all 0.2s ease;
-    }
-    
-    .send-button:hover {
-        background-color: var(--primary-color);
-        border-color: var(--primary-color);
-        transform: translateY(-1px);
-    }
-    
-    /* Form Select Styling */
-    select.form-select {
-        background-color: var(--card-background);
-        color: var(--text-primary);
-        border-color: var(--border-color);
-    }
-    
-    select.form-select:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 0.25rem rgba(0, 51, 102, 0.25);
-    }
-    
-    /* Dark Mode Specific */
-    [data-bs-theme="dark"] .message-received {
-        background-color: rgba(255, 255, 255, 0.05);
-    }
-    
-    [data-bs-theme="dark"] .message-sent {
-        background-color: var(--primary-color);
-    }
-    
-    [data-bs-theme="dark"] .message-form textarea {
-        background-color: rgba(255, 255, 255, 0.05);
-    }
-    
-    [data-bs-theme="dark"] .encryption-banner {
-        background-color: rgba(var(--primary-rgb), 0.2);
-    }
+.back-button     { color: var(--primary-color); font-size: 0.88rem; font-weight: 500; transition: color 0.2s; }
+.back-button:hover { color: var(--accent-color); }
+
+.content-summary { border: 1px solid var(--border-color); background: var(--card-background); border-radius: 0.75rem; box-shadow: 0 1px 6px var(--shadow-color); }
+.content-title   { color: var(--text-primary); font-weight: 600; font-size: 1.05rem; }
+.owner-info      { color: var(--text-secondary); font-size: 0.82rem; }
+.summary-price   { color: var(--accent-color); font-weight: 700; font-size: 1.05rem; }
+
+.enc-bar {
+    background: rgba(var(--primary-rgb), 0.07);
+    border: 1px solid rgba(var(--primary-rgb), 0.2);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.85rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+}
+.enc-bar i { color: var(--primary-color); }
+[data-bs-theme="dark"] .enc-bar { background: rgba(var(--primary-rgb), 0.18); }
+
+/* ── Chat container ───────────────────────────────────────────────────────── */
+.chat-container {
+    height: 500px;
+    min-height: 320px;
+    overflow-y: auto;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+    background: var(--chat-bg);
+    scroll-behavior: smooth;
+}
+/* Thin scrollbar */
+.chat-container::-webkit-scrollbar { width: 5px; }
+.chat-container::-webkit-scrollbar-track { background: transparent; }
+.chat-container::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+
+.empty-chat { color: var(--text-secondary); }
+
+/* ── Composer ─────────────────────────────────────────────────────────────── */
+.composer { border: 1px solid var(--border-color); background: var(--card-background); border-radius: 0.75rem; box-shadow: 0 2px 8px var(--shadow-color); }
+.composer-body textarea { width: 100%; border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.65rem 0.85rem; background: var(--card-background); color: var(--text-primary); resize: vertical; min-height: 90px; font-size: 0.92rem; }
+.composer-body textarea:focus { border-color: var(--primary-color); outline: none; box-shadow: 0 0 0 2px rgba(0,51,102,0.15); }
+.enc-note { font-size: 0.75rem; }
+.send-btn { background: var(--accent-color); border-color: var(--accent-color); color: #fff; font-weight: 500; font-size: 0.88rem; padding: 0.45rem 1.1rem; transition: all 0.2s; }
+.send-btn:hover { background: var(--primary-color); border-color: var(--primary-color); transform: translateY(-1px); }
+select.form-select { background: var(--card-background); color: var(--text-primary); border-color: var(--border-color); font-size: 0.88rem; }
+select.form-select:focus { border-color: var(--primary-color); box-shadow: 0 0 0 0.2rem rgba(0,51,102,0.2); }
+
+[data-bs-theme="dark"] .composer-body textarea { background: rgba(255,255,255,0.05); }
+
+@media (max-width: 576px) { .chat-container { height: 400px; } }
 </style>
 
+{# ── Scripts ─────────────────────────────────────────────────────────────────── #}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const inquirySelect = document.getElementById('{{ form.inquiry_type.id_for_label }}');
+document.addEventListener('DOMContentLoaded', function () {
+
+    /* ── Scroll to bottom ───────────────────────────────────────────────── */
+    const chat = document.getElementById('chatContainer');
+    if (chat) chat.scrollTop = chat.scrollHeight;
+
+    /* ── Auto-fill textarea from inquiry_type select ────────────────────── */
+    const inquirySelect   = document.getElementById('{{ form.inquiry_type.id_for_label }}');
     const contentTextarea = document.getElementById('{{ form.content.id_for_label }}');
-    const chatContainer = document.querySelector('.chat-container');
-    
-    // Set initial scroll position
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-    
-    if (inquirySelect) {
-        inquirySelect.addEventListener('change', function() {
-            const selectedText = this.options[this.selectedIndex].text;
-            if (this.value !== '') {
-                contentTextarea.value = selectedText;
+    if (inquirySelect && contentTextarea) {
+        inquirySelect.addEventListener('change', function () {
+            if (this.value && this.value !== 'CUSTOM') {
+                contentTextarea.value = this.options[this.selectedIndex].text;
                 contentTextarea.focus();
             }
         });
     }
-    
-    // Ensure all textareas adapt to theme
-    const allTextareas = document.querySelectorAll('textarea');
-    allTextareas.forEach(textarea => {
-        textarea.classList.add('form-control');
+
+    /* ── Theme-adapt form controls ──────────────────────────────────────── */
+    document.querySelectorAll('textarea').forEach(el => el.classList.add('form-control'));
+    document.querySelectorAll('select').forEach(el => el.classList.add('form-select'));
+
+    /* ── Accept / Decline AJAX (buyer acting on seller response card) ───── */
+    document.querySelectorAll('.accept-decline-form').forEach(function (frm) {
+        frm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const btn = frm.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.dataset.originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Processing…';
+
+            let reloading = false;
+
+            fetch(frm.action, {
+                method: 'POST',
+                body: new FormData(frm),
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    const actionsDiv = frm.closest('.structured-card-actions');
+                    const cls   = data.status === 'accepted' ? 'status-notice--accepted' : 'status-notice--declined';
+                    const icon  = data.status === 'accepted' ? 'fa-check-circle' : 'fa-times-circle';
+                    const label = data.status === 'accepted' ? 'accepted' : 'declined';
+                    actionsDiv.innerHTML = `
+                        <div class="structured-card-status-notice ${cls}">
+                            <i class="fas ${icon} me-1"></i> You ${label} this response.
+                        </div>`;
+                    const badge = frm.closest('.message-card-bubble').querySelector('[class*="badge-status-"]');
+                    if (badge) {
+                        badge.className = badge.className.replace(/badge-status-\w+/g, `badge-status-${data.status}`);
+                        badge.textContent = data.label || data.status;
+                    }
+                    reloading = true;          // signal: any following catch is harmless
+                    setTimeout(() => window.location.reload(), 1400);
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = btn.dataset.originalText;
+                    showToast(data.error || 'Something went wrong. Please try again.', 'danger');
+                }
+            })
+            .catch(() => {
+                /* Reload aborts the fetch — only show an error if we were NOT reloading */
+                if (reloading) return;
+                btn.disabled = false;
+                btn.innerHTML = btn.dataset.originalText;
+                showToast('Network error. Please try again.', 'danger');
+            });
+        });
     });
-    
-    // Ensure all selects adapt to theme
-    const allSelects = document.querySelectorAll('select');
-    allSelects.forEach(select => {
-        select.classList.add('form-select');
-    });
+
+    /* ── Inquiry response modal trigger ─────────────────────────────────── */
+    window.openInquiryResponseModal = function () {
+        const el = document.getElementById('inquiryResponseModal');
+        if (el) new bootstrap.Modal(el).show();
+    };
+
+    /* ── Inquiry response form AJAX (provider) ───────────────────────────── */
+    const inquiryResponseForm = document.getElementById('inquiryResponseForm');
+    if (inquiryResponseForm) {
+        inquiryResponseForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const btn = this.querySelector('button[type="submit"]');
+            const orig = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending…';
+
+            let navigating = false;
+
+            fetch(this.action, {
+                method: 'POST',
+                body: new FormData(this),
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(data => {
+                if (data.success && data.redirect) {
+                    navigating = true;
+                    const modalEl = document.getElementById('inquiryResponseModal');
+                    if (modalEl) {
+                        const bsModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                        modalEl.addEventListener('hidden.bs.modal', () => {
+                            window.location.href = data.redirect;
+                        }, { once: true });
+                        bsModal.hide();
+                    } else {
+                        window.location.href = data.redirect;
+                    }
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = orig;
+                    showToast(data.error || 'Validation failed. Please check your input.', 'danger');
+                }
+            })
+            .catch(err => {
+                if (navigating) return;
+                btn.disabled = false;
+                btn.innerHTML = orig;
+                showToast('Network error. Please try again.', 'danger');
+            });
+        });
+    }
+
+    /* ── Toast helper ────────────────────────────────────────────────────── */
+    function showToast(msg, type) {
+        const id = 'toast_' + Date.now();
+        const html = `
+        <div id="${id}" class="toast align-items-center text-bg-${type} border-0 position-fixed bottom-0 end-0 m-3"
+             role="alert" aria-live="assertive" style="z-index:9999">
+            <div class="d-flex">
+                <div class="toast-body">${msg}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+        const el = document.getElementById(id);
+        new bootstrap.Toast(el, { delay: 4000 }).show();
+        el.addEventListener('hidden.bs.toast', () => el.remove());
+    }
+
 });
 </script>
-{% endblock %}
 
-{% block 'Footer'%}
-{% endblock%}
+{% endblock %}

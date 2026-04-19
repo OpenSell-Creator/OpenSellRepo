@@ -1,159 +1,8 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block 'Body'%}
-<div class="store-container">
-    <!-- Profile Header -->
-    <div class="store-header">
-        <div class="container">
-            <div class="row align-items-center py-4 py-md-5">
-                <div class="col-12 text-center">
-                    {% if user.profile.photo %}
-                        <img src="{{ user.profile.photo.url }}" 
-                             alt="Profile Photo" 
-                             class="store-profile-photo">
-                    {% else %}
-                    <svg xmlns="http://www.w3.org/2000/svg" width="150" height="150" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="store-profile-photo">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="12" cy="7" r="4"></circle>
-                    </svg>
-                    {% endif %}
-                    <h1 class="profile-username mt-3">{{ user.username }}</h1>
-                    
-                    <!-- Role & Status Badges -->
-                    <div class="badge-container mb-2">
-                        {% if user.is_superuser %}
-                            <span class="badge bg-danger">
-                                <i class="bi bi-shield-fill-check"></i> Super Admin
-                            </span>
-                        {% elif user.is_staff %}
-                            <span class="badge bg-warning">
-                                <i class="bi bi-shield-check"></i> Staff
-                            </span>
-                        {% endif %}
-                        
-                        {% if user.affiliate %}
-                            <span class="badge bg-success">
-                                ₦</i> Affiliate Partner
-                            </span>
-                        {% endif %}
-                        
-                        {% if user.profile.is_verified_business %}
-                            <span class="badge bg-primary">
-                                <i class="bi bi-patch-check-fill"></i> Verified Business
-                            </span>
-                        {% elif user.profile.has_pending_verification %}
-                            <span class="badge bg-warning">
-                                <i class="bi bi-clock-history"></i> Verification Pending
-                            </span>
-                        {% endif %}
-                        
-                        {% if user.profile.email_verified %}
-                            <span class="badge bg-info">
-                                <i class="bi bi-envelope-check-fill"></i> Email Verified
-                            </span>
-                        {% endif %}
-                    </div>
 
-                    <div class="profile-actions mt-4">
-                        <a href="{% url 'profile_update' %}" class="btn btn-edit-profile">
-                            <span class="btn-icon">
-                                <i class="bi bi-pencil-fill"></i>
-                                <i class="bi bi-person-gear"></i>
-                            </span>
-                            <span class="btn-text">Edit Profile</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Menu Cards Container -->
-    <div class="container mt-4">
-        <div class="row g-3">
-            <div class="col-12">
-                <div class="card main-card">
-                    <div class="card-body p-3">
-                        <!-- My Store -->
-                        <div class="profile-card mb-3">
-                            <a href="{% url 'my_store' %}" class="menu-link">
-                                <i class="bi bi-shop fs-4 me-3 text-warning"></i>
-                                <span class="menu-text">My Store</span>
-                                <i class="bi bi-chevron-right ms-auto"></i>
-                            </a>
-                        </div>
-
-                        <!-- Dashboard with Balance -->
-                        <div class="profile-card mb-3">
-                            <a href="{% url 'dashboard_home' %}" class="menu-link">
-                                <i class="bi bi-wallet-fill fs-4 me-3 text-success"></i>
-                                <div class="menu-content">
-                                    <span class="menu-text">Dashboard</span>
-                                    {% if account %}
-                                    <span class="balance-amount">₦{{ account.balance|floatformat:0 }}</span>
-                                    {% endif %}
-                                </div>
-                                <i class="bi bi-chevron-right ms-auto"></i>
-                            </a>
-                        </div>
-
-                        <!-- Affiliate Dashboard (Only for Affiliates) -->
-                        {% if user.affiliate %}
-                        <div class="profile-card mb-3">
-                            <a href="{% url 'affiliate_dashboard' %}" class="menu-link">
-                                <i class="bi bi-graph-up-arrow fs-4 me-3 text-success"></i>
-                                <span class="menu-text">Affiliate Dashboard</span>
-                                {% if user.affiliate.status == 'active' %}
-                                    <span class="badge bg-success ms-2">Active</span>
-                                {% elif user.affiliate.status == 'pending' %}
-                                    <span class="badge bg-warning ms-2">Pending</span>
-                                {% endif %}
-                                <i class="bi bi-chevron-right ms-auto"></i>
-                            </a>
-                        </div>
-                        {% endif %}
-
-                        <!-- Admin Panel (Only for Staff/Superuser) -->
-                        {% if user.is_staff or user.is_superuser %}
-                        <div class="profile-card mb-3">
-                            <a href="{% url 'admin_panel' %}" class="menu-link">
-                                <i class="bi bi-shield-lock-fill fs-4 me-3 text-danger"></i>
-                                <span class="menu-text">Admin Panel</span>
-                                {% if user.is_superuser %}
-                                    <span class="badge bg-danger ms-2">Super</span>
-                                {% else %}
-                                    <span class="badge bg-warning ms-2">Staff</span>
-                                {% endif %}
-                                <i class="bi bi-chevron-right ms-auto"></i>
-                            </a>
-                        </div>
-                        {% endif %}
-
-
-                        <!-- Theme Toggle -->
-                        <div class="profile-card mb-3">
-                            <a href="#" class="menu-link theme-toggle-menu" onclick="window.themeManager.toggleTheme(); return false;">
-                                <i class="theme-toggle-icon bi bi-moon-fill fs-4 me-3"></i>
-                                <span class="menu-text">Theme</span>
-                                <i class="bi bi-chevron-right ms-auto"></i>
-                            </a>
-                        </div>
-
-                        <!-- Logout -->
-                        <div class="profile-card">
-                            <a href="/logout" class="menu-link text-danger">
-                                <i class="bi bi-box-arrow-right fs-4 me-3"></i>
-                                <span class="menu-text">Logout</span>
-                                <i class="bi bi-chevron-right ms-auto"></i>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+{% block page_css %}
 
 <style>
     .store-container {
@@ -369,6 +218,172 @@
         }
     }
 </style>
+{% endblock %}
+
+{% block 'Body'%}
+<div class="store-container">
+    <!-- Profile Header -->
+    <div class="store-header">
+        <div class="container">
+            <div class="row align-items-center py-4 py-md-5">
+                <div class="col-12 text-center">
+                    {% if user.profile.photo %}
+                        <img src="{{ user.profile.photo.url }}" 
+                             alt="Profile Photo" 
+                             class="store-profile-photo">
+                    {% else %}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="150" height="150" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="store-profile-photo">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    {% endif %}
+                    <h1 class="profile-username mt-3">{{ user.username }}</h1>
+                    
+                    <!-- Role & Status Badges -->
+                    <div class="badge-container mb-2">
+                        {% if user.is_superuser %}
+                            <span class="badge bg-danger">
+                                <i class="bi bi-shield-fill-check"></i> Super Admin
+                            </span>
+                        {% elif user.is_staff %}
+                            <span class="badge bg-warning">
+                                <i class="bi bi-shield-check"></i> Staff
+                            </span>
+                        {% endif %}
+                        
+                        {% if user.affiliate %}
+                            <span class="badge bg-success">
+                                ₦</i> Affiliate Partner
+                            </span>
+                        {% endif %}
+                        
+                        {% if user.profile.is_verified_business %}
+                            <span class="badge bg-primary">
+                                <i class="bi bi-patch-check-fill"></i> Verified Business
+                            </span>
+                        {% elif user.profile.has_pending_verification %}
+                            <span class="badge bg-warning">
+                                <i class="bi bi-clock-history"></i> Verification Pending
+                            </span>
+                        {% endif %}
+                        
+                        {% if user.profile.email_verified %}
+                            <span class="badge bg-info">
+                                <i class="bi bi-envelope-check-fill"></i> Email Verified
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    <div class="profile-actions mt-4">
+                        <a href="{% url 'profile_update' %}" class="btn btn-edit-profile">
+                            <span class="btn-icon">
+                                <i class="bi bi-pencil-fill"></i>
+                                <i class="bi bi-person-gear"></i>
+                            </span>
+                            <span class="btn-text">Edit Profile</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Menu Cards Container -->
+    <div class="container mt-4">
+        <div class="row g-3">
+            <div class="col-12">
+                <div class="card main-card">
+                    <div class="card-body p-3">
+                        <!-- My Store -->
+                        <div class="profile-card mb-3">
+                            <a href="{% url 'my_store' %}" class="menu-link">
+                                <i class="bi bi-shop fs-4 me-3 text-warning"></i>
+                                <span class="menu-text">My Store</span>
+                                <i class="bi bi-chevron-right ms-auto"></i>
+                            </a>
+                        </div>
+
+                        <!-- Manage Listings -->
+                        <div class="profile-card mb-3">
+                            <a href="{% url 'manage_listings' %}" class="menu-link">
+                                <i class="bi bi-grid-fill fs-4 me-3 text-primary"></i>
+                                <span class="menu-text">Manage Listings</span>
+                                <i class="bi bi-chevron-right ms-auto"></i>
+                            </a>
+                        </div>
+
+                        <!-- Dashboard with Balance -->
+                        <div class="profile-card mb-3">
+                            <a href="{% url 'dashboard_home' %}" class="menu-link">
+                                <i class="bi bi-wallet-fill fs-4 me-3 text-success"></i>
+                                <div class="menu-content">
+                                    <span class="menu-text">Dashboard</span>
+                                    {% if account %}
+                                    <span class="balance-amount">₦{{ account.balance|floatformat:0 }}</span>
+                                    {% endif %}
+                                </div>
+                                <i class="bi bi-chevron-right ms-auto"></i>
+                            </a>
+                        </div>
+
+                        <!-- Affiliate Dashboard (Only for Affiliates) -->
+                        {% if user.affiliate %}
+                        <div class="profile-card mb-3">
+                            <a href="{% url 'affiliate_dashboard' %}" class="menu-link">
+                                <i class="bi bi-graph-up-arrow fs-4 me-3 text-success"></i>
+                                <span class="menu-text">Affiliate Dashboard</span>
+                                {% if user.affiliate.status == 'active' %}
+                                    <span class="badge bg-success ms-2">Active</span>
+                                {% elif user.affiliate.status == 'pending' %}
+                                    <span class="badge bg-warning ms-2">Pending</span>
+                                {% endif %}
+                                <i class="bi bi-chevron-right ms-auto"></i>
+                            </a>
+                        </div>
+                        {% endif %}
+
+                        <!-- Admin Panel (Only for Staff/Superuser) -->
+                        {% if user.is_staff or user.is_superuser %}
+                        <div class="profile-card mb-3">
+                            <a href="{% url 'admin_panel' %}" class="menu-link">
+                                <i class="bi bi-shield-lock-fill fs-4 me-3 text-danger"></i>
+                                <span class="menu-text">Admin Panel</span>
+                                {% if user.is_superuser %}
+                                    <span class="badge bg-danger ms-2">Super</span>
+                                {% else %}
+                                    <span class="badge bg-warning ms-2">Staff</span>
+                                {% endif %}
+                                <i class="bi bi-chevron-right ms-auto"></i>
+                            </a>
+                        </div>
+                        {% endif %}
+
+
+                        <!-- Theme Toggle -->
+                        <div class="profile-card mb-3">
+                            <a href="#" class="menu-link theme-toggle-menu" onclick="window.themeManager.toggleTheme(); return false;">
+                                <i class="theme-toggle-icon bi bi-moon-fill fs-4 me-3"></i>
+                                <span class="menu-text">Theme</span>
+                                <i class="bi bi-chevron-right ms-auto"></i>
+                            </a>
+                        </div>
+
+                        <!-- Logout -->
+                        <div class="profile-card">
+                            <a href="/logout" class="menu-link text-danger">
+                                <i class="bi bi-box-arrow-right fs-4 me-3"></i>
+                                <span class="menu-text">Logout</span>
+                                <i class="bi bi-chevron-right ms-auto"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 {% endblock %}
 {% block 'Footer'%}
 {% endblock %}

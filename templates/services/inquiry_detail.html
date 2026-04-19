@@ -1,0 +1,619 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load compress %}
+
+{% block page_css %}
+<style>
+/* ══════════════════════════════════════════════════════════════
+   INQUIRY DETAIL — ml-* design tokens (manage.html parity)
+══════════════════════════════════════════════════════════════ */
+.ml-wrap        { padding:1.75rem 0 3rem; min-height:60vh; }
+
+/* Back / breadcrumb bar */
+.ml-back-bar    { display:flex; align-items:center; gap:.6rem; margin-bottom:1.35rem; flex-wrap:wrap; }
+.ml-btn-back    { display:inline-flex; align-items:center; gap:.4rem; padding:.38rem .85rem; background:var(--card-background); border:1.5px solid var(--border-color); border-radius:var(--radius-sm,.375rem); color:var(--text-primary); text-decoration:none; font-size:.82rem; font-weight:500; transition:all .2s; }
+.ml-btn-back:hover { border-color:var(--accent-color,var(--primary-color)); color:var(--accent-color,var(--primary-color)); transform:translateX(-2px); }
+.ml-btn-back i  { transition:transform .2s; }
+.ml-btn-back:hover i { transform:translateX(-2px); }
+.ml-breadcrumb  { display:flex; align-items:center; gap:.35rem; font-size:.8rem; color:var(--text-secondary,#6b7280); }
+.ml-breadcrumb a { color:var(--text-secondary,#6b7280); text-decoration:none; }
+.ml-breadcrumb a:hover { color:var(--accent-color,var(--primary-color)); }
+.ml-breadcrumb-sep { opacity:.45; }
+
+/* Conversation alert banner */
+.ml-conv-banner { display:flex; align-items:center; justify-content:space-between; gap:1rem; background:rgba(var(--primary-rgb,37,99,235),.07); border:1px solid rgba(var(--primary-rgb,37,99,235),.25); border-radius:var(--radius-sm,.375rem); padding:.75rem 1rem; font-size:.875rem; color:var(--text-primary); margin-bottom:1.5rem; flex-wrap:wrap; }
+.ml-conv-banner i { color:var(--accent-color, var(--primary-color)); }
+
+/* Two-column layout */
+.ml-detail-grid { display:grid; grid-template-columns:1fr 320px; gap:1.5rem; align-items:start; }
+@media(max-width:900px) { .ml-detail-grid { grid-template-columns:1fr; } }
+
+/* Cards */
+.ml-card { background:var(--card-background); border:1px solid var(--border-color); border-radius:var(--radius-xl,.75rem); overflow:hidden; margin-bottom:1.25rem; box-shadow:0 2px 8px var(--shadow-color,rgba(0,0,0,.05)); transition:box-shadow .18s,transform .18s; }
+.ml-card:hover { box-shadow:0 6px 24px var(--shadow-color,rgba(0,0,0,.1)); }
+.ml-card-header { display:flex; align-items:center; justify-content:space-between; padding:.85rem 1.25rem; border-bottom:1px solid var(--border-color); background:var(--background-color); }
+.ml-card-header h5,.ml-card-header h6 { margin:0; font-size:.9rem; font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:.4rem; }
+.ml-card-header h5 i,.ml-card-header h6 i { color:var(--accent-color, var(--primary-color)); }
+.ml-card-body { padding:1.25rem; }
+
+/* Inquiry title block */
+.ml-inq-title   { font-size:1.35rem; font-weight:700; color:var(--text-primary); margin:0 0 .5rem; line-height:1.25; }
+.ml-inq-meta-row { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; margin-bottom:1rem; }
+.ml-tag         { display:inline-flex; align-items:center; padding:.18rem .55rem; border-radius:4px; font-size:.7rem; font-weight:600; }
+.tag-primary    { background:rgba(var(--primary-rgb,37,99,235),.12); color:var(--primary-color); }
+.tag-info       { background:rgba(8,145,178,.12); color:#0891b2; }
+.ml-badge       { display:inline-flex; align-items:center; gap:.3rem; padding:.25rem .75rem; border-radius:999px; font-size:.76rem; font-weight:600; white-space:nowrap; }
+.badge-pending  { background:rgba(217,119,6,.12); color:#d97706; }
+.badge-responded { background:rgba(var(--primary-rgb,37,99,235),.12); color:var(--primary-color); }
+.badge-accepted { background:rgba(22,163,74,.12); color:#16a34a; }
+.badge-declined { background:rgba(220,38,38,.1); color:#dc2626; }
+
+/* Detail boxes (budget / deadline grid) */
+.ml-detail-grid-2 { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:.75rem; margin-bottom:1.1rem; }
+.ml-detail-box  { background:var(--background-color); border:1px solid var(--border-color); border-radius:var(--radius-lg,.5rem); padding:.75rem 1rem; }
+.ml-detail-box.success { border-color:rgba(22,163,74,.3); background:rgba(22,163,74,.05); }
+.ml-detail-box-label { font-size:.72rem; color:var(--text-secondary,#6b7280); font-weight:600; text-transform:uppercase; letter-spacing:.04em; margin-bottom:.3rem; display:flex; align-items:center; gap:.3rem; }
+.ml-detail-box-label i { color:var(--accent-color, var(--primary-color)); }
+.ml-detail-box-value { font-size:1rem; font-weight:700; color:var(--text-primary); }
+
+/* Section labels inside card body */
+.ml-section-title { font-size:.82rem; font-weight:600; color:var(--text-secondary,#6b7280); text-transform:uppercase; letter-spacing:.04em; margin:1.1rem 0 .5rem; }
+.ml-section-title:first-child { margin-top:0; }
+.ml-message-content { font-size:.875rem; color:var(--text-primary); line-height:1.65; }
+
+/* Contact info */
+.ml-contact-list { display:flex; flex-direction:column; gap:.5rem; margin-top:.35rem; }
+.ml-contact-item { display:flex; align-items:center; gap:.5rem; font-size:.84rem; color:var(--text-secondary,#6b7280); }
+.ml-contact-item i { color:#16a34a; font-size:.9rem; }
+
+/* Provider response card */
+.ml-response-card .ml-card-header { background:rgba(22,163,74,.08); border-bottom-color:rgba(22,163,74,.2); }
+.ml-response-card .ml-card-header h5 i { color:#16a34a; }
+.ml-response-meta { font-size:.78rem; color:var(--text-secondary,#6b7280); margin-top:.65rem; display:flex; align-items:center; gap:.3rem; }
+
+/* Sidebar */
+.ml-avatar { width:3rem; height:3rem; border-radius:50%; object-fit:cover; border:2px solid var(--border-color); flex-shrink:0; }
+.ml-avatar-ph { width:3rem; height:3rem; border-radius:50%; background:rgba(var(--primary-rgb,37,99,235),.12); display:flex; align-items:center; justify-content:center; color:var(--primary-color); font-size:1.1rem; font-weight:700; flex-shrink:0; }
+.ml-client-row { display:flex; align-items:center; gap:.75rem; margin-bottom:.85rem; }
+.ml-client-name { font-weight:600; color:var(--text-primary); font-size:.9rem; }
+.ml-client-user { font-size:.78rem; color:var(--text-secondary,#6b7280); }
+.ml-client-since { font-size:.73rem; color:var(--text-secondary,#6b7280); margin-top:.2rem; }
+.ml-stat-row { display:flex; justify-content:space-between; align-items:center; padding:.45rem 0; border-bottom:1px solid var(--border-color); font-size:.82rem; }
+.ml-stat-row:last-child { border-bottom:none; }
+.ml-stat-row-label { color:var(--text-secondary,#6b7280); }
+.ml-stat-row-val   { font-weight:600; color:var(--text-primary); }
+
+/* Service summary in sidebar */
+.ml-service-title  { font-size:.9rem; font-weight:600; color:var(--text-primary); margin-bottom:.6rem; }
+.ml-service-meta   { display:flex; flex-direction:column; gap:.4rem; margin-bottom:.85rem; }
+.ml-meta-chip      { display:inline-flex; align-items:center; gap:.35rem; font-size:.8rem; color:var(--text-secondary,#6b7280); }
+.chip-icon         { font-size:.82rem; }
+.chip-icon-tag     { color:var(--accent-color, var(--primary-color)); }
+.chip-icon-money   { color:#16a34a; }
+.chip-icon-clock   { color:#7c3aed; }
+
+/* Action buttons */
+.ml-btn { display:inline-flex; align-items:center; gap:.4rem; padding:.45rem 1rem; border-radius:var(--radius-lg,.5rem); font-size:.825rem; font-weight:600; cursor:pointer; border:1.5px solid transparent; text-decoration:none; transition:all .18s; white-space:nowrap; font-family:inherit; line-height:1.4; width:100%; justify-content:center; margin-bottom:.45rem; }
+.ml-btn:last-child { margin-bottom:0; }
+.ml-btn-primary  { background:var(--primary-color); color:#fff; border-color:var(--primary-color); }
+.ml-btn-primary:hover { filter:brightness(1.1); color:#fff; }
+.ml-btn-outline  { background:rgba(var(--primary-rgb,37,99,235),.08); color:var(--primary-color); border-color:var(--primary-color); }
+.ml-btn-outline:hover { background:var(--primary-color); color:#fff; }
+.ml-btn-ghost    { background:var(--card-background); color:var(--text-primary); border-color:var(--border-color); }
+.ml-btn-ghost:hover  { border-color:var(--accent-color,var(--primary-color)); color:var(--accent-color,var(--primary-color)); }
+.ml-btn-success  { background:transparent; color:#16a34a; border-color:#16a34a; }
+.ml-btn-success:hover { background:rgba(22,163,74,.1); }
+.ml-btn-danger   { background:transparent; color:#dc2626; border-color:#dc2626; }
+.ml-btn-danger:hover  { background:rgba(220,38,38,.08); }
+
+/* Shortcut conv card */
+.ml-conv-shortcut { border-color:var(--accent-color, var(--primary-color)); text-align:center; padding:1rem; }
+.ml-conv-shortcut i { font-size:1.5rem; color:var(--accent-color, var(--primary-color)); margin-bottom:.4rem; display:block; }
+.ml-conv-shortcut p { font-size:.8rem; color:var(--text-secondary,#6b7280); margin-bottom:.65rem; }
+
+/* Modal */
+.ml-modal-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1050; align-items:center; justify-content:center; }
+.ml-modal-backdrop.open { display:flex; }
+.ml-modal { background:var(--card-background); border-radius:var(--radius-xl,.75rem); box-shadow:0 24px 60px rgba(0,0,0,.22); max-width:560px; width:94%; overflow:hidden; border:1px solid var(--border-color); max-height:90vh; overflow-y:auto; }
+.ml-modal-header { display:flex; align-items:center; justify-content:space-between; padding:1.1rem 1.35rem; border-bottom:1px solid var(--border-color); position:sticky; top:0; background:var(--card-background); z-index:1; }
+.ml-modal-header h5 { font-weight:600; color:var(--text-primary); margin:0; font-size:1rem; }
+.ml-modal-close { background:none; border:none; cursor:pointer; color:var(--text-secondary,#6b7280); font-size:1.2rem; line-height:1; padding:.2rem; }
+.ml-modal-body  { padding:1.35rem; }
+.ml-modal-footer { display:flex; gap:.5rem; justify-content:flex-end; padding:1rem 1.35rem; border-top:1px solid var(--border-color); position:sticky; bottom:0; background:var(--card-background); }
+.ml-form-label  { font-size:.825rem; font-weight:600; color:var(--text-primary); margin-bottom:.35rem; display:block; }
+.ml-form-control { width:100%; padding:.55rem .85rem; border:1.5px solid var(--border-color); border-radius:var(--radius-sm,.375rem); background:var(--card-background); color:var(--text-primary); font-size:.875rem; font-family:inherit; line-height:1.5; transition:border-color .18s; box-sizing:border-box; }
+.ml-form-control:focus { outline:none; border-color:var(--primary-color); }
+.ml-form-row    { display:grid; grid-template-columns:1fr 1fr; gap:.85rem; }
+.ml-error-banner { background:rgba(220,38,38,.08); border:1px solid rgba(220,38,38,.25); border-radius:var(--radius-sm,.375rem); padding:.65rem 1rem; font-size:.82rem; color:#dc2626; margin-bottom:.85rem; display:none; }
+.ml-error-banner.show { display:block; }
+.ml-invalid-feedback { font-size:.78rem; color:#dc2626; margin-top:.25rem; display:block; }
+
+/* Modal action buttons — not full-width inside modal */
+.ml-modal .ml-btn { width:auto; }
+
+@media(max-width:600px) { .ml-form-row { grid-template-columns:1fr; } }
+@keyframes qrSpin{to{transform:rotate(360deg)}}
+
+/* ── Dark mode overrides ─────────────────────────────────────── */
+[data-bs-theme="dark"] .ml-btn-outline { background:rgba(var(--primary-rgb,37,99,235),.15); }
+[data-bs-theme="dark"] .ml-btn-ghost { background:var(--card-background); border-color:var(--border-color); color:var(--text-primary); }
+[data-bs-theme="dark"] .ml-card { border-color:var(--border-color); }
+[data-bs-theme="dark"] .ml-modal { border-color:var(--border-color); }
+[data-bs-theme="dark"] .ml-detail-box { background:rgba(255,255,255,.04); border-color:var(--border-color); }
+[data-bs-theme="dark"] .ml-detail-box.success { background:rgba(22,163,74,.1); border-color:rgba(22,163,74,.35); }
+</style>
+{% endblock %}
+
+{% block page_js %}
+    <script type="text/javascript" src="{% static 'js/pages/services.js' %}"></script>
+{% endblock %}
+
+{% block 'Body' %}
+
+<div class="ml-wrap">
+  <div class="container-xl">
+
+    {# ── Back bar + breadcrumb ─────────────────────────────────── #}
+    <div class="ml-back-bar">
+      {% if is_provider %}
+      <a href="{% url 'services:my_inquiries' %}" class="ml-btn-back">
+        <i class="bi bi-arrow-left"></i> My Inquiries
+      </a>
+      {% else %}
+      <a href="{% url 'services:list' %}" class="ml-btn-back">
+        <i class="bi bi-arrow-left"></i> Services
+      </a>
+      {% endif %}
+      <nav class="ml-breadcrumb">
+        <a href="{% url 'home' %}">Home</a>
+        <span class="ml-breadcrumb-sep">/</span>
+        {% if is_provider %}
+        <a href="{% url 'services:my_inquiries' %}">My Inquiries</a>
+        {% else %}
+        <a href="{% url 'services:list' %}">Services</a>
+        {% endif %}
+        <span class="ml-breadcrumb-sep">/</span>
+        <span>Inquiry Details</span>
+      </nav>
+    </div>
+
+    {# ── Conversation banner ───────────────────────────────────── #}
+    {% if conversation_url %}
+    <div class="ml-conv-banner">
+      <span><i class="bi bi-chat-dots me-2"></i>This inquiry has an active conversation thread in your inbox.</span>
+      <a href="{{ conversation_url }}" class="ml-btn ml-btn-primary" style="width:auto;margin:0;">
+        <i class="bi bi-arrow-right"></i>
+        {% if is_provider %}Open Conversation{% else %}Continue Conversation{% endif %}
+      </a>
+    </div>
+    {% endif %}
+
+    <div class="ml-detail-grid">
+
+      {# ═══════ MAIN COLUMN ═══════ #}
+      <div>
+
+        {# ── Inquiry header card ───────────────────────────────── #}
+        <div class="ml-card">
+          <div class="ml-card-body">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;margin-bottom:.85rem;">
+              <div>
+                <h2 class="ml-inq-title">{{ inquiry.service.title }}</h2>
+                <div class="ml-inq-meta-row">
+                  <span class="ml-tag tag-primary">{{ inquiry.service.get_service_type_display }}</span>
+                  <span class="ml-tag tag-info">{{ inquiry.get_inquiry_type_display }}</span>
+                  <span style="font-size:.78rem;color:var(--text-secondary,#6b7280);">{{ inquiry.created_at|date:"M d, Y g:i A" }}</span>
+                </div>
+              </div>
+              <span class="ml-badge badge-{{ inquiry.status }}" style="align-self:flex-start;">
+                {% if inquiry.status == 'pending' %}<i class="bi bi-clock"></i>
+                {% elif inquiry.status == 'responded' %}<i class="bi bi-check-circle"></i>
+                {% elif inquiry.status == 'accepted' %}<i class="bi bi-handshake"></i>
+                {% elif inquiry.status == 'declined' %}<i class="bi bi-x-circle"></i>
+                {% endif %}
+                {{ inquiry.get_status_display }}
+              </span>
+            </div>
+            <a href="{% url 'services:detail' pk=inquiry.service.id %}" class="ml-btn ml-btn-ghost" style="width:auto;">
+              <i class="bi bi-eye"></i> View Service Details
+            </a>
+          </div>
+        </div>
+
+        {# ── Inquiry details card ──────────────────────────────── #}
+        <div class="ml-card">
+          <div class="ml-card-header">
+            <h5><i class="bi bi-chat-square-text"></i>Inquiry Details</h5>
+          </div>
+          <div class="ml-card-body">
+
+            {% if inquiry.budget or inquiry.deadline or inquiry.responded_at %}
+            <div class="ml-detail-grid-2">
+              {% if inquiry.budget %}
+              <div class="ml-detail-box">
+                <div class="ml-detail-box-label"><i class="bi bi-currency-exchange"></i>Budget</div>
+                <div class="ml-detail-box-value">₦{{ inquiry.budget|floatformat:0 }}</div>
+              </div>
+              {% endif %}
+              {% if inquiry.deadline %}
+              <div class="ml-detail-box">
+                <div class="ml-detail-box-label"><i class="bi bi-calendar-check"></i>Deadline</div>
+                <div class="ml-detail-box-value">{{ inquiry.deadline|date:"F d, Y" }}</div>
+              </div>
+              {% endif %}
+              <div class="ml-detail-box">
+                <div class="ml-detail-box-label"><i class="bi bi-clock"></i>Created</div>
+                <div class="ml-detail-box-value">{{ inquiry.created_at|timesince }} ago</div>
+              </div>
+              {% if inquiry.responded_at %}
+              <div class="ml-detail-box">
+                <div class="ml-detail-box-label"><i class="bi bi-reply"></i>Responded</div>
+                <div class="ml-detail-box-value">{{ inquiry.responded_at|timesince }} ago</div>
+              </div>
+              {% endif %}
+            </div>
+            {% endif %}
+
+            <p class="ml-section-title">Client Message</p>
+            <div class="ml-message-content">{{ inquiry.message|linebreaks }}</div>
+
+            {% if inquiry.requirements %}
+            <p class="ml-section-title">Requirements</p>
+            <div class="ml-message-content">{{ inquiry.requirements|linebreaks }}</div>
+            {% endif %}
+
+            {% if inquiry.contact_phone or inquiry.contact_email %}
+            <p class="ml-section-title">Contact Information</p>
+            <div class="ml-contact-list">
+              {% if inquiry.contact_phone %}
+              <span class="ml-contact-item"><i class="bi bi-telephone"></i>{{ inquiry.contact_phone }}</span>
+              {% endif %}
+              {% if inquiry.contact_email %}
+              <span class="ml-contact-item"><i class="bi bi-envelope"></i>{{ inquiry.contact_email }}</span>
+              {% endif %}
+            </div>
+            {% endif %}
+
+          </div>
+        </div>
+
+        {# ── Provider response card (if already responded) ────── #}
+        {% if inquiry.provider_response %}
+        <div class="ml-card ml-response-card">
+          <div class="ml-card-header">
+            <h5><i class="bi bi-reply"></i>Provider Response</h5>
+          </div>
+          <div class="ml-card-body">
+            {% if inquiry.provider_quote %}
+            <div class="ml-detail-grid-2" style="margin-bottom:.85rem;">
+              <div class="ml-detail-box success">
+                <div class="ml-detail-box-label"><i class="bi bi-tag"></i>Quoted Price</div>
+                <div class="ml-detail-box-value">₦{{ inquiry.provider_quote|floatformat:0 }}</div>
+              </div>
+            </div>
+            {% endif %}
+            <div class="ml-message-content">{{ inquiry.provider_response|linebreaks }}</div>
+            {% if inquiry.responded_at %}
+            <div class="ml-response-meta">
+              <i class="bi bi-clock"></i> Responded {{ inquiry.responded_at|timesince }} ago
+            </div>
+            {% endif %}
+            {% if conversation_url %}
+            <div style="margin-top:.85rem;">
+              <a href="{{ conversation_url }}" class="ml-btn ml-btn-outline" style="width:auto;">
+                <i class="bi bi-chat-dots"></i> Continue in Conversation
+              </a>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+
+      </div>{# /main col #}
+
+      {# ═══════ SIDEBAR ═══════ #}
+      <div>
+
+        {# ── Client / Your inquiry card ────────────────────────── #}
+        <div class="ml-card">
+          <div class="ml-card-header">
+            <h6><i class="bi bi-person"></i>
+              {% if is_provider %}Client Information{% else %}Your Inquiry{% endif %}
+            </h6>
+          </div>
+          <div class="ml-card-body">
+            <div class="ml-client-row">
+              {% if inquiry.client.photo %}
+              <img src="{{ inquiry.client.photo.url }}"
+                   alt="{{ inquiry.client.user.username }}" class="ml-avatar">
+              {% else %}
+              <div class="ml-avatar-ph">{{ inquiry.client.user.username|first|upper }}</div>
+              {% endif %}
+              <div>
+                <div class="ml-client-name">{{ inquiry.client.user.get_full_name|default:inquiry.client.user.username }}</div>
+                <div class="ml-client-user">@{{ inquiry.client.user.username }}</div>
+                <div class="ml-client-since">Member since {{ inquiry.client.user.date_joined|date:"M Y" }}</div>
+              </div>
+            </div>
+            {% if is_provider %}
+            <div>
+              <div class="ml-stat-row">
+                <span class="ml-stat-row-label">Total Inquiries</span>
+                <span class="ml-stat-row-val">{{ inquiry.client.total_inquiries|default:0 }}</span>
+              </div>
+              <div class="ml-stat-row">
+                <span class="ml-stat-row-label">Projects Completed</span>
+                <span class="ml-stat-row-val">{{ inquiry.client.completed_projects|default:0 }}</span>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        {# ── Service info card ─────────────────────────────────── #}
+        <div class="ml-card">
+          <div class="ml-card-header">
+            <h6><i class="bi bi-briefcase"></i>Service Information</h6>
+          </div>
+          <div class="ml-card-body">
+            <div class="ml-service-title">{{ inquiry.service.title }}</div>
+            <div class="ml-service-meta">
+              <span class="ml-meta-chip"><i class="bi bi-tag chip-icon chip-icon-tag"></i>{{ inquiry.service.get_category_display }}</span>
+              <span class="ml-meta-chip"><i class="bi bi-currency-exchange chip-icon chip-icon-money"></i>{{ inquiry.service.formatted_price }}</span>
+              <span class="ml-meta-chip"><i class="bi bi-clock chip-icon chip-icon-clock"></i>{{ inquiry.service.get_availability_display }}</span>
+            </div>
+            <a href="{% url 'services:detail' pk=inquiry.service.id %}" class="ml-btn ml-btn-outline">
+              <i class="bi bi-eye"></i> View Full Service
+            </a>
+          </div>
+        </div>
+
+        {# ── Actions sidebar card ──────────────────────────────── #}
+        {# Provider — pending #}
+        {% if is_provider and inquiry.status == 'pending' %}
+        <div class="ml-card">
+          <div class="ml-card-header"><h6><i class="bi bi-gear"></i>Actions</h6></div>
+          <div class="ml-card-body">
+            <button class="ml-btn ml-btn-success" onclick="openResponseModal('accepted')">
+              <i class="bi bi-check"></i> Accept Inquiry
+            </button>
+            <button class="ml-btn ml-btn-outline" onclick="openResponseModal('responded')">
+              <i class="bi bi-reply"></i> Send Response
+            </button>
+            <button class="ml-btn ml-btn-danger" onclick="declineInquiry()">
+              <i class="bi bi-x"></i> Decline
+            </button>
+          </div>
+        </div>
+
+        {# Provider — already responded #}
+        {% elif is_provider and inquiry.status in 'responded,accepted' %}
+        <div class="ml-card">
+          <div class="ml-card-header"><h6><i class="bi bi-chat-dots"></i>Conversation</h6></div>
+          <div class="ml-card-body">
+            <p style="font-size:.82rem;color:var(--text-secondary,#6b7280);margin-bottom:.85rem;">
+              You have already responded. Continue the discussion in the conversation thread.
+            </p>
+            {% if conversation_url %}
+            <a href="{{ conversation_url }}" class="ml-btn ml-btn-primary">
+              <i class="bi bi-chat-dots"></i> Open Conversation
+            </a>
+            {% else %}
+            <span style="font-size:.8rem;color:var(--text-secondary,#6b7280);">No conversation thread found.</span>
+            {% endif %}
+          </div>
+        </div>
+
+        {# Client — provider responded #}
+        {% elif not is_provider and inquiry.status == 'responded' %}
+        <div class="ml-card">
+          <div class="ml-card-header"><h6><i class="bi bi-gear"></i>Next Steps</h6></div>
+          <div class="ml-card-body">
+            <p style="font-size:.82rem;color:var(--text-secondary,#6b7280);margin-bottom:.85rem;">
+              The provider has responded. Review their response and continue in your conversation thread.
+            </p>
+            {% if conversation_url %}
+            <a href="{{ conversation_url }}" class="ml-btn ml-btn-primary">
+              <i class="bi bi-chat-dots"></i> Continue Conversation
+            </a>
+            {% else %}
+            <a href="{% url 'send_service_message' service_id=inquiry.service.id %}" class="ml-btn ml-btn-primary">
+              <i class="bi bi-envelope"></i> Contact Provider
+            </a>
+            {% endif %}
+          </div>
+        </div>
+
+        {# Client — still pending #}
+        {% elif not is_provider and inquiry.status == 'pending' %}
+        <div class="ml-card">
+          <div class="ml-card-header"><h6><i class="bi bi-hourglass"></i>Status</h6></div>
+          <div class="ml-card-body">
+            <p style="font-size:.82rem;color:var(--text-secondary,#6b7280);margin-bottom:.85rem;">
+              Your inquiry is pending. The provider will respond shortly and you'll be notified.
+            </p>
+            {% if conversation_url %}
+            <a href="{{ conversation_url }}" class="ml-btn ml-btn-outline">
+              <i class="bi bi-chat-dots"></i> View Conversation
+            </a>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+
+        {# ── Conversation shortcut (always if linked) ─────────── #}
+        {% if conversation_url %}
+        <div class="ml-card">
+          <div class="ml-card-body ml-conv-shortcut">
+            <i class="bi bi-chat-square-dots"></i>
+            <p>All messages for this inquiry are in a dedicated conversation thread.</p>
+            <a href="{{ conversation_url }}" class="ml-btn ml-btn-outline">
+              <i class="bi bi-box-arrow-up-right"></i> Go to Conversation
+            </a>
+          </div>
+        </div>
+        {% endif %}
+
+        {# ── Manage listings shortcut (provider) ─────────────── #}
+        {% if is_provider %}
+        <div class="ml-card">
+          <div class="ml-card-body" style="text-align:center;padding:.9rem;">
+            <a href="{% url 'manage_listings' %}?tab=services" class="ml-btn ml-btn-ghost">
+              <i class="bi bi-grid-3x3-gap"></i> Manage My Services
+            </a>
+          </div>
+        </div>
+        {% endif %}
+
+      </div>{# /sidebar #}
+    </div>{# /ml-detail-grid #}
+
+  </div>{# /container-xl #}
+</div>{# /ml-wrap #}
+
+
+{% if is_provider and response_form %}
+<div class="ml-modal-backdrop" id="responseModal">
+  <div class="ml-modal">
+    <div class="ml-modal-header">
+      <h5 id="responseModalLabel">Respond to Inquiry</h5>
+      <button class="ml-modal-close" onclick="closeResponseModal()">&times;</button>
+    </div>
+    <div class="ml-modal-body">
+      <div class="ml-error-banner" id="responseFormErrors"></div>
+      <form method="post"
+            action="{% url 'services:respond_to_inquiry' inquiry.id %}"
+            id="responseForm"
+            novalidate>
+        {% csrf_token %}
+        <input type="hidden" id="response_status_field" name="status" value="responded">
+        {{ response_form.as_p }}
+      </form>
+    </div>
+    <div class="ml-modal-footer">
+      <button class="ml-btn ml-btn-ghost" onclick="closeResponseModal()">Cancel</button>
+      <button class="ml-btn ml-btn-primary" id="responseSubmitBtn" onclick="submitResponseForm()">
+        <span class="btn-label"><i class="bi bi-send me-1"></i>Send Response</span>
+        <span class="btn-spinner" style="display:none;">
+          <span style="display:inline-block;width:.85rem;height:.85rem;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:qrSpin .7s linear infinite;vertical-align:middle;margin-right:.35rem;"></span>
+          Sending…
+        </span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+function openResponseModal(status) {
+  const statusField = document.getElementById('response_status_field');
+  const label       = document.getElementById('responseModalLabel');
+  if (status === 'accepted') {
+    label.textContent = 'Accept Inquiry';
+  } else {
+    label.textContent = 'Respond to Inquiry';
+  }
+  if (statusField) statusField.value = status;
+  document.getElementById('responseModal').classList.add('open');
+}
+
+function closeResponseModal() {
+  document.getElementById('responseModal').classList.remove('open');
+  clearResponseErrors();
+  document.getElementById('responseForm').reset();
+}
+
+document.getElementById('responseModal').addEventListener('click', function(e) {
+  if (e.target === this) closeResponseModal();
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeResponseModal();
+});
+
+function clearResponseErrors() {
+  var banner = document.getElementById('responseFormErrors');
+  banner.textContent = '';
+  banner.classList.remove('show');
+  document.querySelectorAll('#responseForm .ml-invalid-feedback').forEach(el => el.remove());
+  document.querySelectorAll('#responseForm .ml-form-control').forEach(el => el.style.borderColor = '');
+}
+
+async function submitResponseForm() {
+  const form      = document.getElementById('responseForm');
+  const submitBtn = document.getElementById('responseSubmitBtn');
+  const errBanner = document.getElementById('responseFormErrors');
+
+  submitBtn.querySelector('.btn-label').style.display  = 'none';
+  submitBtn.querySelector('.btn-spinner').style.display = 'inline';
+  submitBtn.disabled = true;
+  clearResponseErrors();
+
+  try {
+    const response = await fetch(form.action, {
+      method:  'POST',
+      body:    new FormData(form),
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    });
+    const data = await response.json();
+
+    if (data.success) {
+      const dest = data.redirect || '{{ conversation_url|default:"" }}';
+      window.location.href = dest || window.location.href;
+      return;
+    }
+
+    if (data.errors) {
+      const msgs = [];
+      Object.entries(data.errors).forEach(([field, errs]) => {
+        const arr      = Array.isArray(errs) ? errs : [errs];
+        const fieldEl  = form.querySelector(`[name="${field}"]`);
+        if (fieldEl) {
+          fieldEl.style.borderColor = '#dc2626';
+          const fb = document.createElement('span');
+          fb.className = 'ml-invalid-feedback';
+          fb.textContent = arr.join(', ');
+          fieldEl.parentNode.insertBefore(fb, fieldEl.nextSibling);
+        }
+        arr.forEach(m => msgs.push(m));
+      });
+      errBanner.textContent = msgs.join(' ');
+    } else {
+      errBanner.textContent = data.error || 'Failed to send response.';
+    }
+    errBanner.classList.add('show');
+
+  } catch {
+    errBanner.textContent = 'An unexpected error occurred. Please try again.';
+    errBanner.classList.add('show');
+  }
+
+  submitBtn.querySelector('.btn-label').style.display  = 'inline';
+  submitBtn.querySelector('.btn-spinner').style.display = 'none';
+  submitBtn.disabled = false;
+}
+
+function declineInquiry() {
+  if (!confirm('Are you sure you want to decline this inquiry? This cannot be undone.')) return;
+
+  const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  const formData  = new FormData();
+  formData.append('csrfmiddlewaretoken', csrfToken);
+  formData.append('status',            'declined');
+  formData.append('provider_response', 'Declined');
+
+  fetch('{% url "services:respond_to_inquiry" inquiry.id %}', {
+    method:  'POST',
+    body:    formData,
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) { window.location.reload(); }
+    else { alert(data.error || 'Could not decline the inquiry. Please try again.'); }
+  })
+  .catch(() => alert('Network error. Please try again.'));
+}
+</script>
+{% endif %}
+
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

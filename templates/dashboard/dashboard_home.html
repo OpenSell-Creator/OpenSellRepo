@@ -1,488 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block 'Body'%}
-<div class="dashboard-container">
-    <!-- Enhanced Dashboard Header -->
-    <div class="dashboard-header">
-        <div class="container">
-            <div class="row align-items-center py-4 py-md-5">
-                <div class="col-12 col-md-6">
-                    <div class="header-content">
-                        <h1 class="dashboard-title">
-                            <i class="bi bi-speedometer2 me-3"></i>Dashboard
-                        </h1>
-                        <p class="dashboard-subtitle">Manage your account, funds, and listings</p>
-                        
-                        <!-- Status Badge -->
-                        {% if effective_status %}
-                        <div class="status-container mt-3">
-                            <span class="status-badge {{ effective_status.tier_type }}">
-                                <i class="bi {% if effective_status.tier_type == 'pro' %}bi-star-fill{% else %}bi-person-fill{% endif %} me-2"></i>
-                                {{ effective_status.name }}
-                            </span>
-                            {% if subscription_info.active %}
-                                <span class="subscription-expiry">
-                                    <i class="bi bi-calendar-check me-1"></i>
-                                    Valid until {{ subscription_info.end_date|date:"M d, Y" }}
-                                </span>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="col-12 col-md-6 text-md-end mt-3 mt-md-0">
-                    <div class="balance-display-container">
-                        <div class="balance-display">
-                            <span class="balance-label">Account Balance</span>
-                            <h2 class="balance-amount">₦{{ account.balance|floatformat:0 }}</h2>
-                        </div>
-                        <div class="header-actions mt-3">
-                            <a href="{% url 'deposit_with_monnify' %}" class="btn btn-deposit">
-                                <i class="bi bi-plus-circle me-2"></i>Add Funds
-                            </a>
-                            {% if not account.is_subscription_active %}
-                            <a href="{% url 'subscription_management' %}" class="btn btn-upgrade ms-2">
-                                <i class="bi bi-star-fill me-2"></i>Upgrade
-                            </a>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Dashboard Content -->
-    <div class="container mt-4 ">
-        <!-- Stats Overview Row -->
-        <div class="row g-4 mb-4">
-            <!-- Account Status Card -->
-            <div class="col-12 col-md-6 col-lg-3">
-                <a href="{% url 'account_status' %}" class="text-decoration-none">
-                    <div class="dashboard-card stats-card">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="icon-container status-icon">
-                                    <i class="bi {% if effective_status.tier_type == 'pro' %}bi-star-fill{% else %}bi-person-fill{% endif %}"></i>
-                                </div>
-                                <div class="stats-content">
-                                    <h6 class="stats-label">Account Status</h6>
-                                    <h4 class="stats-value">{{ effective_status.name }}</h4>
-                                </div>
-                            </div>
-                            {% if next_tier %}
-                            <div class="progress-container mt-3">
-                                <div class="progress">
-                                    <div class="progress-bar" style="width: 60%"></div>
-                                </div>
-                                <small class="text-muted">Upgrade to {{ next_tier.name }}</small>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <!-- Total Listings Card -->
-            <div class="col-12 col-md-6 col-lg-3">
-                <div class="dashboard-card stats-card">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="icon-container listings-icon">
-                                <i class="bi bi-box-seam"></i>
-                            </div>
-                            <div class="stats-content">
-                                <h6 class="stats-label">Total Listings</h6>
-                                <h4 class="stats-value">{{ listings_count }}</h4>
-                            </div>
-                        </div>
-                        <!--<div class="stats-footer mt-2">
-                            <small class="text-muted">
-                                {% if effective_status.max_listings %}
-                                    {{ listings_count }}/{{ effective_status.max_listings }} used
-                                {% else %}
-                                    Unlimited listings
-                                {% endif %}
-                            </small>
-                        </div> -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Active Boosts Card -->
-            <div class="col-12 col-md-6 col-lg-3">
-                <div class="dashboard-card stats-card">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="icon-container boosts-icon">
-                                <i class="bi bi-rocket-takeoff"></i>
-                            </div>
-                            <div class="stats-content">
-                                <h6 class="stats-label">Active Boosts</h6>
-                                <h4 class="stats-value">{{ active_boosts_count }}</h4>
-                            </div>
-                        </div>
-                        <!--<div class="stats-footer mt-2">
-                            <small class="text-muted">{{ boost_stats.total_boosts }} total boosts</small>
-                        </div> -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Total Spent Card -->
-            <div class="col-12 col-md-6 col-lg-3">
-                <div class="dashboard-card stats-card">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="icon-container spent-icon">
-                                <i class="bi bi-graph-up"></i>
-                            </div>
-                            <div class="stats-content">
-                                <h6 class="stats-label">Total Spent</h6>
-                                <h4 class="stats-value">₦{{ total_spent|floatformat:0 }}</h4>
-                            </div>
-                        </div>
-                        {% if potential_savings > 0 %}
-                        <div class="stats-footer mt-2">
-                            <small class="text-warning">
-                                <i class="bi bi-lightbulb me-1"></i>
-                                Could save ₦{{ potential_savings|floatformat:0 }} with Pro
-                            </small>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Upgrade Banner (if not Pro) -->
-        {% if not account.is_subscription_active %}
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="upgrade-banner">
-                    <div class="upgrade-content">
-                        <div class="row align-items-center">
-                            <div class="col-12 col-md-8">
-                                <h4 class="upgrade-title">
-                                    <i class="bi bi-star-fill me-2"></i>
-                                    Unlock the full potential of your store
-                                </h4>
-                                <p class="upgrade-description">
-                                    Get unlimited listings, 30% boost discounts, priority support, and more with OpenSell Pro.
-                                    {% if potential_savings > 0 %}
-                                    You could have saved ₦{{ potential_savings|floatformat:0 }} on boosts already!
-                                    {% endif %}
-                                </p>
-                            </div>
-                            <div class="col-12 col-md-4 text-md-end mt-3 mt-md-0">
-                                <a href="{% url 'subscription_management' %}" class="btn btn-upgrade-banner">
-                                    Upgrade Now
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-
-        <div class="row g-4">
-            <!-- Quick Actions Card -->
-            <div class="col-12 col-lg-4">
-                <div class="dashboard-card">
-                    <div class="card-header">
-                        <h5 class="card-title">
-                            <i class="bi bi-lightning-fill me-2"></i>Quick Actions
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="quick-actions">
-                            <a href="{% url 'product_create' %}" class="quick-action-item">
-                                <div class="action-icon create-icon">
-                                    <i class="bi bi-plus-circle"></i>
-                                </div>
-                                <div class="action-content">
-                                    <h6>Create New Listing</h6>
-                                    <p>Add a new product to your store</p>
-                                </div>
-                                <i class="bi bi-chevron-right action-arrow"></i>
-                            </a>
-                            
-                            <a href="{% url 'my_store' %}" class="quick-action-item">
-                                <div class="action-icon store-icon">
-                                    <i class="bi bi-shop"></i>
-                                </div>
-                                <div class="action-content">
-                                    <h6>View My Store</h6>
-                                    <p>Manage your listings and store</p>
-                                </div>
-                                <i class="bi bi-chevron-right action-arrow"></i>
-                            </a>
-                            
-                            <a href="{% url 'deposit_with_monnify' %}" class="quick-action-item">
-                                <div class="action-icon funds-icon">
-                                    <i class="bi bi-wallet2"></i>
-                                </div>
-                                <div class="action-content">
-                                    <h6>Add Funds</h6>
-                                    <p>Top up your account balance</p>
-                                </div>
-                                <i class="bi bi-chevron-right action-arrow"></i>
-                            </a>
-                            
-                            <a href="{% url 'account_status' %}" class="quick-action-item">
-                                <div class="action-icon history-icon">
-                                    <i class="bi bi-person-badge"></i>
-                                </div>
-                                <div class="action-content">
-                                    <h6>Account Status</h6>
-                                    <p>View account details and tier info</p>
-                                </div>
-                                <i class="bi bi-chevron-right action-arrow"></i>
-                            </a>
-                            
-                            <a href="{% url 'transaction_history' %}" class="quick-action-item">
-                                <div class="action-icon history-icon">
-                                    <i class="bi bi-clock-history"></i>
-                                </div>
-                                <div class="action-content">
-                                    <h6>Transaction History</h6>
-                                    <p>View your payment history</p>
-                                </div>
-                                <i class="bi bi-chevron-right action-arrow"></i>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Recent Listings Card -->
-            <div class="col-12 col-lg-8">
-                <div class="dashboard-card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="card-title">
-                            <i class="bi bi-box-seam me-2"></i>Recent Listings
-                        </h5>
-                        <a href="{% url 'my_store' %}" class="btn btn-sm btn-outline-primary">
-                            View All
-                        </a>
-                    </div>
-                    <div class="card-body">
-                        {% if user_listings %}
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Product</th>
-                                        <th>Price</th>
-                                        <th>Status</th>
-                                        <th>Views</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for listing in user_listings %}
-                                    <tr>
-                                        <td>
-                                            <div class="product-info">
-                                                {% with primary_image=listing.images.first %}
-                                                    {% if primary_image %}
-                                                        <img src="{{ primary_image.image.url }}" 
-                                                             alt="{{ listing.title }}" 
-                                                             class="product-thumb">
-                                                    {% else %}
-                                                        <div class="product-thumb-placeholder">
-                                                            <i class="bi bi-image"></i>
-                                                        </div>
-                                                    {% endif %}
-                                                {% endwith %}
-                                                <div class="product-details">
-                                                    <h6 class="product-title">{{ listing.title|truncatechars:30 }}</h6>
-                                                    {% if listing.current_boost %}
-                                                        <span class="boost-badge {{ listing.current_boost.boost_type }}">
-                                                            <i class="bi bi-rocket"></i> {{ listing.current_boost.get_boost_type_display }}
-                                                        </span>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span class="price-display">₦{{ listing.price|floatformat:0 }}</span>
-                                        </td>
-                                        <td>
-                                            <span class="status-badge {{ listing.stock_status }}">
-                                                {{ listing.stock_status|title|default:"In Stock" }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span class="view-count">
-                                                <i class="bi bi-eye me-1"></i>{{ listing.view_count }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="action-buttons">
-                                                <a href="{% url 'boost_product' listing.id %}" 
-                                                   class="btn btn-sm btn-outline-success"
-                                                   data-bs-toggle="tooltip" title="Boost this product">
-                                                    <i class="bi bi-rocket"></i>
-                                                </a>
-                                                <a href="{% url 'product_detail' listing.id %}" 
-                                                   class="btn btn-sm btn-outline-primary"
-                                                   data-bs-toggle="tooltip" title="View product">
-                                                    <i class="bi bi-eye"></i>
-                                                </a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        {% else %}
-                        <div class="empty-state">
-                            <div class="empty-icon">
-                                <i class="bi bi-box-seam"></i>
-                            </div>
-                            <h5>No listings yet</h5>
-                            <p>Create your first listing to start selling</p>
-                            <a href="{% url 'product_create' %}" class="btn btn-primary">
-                                <i class="bi bi-plus-circle me-2"></i>Create Listing
-                            </a>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Active Boosts Section -->
-        {% if active_boosts %}
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="dashboard-card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="card-title">
-                            <i class="bi bi-rocket-takeoff me-2"></i>Active Boosts
-                        </h5>
-                        <div class="header-actions">
-                            <a href="{% url 'product_boost_status' %}" class="btn btn-sm btn-outline-primary me-2">
-                                <i class="bi bi-graph-up me-1"></i>View All Boosts
-                            </a>
-                            <span class="badge bg-success">{{ active_boosts_count }} Active</span>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Product</th>
-                                        <th>Boost Type</th>
-                                        <th>Started</th>
-                                        <th>Expires</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for boost in active_boosts %}
-                                    <tr>
-                                        <td>
-                                            <a href="{% url 'product_detail' boost.product.id %}" 
-                                               class="text-decoration-none">
-                                                {{ boost.product.title|truncatechars:30 }}
-                                            </a>
-                                        </td>
-                                        <td>
-                                            <span class="boost-type-badge {{ boost.boost_type }}">
-                                                <i class="bi {% if boost.boost_type == 'featured' %}bi-star-fill{% elif boost.boost_type == 'urgent' %}bi-clock-fill{% elif boost.boost_type == 'spotlight' %}bi-lightning-fill{% else %}bi-gem{% endif %}"></i>
-                                                {{ boost.get_boost_type_display }}
-                                            </span>
-                                        </td>
-                                        <td>{{ boost.start_date|date:"M d" }}</td>
-                                        <td>{{ boost.end_date|date:"M d, Y" }}</td>
-                                        <td>
-                                            {% if boost.days_remaining <= 1 %}
-                                                <span class="status-badge expiring">
-                                                    <i class="bi bi-exclamation-triangle me-1"></i>
-                                                    Expires today
-                                                </span>
-                                            {% elif boost.days_remaining <= 3 %}
-                                                <span class="status-badge warning">
-                                                    <i class="bi bi-clock me-1"></i>
-                                                    {{ boost.days_remaining }} days left
-                                                </span>
-                                            {% else %}
-                                                <span class="status-badge active">
-                                                    <i class="bi bi-check-circle me-1"></i>
-                                                    {{ boost.days_remaining }} days left
-                                                </span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <a href="{% url 'product_detail' boost.product.id %}" 
-                                               class="btn btn-sm btn-outline-primary">
-                                                View Product
-                                            </a>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- Recent Transactions -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="dashboard-card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="card-title">
-                            <i class="bi bi-clock-history me-2"></i>Recent Transactions
-                        </h5>
-                        <a href="{% url 'transaction_history' %}" class="btn btn-sm btn-outline-primary">
-                            View All
-                        </a>
-                    </div>
-                    <div class="card-body">
-                        {% if recent_transactions %}
-                        <div class="transaction-list">
-                            {% for transaction in recent_transactions %}
-                            <div class="transaction-item">
-                                <div class="transaction-icon {{ transaction.transaction_type }}">
-                                    <i class="bi {% if transaction.amount > 0 %}bi-plus-circle{% else %}bi-dash-circle{% endif %}"></i>
-                                </div>
-                                <div class="transaction-details">
-                                    <h6 class="transaction-title">{{ transaction.get_transaction_type_display }}</h6>
-                                    <p class="transaction-date">{{ transaction.created_at|date:"M d, Y \a\t H:i" }}</p>
-                                </div>
-                                <div class="transaction-amount {% if transaction.amount > 0 %}positive{% else %}negative{% endif %}">
-                                    {% if transaction.amount > 0 %}+{% endif %}₦{{ transaction.amount|floatformat:0 }}
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% else %}
-                        <div class="empty-state">
-                            <div class="empty-icon">
-                                <i class="bi bi-clock-history"></i>
-                            </div>
-                            <h5>No transactions yet</h5>
-                            <p>Your transaction history will appear here</p>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
+{% block page_css %}
 <style>
     /* Enhanced Dashboard Styles */
     .dashboard-container {
@@ -1484,6 +1003,489 @@
         }
     }
 </style>
+{% endblock %}
+
+{% block 'Body'%}
+<div class="dashboard-container">
+    <!-- Enhanced Dashboard Header -->
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="row align-items-center py-4 py-md-5">
+                <div class="col-12 col-md-6">
+                    <div class="header-content">
+                        <h1 class="dashboard-title">
+                            <i class="bi bi-speedometer2 me-3"></i>Dashboard
+                        </h1>
+                        <p class="dashboard-subtitle">Manage your account, funds, and listings</p>
+                        
+                        <!-- Status Badge -->
+                        {% if effective_status %}
+                        <div class="status-container mt-3">
+                            <span class="status-badge {{ effective_status.tier_type }}">
+                                <i class="bi {% if effective_status.tier_type == 'pro' %}bi-star-fill{% else %}bi-person-fill{% endif %} me-2"></i>
+                                {{ effective_status.name }}
+                            </span>
+                            {% if subscription_info.active %}
+                                <span class="subscription-expiry">
+                                    <i class="bi bi-calendar-check me-1"></i>
+                                    Valid until {{ subscription_info.end_date|date:"M d, Y" }}
+                                </span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 text-md-end mt-3 mt-md-0">
+                    <div class="balance-display-container">
+                        <div class="balance-display">
+                            <span class="balance-label">Account Balance</span>
+                            <h2 class="balance-amount">₦{{ account.balance|floatformat:0 }}</h2>
+                        </div>
+                        <div class="header-actions mt-3">
+                            <a href="{% url 'deposit_with_monnify' %}" class="btn btn-deposit">
+                                <i class="bi bi-plus-circle me-2"></i>Add Funds
+                            </a>
+                            {% if not account.is_subscription_active %}
+                            <a href="{% url 'subscription_management' %}" class="btn btn-upgrade ms-2">
+                                <i class="bi bi-star-fill me-2"></i>Upgrade
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Content -->
+    <div class="container mt-4 ">
+        <!-- Stats Overview Row -->
+        <div class="row g-4 mb-4">
+            <!-- Account Status Card -->
+            <div class="col-12 col-md-6 col-lg-3">
+                <a href="{% url 'account_status' %}" class="text-decoration-none">
+                    <div class="dashboard-card stats-card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="icon-container status-icon">
+                                    <i class="bi {% if effective_status.tier_type == 'pro' %}bi-star-fill{% else %}bi-person-fill{% endif %}"></i>
+                                </div>
+                                <div class="stats-content">
+                                    <h6 class="stats-label">Account Status</h6>
+                                    <h4 class="stats-value">{{ effective_status.name }}</h4>
+                                </div>
+                            </div>
+                            {% if next_tier %}
+                            <div class="progress-container mt-3">
+                                <div class="progress">
+                                    <div class="progress-bar" style="width: 60%"></div>
+                                </div>
+                                <small class="text-muted">Upgrade to {{ next_tier.name }}</small>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Total Listings Card -->
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="dashboard-card stats-card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="icon-container listings-icon">
+                                <i class="bi bi-box-seam"></i>
+                            </div>
+                            <div class="stats-content">
+                                <h6 class="stats-label">Total Listings</h6>
+                                <h4 class="stats-value">{{ listings_count }}</h4>
+                            </div>
+                        </div>
+                        <!--<div class="stats-footer mt-2">
+                            <small class="text-muted">
+                                {% if effective_status.max_listings %}
+                                    {{ listings_count }}/{{ effective_status.max_listings }} used
+                                {% else %}
+                                    Unlimited listings
+                                {% endif %}
+                            </small>
+                        </div> -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Boosts Card -->
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="dashboard-card stats-card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="icon-container boosts-icon">
+                                <i class="bi bi-rocket-takeoff"></i>
+                            </div>
+                            <div class="stats-content">
+                                <h6 class="stats-label">Active Boosts</h6>
+                                <h4 class="stats-value">{{ active_boosts_count }}</h4>
+                            </div>
+                        </div>
+                        <!--<div class="stats-footer mt-2">
+                            <small class="text-muted">{{ boost_stats.total_boosts }} total boosts</small>
+                        </div> -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Spent Card -->
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="dashboard-card stats-card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="icon-container spent-icon">
+                                <i class="bi bi-graph-up"></i>
+                            </div>
+                            <div class="stats-content">
+                                <h6 class="stats-label">Total Spent</h6>
+                                <h4 class="stats-value">₦{{ total_spent|floatformat:0 }}</h4>
+                            </div>
+                        </div>
+                        {% if potential_savings > 0 %}
+                        <div class="stats-footer mt-2">
+                            <small class="text-warning">
+                                <i class="bi bi-lightbulb me-1"></i>
+                                Could save ₦{{ potential_savings|floatformat:0 }} with Pro
+                            </small>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upgrade Banner (if not Pro) -->
+        {% if not account.is_subscription_active %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="upgrade-banner">
+                    <div class="upgrade-content">
+                        <div class="row align-items-center">
+                            <div class="col-12 col-md-8">
+                                <h4 class="upgrade-title">
+                                    <i class="bi bi-star-fill me-2"></i>
+                                    Unlock the full potential of your store
+                                </h4>
+                                <p class="upgrade-description">
+                                    Get unlimited listings, 30% boost discounts, priority support, and more with OpenSell Pro.
+                                    {% if potential_savings > 0 %}
+                                    You could have saved ₦{{ potential_savings|floatformat:0 }} on boosts already!
+                                    {% endif %}
+                                </p>
+                            </div>
+                            <div class="col-12 col-md-4 text-md-end mt-3 mt-md-0">
+                                <a href="{% url 'subscription_management' %}" class="btn btn-upgrade-banner">
+                                    Upgrade Now
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="row g-4">
+            <!-- Quick Actions Card -->
+            <div class="col-12 col-lg-4">
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h5 class="card-title">
+                            <i class="bi bi-lightning-fill me-2"></i>Quick Actions
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="quick-actions">
+                            <a href="{% url 'product_create' %}" class="quick-action-item">
+                                <div class="action-icon create-icon">
+                                    <i class="bi bi-plus-circle"></i>
+                                </div>
+                                <div class="action-content">
+                                    <h6>Create New Listing</h6>
+                                    <p>Add a new product to your store</p>
+                                </div>
+                                <i class="bi bi-chevron-right action-arrow"></i>
+                            </a>
+                            
+                            <a href="{% url 'my_store' %}" class="quick-action-item">
+                                <div class="action-icon store-icon">
+                                    <i class="bi bi-shop"></i>
+                                </div>
+                                <div class="action-content">
+                                    <h6>View My Store</h6>
+                                    <p>Manage your listings and store</p>
+                                </div>
+                                <i class="bi bi-chevron-right action-arrow"></i>
+                            </a>
+                            
+                            <a href="{% url 'deposit_with_monnify' %}" class="quick-action-item">
+                                <div class="action-icon funds-icon">
+                                    <i class="bi bi-wallet2"></i>
+                                </div>
+                                <div class="action-content">
+                                    <h6>Add Funds</h6>
+                                    <p>Top up your account balance</p>
+                                </div>
+                                <i class="bi bi-chevron-right action-arrow"></i>
+                            </a>
+                            
+                            <a href="{% url 'account_status' %}" class="quick-action-item">
+                                <div class="action-icon history-icon">
+                                    <i class="bi bi-person-badge"></i>
+                                </div>
+                                <div class="action-content">
+                                    <h6>Account Status</h6>
+                                    <p>View account details and tier info</p>
+                                </div>
+                                <i class="bi bi-chevron-right action-arrow"></i>
+                            </a>
+                            
+                            <a href="{% url 'transaction_history' %}" class="quick-action-item">
+                                <div class="action-icon history-icon">
+                                    <i class="bi bi-clock-history"></i>
+                                </div>
+                                <div class="action-content">
+                                    <h6>Transaction History</h6>
+                                    <p>View your payment history</p>
+                                </div>
+                                <i class="bi bi-chevron-right action-arrow"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Listings Card -->
+            <div class="col-12 col-lg-8">
+                <div class="dashboard-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title">
+                            <i class="bi bi-box-seam me-2"></i>Recent Listings
+                        </h5>
+                        <a href="{% url 'my_store' %}" class="btn btn-sm btn-outline-primary">
+                            View All
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        {% if user_listings %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Price</th>
+                                        <th>Status</th>
+                                        <th>Views</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for listing in user_listings %}
+                                    <tr>
+                                        <td>
+                                            <div class="product-info">
+                                                {% with primary_image=listing.images.first %}
+                                                    {% if primary_image %}
+                                                        <img src="{{ primary_image.image.url }}" 
+                                                             alt="{{ listing.title }}" 
+                                                             class="product-thumb">
+                                                    {% else %}
+                                                        <div class="product-thumb-placeholder">
+                                                            <i class="bi bi-image"></i>
+                                                        </div>
+                                                    {% endif %}
+                                                {% endwith %}
+                                                <div class="product-details">
+                                                    <h6 class="product-title">{{ listing.title|truncatechars:30 }}</h6>
+                                                    {% if listing.current_boost %}
+                                                        <span class="boost-badge {{ listing.current_boost.boost_type }}">
+                                                            <i class="bi bi-rocket"></i> {{ listing.current_boost.get_boost_type_display }}
+                                                        </span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="price-display">₦{{ listing.price|floatformat:0 }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="status-badge {{ listing.stock_status }}">
+                                                {{ listing.stock_status|title|default:"In Stock" }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="view-count">
+                                                <i class="bi bi-eye me-1"></i>{{ listing.view_count }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <a href="{% url 'boost_product' listing.id %}" 
+                                                   class="btn btn-sm btn-outline-success"
+                                                   data-bs-toggle="tooltip" title="Boost this product">
+                                                    <i class="bi bi-rocket"></i>
+                                                </a>
+                                                <a href="{% url 'product_detail' listing.id %}" 
+                                                   class="btn btn-sm btn-outline-primary"
+                                                   data-bs-toggle="tooltip" title="View product">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <i class="bi bi-box-seam"></i>
+                            </div>
+                            <h5>No listings yet</h5>
+                            <p>Create your first listing to start selling</p>
+                            <a href="{% url 'product_create' %}" class="btn btn-primary">
+                                <i class="bi bi-plus-circle me-2"></i>Create Listing
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Boosts Section -->
+        {% if active_boosts %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="dashboard-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title">
+                            <i class="bi bi-rocket-takeoff me-2"></i>Active Boosts
+                        </h5>
+                        <div class="header-actions">
+                            <a href="{% url 'product_boost_status' %}" class="btn btn-sm btn-outline-primary me-2">
+                                <i class="bi bi-graph-up me-1"></i>View All Boosts
+                            </a>
+                            <span class="badge bg-success">{{ active_boosts_count }} Active</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Boost Type</th>
+                                        <th>Started</th>
+                                        <th>Expires</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for boost in active_boosts %}
+                                    <tr>
+                                        <td>
+                                            <a href="{% url 'product_detail' boost.product.id %}" 
+                                               class="text-decoration-none">
+                                                {{ boost.product.title|truncatechars:30 }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <span class="boost-type-badge {{ boost.boost_type }}">
+                                                <i class="bi {% if boost.boost_type == 'featured' %}bi-star-fill{% elif boost.boost_type == 'urgent' %}bi-clock-fill{% elif boost.boost_type == 'spotlight' %}bi-lightning-fill{% else %}bi-gem{% endif %}"></i>
+                                                {{ boost.get_boost_type_display }}
+                                            </span>
+                                        </td>
+                                        <td>{{ boost.start_date|date:"M d" }}</td>
+                                        <td>{{ boost.end_date|date:"M d, Y" }}</td>
+                                        <td>
+                                            {% if boost.days_remaining <= 1 %}
+                                                <span class="status-badge expiring">
+                                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                                    Expires today
+                                                </span>
+                                            {% elif boost.days_remaining <= 3 %}
+                                                <span class="status-badge warning">
+                                                    <i class="bi bi-clock me-1"></i>
+                                                    {{ boost.days_remaining }} days left
+                                                </span>
+                                            {% else %}
+                                                <span class="status-badge active">
+                                                    <i class="bi bi-check-circle me-1"></i>
+                                                    {{ boost.days_remaining }} days left
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'product_detail' boost.product.id %}" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                View Product
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Recent Transactions -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="dashboard-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title">
+                            <i class="bi bi-clock-history me-2"></i>Recent Transactions
+                        </h5>
+                        <a href="{% url 'transaction_history' %}" class="btn btn-sm btn-outline-primary">
+                            View All
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        {% if recent_transactions %}
+                        <div class="transaction-list">
+                            {% for transaction in recent_transactions %}
+                            <div class="transaction-item">
+                                <div class="transaction-icon {{ transaction.transaction_type }}">
+                                    <i class="bi {% if transaction.amount > 0 %}bi-plus-circle{% else %}bi-dash-circle{% endif %}"></i>
+                                </div>
+                                <div class="transaction-details">
+                                    <h6 class="transaction-title">{{ transaction.get_transaction_type_display }}</h6>
+                                    <p class="transaction-date">{{ transaction.created_at|date:"M d, Y \a\t H:i" }}</p>
+                                </div>
+                                <div class="transaction-amount {% if transaction.amount > 0 %}positive{% else %}negative{% endif %}">
+                                    {% if transaction.amount > 0 %}+{% endif %}₦{{ transaction.amount|floatformat:0 }}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <i class="bi bi-clock-history"></i>
+                            </div>
+                            <h5>No transactions yet</h5>
+                            <p>Your transaction history will appear here</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

@@ -1,0 +1,686 @@
+{% load static %}
+
+<div class="card request-card h-100 {% if request.is_featured %}featured{% endif %} {% if request.buyer_is_verified_business %}verified-buyer{% endif %} {% if request.urgency == 'urgent' %}urgent-request{% endif %}">
+
+    {% if request.is_featured %}
+        <div class="rc-badge rc-badge--featured">
+            <i class="bi bi-star-fill"></i><span>Featured</span>
+        </div>
+    {% endif %}
+
+
+    {% if request.urgency == 'urgent' %}
+        <div class="rc-urgency-badge rc-urgency-badge--urgent" data-bs-toggle="tooltip" data-bs-placement="top" title="Urgent Request">
+            <i class="bi bi-clock-fill"></i>
+        </div>
+    {% elif request.urgency == 'high' %}
+        <div class="rc-urgency-badge rc-urgency-badge--high" data-bs-toggle="tooltip" data-bs-placement="top" title="High Priority">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+        </div>
+    {% endif %}
+
+    <div class="rc-image-wrap">
+        <a href="{% url 'buyer_requests:detail' pk=request.id %}" class="rc-image-link" tabindex="-1" aria-hidden="true">
+            {% with primary_image=request.primary_image %}
+                {% if primary_image %}
+                    <img src="{{ primary_image.image.url }}" class="rc-image" alt="{{ request.title }}" loading="lazy">
+                {% else %}
+                    <div class="rc-placeholder">
+                        <i class="rc-placeholder-icon
+                            {% if request.request_type == 'product' %}bi bi-box-seam
+                            {% elif request.request_type == 'service' %}bi bi-tools
+                            {% elif request.request_type == 'both' %}bi bi-person-gear
+                            {% else %}bi bi-question-circle{% endif %}"></i>
+                        <span class="rc-placeholder-label">{{ request.get_request_type_display }}</span>
+                    </div>
+                {% endif %}
+            {% endwith %}
+        </a>
+
+        {% if user.is_authenticated and user.profile != request.buyer %}
+            <button class="rc-save-btn {% if request.is_saved %}saved{% endif %}"
+                data-item-id="{{ request.id }}"
+                data-item-type="request"
+                onclick="toggleSave(event, '{{ request.id }}', 'request')"
+                title="{% if request.is_saved %}Remove from saved{% else %}Save this request{% endif %}"
+                aria-label="{% if request.is_saved %}Remove from saved{% else %}Save this request{% endif %}">
+                <i class="bi {% if request.is_saved %}bi-bookmark-fill{% else %}bi-bookmark{% endif %}"></i>
+            </button>
+        {% endif %}
+
+        {% if user.is_authenticated and user.profile == request.buyer %}
+            <div class="rc-owner-icon" title="Your Request">
+                <i class="bi bi-person-check-fill"></i>
+            </div>
+            <div class="rc-actions-overlay">
+                <button class="rc-action-btn"
+                        onclick="window.location.href='{% url 'buyer_requests:update' pk=request.id %}'"
+                        title="Edit Request"
+                        aria-label="Edit Request">
+                    <i class="bi bi-pencil-square"></i>
+                </button>
+                {% if request.can_be_bumped %}
+                <button class="rc-action-btn"
+                        onclick="bumpRequest('{{ request.id }}')"
+                        title="Bump to Top"
+                        aria-label="Bump to Top">
+                    <i class="bi bi-arrow-up-circle"></i>
+                </button>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="rc-body">
+
+        <a href="{% url 'buyer_requests:detail' pk=request.id %}" class="rc-title-link">
+            <h3 class="rc-title">{{ request.title|truncatechars:55 }}</h3>
+        </a>
+
+        <div class="rc-meta">
+
+            {# Row 1: Budget + Urgency tag #}
+            <div class="rc-row">
+                <span class="rc-budget">
+                    {% if request.formatted_budget %}{{ request.formatted_budget }}
+                    {% else %}{{ request.budget_display }}{% endif %}
+                </span>
+                <span class="rc-tag urgency-{{ request.urgency }}">
+                    {% if request.urgency == 'urgent' %}<i class="bi bi-lightning-fill"></i>
+                    {% elif request.urgency == 'high' %}<i class="bi bi-exclamation-triangle-fill"></i>
+                    {% elif request.urgency == 'medium' %}<i class="bi bi-dash-circle-fill"></i>
+                    {% else %}<i class="bi bi-clock-fill"></i>{% endif %}
+                    <span class="rc-tag-text">{{ request.get_urgency_display }}</span>
+                </span>
+            </div>
+
+            {# Row 2: Request type + Quantity #}
+            <div class="rc-row rc-row--muted">
+                <span class="rc-inline-info">
+                    {% if request.request_type == 'product' %}<i class="bi bi-box-seam"></i>
+                    {% elif request.request_type == 'service' %}<i class="bi bi-tools"></i>
+                    {% elif request.request_type == 'both' %}<i class="bi bi-person-gear"></i>{% endif %}
+                    <span class="rc-clamp-1">{{ request.get_request_type_display }}</span>
+                </span>
+                {% if request.quantity_needed > 1 %}
+                <span class="rc-inline-info rc-inline-info--right">
+                    <i class="bi bi-123"></i>
+                    <span>Qty: {{ request.quantity_needed }}</span>
+                </span>
+                {% endif %}
+            </div>
+
+            {# Row 3: Buyer + Location #}
+            <div class="rc-row">
+                <div class="rc-buyer-wrap">
+                    <a href="{% url 'user_store' request.buyer.user.username %}" class="rc-buyer-link">
+                        {% if request.buyer_is_verified_business %}
+                            <i class="bi bi-building-fill rc-icon-verified"></i>
+                        {% endif %}
+                        <span class="rc-buyer-name">
+                            {% if request.buyer_is_verified_business and request.buyer.business_name %}
+                                {{ request.buyer.business_name|truncatechars:18 }}
+                            {% else %}
+                                {{ request.buyer.user.username|truncatechars:18 }}
+                            {% endif %}
+                        </span>
+                    </a>
+                </div>
+                <span class="rc-location">
+                    {% if not request.accept_nationwide %}
+                        <i class="bi bi-geo-alt-fill rc-icon-accent"></i>
+                        <span class="rc-clamp-1">
+                            {% if request.buyer.location %}
+                                {% with loc=request.buyer.location %}
+                                    {% if loc.city and loc.state %}{{ loc.city }}, {{ loc.state.name }}
+                                    {% elif loc.city %}{{ loc.city }}
+                                    {% elif loc.lga and loc.state %}{{ loc.lga.name }}, {{ loc.state.name }}
+                                    {% elif loc.state %}{{ loc.state.name }}
+                                    {% else %}Local{% endif %}
+                                {% endwith %}
+                            {% else %}Local Area{% endif %}
+                        </span>
+                    {% else %}
+                        <i class="bi bi-globe rc-icon-accent"></i>
+                        <span>Nationwide</span>
+                    {% endif %}
+                </span>
+            </div>
+
+            {# Row 4: Stats bar #}
+            <div class="rc-stats-bar">
+                <span class="rc-stat"><i class="bi bi-eye"></i>{{ request.view_count }}</span>
+                <span class="rc-stat"><i class="bi bi-chat-dots"></i>{{ request.response_count }}</span>
+                <span class="rc-stat rc-stat--days"><i class="bi bi-calendar3"></i>{{ request.days_remaining }}d left</span>
+            </div>
+
+            {# Row 5: Time + Needed-by footer #}
+            <div class="rc-row rc-row--footer">
+                <span class="rc-created">{{ request.created_at|timesince }} ago</span>
+                {% if request.needed_by %}
+                <span class="rc-needed-by">By {{ request.needed_by|date:"M d" }}</span>
+                {% endif %}
+            </div>
+
+            {# Verified business footer #}
+            {% if request.buyer_is_verified_business %}
+                <div class="rc-verified-footer">
+                    <span class="rc-verified-tag">
+                        <i class="bi bi-shield-check"></i>Verified Business
+                    </span>
+                    {% if request.buyer.business_verification_status == 'verified' and request.buyer.business_address_visible and request.buyer.location %}
+                        <span class="rc-biz-address">
+                            <i class="bi bi-geo-alt"></i>
+                            <span class="rc-clamp-1">
+                                {% with loc=request.buyer.location %}
+                                    {% if loc.address %}{{ loc.address|truncatechars:28 }}
+                                    {% elif loc.city %}{{ loc.city }}{% endif %}
+                                {% endwith %}
+                            </span>
+                        </span>
+                    {% endif %}
+                </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+
+<style>
+
+.request-card {
+    container-type: inline-size;
+    container-name: rc;
+}
+
+/* 2 ── Base card shell ───────────────────────────────────────── */
+.request-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-width: 0;
+    background: var(--card-background);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-lg, 12px);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    word-break: break-word;
+}
+.request-card.featured {
+    border-color: var(--warning, #f59e0b);
+    box-shadow: 0 0 0 2px var(--warning, #f59e0b), var(--shadow-md);
+}
+.request-card.verified-buyer {
+    background: linear-gradient(135deg, var(--card-background) 0%, rgba(34,197,94,0.025) 100%);
+}
+.request-card.urgent-request {
+    background: linear-gradient(135deg, var(--card-background) 0%, rgba(220,53,69,0.025) 100%);
+}
+.request-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* 3 ── Badges ────────────────────────────────────────────────── */
+.rc-badge {
+    position: absolute;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    line-height: 1;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Featured — top-left pill */
+.rc-badge--featured {
+    top: 6px;
+    left: 6px;
+    padding: 3px 7px;
+    border-radius: 20px;
+    font-size: 0.58rem;
+    background: rgba(245, 158, 11, 0.92);
+    color: #fff;
+    backdrop-filter: blur(4px);
+}
+
+/* Verified — top-right circle */
+.rc-badge--verified {
+    top: 6px;
+    right: 6px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(245, 158, 11, 0.92);
+    box-shadow: var(--shadow-sm);
+    justify-content: center;
+}
+.rc-badge--verified i { color: var(--success, #22c55e); font-size: 12px; }
+
+/* Urgency — stacked below verified badge */
+.rc-urgency-badge {
+    position: absolute;
+    top: 30px;
+    right: 6px;
+    z-index: 10;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.55rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.18);
+}
+.rc-urgency-badge--urgent { background: #dc3545; color: #fff; }
+.rc-urgency-badge--high   { background: #fd7e14; color: #fff; }
+
+/* 4 ── Image container — 4:3 aspect ratio ───────────────────── */
+.rc-image-wrap {
+    position: relative;
+    flex-shrink: 0;
+    padding-top: 75%;
+    overflow: hidden;
+    background: var(--background-color);
+}
+.rc-image-link {
+    position: absolute;
+    inset: 0;
+    display: block;
+}
+.rc-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.22s ease;
+}
+.request-card:hover .rc-image { transform: scale(1.04); }
+
+.rc-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    color: var(--text-secondary);
+}
+.rc-placeholder-icon  { font-size: clamp(1.4rem, 10cqi, 2.6rem); opacity: 0.25; }
+.rc-placeholder-label {
+    font-size: clamp(0.5rem, 2cqi, 0.68rem);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    opacity: 0.5;
+}
+
+/* 5 ── Overlay action buttons ───────────────────────────────── */
+.rc-save-btn {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    z-index: 15;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.14);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.rc-save-btn:hover {
+    transform: scale(1.12);
+    border-color: var(--accent-color);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.18);
+}
+.rc-save-btn i { color: #6c757d; font-size: 0.85rem; transition: color 0.15s ease; }
+.rc-save-btn.saved { border-color: var(--accent-color); }
+.rc-save-btn.saved i { color: var(--accent-color); animation: rcHeartBeat 0.55s ease; }
+
+.rc-actions-overlay {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    z-index: 15;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.rc-action-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: none;
+    background: var(--primary-color);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,123,255,0.28);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.rc-action-btn:hover { transform: scale(1.12); box-shadow: 0 3px 10px rgba(0,123,255,0.4); }
+.rc-action-btn i { font-size: 0.75rem; }
+
+.rc-owner-icon {
+    position: absolute;
+    bottom: 6px;
+    left: 6px;
+    z-index: 15;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0,123,255,0.28);
+    transition: transform 0.15s ease;
+}
+.rc-owner-icon i { font-size: 0.8rem; }
+
+@keyframes rcHeartBeat {
+    0%,100% { transform: scale(1); }
+    25%      { transform: scale(1.32); }
+    50%      { transform: scale(1); }
+    75%      { transform: scale(1.18); }
+}
+
+/* 6 ── Card body ─────────────────────────────────────────────── */
+.rc-body {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-width: 0;
+    padding: 10px;
+    gap: 5px;
+    overflow: hidden;
+}
+
+/* 7 ── Title ─────────────────────────────────────────────────── */
+.rc-title-link {
+    display: block;
+    text-decoration: none;
+    min-width: 0;
+    color: inherit;
+}
+.rc-title {
+    margin: 0 0 1px;
+    font-weight: 600;
+    line-height: 1.28;
+    color: var(--text-primary);
+    font-size: clamp(0.7rem, 3.8cqi, 0.875rem);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 2.56em;
+}
+.rc-title-link:hover .rc-title { color: var(--primary-color); }
+
+/* 8 ── Meta container ────────────────────────────────────────── */
+.rc-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    margin-top: auto;
+}
+
+/* 9 ── Generic row ───────────────────────────────────────────── */
+.rc-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+}
+.rc-row--muted { color: var(--text-secondary); }
+.rc-row--footer {
+    padding-top: 3px;
+    border-top: 1px solid var(--border-color);
+}
+
+/* 10 ── Budget ───────────────────────────────────────────────── */
+.rc-budget {
+    font-size: clamp(0.75rem, 3.2cqi, 0.95rem);
+    font-weight: 700;
+    color: var(--accent-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+}
+
+/* 11 ── Urgency tag ──────────────────────────────────────────── */
+.rc-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    border-radius: 4px;
+    padding: 2px 5px;
+    font-size: clamp(0.48rem, 1.9cqi, 0.6rem);
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.2;
+    max-width: 48%;
+}
+.rc-tag-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.urgency-urgent { background: #dc3545; }
+.urgency-high   { background: #fd7e14; }
+.urgency-medium { background: var(--info, #0dcaf0); }
+.urgency-low    { background: var(--success, #22c55e); }
+
+/* 12 ── Inline info ──────────────────────────────────────────── */
+.rc-inline-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: clamp(0.58rem, 2.2cqi, 0.68rem);
+    color: var(--text-secondary);
+    font-weight: 500;
+    min-width: 0;
+    overflow: hidden;
+}
+.rc-inline-info i { flex-shrink: 0; color: var(--primary-color); font-size: inherit; }
+.rc-inline-info--right { flex-shrink: 0; }
+
+/* Generic single-line clamp utility */
+.rc-clamp-1 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+/* 13 ── Buyer + Location ─────────────────────────────────────── */
+.rc-buyer-wrap {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+}
+.rc-buyer-link {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    text-decoration: none;
+    color: var(--text-secondary);
+    min-width: 0;
+    overflow: hidden;
+    transition: color 0.15s ease;
+}
+.rc-buyer-link:hover { color: var(--primary-color); }
+
+.rc-icon-verified { color: #22c55e !important; font-size: 0.65rem; flex-shrink: 0; }
+.rc-icon-accent   { color: var(--accent-color); font-size: inherit; flex-shrink: 0; }
+
+.rc-buyer-name {
+    font-size: clamp(0.58rem, 2.2cqi, 0.68rem);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+.rc-location {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    min-width: 0;
+    max-width: 46%;
+    font-size: clamp(0.52rem, 1.9cqi, 0.62rem);
+    color: var(--text-secondary);
+}
+
+/* 14 ── Stats bar ────────────────────────────────────────────── */
+.rc-stats-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 6px;
+    background: var(--background-color);
+    border-radius: var(--radius-sm, 6px);
+}
+.rc-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: clamp(0.52rem, 1.9cqi, 0.62rem);
+    color: var(--text-secondary);
+    font-weight: 500;
+    white-space: nowrap;
+}
+.rc-stat i { color: var(--primary-color); font-size: clamp(0.52rem, 1.9cqi, 0.64rem); flex-shrink: 0; }
+.rc-stat--days i { color: #f59e0b; }
+
+/* 15 ── Time footer ──────────────────────────────────────────── */
+.rc-created {
+    font-size: clamp(0.48rem, 1.7cqi, 0.58rem);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+}
+.rc-needed-by {
+    font-size: clamp(0.48rem, 1.7cqi, 0.58rem);
+    color: var(--danger, #dc3545);
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* 16 ── Verified business footer ────────────────────────────── */
+.rc-verified-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: 4px;
+    border-top: 1px solid rgba(34,197,94,0.18);
+}
+.rc-verified-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: #22c55e;
+    font-size: clamp(0.52rem, 1.9cqi, 0.62rem);
+    font-weight: 600;
+}
+.rc-verified-tag i { flex-shrink: 0; }
+.rc-biz-address {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: var(--text-secondary);
+    font-size: clamp(0.48rem, 1.6cqi, 0.58rem);
+    min-width: 0;
+    overflow: hidden;
+}
+.rc-biz-address i { flex-shrink: 0; color: #6b7280; font-size: inherit; }
+
+/* 17 ── Dark mode ────────────────────────────────────────────── */
+[data-bs-theme="dark"] .request-card.verified-buyer   { background: linear-gradient(135deg, var(--card-background) 0%, rgba(34,197,94,0.06) 100%); }
+[data-bs-theme="dark"] .request-card.urgent-request   { background: linear-gradient(135deg, var(--card-background) 0%, rgba(220,53,69,0.06) 100%); }
+[data-bs-theme="dark"] .rc-badge--verified            { background: var(--card-background); }
+[data-bs-theme="dark"] .rc-save-btn                   { background: rgba(28,28,30,0.95); border-color: rgba(255,255,255,0.1); }
+[data-bs-theme="dark"] .rc-save-btn:hover             { background: rgba(38,38,40,0.98); border-color: var(--accent-color); }
+[data-bs-theme="dark"] .rc-verified-footer            { border-top-color: rgba(34,197,94,0.25); }
+
+/* 18 ── Viewport breakpoints ─────────────────────────────────── */
+@media (max-width: 1199.98px) {
+    .rc-body { padding: 9px; gap: 4px; }
+}
+@media (max-width: 767.98px) {
+    .rc-body { padding: 8px; gap: 3px; }
+    .rc-badge--featured { font-size: 0.54rem; padding: 2px 5px; top: 5px; left: 5px; }
+    .rc-badge--verified { width: 20px; height: 20px; top: 5px; right: 5px; }
+    .rc-badge--verified i { font-size: 11px; }
+    .rc-urgency-badge { top: 27px; right: 5px; width: 18px; height: 18px; }
+    .rc-save-btn    { width: 26px; height: 26px; bottom: 5px; right: 5px; }
+    .rc-action-btn  { width: 24px; height: 24px; }
+    .rc-owner-icon  { width: 24px; height: 24px; bottom: 5px; left: 5px; }
+    .rc-actions-overlay { bottom: 5px; right: 5px; }
+}
+@media (max-width: 575.98px) {
+    .rc-body { padding: 7px; gap: 3px; }
+    .rc-save-btn   { width: 24px; height: 24px; bottom: 4px; right: 4px; }
+    .rc-action-btn { width: 22px; height: 22px; }
+    .rc-owner-icon { width: 22px; height: 22px; bottom: 4px; left: 4px; }
+    .rc-title { min-height: 2.3em; }
+}
+
+/* 19 ── Loading / Focus / Motion ─────────────────────────────── */
+.request-card.loading { opacity: 0.65; pointer-events: none; }
+
+.rc-save-btn:focus,
+.rc-action-btn:focus { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+    .request-card,
+    .rc-image,
+    .rc-save-btn,
+    .rc-action-btn,
+    .rc-buyer-link { transition: none; }
+    .request-card:hover    { transform: none; }
+    .request-card:hover .rc-image { transform: none; }
+    .rc-save-btn.saved i   { animation: none; }
+}
+</style>
+
+<script>
+function bumpRequest(requestId) {
+    if (confirm('Are you sure you want to bump this request to the top? You can only bump once every 24 hours.')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/buyer-requests/${requestId}/bump/`;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = document.querySelector('[name="csrfmiddlewaretoken"]')?.value || '';
+        form.appendChild(csrfInput);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>

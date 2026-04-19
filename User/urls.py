@@ -42,6 +42,9 @@ urlpatterns = [
     path('profile-menu/', views.profile_menu, name='profile_menu'),
     path('profile/update/', ProfileUpdateView.as_view(), name='profile_update'),
     
+    path('save/toggle/', views.toggle_save_item, name='toggle_save'),
+    path('saved/', views.saved_items, name='saved_items'),
+    
     path('send-verification-otp/', views.send_verification_otp, name='send_verification_otp'),
     path('verify-email/', views.verify_email_form, name='verify_email_form'),
     
@@ -67,4 +70,13 @@ urlpatterns = [
     
     # API endpoints
     path('api/lgas/<int:state_id>/', views.load_lgas, name='load_lgas'),
+    # UNIFIED REPORT SYSTEM
+    path('report/<str:content_type>/<uuid:item_id>/', views.report_item, name='report_item'),
+    
+    # Admin moderation panel
+    path('report/<str:content_type>/<uuid:item_id>/', views.report_item, name='report_item'),
+    path('admin/reports/', views.admin_reports_list, name='admin_reports'),
+    path('admin/reports/<int:report_id>/', views.admin_report_detail, name='admin_report_detail'),
+    path('admin/reports/<int:report_id>/suspend/', views.admin_suspend_item, name='admin_suspend_item'),
+    path('admin/reports/<int:report_id>/dismiss/', views.admin_dismiss_report, name='admin_dismiss_report'),
 ]

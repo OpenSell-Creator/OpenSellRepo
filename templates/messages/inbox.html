@@ -1,224 +1,352 @@
 {% extends 'messages/base.html' %}
 {% block messages_content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-<h4 class="inbox-title">Your Messages</h4>
-<div class="encryption-badge">
-<i class="fas fa-lock"></i> End-to-end encrypted
+
+{# ── Filter Nav — inbox only ──────────────────────────────────────────────── #}
+
+
+<style>
+/* ── Pill-group nav ───────────────────────────────────────────────────────── */
+.inbox-filter-nav {
+    display: inline-flex;
+    border: 1.5px solid var(--border-color);
+    border-radius: 0.55rem;
+    overflow: hidden;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    background: var(--card-background);
+}
+.inbox-filter-nav::-webkit-scrollbar { display: none; }
+
+.filter-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.45rem 1.05rem;
+    font-size: 0.83rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-decoration: none;
+    background: transparent;
+    border-right: 1.5px solid var(--border-color);
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+    line-height: 1.4;
+}
+.filter-btn:last-child {
+    border-right: none;
+}
+.filter-btn:hover:not(.active) {
+    color: var(--primary-color);
+    background: rgba(var(--primary-rgb), 0.05);
+}
+.filter-btn.active {
+    background: var(--primary-color);
+    color: #fff;
+    font-weight: 600;
+}
+
+.filter-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    border-radius: 9px;
+    /* white when inside active (primary bg), accent when inactive */
+    background: rgba(255,255,255,0.3);
+    color: #fff;
+    line-height: 1;
+}
+.filter-btn:not(.active) .filter-badge {
+    background: var(--accent-color, #c9aa71);
+    color: #fff;
+}
+
+@media (max-width: 576px) {
+    .inbox-filter-nav { width: 100%; }
+    .filter-btn { padding: 0.42rem 0.75rem; font-size: 0.78rem; flex: 1; justify-content: center; }
+}
+</style>
+
+{# ── Page Header ──────────────────────────────────────────────────────────── #}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="inbox-title mb-0">
+            {% if current_filter == 'products' %}Product Messages
+            {% elif current_filter == 'services' %}Service Messages
+            {% elif current_filter == 'requests' %}Request Messages
+            {% elif current_filter == 'unread' %}Unread Messages
+            {% else %}Your Inbox
+            {% endif %}
+        </h4>
+        {% if page_obj.paginator.count > 0 %}
+            <small class="text-muted">{{ page_obj.paginator.count }} conversation{{ page_obj.paginator.count|pluralize }}</small>
+        {% endif %}
+    </div>
+    <div class="encryption-badge">
+        <i class="fas fa-lock fa-sm"></i> End-to-end encrypted
+    </div>
 </div>
+
+<div class="inbox-filter-nav mb-4">
+    <a href="{% url 'inbox' %}"
+       class="filter-btn {% if not current_filter %}active{% endif %}">
+        <i class="fas fa-inbox fa-sm me-1"></i>All
+        {% if unread_messages_count > 0 %}<span class="filter-badge">{{ unread_messages_count }}</span>{% endif %}
+    </a>
+    <a href="{% url 'inbox' %}?filter=products"
+       class="filter-btn {% if current_filter == 'products' %}active{% endif %}">
+        <i class="fas fa-box fa-sm me-1"></i>Products
+    </a>
+    <a href="{% url 'inbox' %}?filter=services"
+       class="filter-btn {% if current_filter == 'services' %}active{% endif %}">
+        <i class="fas fa-briefcase fa-sm me-1"></i>Services
+    </a>
+    <a href="{% url 'inbox' %}?filter=requests"
+       class="filter-btn {% if current_filter == 'requests' %}active{% endif %}">
+        <i class="fas fa-search fa-sm me-1"></i>Requests
+    </a>
+    <a href="{% url 'inbox' %}?filter=unread"
+       class="filter-btn {% if current_filter == 'unread' %}active{% endif %}">
+        <i class="fas fa-circle fa-sm me-1"></i>Unread
+    </a>
 </div>
+
+{# ── Conversation List ─────────────────────────────────────────────────────── #}
 {% for conversation in page_obj %}
-    {% with last_message=conversation.get_last_message %}
-    <div class="conversation-card card mb-3">
-        <a href="{% url 'conversation_detail' conversation.id %}" class="text-decoration-none conversation-link">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <h6 class="mb-1 conversation-product-title">{{ conversation.product.title }}</h6>
-                        <p class="mb-0 conversation-participant small">
+    {% with last_message=conversation.last_message %}
+    <div class="conversation-card card mb-2">
+        <a href="{% url 'conversation_detail' conversation.uuid %}" class="text-decoration-none conversation-link">
+            <div class="card-body py-3 px-3">
+                <div class="d-flex justify-content-between align-items-start gap-3">
+
+                    {# Left: icon column #}
+                    <div class="conv-type-icon
+                        {% if conversation.content_type.model == 'product_listing' %}conv-icon-product
+                        {% elif conversation.content_type.model == 'servicelisting' %}conv-icon-service
+                        {% elif conversation.content_type.model == 'buyerrequest' %}conv-icon-request
+                        {% endif %}">
+                        <i class="fas
+                            {% if conversation.content_type.model == 'product_listing' %}fa-box
+                            {% elif conversation.content_type.model == 'servicelisting' %}fa-briefcase
+                            {% elif conversation.content_type.model == 'buyerrequest' %}fa-search
+                            {% endif %}"></i>
+                    </div>
+
+                    {# Centre: main info #}
+                    <div class="flex-grow-1 min-w-0">
+
+                        {# Badges row #}
+                        <div class="d-flex flex-wrap gap-1 align-items-center mb-1">
+                            <span class="badge content-type-badge
+                                {% if conversation.content_type.model == 'product_listing' %}badge-product
+                                {% elif conversation.content_type.model == 'servicelisting' %}badge-service
+                                {% elif conversation.content_type.model == 'buyerrequest' %}badge-request
+                                {% endif %}">
+                                {{ conversation.get_content_type_display }}
+                            </span>
+
+                            {% if conversation.service_inquiry %}
+                                <span class="badge inbox-status-badge inbox-status-{{ conversation.service_inquiry.status }}">
+                                    Inquiry &bull; {{ conversation.service_inquiry.get_status_display }}
+                                </span>
+                            {% elif conversation.seller_response %}
+                                <span class="badge inbox-status-badge inbox-status-{{ conversation.seller_response.status }}">
+                                    Response &bull; {{ conversation.seller_response.get_status_display }}
+                                </span>
+                            {% endif %}
+                        </div>
+
+                        {# Title #}
+                        <h6 class="conv-title mb-1 {% if conversation.unread_count > 0 %}fw-bold{% endif %}">
+                            {{ conversation.get_content_title }}
+                        </h6>
+
+                        {# Participant & last message #}
+                        <p class="conv-participant mb-0 small">
                             {% for participant in conversation.participants.all %}
                                 {% if participant != request.user.profile %}
-                                    {{ participant.user.username }}
+                                    <span>{{ participant.user.username }}</span>
+                                    {% if participant.business_verification_status == 'verified' %}
+                                        <i class="fas fa-check-circle text-primary ms-1" title="Verified Business"></i>
+                                    {% endif %}
                                 {% endif %}
                             {% endfor %}
+                            {% if last_message %}
+                                <span class="text-muted mx-1">&bull;</span>
+                                <span class="conv-preview">
+                                    <i class="fas fa-lock encryption-icon me-1"></i>{{ last_message.content|truncatewords:10 }}
+                                </span>
+                            {% endif %}
                         </p>
+
                     </div>
-                    <div class="text-end">
+
+                    {# Right: date + unread #}
+                    <div class="text-end flex-shrink-0">
+                        <small class="conv-date d-block">{{ conversation.updated_at|date:"M d" }}</small>
                         {% if conversation.unread_count > 0 %}
-                            <span class="badge unread-badge rounded-pill">{{ conversation.unread_count }}</span>
-                        {% endif %}
-                        <small class="conversation-date d-block">{{ conversation.updated_at|date:"M d, Y" }}</small>
-                        {% if last_message %}
-                            <small class="conversation-preview text-truncate d-block" style="max-width: 200px;">
-                                <i class="fas fa-lock-alt encryption-icon"></i> {{ last_message.content }}
-                            </small>
+                            <span class="badge unread-badge rounded-pill mt-1">{{ conversation.unread_count }}</span>
                         {% endif %}
                     </div>
+
                 </div>
             </div>
         </a>
     </div>
     {% endwith %}
 {% empty %}
-    <div class="empty-state text-center p-4 rounded">
-        <p class="mb-0">No conversations yet.</p>
+    <div class="empty-state text-center py-5">
+        <div class="empty-icon mb-3">
+            {% if current_filter == 'unread' %}
+                <i class="fas fa-check-circle fa-3x text-success"></i>
+            {% else %}
+                <i class="fas fa-inbox fa-3x text-muted"></i>
+            {% endif %}
+        </div>
+        {% if current_filter == 'unread' %}
+            <p class="mb-1 fw-semibold">You're all caught up!</p>
+            <small class="text-muted">No unread messages at the moment.</small>
+        {% elif current_filter %}
+            <p class="mb-1 fw-semibold">No {{ current_filter }} conversations yet.</p>
+            <small class="text-muted">Messages about {{ current_filter }} will appear here.</small>
+        {% else %}
+            <p class="mb-1 fw-semibold">No conversations yet.</p>
+            <small class="text-muted">Start a conversation by messaging a seller, provider, or buyer.</small>
+        {% endif %}
     </div>
 {% endfor %}
 
-<div class="encryption-info-card mt-3 mb-4">
-    <div class="card">
-        <div class="card-body">
-            <h6 class="card-title"><i class="fas fa-shield-alt"></i> Your Privacy Matters</h6>
-            <p class="card-text small">All messages are end-to-end encrypted. Only you and the other conversation participant can read the messages. Not even our administrators can access your private conversations.</p>
-        </div>
-    </div>
-</div>
+{# ── Pagination ───────────────────────────────────────────────────────────── #}
 {% if page_obj.has_other_pages %}
 <nav aria-label="Conversations pagination" class="mt-4">
     <ul class="pagination justify-content-center">
         {% if page_obj.has_previous %}
             <li class="page-item">
-                <a class="page-link" href="?page=1">&laquo; First</a>
+                <a class="page-link" href="?{% if current_filter %}filter={{ current_filter }}&{% endif %}page=1">&laquo;</a>
             </li>
             <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                <a class="page-link" href="?{% if current_filter %}filter={{ current_filter }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
             </li>
         {% endif %}
-    <li class="page-item disabled">
-        <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-    </li>
-
-    {% if page_obj.has_next %}
-        <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+        <li class="page-item disabled">
+            <span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
         </li>
-        <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
-        </li>
-    {% endif %}
-</ul>
+        {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?{% if current_filter %}filter={{ current_filter }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?{% if current_filter %}filter={{ current_filter }}&{% endif %}page={{ page_obj.paginator.num_pages }}">&raquo;</a>
+            </li>
+        {% endif %}
+    </ul>
 </nav>
 {% endif %}
+
+{# ── Privacy footer ───────────────────────────────────────────────────────── #}
+<div class="privacy-card mt-4">
+    <i class="fas fa-shield-alt me-2"></i>
+    <span>All messages are end-to-end encrypted. Only you and your conversation partner can read them.</span>
+</div>
+
 <style>
-    /* Encryption Badge & Info */
-    .encryption-badge {
-        background-color: rgba(var(--primary-rgb), 0.1);
-        color: var(--primary-color);
-        padding: 0.35rem 0.75rem;
-        border-radius: 1rem;
-        font-size: var(--font-size-sm);
-        font-weight: 500;
-        display: flex;
-        align-items: center;
-        gap: 0.35rem;
-    }
-    
-    .encryption-icon {
-        font-size: 10px;
-        opacity: 0.7;
-        margin-right: 3px;
-    }
-    
-    .encryption-info-card {
-        border-radius: var(--radius-md);
-    }
-    
-    .encryption-info-card .card {
-        border-color: var(--primary-color);
-        background-color: rgba(var(--primary-rgb), 0.05);
-    }
-    
-    .encryption-info-card .card-title {
-        color: var(--primary-color);
-        font-size: 0.95rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    
-    /* Inbox Title */
-    .inbox-title {
-        color: var(--text-primary);
-        font-weight: 600;
-        letter-spacing: -0.01em;
-        margin-bottom: 0;
-    }
-    
-    /* Conversation Cards */
-    .conversation-card {
-        border: 1px solid var(--border-color);
-        background-color: var(--card-background);
-        transition: all 0.2s ease;
-        border-radius: var(--radius-md);
-        box-shadow: 0 2px 8px var(--shadow-color);
-        margin-bottom: 1rem;
-    }
-    
-    .conversation-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px var(--shadow-color);
-        border-color: var(--primary-color);
-    }
-    
-    /* Text Styling */
-    .conversation-link {
-        color: var(--text-primary) !important;
-    }
-    
-    .conversation-product-title {
-        color: var(--text-primary);
-        font-weight: 600;
-    }
-    
-    .conversation-participant {
-        color: var(--accent-color);
-        font-weight: 500;
-    }
-    
-    .conversation-date {
-        color: var(--text-secondary);
-        font-size: var(--font-size-xs);
-    }
-    
-    .conversation-preview {
-        color: var(--text-secondary);
-        font-style: italic;
-        max-width: 200px;
-    }
-    
-    /* Unread Badge */
-    .unread-badge {
-        background-color: var(--accent-color) !important;
-        color: white !important;
-    }
-    
-    /* Empty State */
-    .empty-state {
-        background-color: var(--card-background);
-        border: 1px dashed var(--border-color);
-        color: var(--text-secondary);
-    }
-    
-    /* Pagination Styling */
-    .pagination .page-link {
-        color: var(--primary-color);
-        border-color: var(--border-color);
-        background-color: var(--card-background);
-    }
-    
-    .pagination .page-link:hover {
-        background-color: var(--hover-bg);
-        color: var(--primary-color);
-    }
-    
-    .pagination .page-item.disabled .page-link {
-        background-color: var(--card-background);
-        color: var(--text-secondary);
-        border-color: var(--border-color);
-    }
-    
-    .pagination .page-item.active .page-link {
-        background-color: var(--primary-color);
-        border-color: var(--primary-color);
-        color: white;
-    }
-    
-    /* Dark Mode Specific Overrides */
-    [data-bs-theme="dark"] .conversation-preview {
-        color: var(--text-secondary);
-    }
-    
-    [data-bs-theme="dark"] .empty-state {
-        background-color: rgba(255, 255, 255, 0.05);
-    }
-    
-    [data-bs-theme="dark"] .encryption-info-card .card {
-        background-color: rgba(var(--primary-rgb), 0.15);
-    }
-    
-    [data-bs-theme="dark"] .encryption-badge {
-        background-color: rgba(var(--primary-rgb), 0.25);
-    }
+/* ── Inbox-specific styles ───────────────────────────────────────────────── */
+.inbox-title { color: var(--text-primary); font-weight: 700; letter-spacing: -0.02em; }
+
+.encryption-badge {
+    background: rgba(var(--primary-rgb), 0.08);
+    color: var(--primary-color);
+    padding: 0.3rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+}
+[data-bs-theme="dark"] .encryption-badge { background: rgba(var(--primary-rgb), 0.2); }
+
+/* Type icon pill */
+.conv-type-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.85rem;
+}
+.conv-icon-product  { background: rgba(13,110,253,0.1);  color: #0d6efd; }
+.conv-icon-service  { background: rgba(25,135,84,0.1);   color: #198754; }
+.conv-icon-request  { background: rgba(255,193,7,0.1);   color: #b45309; }
+[data-bs-theme="dark"] .conv-icon-product  { background: rgba(13,110,253,0.2); }
+[data-bs-theme="dark"] .conv-icon-service  { background: rgba(25,135,84,0.2);  }
+[data-bs-theme="dark"] .conv-icon-request  { background: rgba(255,193,7,0.2);  }
+
+/* Conversation card */
+.conversation-card {
+    border: 1px solid var(--border-color);
+    background-color: var(--card-background);
+    border-radius: 0.65rem;
+    box-shadow: 0 1px 4px var(--shadow-color);
+    transition: all 0.18s ease;
+}
+.conversation-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px var(--shadow-color);
+    border-color: var(--primary-color);
+}
+.conversation-link { color: var(--text-primary) !important; }
+
+.conv-title     { color: var(--text-primary); font-size: 0.92rem; }
+.conv-participant { color: var(--text-secondary); font-size: 0.82rem; }
+.conv-preview   { font-style: italic; }
+.conv-date      { color: var(--text-secondary); font-size: 0.75rem; white-space: nowrap; }
+
+/* Empty state */
+.empty-state {
+    background: var(--card-background);
+    border: 1px dashed var(--border-color);
+    border-radius: 0.75rem;
+    color: var(--text-secondary);
+}
+.empty-icon { opacity: 0.6; }
+
+/* Privacy footer card */
+.privacy-card {
+    border: 1px solid var(--border-color);
+    border-left: 3px solid var(--primary-color);
+    background: var(--card-background);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+.privacy-card i { color: var(--primary-color); margin-top: 0.1rem; flex-shrink: 0; }
+
+/* Pagination */
+.pagination .page-link {
+    color: var(--primary-color);
+    border-color: var(--border-color);
+    background-color: var(--card-background);
+    font-size: 0.85rem;
+}
+.pagination .page-link:hover { background-color: var(--hover-bg); color: var(--primary-color); }
+.pagination .page-item.disabled .page-link { background-color: var(--card-background); color: var(--text-secondary); border-color: var(--border-color); }
+.pagination .page-item.active .page-link   { background-color: var(--primary-color); border-color: var(--primary-color); color: #fff; }
+
+/* min-width 0 fix for flex truncation */
+.min-w-0 { min-width: 0; }
 </style>
+
 {% endblock %}
-{% block 'Footer'%}
-{% endblock%}

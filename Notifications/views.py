@@ -18,7 +18,8 @@ from django.conf import settings
 import json
 
 from .models import Notification, NotificationPreference, NotificationCategory, mark_all_read
-from Home.models import Product_Listing, Review, SavedProduct
+from Home.models import Product_Listing, Review
+from User.models import SavedItem
 
 
 def notification_counts(request):

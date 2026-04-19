@@ -1,4 +1,3 @@
-from django.db.models import Case, When
 from django.db.models.functions import Lower
 from django.http import JsonResponse,HttpResponseRedirect
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -12,23 +11,24 @@ from django.shortcuts import render, get_object_or_404,redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
-from .models import Product_Listing, Review, ReviewReply, SavedProduct, ProductReport, AIDescriptionUsage
+from .models import Product_Listing, Review, ReviewReply,AIDescriptionUsage
 from User.models import LGA, State
 from Dashboard.models import ProductBoost
-from django.db.models import Q, Avg, Exists, OuterRef, Count
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import View
 from django.urls import reverse_lazy, reverse
 from .models import Subcategory,Category,Product_Listing,Brand,Product_Image,Banner
-from django.db.models import Prefetch
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import User
 from .forms import ProductSearchForm, ReviewForm,ReviewReplyForm, Review, ProductReportForm, ListingForm
+from Services.models import ServiceListing, ServiceInquiry, ServiceReview
+from BuyerRequest.models import BuyerRequest, SellerResponse
 from django.utils import timezone
 from decimal import Decimal
 from datetime import timedelta
 from django.core.exceptions import ValidationError
-from User.models import Profile
+from User.models import Profile, SavedItem, ItemReport
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.urls import resolve, Resolver404
@@ -38,7 +38,7 @@ from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.core.cache import cache
-from django.db.models import Case, When, F, Q, Avg, Exists, OuterRef, Count, Value, IntegerField
+from django.db.models import Case, When, F, Q, Sum, Avg, Exists, Prefetch, OuterRef, Count, Value, IntegerField
 from random import shuffle
 import random
 import hashlib
@@ -287,9 +287,17 @@ def home(request):
     random.seed()
 
     if request.user.is_authenticated:
-        saved_products = SavedProduct.objects.filter(
-            user=request.user
-        ).values_list('product_id', flat=True)
+        from django.contrib.contenttypes.models import ContentType
+        
+        # Get the ContentType for Product_Listing
+        product_ct = ContentType.objects.get_for_model(Product_Listing)
+        
+        # Query saved products using content_type and object_id
+        saved_products = SavedItem.objects.filter(
+            user=request.user,
+            content_type=product_ct
+        ).values_list('object_id', flat=True)
+        
         saved_products_set = set(str(id) for id in saved_products)
 
         for product_list in [featured_products, local_products, trending_products]:
@@ -447,14 +455,20 @@ class ProductListView(ListView):
                         'total_pages': 0
                     })
                 
-                # Process products for saved status
+                # FIXED: Process products for saved status
                 if self.request.user.is_authenticated:
-                    saved_products = set(str(id) for id in SavedProduct.objects.filter(
-                        user=self.request.user
-                    ).values_list('product_id', flat=True))
+                    from django.contrib.contenttypes.models import ContentType
+                    
+                    product_ct = ContentType.objects.get_for_model(Product_Listing)
+                    saved_products = SavedItem.objects.filter(
+                        user=self.request.user,
+                        content_type=product_ct
+                    ).values_list('object_id', flat=True)  # FIX: Use object_id
+                    
+                    saved_products_set = set(str(id) for id in saved_products)
                     
                     for product in products:
-                        product.is_saved = str(product.id) in saved_products
+                        product.is_saved = str(product.id) in saved_products_set
                         product.formatted_price = format_price(product.price)
                         product.verification_status = get_product_verification_status(product)
                 else:
@@ -494,7 +508,10 @@ class ProductListView(ListView):
         return super().render_to_response(context, **response_kwargs)
     
     def get_queryset(self):
-        """Replace the complex get_queryset method in ProductListView"""
+        """
+        FIXED: Properly handle all filter parameters with support for both slug and ID
+        Fixes all filter bugs including state/LGA paths and price range handling
+        """
         try:
             Product_Listing.delete_expired_listings()
         except:
@@ -507,52 +524,96 @@ class ProductListView(ListView):
             expiration_date__lte=timezone.now()
         ).select_related(
             'seller__user',
+            'seller__location__state', 
+            'seller__location__lga',  
             'category',
             'subcategory', 
             'brand'
         ).prefetch_related('images')
         
-        # Apply filters efficiently
-        filters = {
-            'category__slug': self.request.GET.get('category'),
-            'subcategory__slug': self.request.GET.get('subcategory'),
-            'brand__slug': self.request.GET.get('brand'),
-            'condition': self.request.GET.get('condition'),
-            'seller__location__state': self.request.GET.get('state'),
-            'seller__location__lga': self.request.GET.get('lga'),
-        }
+        # FIX 1: Handle category filter (support both slug and ID)
+        category_param = self.request.GET.get('category')
+        if category_param:
+            try:
+                # Try as ID first
+                queryset = queryset.filter(category__id=int(category_param))
+            except (ValueError, TypeError):
+                # Fall back to slug
+                queryset = queryset.filter(category__slug=category_param)
         
-        # Apply non-empty filters
-        for field, value in filters.items():
-            if value:
-                try:
-                    queryset = queryset.filter(**{field: value})
-                except (ValueError, TypeError):
-                    continue
+        # FIX 2: Handle subcategory filter (support both slug and ID)
+        subcategory_param = self.request.GET.get('subcategory')
+        if subcategory_param:
+            try:
+                # Try as ID first
+                queryset = queryset.filter(subcategory__id=int(subcategory_param))
+            except (ValueError, TypeError):
+                # Fall back to slug
+                queryset = queryset.filter(subcategory__slug=subcategory_param)
         
-        # Search query
+        # FIX 3: Handle brand filter (support both slug and ID)
+        brand_param = self.request.GET.get('brand')
+        if brand_param:
+            try:
+                # Try as ID first
+                queryset = queryset.filter(brand__id=int(brand_param))
+            except (ValueError, TypeError):
+                # Fall back to slug
+                queryset = queryset.filter(brand__slug=brand_param)
+        
+        # FIX 4: Handle condition filter
+        condition = self.request.GET.get('condition')
+        if condition and condition in ['new', 'used']:
+            queryset = queryset.filter(condition=condition)
+        
+        # FIX 5: Handle state filter (CORRECTED PATH)
+        state_param = self.request.GET.get('state')
+        if state_param:
+            try:
+                queryset = queryset.filter(seller__location__state__id=int(state_param))
+            except (ValueError, TypeError):
+                pass
+        
+        # FIX 6: Handle LGA filter (CORRECTED PATH)
+        lga_param = self.request.GET.get('lga')
+        if lga_param:
+            try:
+                queryset = queryset.filter(seller__location__lga__id=int(lga_param))
+            except (ValueError, TypeError):
+                pass
+        
+        # FIX 7: Handle search query
         query = self.request.GET.get('query')
         if query:
             queryset = queryset.filter(
                 Q(title__icontains=query) | Q(description__icontains=query)
             )
         
-        # Price filters
+        # FIX 8: Handle price filters (support both individual and range format)
         try:
-            min_price = self.request.GET.get('min_price')
-            max_price = self.request.GET.get('max_price')
-            if min_price:
-                queryset = queryset.filter(price__gte=min_price)
-            if max_price:
-                queryset = queryset.filter(price__lte=max_price)
-        except (ValueError, TypeError):
+            # Check for price_range parameter first
+            price_range = self.request.GET.get('price_range')
+            if price_range and '-' in price_range:
+                min_price, max_price = price_range.split('-')
+                queryset = queryset.filter(price__gte=Decimal(min_price))
+                if max_price != '999999999':  # Not the "500000+" option
+                    queryset = queryset.filter(price__lte=Decimal(max_price))
+            else:
+                # Fall back to individual min/max parameters
+                min_price = self.request.GET.get('min_price')
+                max_price = self.request.GET.get('max_price')
+                if min_price:
+                    queryset = queryset.filter(price__gte=Decimal(min_price))
+                if max_price:
+                    queryset = queryset.filter(price__lte=Decimal(max_price))
+        except (ValueError, TypeError, AttributeError):
             pass
         
-        # Verified business filter
+        # FIX 9: Handle verified business filter
         if self.request.GET.get('verified_business') == 'true':
             queryset = queryset.filter(seller__business_verification_status='verified')
         
-        # Apply sorting
+        # FIX 10: Apply sorting
         sort_by = self.request.GET.get('sort', 'smart')
         
         if sort_by == 'smart':
@@ -572,108 +633,152 @@ class ProductListView(ListView):
             order_by = sort_options.get(sort_by, '-created_at')
             return queryset.order_by(order_by)
 
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
-        # Get categories with product counts
-        categories = Category.objects.annotate(
-            product_count=Count('product_listing')
-        )
-        
-        subcategories = Subcategory.objects.annotate(
+
+        # ── Categories with subcategory product counts ─────────────────────────────
+        subcategories_qs = Subcategory.objects.annotate(
             product_count=Count('products')
         )
-        
-        categories = categories.prefetch_related(
-            Prefetch('subcategories', queryset=subcategories)
+        categories = Category.objects.annotate(
+            product_count=Count('product_listing')
+        ).prefetch_related(
+            Prefetch('subcategories', queryset=subcategories_qs)
         )
-        
-        # Get filter parameters
-        category_slug = self.request.GET.get('category')
-        subcategory_slug = self.request.GET.get('subcategory')
-        brand_slug = self.request.GET.get('brand')
-        
+
+        context['item_type'] = 'products'
+        context['filter_action_url'] = self.request.path
         context['categories'] = categories
         context['global_categories'] = categories
-        context['states'] = State.objects.all()
-        
-        # Get global banners
-        global_banners = get_active_banners('global')
-        context['global_banners'] = global_banners
-        
-        context['verified_only'] = self.request.GET.get('verified_business')
-        
-        # Handle category-specific context
-        if category_slug:
+        context['states'] = State.objects.all().order_by('name')
+
+        # ── Read all active filter params once ────────────────────────────────────
+        category_param    = self.request.GET.get('category', '').strip()
+        subcategory_param = self.request.GET.get('subcategory', '').strip()
+        brand_param       = self.request.GET.get('brand', '').strip()
+        state_param       = self.request.GET.get('state', '').strip()
+        lga_param         = self.request.GET.get('lga', '').strip()
+
+        # ── FIX 1: Always pass state/lga to context for sidebar restoration ───────
+        context['selected_state'] = state_param
+        context['selected_lga']   = lga_param
+
+        # ── FIX 2: LGA options always populated when state param exists ───────────
+        if state_param:
             try:
-                selected_category = categories.get(slug=category_slug)
-                context['selected_category'] = selected_category.slug
-                context['selected_category_obj'] = selected_category
-                context['subcategories'] = selected_category.subcategories.all()
-                
-                if subcategory_slug:
-                    try:
-                        selected_subcategory = subcategories.get(slug=subcategory_slug)
-                        context['selected_subcategory'] = selected_subcategory.slug
-                        context['selected_subcategory_obj'] = selected_subcategory
-                        
-                        context['brands'] = Brand.objects.filter(
-                            categories=selected_category
-                        ).annotate(
-                            product_count=Count('products', filter=Q(
-                                products__category=selected_category,
-                                products__subcategory=selected_subcategory
-                            ))
-                        ).filter(product_count__gt=0)
-                    except Subcategory.DoesNotExist:
-                        pass
-                else:
-                    context['brands'] = Brand.objects.filter(
-                        categories=selected_category
-                    ).annotate(
-                        product_count=Count('products', filter=Q(products__category=selected_category))
-                    ).filter(product_count__gt=0)
-                    
+                context['lgas'] = LGA.objects.filter(state_id=int(state_param)).order_by('name')
+            except (ValueError, TypeError):
+                context['lgas'] = LGA.objects.none()
+
+        # ── FIX 3: Category lookup — slug first, then integer ID ─────────────────
+        selected_category_obj = None
+        if category_param:
+            # Try slug first
+            try:
+                selected_category_obj = categories.get(slug=category_param)
             except Category.DoesNotExist:
-                context['brands'] = Brand.objects.none()
+                pass
+            # Fall back to integer ID
+            if selected_category_obj is None:
+                try:
+                    selected_category_obj = categories.get(id=int(category_param))
+                except (Category.DoesNotExist, ValueError, TypeError):
+                    pass
+
+        if selected_category_obj:
+            context['selected_category']     = category_param
+            context['selected_category_obj'] = selected_category_obj
+            context['subcategories']         = selected_category_obj.subcategories.all()
+
+            # ── FIX 4: Subcategory lookup — slug first, then integer ID ──────────
+            selected_subcategory_obj = None
+            if subcategory_param:
+                try:
+                    selected_subcategory_obj = subcategories_qs.get(
+                        category=selected_category_obj,
+                        slug=subcategory_param
+                    )
+                except Subcategory.DoesNotExist:
+                    pass
+                if selected_subcategory_obj is None:
+                    try:
+                        selected_subcategory_obj = subcategories_qs.get(
+                            category=selected_category_obj,
+                            id=int(subcategory_param)
+                        )
+                    except (Subcategory.DoesNotExist, ValueError, TypeError):
+                        pass
+
+            if selected_subcategory_obj:
+                context['selected_subcategory']     = subcategory_param
+                context['selected_subcategory_obj'] = selected_subcategory_obj
+                context['brands'] = Brand.objects.filter(
+                    categories=selected_category_obj
+                ).annotate(
+                    product_count=Count('products', filter=Q(
+                        products__category=selected_category_obj,
+                        products__subcategory=selected_subcategory_obj
+                    ))
+                ).filter(product_count__gt=0)
+            else:
+                context['brands'] = Brand.objects.filter(
+                    categories=selected_category_obj
+                ).annotate(
+                    product_count=Count('products', filter=Q(
+                        products__category=selected_category_obj
+                    ))
+                ).filter(product_count__gt=0)
         else:
+            # No category selected — show all brands that have products
             context['brands'] = Brand.objects.annotate(
                 product_count=Count('products')
             ).filter(product_count__gt=0)
-        
-        # Handle state/LGA context
-        state_id = self.request.GET.get('state')
-        if state_id:
-            context['lgas'] = LGA.objects.filter(state_id=state_id)
-        
-        # Handle brand context
-        if brand_slug:
+
+        # ── Brand lookup ──────────────────────────────────────────────────────────
+        if brand_param:
+            selected_brand_obj = None
             try:
-                selected_brand = Brand.objects.get(slug=brand_slug)
-                context['selected_brand'] = selected_brand.slug
-                context['selected_brand_obj'] = selected_brand
+                selected_brand_obj = Brand.objects.get(slug=brand_param)
             except Brand.DoesNotExist:
                 pass
-        
-        # Add saved status and format prices
+            if selected_brand_obj is None:
+                try:
+                    selected_brand_obj = Brand.objects.get(id=int(brand_param))
+                except (Brand.DoesNotExist, ValueError, TypeError):
+                    pass
+            if selected_brand_obj:
+                context['selected_brand']     = brand_param
+                context['selected_brand_obj'] = selected_brand_obj
+
+        # ── Global banners ────────────────────────────────────────────────────────
+        context['global_banners'] = get_active_banners('global')
+
+        # ── Misc context ─────────────────────────────────────────────────────────
+        context['verified_only']  = self.request.GET.get('verified_business')
+        context['current_sort']   = self.request.GET.get('sort', 'smart')
+
+        # ── Add saved status and format prices ───────────────────────────────────
         if self.request.user.is_authenticated:
-            saved_products = SavedProduct.objects.filter(
-                user=self.request.user
-            ).values_list('product_id', flat=True)
-            saved_products_set = set(str(id) for id in saved_products)
-            
+            from django.contrib.contenttypes.models import ContentType
+            product_ct = ContentType.objects.get_for_model(Product_Listing)
+            saved_ids = set(
+                SavedItem.objects.filter(
+                    user=self.request.user,
+                    content_type=product_ct
+                ).values_list('object_id', flat=True)
+            )
             for product in context['products']:
-                product.is_saved = str(product.id) in saved_products_set
-                product.formatted_price = self.format_price(product.price)
+                product.is_saved           = str(product.id) in saved_ids
+                product.formatted_price    = self.format_price(product.price)
                 product.verification_status = get_product_verification_status(product)
         else:
             for product in context['products']:
-                product.formatted_price = self.format_price(product.price)
+                product.formatted_price    = self.format_price(product.price)
                 product.verification_status = get_product_verification_status(product)
-        
-        context['current_sort'] = self.request.GET.get('sort', 'smart')
-        
+
         return context
+
     
     def format_price(self, price):
         return '₦ {:,.0f}'.format(Decimal(price))
@@ -711,11 +816,15 @@ class ProductDetailView(DetailView):
         if time_remaining:
             context['time_remaining'] = time_remaining
             
+        # FIXED: Check if product is saved by user
         if self.request.user.is_authenticated:
-            from .models import SavedProduct
-            context['product'].is_saved = SavedProduct.objects.filter(
+            from django.contrib.contenttypes.models import ContentType
+            
+            product_ct = ContentType.objects.get_for_model(Product_Listing)
+            context['product'].is_saved = SavedItem.objects.filter(
                 user=self.request.user,
-                product=self.object
+                content_type=product_ct,
+                object_id=str(self.object.id)  # FIX: Use object_id and content_type
             ).exists()
         else:
             context['product'].is_saved = False   
@@ -732,7 +841,7 @@ class ProductDetailView(DetailView):
             Prefetch('replies', queryset=ReviewReply.objects.select_related('reviewer').order_by('created_at'))
         ).order_by('-created_at')
 
-        product_reviews = all_seller_reviews.filter(product=self.object)[:2]  # Only show 2 reviews
+        product_reviews = all_seller_reviews.filter(product=self.object)[:2]
 
         total_seller_reviews = all_seller_reviews.count()
         seller_avg_rating = all_seller_reviews.aggregate(avg_rating=Avg('rating'))['avg_rating'] or 0
@@ -760,7 +869,6 @@ class ProductDetailView(DetailView):
         seller_profile = self.object.seller
 
         current_products_count = Product_Listing.objects.filter(seller=seller_profile).count()
-
         total_ever_listed = max(seller_profile.total_products_listed, current_products_count)
 
         if seller_profile.total_products_listed < current_products_count:
@@ -794,20 +902,26 @@ class ProductDetailView(DetailView):
             'active_products': active_products,
         }
 
+        # FIXED: Handle related products saved status
         related_products = Product_Listing.objects.filter(
             Q(category=self.object.category) | 
             Q(subcategory=self.object.subcategory)
         ).exclude(id=self.object.id).distinct()[:10]
         
         if self.request.user.is_authenticated:
-            saved_products = SavedProduct.objects.filter(
+            from django.contrib.contenttypes.models import ContentType
+            
+            product_ct = ContentType.objects.get_for_model(Product_Listing)
+            saved_products = SavedItem.objects.filter(
                 user=self.request.user,
-                product__in=related_products
-            ).values_list('product_id', flat=True)
-            saved_products = set(str(id) for id in saved_products)
+                content_type=product_ct,
+                object_id__in=[str(p.id) for p in related_products]  # FIX: Use object_id
+            ).values_list('object_id', flat=True)
+            
+            saved_products_set = set(str(id) for id in saved_products)
             
             for product in related_products:
-                product.is_saved = str(product.id) in saved_products
+                product.is_saved = str(product.id) in saved_products_set
                 
         context['related_products'] = related_products
         for product in context['related_products']:
@@ -844,9 +958,28 @@ class ProductDetailView(DetailView):
         else:
             context['time_since_creation'] = f"{time_since_creation.seconds // 60} minutes ago"
 
-        # Add review form to context
         from .forms import ReviewForm
         context['review_form'] = ReviewForm()
+        
+        if self.request.user.is_authenticated:
+            if self.request.user.profile != self.object.seller:
+                from Messages.models import Conversation
+                from Messages.forms import MessageForm
+                from django.contrib.contenttypes.models import ContentType
+                
+                # Get ContentType for Product_Listing
+                product_ct = ContentType.objects.get_for_model(Product_Listing)
+                
+                # Check for existing conversation using content_type and object_id
+                existing_conversation = Conversation.objects.filter(
+                    content_type=product_ct,
+                    object_id=str(self.object.id),  # Use object_id (string UUID)
+                    participants=self.request.user.profile
+                ).first()
+                
+                context['existing_conversation'] = existing_conversation
+                context['can_message_seller'] = True
+                context['message_form'] = MessageForm()
         
         return context
 
@@ -1198,8 +1331,8 @@ class ProductSearchView(ListView):
                 products = context.get('products', [])
                 
                 print(f"Search AJAX Debug - Page: {page_obj.number if page_obj else 'None'}, "
-                      f"Total Pages: {paginator.num_pages if paginator else 'None'}, "
-                      f"Products Count: {len(products) if products else 0}")
+                    f"Total Pages: {paginator.num_pages if paginator else 'None'}, "
+                    f"Products Count: {len(products) if products else 0}")
                 
                 if not page_obj or not paginator:
                     return JsonResponse({
@@ -1221,11 +1354,16 @@ class ProductSearchView(ListView):
                         'message': 'No more results available'
                     })
                 
-                # Process products
+                # FIXED: Process products
                 if self.request.user.is_authenticated:
-                    saved_products = SavedProduct.objects.filter(
-                        user=self.request.user
-                    ).values_list('product_id', flat=True)
+                    from django.contrib.contenttypes.models import ContentType
+                    
+                    product_ct = ContentType.objects.get_for_model(Product_Listing)
+                    saved_products = SavedItem.objects.filter(
+                        user=self.request.user,
+                        content_type=product_ct
+                    ).values_list('object_id', flat=True)  # FIX: Use object_id
+                    
                     saved_products_set = set(str(id) for id in saved_products)
                     
                     for product in products:
@@ -1386,11 +1524,15 @@ class ProductSearchView(ListView):
         context['form'] = ProductSearchForm(self.request.GET)
         context['verified_only'] = self.request.GET.get('verified_business')
 
-        # Add saved status and format prices
+        # FIXED: Add saved status and format prices
         if self.request.user.is_authenticated:
-            saved_products = SavedProduct.objects.filter(
-                user=self.request.user
-            ).values_list('product_id', flat=True)
+            from django.contrib.contenttypes.models import ContentType
+            
+            product_ct = ContentType.objects.get_for_model(Product_Listing)
+            saved_products = SavedItem.objects.filter(
+                user=self.request.user,
+                content_type=product_ct
+            ).values_list('object_id', flat=True)  # FIX: Use object_id
 
             saved_products_set = set(str(id) for id in saved_products)
 
@@ -1413,6 +1555,139 @@ class ProductSearchView(ListView):
     def format_price(self, price):
         return '₦ {:,.0f}'.format(Decimal(price))
 
+class UnifiedSearchView(View):
+    template_name = 'unified_search.html'
+ 
+    def get(self, request):
+        query   = request.GET.get('query', '').strip()
+        context = self._base_context(query)
+ 
+        if len(query) >= 2:
+            context.update(self._search_products(request, query))
+            context.update(self._search_services(query))
+            context.update(self._search_requests(query))
+ 
+        context['has_results'] = (
+            context.get('product_count', 0) +
+            context.get('service_count', 0) +
+            context.get('request_count', 0)
+        ) > 0
+ 
+        return render(request, self.template_name, context)
+ 
+    # ── helpers ──────────────────────────────────────────────────────────────
+ 
+    def _base_context(self, query):
+        return {
+            'query':         query,
+            'products':      [],
+            'services':      [],
+            'requests':      [],
+            'product_count': 0,
+            'service_count': 0,
+            'request_count': 0,
+            'has_results':   False,
+        }
+ 
+    def _search_products(self, request, query):
+        try:
+            from .models import Product_Listing   # adjust if in a different app
+ 
+            qs = (
+                Product_Listing.objects
+                .filter(
+                    Q(title__icontains=query) | Q(description__icontains=query),
+                    is_suspended=False,
+                )
+                .exclude(
+                    expiration_date__lte=timezone.now()
+                )
+                .select_related('category', 'seller')
+                .prefetch_related('images')
+                [:6]
+            )
+            products = list(qs)
+
+            if request.user.is_authenticated and products:
+                from django.contrib.contenttypes.models import ContentType
+                ct = ContentType.objects.get_for_model(Product_Listing)
+                saved_ids = set(
+                    str(x) for x in SavedItem.objects.filter(
+                        user=request.user, content_type=ct
+                    ).values_list('object_id', flat=True)
+                )
+                for p in products:
+                    p.is_saved = str(p.id) in saved_ids
+                    p.formatted_price = format_price(p.price)
+            else:
+                for p in products:
+                    p.formatted_price = format_price(p.price)
+
+            total = Product_Listing.objects.filter(
+                Q(title__icontains=query) | Q(description__icontains=query),
+                is_suspended=False,
+            ).exclude(
+                expiration_date__lte=timezone.now()
+            ).count()
+ 
+            return {'products': products, 'product_count': total}
+        except Exception:
+            return {}
+ 
+    def _search_services(self, query):
+        try:
+            from Services.models import ServiceListing 
+            from Services.views import format_service_price
+ 
+            qs = (
+                ServiceListing.objects
+                .filter(
+                    Q(title__icontains=query) | Q(description__icontains=query),
+                    is_active=True,
+                    is_suspended=False,
+                )
+                .select_related('provider__user')
+                .prefetch_related('images')
+                [:6]
+            )
+            services = list(qs)
+            for s in services:
+                s.formatted_price = format_service_price(
+                    s.pricing_type, s.base_price, s.min_price, s.max_price
+                )
+ 
+            total = ServiceListing.objects.filter(
+                Q(title__icontains=query) | Q(description__icontains=query),
+                is_active=True, is_suspended=False,
+            ).count()
+ 
+            return {'services': services, 'service_count': total}
+        except Exception:
+            return {}
+ 
+    def _search_requests(self, query):
+        try:
+            from BuyerRequest.models import BuyerRequest   # adjust import path
+ 
+            qs = (
+                BuyerRequest.objects
+                .filter(
+                    Q(title__icontains=query) | Q(description__icontains=query),
+                    status='active',
+                )
+                .select_related('buyer')
+                [:6]
+            )
+ 
+            total = BuyerRequest.objects.filter(
+                Q(title__icontains=query) | Q(description__icontains=query),
+                status='active',
+            ).count()
+ 
+            return {'requests': list(qs), 'request_count': total}
+        except Exception:
+            return {}
+        
 class RelatedProductsView(ListView):
     model = Product_Listing
     template_name = 'related_products.html'
@@ -1461,13 +1736,14 @@ class ReportProductView(View):
         try:
             # Fetch the product
             product = get_object_or_404(Product_Listing, id=product_id)
-            
+            product_ct = ContentType.objects.get_for_model(Product_Listing)
             # Validate the form
             form = ProductReportForm(request.POST)
             if form.is_valid():
                 # Create a new report record
-                report = ProductReport(
-                    product=product,
+                report = ItemReport(
+                    content_type=product_ct, 
+                    object_id=str(product.id),
                     reason=form.cleaned_data['reason'],
                     details=form.cleaned_data['details'],
                     reporter_email=form.cleaned_data['reporter_email'] or None,
@@ -1497,7 +1773,7 @@ class ReportProductView(View):
                         subject=f'Product Report: {product.title} (#{report_count})',
                         message=email_body,
                         from_email=settings.DEFAULT_FROM_EMAIL,
-                        recipient_list=['support@opensell.online'],
+                        recipient_list=['support@opensell.ng'],
                         html_message=email_body,
                         fail_silently=False,
                     )
@@ -1561,84 +1837,6 @@ class ReportProductView(View):
                 'message': 'An unexpected error occurred.'
             }, status=500)
             
-@login_required
-@require_POST
-def toggle_save_product(request):
-    product_id = request.POST.get('product_id')
-    print(f"Toggle save request received for product {product_id} from user {request.user}")
-
-    if not product_id:
-        return JsonResponse({
-            'status': 'error',
-            'message': 'No product ID provided'
-        }, status=400)
-
-    try:
-        # Convert string UUID to UUID object if needed
-        try:
-            product_id = uuid.UUID(product_id)
-        except ValueError:
-            pass
-            
-        product = Product_Listing.objects.get(id=product_id)
-        saved_product = SavedProduct.objects.filter(
-            user=request.user,
-            product=product
-        ).first()
-        
-        if saved_product:
-            # Product was already saved, so unsave it
-            saved_product.delete()
-            print(f"Product {product_id} unsaved by user {request.user}")
-            return JsonResponse({
-                'status': 'removed',
-                'message': 'Product removed from saved items'
-            })
-        else:
-            # Product wasn't saved, so save it
-            SavedProduct.objects.create(
-                user=request.user,
-                product=product
-            )
-            print(f"Product {product_id} saved by user {request.user}")
-            return JsonResponse({
-                'status': 'saved',
-                'message': 'Product saved successfully'
-            })
-            
-    except Product_Listing.DoesNotExist:
-        print(f"Product {product_id} not found")
-        return JsonResponse({
-            'status': 'error',
-            'message': 'Product not found'
-        }, status=404)
-    except Exception as e:
-        print(f"Error saving product: {str(e)}")
-        return JsonResponse({
-            'status': 'error',
-            'message': 'An error occurred while saving the product'
-        }, status=500)
-
-@login_required
-def saved_products(request):
-    # Get saved items with related product data
-    saved_items = SavedProduct.objects.filter(user=request.user).select_related('product')
-    
-    # Create a list of products and process them
-    products = []
-    for saved_item in saved_items:
-        product = saved_item.product
-        product.formatted_price = format_price(product.price)
-        product.is_saved = True  
-        products.append(product)
-        
-    Product_Listing.delete_expired_listings()
-    # Add to context
-    context = {
-        'products': products  
-    }
-    
-    return render(request, 'saved_products.html', context)
 
 @login_required
 def submit_review(request, review_type, pk):
@@ -1873,10 +2071,19 @@ def my_store(request, username=None):
 
     # Only process saved products if user is authenticated
     if request.user.is_authenticated:
-        saved_products = SavedProduct.objects.filter(
-            user=request.user
-        ).values_list('product_id', flat=True)
-        saved_products = set(str(id) for id in saved_products)
+        from django.contrib.contenttypes.models import ContentType
+        
+        # Get the ContentType for Product_Listing
+        product_ct = ContentType.objects.get_for_model(Product_Listing)
+        
+        # Query saved products using content_type and object_id
+        saved_products = SavedItem.objects.filter(
+            user=request.user,
+            content_type=product_ct
+        ).values_list('object_id', flat=True)
+        
+        saved_products_set = set(str(id) for id in saved_products)
+        
         for product in user_products:
             product.is_saved = str(product.id) in saved_products
             product.formatted_price = format_price(product.price)
@@ -1967,6 +2174,147 @@ def my_store(request, username=None):
             pass
         
     return render(request, 'my_store.html', context)
+
+@login_required
+def manage_listings(request):
+    """
+    Combined management dashboard for the logged-in seller's products,
+    services, and buyer requests.
+ 
+    Replaces the three separate pages (my_store owner-only view,
+    my_services, my_requests) with a single tabbed interface at /manage.
+ 
+    Context mirrors the variable names used in the three existing templates
+    so the manage.html template stays consistent with the codebase.
+    """
+ 
+    profile = request.user.profile
+ 
+    # ── Products ─────────────────────────────────────────────────────────────
+    # Use prefetch_related for images so product.images.first() hits no extra queries
+    user_products = (
+        Product_Listing.objects
+        .filter(seller=profile)
+        .select_related('category', 'subcategory', 'brand')
+        .prefetch_related('images', 'boosts')
+        .order_by('-created_at')
+    )
+ 
+    # Collect active boost product IDs for O(1) lookup — avoids N+1 queries
+    active_boost_product_ids = set(
+        ProductBoost.objects.filter(
+            product__seller=profile,
+            is_active=True,
+            end_date__gt=timezone.now()
+        ).values_list('product_id', flat=True)
+    )
+ 
+    for product in user_products:
+        product.formatted_price = format_price(product.price)
+        product.boost_active = product.pk in active_boost_product_ids
+ 
+    product_stats = {
+        'total':         user_products.count(),
+        'total_views':   user_products.aggregate(v=Sum('view_count'))['v'] or 0,
+        'active_boosts': len(active_boost_product_ids),
+    }
+ 
+    # ── Services ─────────────────────────────────────────────────────────────
+    # Mirrors my_services() exactly — same queryset, pagination, and stats shape
+    services_qs = (
+        ServiceListing.objects
+        .filter(provider=profile)
+        .prefetch_related('inquiries', 'images', 'reviews')
+        .order_by('-created_at')
+    )
+ 
+    services_paginator = Paginator(services_qs, 10)
+    services_page = request.GET.get('services_page')
+    try:
+        services = services_paginator.page(services_page)
+    except PageNotAnInteger:
+        services = services_paginator.page(1)
+    except EmptyPage:
+        services = services_paginator.page(services_paginator.num_pages)
+ 
+    service_stats = {
+        'total':       ServiceListing.objects.filter(provider=profile).count(),
+        'active':      ServiceListing.objects.filter(provider=profile, is_active=True).count(),
+        'inquiries':   ServiceInquiry.objects.filter(service__provider=profile).count(),
+        'total_views': ServiceListing.objects.filter(provider=profile).aggregate(
+                           total=Sum('view_count')
+                       )['total'] or 0,
+        'avg_rating':  ServiceReview.objects.filter(
+                           service__provider=profile
+                       ).aggregate(avg=Avg('rating'))['avg'] or 0,
+    }
+ 
+    recent_inquiries = (
+        ServiceInquiry.objects
+        .filter(service__provider=profile)
+        .select_related('client__user', 'service')
+        .order_by('-created_at')[:5]
+    )
+ 
+    # ── Buyer Requests ────────────────────────────────────────────────────────
+    # Mirrors my_requests() exactly — same queryset, pagination, and stats shape
+    requests_qs = (
+        BuyerRequest.objects
+        .filter(buyer=profile)
+        .select_related('category', 'subcategory')
+        .prefetch_related('responses', 'images')
+        .order_by('-created_at')
+    )
+ 
+    requests_paginator = Paginator(requests_qs, 10)
+    requests_page = request.GET.get('requests_page')
+    try:
+        buyer_requests = requests_paginator.page(requests_page)
+    except PageNotAnInteger:
+        buyer_requests = requests_paginator.page(1)
+    except EmptyPage:
+        buyer_requests = requests_paginator.page(requests_paginator.num_pages)
+ 
+    request_stats = {
+        'total':           BuyerRequest.objects.filter(buyer=profile).count(),
+        'active':          BuyerRequest.objects.filter(buyer=profile, status='active').count(),
+        'fulfilled':       BuyerRequest.objects.filter(buyer=profile, status='fulfilled').count(),
+        'total_responses': SellerResponse.objects.filter(buyer_request__buyer=profile).count(),
+        'total_views':     BuyerRequest.objects.filter(buyer=profile).aggregate(
+                               total=Sum('view_count')
+                           )['total'] or 0,
+    }
+ 
+    # ── Store URL (for "View My Store →" link) ────────────────────────────────
+    store_url = reverse('user_store', kwargs={'username': request.user.username})
+ 
+    # ── Active tab (persists across page reloads) ─────────────────────────────
+    # Driven by ?tab=products|services|requests in the URL
+    active_tab = request.GET.get('tab', 'products')
+    if active_tab not in ('products', 'services', 'requests'):
+        active_tab = 'products'
+ 
+    context = {
+        # Products
+        'products':         user_products,
+        'product_stats':    product_stats,
+ 
+        # Services  (key names match my_services template: `services`, `stats`, `recent_inquiries`)
+        'services':         services,
+        'stats':            service_stats,       # template uses {{ stats.total }}, {{ stats.active }}, etc.
+        'recent_inquiries': recent_inquiries,
+ 
+ 
+        'buyer_requests':   buyer_requests,
+        'request_stats':    request_stats,       # separate key to avoid collision with `stats` above
+ 
+        # Shared
+        'store_owner':      request.user,        # matches my_store's `store_owner` convention
+        'store_url':        store_url,
+        'active_tab':       active_tab,
+    }
+ 
+    return render(request, 'manage.html', context)
 
 def get_product_verification_status(product):
     try:

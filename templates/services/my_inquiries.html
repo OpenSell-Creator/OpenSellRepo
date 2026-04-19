@@ -1,0 +1,516 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load compress %}
+
+{% block page_css %}
+<style>
+
+/* Re-use manage.html tokens verbatim so the pages are identical */
+.ml-wrap          { padding: 1.75rem 0 3rem; min-height: 60vh; }
+.ml-header        { display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1.75rem; }
+.ml-header-title h1 { font-size:1.45rem; font-weight:700; color:var(--text-primary); margin:0 0 .2rem; }
+.ml-header-title p  { color:var(--text-secondary,#6b7280); font-size:.875rem; margin:0; }
+.ml-header-actions  { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; }
+
+.ml-tabs { display:flex; gap:0; border-bottom:2px solid var(--border-color); margin-bottom:1.75rem; overflow-x:auto; scrollbar-width:none; }
+.ml-tabs::-webkit-scrollbar { display:none; }
+.ml-tab  { display:inline-flex; align-items:center; gap:.45rem; padding:.65rem 1.1rem; border:none; background:transparent; font-size:.875rem; font-weight:500; color:var(--text-secondary,#6b7280); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px; white-space:nowrap; transition:color .18s,border-color .18s; font-family:inherit; text-decoration:none; }
+.ml-tab:hover  { color:var(--primary-color); }
+.ml-tab.active { color:var(--primary-color); border-bottom-color:var(--primary-color); font-weight:600; background:rgba(var(--primary-rgb,37,99,235),.08); border-radius:var(--radius-sm,.375rem) var(--radius-sm,.375rem) 0 0; }
+.ml-tab-badge  { display:inline-flex; align-items:center; justify-content:center; min-width:1.3rem; height:1.3rem; padding:0 .3rem; border-radius:999px; background:var(--border-color); font-size:.68rem; font-weight:600; color:var(--text-secondary,#6b7280); transition:background .18s,color .18s; }
+.ml-tab.active .ml-tab-badge { background:var(--primary-color); color:#fff; }
+
+.ml-btn { display:inline-flex; align-items:center; gap:.4rem; padding:.45rem 1rem; border-radius:var(--radius-lg,.5rem); font-size:.825rem; font-weight:600; cursor:pointer; border:1.5px solid transparent; text-decoration:none; transition:all .18s; white-space:nowrap; font-family:inherit; line-height:1.4; }
+.ml-btn-sm     { padding:.3rem .7rem; font-size:.78rem; }
+.ml-btn-primary  { background:var(--primary-color); color:#fff; border-color:var(--primary-color); }
+.ml-btn-primary:hover { filter:brightness(1.1); color:#fff; }
+.ml-btn-outline  { background:rgba(var(--primary-rgb,37,99,235),.08); color:var(--primary-color); border-color:var(--primary-color); }
+.ml-btn-outline:hover { background:var(--primary-color); color:#fff; }
+.ml-btn-ghost    { background:var(--card-background); color:var(--text-primary); border-color:var(--border-color); }
+.ml-btn-ghost:hover  { border-color:var(--accent-color,var(--primary-color)); color:var(--accent-color,var(--primary-color)); }
+.ml-btn-success  { background:transparent; color:#16a34a; border-color:#16a34a; }
+.ml-btn-success:hover { background:rgba(22,163,74,.1); }
+.ml-btn-danger   { background:transparent; color:#dc2626; border-color:#dc2626; }
+.ml-btn-danger:hover  { background:rgba(220,38,38,.08); }
+
+/* Stats grid */
+.ml-stats-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:.75rem; margin-bottom:1.5rem; }
+.ml-stat-card  { background:var(--card-background); border:1px solid var(--border-color); border-radius:var(--radius-xl,.75rem); padding:1rem; display:flex; align-items:center; gap:.75rem; text-decoration:none; transition:box-shadow .18s,border-color .18s; }
+.ml-stat-card:hover   { box-shadow:0 4px 18px rgba(0,0,0,.08); }
+.ml-stat-card.active  { border-color:var(--primary-color); }
+.ml-stat-card.active .ml-stat-card-value { color:var(--primary-color); }
+.ml-stat-icon  { width:2.4rem; height:2.4rem; border-radius:var(--radius-sm,.375rem); display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; }
+.icon-primary  { background:rgba(var(--primary-rgb,37,99,235),.12); color:var(--primary-color); }
+.icon-warning  { background:rgba(217,119,6,.12); color:#d97706; }
+.icon-success  { background:rgba(22,163,74,.12); color:#16a34a; }
+.icon-info     { background:rgba(8,145,178,.12); color:#0891b2; }
+.icon-danger   { background:rgba(220,38,38,.1); color:#dc2626; }
+.ml-stat-card-value { font-size:1.3rem; font-weight:700; color:var(--text-primary); line-height:1; }
+.ml-stat-card-label { font-size:.72rem; color:var(--text-secondary,#6b7280); font-weight:500; margin-top:.15rem; }
+
+/* Filter pills */
+.ml-pills { display:flex; gap:.4rem; flex-wrap:wrap; margin-bottom:1.25rem; }
+.ml-pill  { display:inline-flex; align-items:center; gap:.35rem; padding:.38rem .85rem; border-radius:999px; border:1.5px solid var(--border-color); background:var(--card-background); font-size:.8rem; font-weight:500; color:var(--text-secondary,#6b7280); cursor:pointer; transition:all .15s; font-family:inherit; text-decoration:none; }
+.ml-pill:hover,.ml-pill.active { background:rgba(var(--primary-rgb,37,99,235),.1); border-color:var(--primary-color); color:var(--primary-color); }
+
+/* Badges */
+.ml-badge        { display:inline-flex; align-items:center; gap:.3rem; padding:.2rem .6rem; border-radius:999px; font-size:.72rem; font-weight:600; white-space:nowrap; }
+.badge-active    { background:rgba(22,163,74,.12); color:#16a34a; }
+.badge-pending   { background:rgba(217,119,6,.12); color:#d97706; }
+.badge-responded { background:rgba(var(--primary-rgb,37,99,235),.12); color:var(--primary-color); }
+.badge-accepted  { background:rgba(22,163,74,.12); color:#16a34a; }
+.badge-declined  { background:rgba(220,38,38,.1); color:#dc2626; }
+.ml-tag          { display:inline-flex; align-items:center; padding:.18rem .55rem; border-radius:4px; font-size:.7rem; font-weight:600; }
+.tag-primary  { background:rgba(var(--primary-rgb,37,99,235),.12); color:var(--primary-color); }
+.tag-info     { background:rgba(8,145,178,.12); color:#0891b2; }
+
+/* Item cards */
+.ml-item-card { background:var(--card-background); border:1px solid var(--border-color); border-radius:var(--radius-xl,.75rem); padding:1.25rem 1.35rem; margin-bottom:.85rem; box-shadow:0 2px 8px var(--shadow-color,rgba(0,0,0,.05)); transition:box-shadow .18s,border-color .18s,transform .18s; }
+.ml-item-card:hover { box-shadow:0 6px 24px var(--shadow-color,rgba(0,0,0,.1)); border-color:var(--accent-color, var(--border-color)); transform:translateY(-1px); }
+.ml-item-header  { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:.75rem; flex-wrap:wrap; }
+.ml-item-title a { font-size:1rem; font-weight:600; color:var(--text-primary); text-decoration:none; line-height:1.3; }
+.ml-item-title a:hover { color:var(--primary-color); }
+.ml-item-badges  { display:flex; gap:.35rem; flex-wrap:wrap; margin-top:.4rem; }
+.ml-item-meta    { display:flex; gap:1.1rem; flex-wrap:wrap; margin-bottom:.65rem; align-items:center; }
+.ml-meta-chip    { display:inline-flex; align-items:center; gap:.35rem; font-size:.8rem; color:var(--text-secondary,#6b7280); }
+.chip-icon       { font-size:.82rem; flex-shrink:0; }
+.chip-icon-person { color:var(--accent-color, var(--primary-color)); }
+.chip-icon-cal   { color:#0891b2; }
+.chip-icon-money { color:#16a34a; }
+.chip-icon-dead  { color:#d97706; }
+.ml-item-desc    { font-size:.83rem; color:var(--text-secondary,#6b7280); line-height:1.55; margin-bottom:.85rem; }
+.ml-item-footer  { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; padding-top:.75rem; border-top:1px solid var(--border-color); }
+.ml-item-actions { display:flex; gap:.4rem; flex-wrap:wrap; align-items:center; }
+
+/* Contact row */
+.ml-contact-row { display:flex; gap:1.25rem; flex-wrap:wrap; align-items:center; }
+.ml-contact-item { display:inline-flex; align-items:center; gap:.35rem; font-size:.78rem; color:var(--text-secondary,#6b7280); }
+.ml-contact-item i { color:#16a34a; font-size:.8rem; }
+
+/* Alert banner (active filter) */
+.ml-alert { display:flex; align-items:center; justify-content:space-between; gap:1rem; background:rgba(var(--primary-rgb,37,99,235),.07); border:1px solid rgba(var(--primary-rgb,37,99,235),.2); border-radius:var(--radius-sm,.375rem); padding:.65rem 1rem; font-size:.85rem; color:var(--text-primary); margin-bottom:1rem; flex-wrap:wrap; }
+.ml-alert i { color:var(--primary-color); }
+
+/* Empty state */
+.ml-empty { text-align:center; padding:3.5rem 1.5rem; }
+.ml-empty-icon { font-size:2.5rem; color:var(--text-secondary,#6b7280); margin-bottom:1rem; opacity:.5; }
+.ml-empty h5  { font-size:1.05rem; font-weight:600; color:var(--text-primary); margin-bottom:.4rem; }
+.ml-empty p   { color:var(--text-secondary,#6b7280); font-size:.875rem; max-width:380px; margin:0 auto 1.25rem; }
+
+/* Pagination */
+.ml-pagination { display:flex; justify-content:center; gap:.3rem; margin-top:1.5rem; flex-wrap:wrap; }
+.ml-page-btn   { display:inline-flex; align-items:center; justify-content:center; min-width:2.1rem; height:2.1rem; border-radius:var(--radius-sm,.375rem); border:1.5px solid var(--border-color); background:var(--card-background); font-size:.82rem; font-weight:500; color:var(--text-secondary,#6b7280); text-decoration:none; transition:all .15s; padding:0 .45rem; }
+.ml-page-btn:hover  { border-color:var(--primary-color); color:var(--primary-color); }
+.ml-page-btn.active { background:var(--primary-color); border-color:var(--primary-color); color:#fff; }
+
+/* Quick-respond modal (ml-style — no Bootstrap modal needed) */
+.ml-modal-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1050; align-items:center; justify-content:center; }
+.ml-modal-backdrop.open { display:flex; }
+.ml-modal { background:var(--card-background); border-radius:var(--radius-xl,.75rem); box-shadow:0 24px 60px rgba(0,0,0,.22); max-width:520px; width:94%; overflow:hidden; border:1px solid var(--border-color); }
+.ml-modal-header { display:flex; align-items:center; justify-content:space-between; padding:1.1rem 1.35rem; border-bottom:1px solid var(--border-color); }
+.ml-modal-header h5 { font-weight:600; color:var(--text-primary); margin:0; font-size:1rem; }
+.ml-modal-close { background:none; border:none; cursor:pointer; color:var(--text-secondary,#6b7280); font-size:1.2rem; line-height:1; padding:.2rem; }
+.ml-modal-body  { padding:1.35rem; font-size:.9rem; color:var(--text-primary); }
+.ml-modal-footer { display:flex; gap:.5rem; justify-content:flex-end; padding:1rem 1.35rem; border-top:1px solid var(--border-color); }
+.ml-form-label  { font-size:.825rem; font-weight:600; color:var(--text-primary); margin-bottom:.35rem; display:block; }
+.ml-form-control { width:100%; padding:.55rem .85rem; border:1.5px solid var(--border-color); border-radius:var(--radius-sm,.375rem); background:var(--card-background); color:var(--text-primary); font-size:.875rem; font-family:inherit; line-height:1.5; transition:border-color .18s; }
+.ml-form-control:focus { outline:none; border-color:var(--primary-color); }
+.ml-form-row { display:grid; grid-template-columns:1fr 1fr; gap:.85rem; }
+.ml-error-banner { background:rgba(220,38,38,.08); border:1px solid rgba(220,38,38,.25); border-radius:var(--radius-sm,.375rem); padding:.65rem 1rem; font-size:.82rem; color:#dc2626; margin-bottom:.85rem; display:none; }
+.ml-error-banner.show { display:block; }
+
+@media (max-width:600px) {
+  .ml-form-row { grid-template-columns:1fr; }
+}
+
+/* ── Dark mode overrides ─────────────────────────────────────── */
+[data-bs-theme="dark"] .ml-btn-outline { background:rgba(var(--primary-rgb,37,99,235),.15); }
+[data-bs-theme="dark"] .ml-btn-ghost { background:var(--card-background); border-color:var(--border-color); color:var(--text-primary); }
+[data-bs-theme="dark"] .ml-stat-card,
+[data-bs-theme="dark"] .ml-item-card { border-color:var(--border-color); }
+[data-bs-theme="dark"] .ml-modal { border-color:var(--border-color); }
+</style>
+{% endblock %}
+{% block page_js %}
+    <script type="text/javascript" src="{% static 'js/pages/services.js' %}"></script>
+{% endblock %}
+
+{% block 'Body' %}
+
+<div class="ml-wrap">
+  <div class="container-xl">
+
+    {# ── Page Header ───────────────────────────────────────────── #}
+    <div class="ml-header">
+      <div class="ml-header-title">
+        <h1><i class="bi bi-chat-square-dots me-2"></i>Service Inquiries</h1>
+        <p>Manage inquiries from potential clients for your services</p>
+      </div>
+      <div class="ml-header-actions">
+        {# Link back to manage page → services tab auto-selected via ?tab=services #}
+        <a href="{% url 'manage_listings' %}?tab=services" class="ml-btn ml-btn-ghost">
+          <i class="bi bi-briefcase"></i> My Services
+        </a>
+        <a href="{% url 'inbox' %}?filter=services" class="ml-btn ml-btn-primary">
+          <i class="bi bi-chat-dots"></i> Messages
+        </a>
+      </div>
+    </div>
+
+    {# ── Stats grid ────────────────────────────────────────────── #}
+    <div class="ml-stats-grid">
+      <a href="{% url 'services:my_inquiries' %}"
+         class="ml-stat-card {% if not current_status %}active{% endif %}">
+        <div class="ml-stat-icon icon-primary"><i class="bi bi-chat-square-dots"></i></div>
+        <div>
+          <div class="ml-stat-card-value">{{ stats.total }}</div>
+          <div class="ml-stat-card-label">Total</div>
+        </div>
+      </a>
+      <a href="?status=pending{% if service_filter %}&service={{ service_filter }}{% endif %}"
+         class="ml-stat-card {% if current_status == 'pending' %}active{% endif %}">
+        <div class="ml-stat-icon icon-warning"><i class="bi bi-clock"></i></div>
+        <div>
+          <div class="ml-stat-card-value">{{ stats.pending }}</div>
+          <div class="ml-stat-card-label">Pending</div>
+        </div>
+      </a>
+      <a href="?status=responded{% if service_filter %}&service={{ service_filter }}{% endif %}"
+         class="ml-stat-card {% if current_status == 'responded' %}active{% endif %}">
+        <div class="ml-stat-icon icon-info"><i class="bi bi-check-circle"></i></div>
+        <div>
+          <div class="ml-stat-card-value">{{ stats.responded }}</div>
+          <div class="ml-stat-card-label">Responded</div>
+        </div>
+      </a>
+      <a href="?status=accepted{% if service_filter %}&service={{ service_filter }}{% endif %}"
+         class="ml-stat-card {% if current_status == 'accepted' %}active{% endif %}">
+        <div class="ml-stat-icon icon-success"><i class="bi bi-handshake"></i></div>
+        <div>
+          <div class="ml-stat-card-value">{{ stats.accepted }}</div>
+          <div class="ml-stat-card-label">Accepted</div>
+        </div>
+      </a>
+    </div>
+
+    {# ── Active filter banner ──────────────────────────────────── #}
+    {% if current_status or service_filter %}
+    <div class="ml-alert">
+      <span><i class="bi bi-funnel me-2"></i>
+        Showing
+        {% if current_status %}<strong>{{ current_status }}</strong>{% endif %}
+        inquiries{% if service_filter %} for one service{% endif %}.
+      </span>
+      <a href="{% url 'services:my_inquiries' %}" class="ml-btn ml-btn-ghost ml-btn-sm">
+        <i class="bi bi-x-circle"></i> Clear filter
+      </a>
+    </div>
+    {% endif %}
+
+    {# ── Filter pills (status tabs) ────────────────────────────── #}
+    <div class="ml-pills">
+      <a href="{% url 'services:my_inquiries' %}{% if service_filter %}?service={{ service_filter }}{% endif %}"
+         class="ml-pill {% if not current_status %}active{% endif %}">
+        <i class="bi bi-list-ul"></i> All
+      </a>
+      <a href="?status=pending{% if service_filter %}&service={{ service_filter }}{% endif %}"
+         class="ml-pill {% if current_status == 'pending' %}active{% endif %}">
+        <i class="bi bi-clock"></i> Pending
+        {% if stats.pending %}<span class="ml-tab-badge" style="background:#f59e0b;color:#fff;">{{ stats.pending }}</span>{% endif %}
+      </a>
+      <a href="?status=responded{% if service_filter %}&service={{ service_filter }}{% endif %}"
+         class="ml-pill {% if current_status == 'responded' %}active{% endif %}">
+        <i class="bi bi-check-circle"></i> Responded
+      </a>
+      <a href="?status=accepted{% if service_filter %}&service={{ service_filter }}{% endif %}"
+         class="ml-pill {% if current_status == 'accepted' %}active{% endif %}">
+        <i class="bi bi-handshake"></i> Accepted
+      </a>
+      <a href="?status=declined{% if service_filter %}&service={{ service_filter }}{% endif %}"
+         class="ml-pill {% if current_status == 'declined' %}active{% endif %}">
+        <i class="bi bi-x-circle"></i> Declined
+      </a>
+    </div>
+
+    {# ── Inquiries list ────────────────────────────────────────── #}
+    {% for inquiry in inquiries %}
+    <div class="ml-item-card">
+
+      <div class="ml-item-header">
+        <div class="ml-item-title">
+          <a href="{% url 'services:inquiry_detail' pk=inquiry.id %}">{{ inquiry.service.title }}</a>
+          <div class="ml-item-badges">
+            <span class="ml-tag tag-primary">{{ inquiry.service.get_service_type_display }}</span>
+            <span class="ml-tag tag-info">{{ inquiry.get_inquiry_type_display }}</span>
+          </div>
+        </div>
+        <span class="ml-badge badge-{{ inquiry.status }}">
+          {% if inquiry.status == 'pending' %}<i class="bi bi-clock"></i>
+          {% elif inquiry.status == 'responded' %}<i class="bi bi-check-circle"></i>
+          {% elif inquiry.status == 'accepted' %}<i class="bi bi-handshake"></i>
+          {% elif inquiry.status == 'declined' %}<i class="bi bi-x-circle"></i>
+          {% endif %}
+          {{ inquiry.get_status_display }}
+        </span>
+      </div>
+
+      <div class="ml-item-meta">
+        <span class="ml-meta-chip">
+          <i class="bi bi-person chip-icon chip-icon-person"></i>
+          From: {{ inquiry.client.user.username }}
+        </span>
+        <span class="ml-meta-chip">
+          <i class="bi bi-calendar3 chip-icon chip-icon-cal"></i>
+          {{ inquiry.created_at|timesince }} ago
+        </span>
+        {% if inquiry.budget %}
+        <span class="ml-meta-chip">
+          <i class="bi bi-currency-exchange chip-icon chip-icon-money"></i>
+          Budget: ₦{{ inquiry.budget|floatformat:0 }}
+        </span>
+        {% endif %}
+        {% if inquiry.deadline %}
+        <span class="ml-meta-chip">
+          <i class="bi bi-calendar-check chip-icon chip-icon-dead"></i>
+          Deadline: {{ inquiry.deadline|date:"M d, Y" }}
+        </span>
+        {% endif %}
+      </div>
+
+      <div class="ml-item-desc">
+        <strong style="color:var(--text-primary);">Message:</strong>
+        {{ inquiry.message|truncatewords:25 }}
+      </div>
+
+      {% if inquiry.requirements %}
+      <div class="ml-item-desc" style="margin-top:-.5rem;">
+        <strong style="color:var(--text-primary);">Requirements:</strong>
+        {{ inquiry.requirements|truncatewords:15 }}
+      </div>
+      {% endif %}
+
+      <div class="ml-item-footer">
+        <div class="ml-contact-row">
+          {% if inquiry.contact_phone %}
+          <span class="ml-contact-item">
+            <i class="bi bi-telephone"></i> {{ inquiry.contact_phone }}
+          </span>
+          {% endif %}
+          {% if inquiry.contact_email %}
+          <span class="ml-contact-item">
+            <i class="bi bi-envelope"></i> {{ inquiry.contact_email }}
+          </span>
+          {% endif %}
+        </div>
+
+        <div class="ml-item-actions">
+          <a href="{% url 'services:inquiry_detail' pk=inquiry.id %}" class="ml-btn ml-btn-ghost ml-btn-sm">
+            <i class="bi bi-eye"></i> View Details
+          </a>
+          {% if inquiry.conversation_url %}
+          <a href="{{ inquiry.conversation_url }}" class="ml-btn ml-btn-outline ml-btn-sm">
+            <i class="bi bi-chat-dots"></i> Conversation
+          </a>
+          {% endif %}
+          {% if inquiry.status == 'pending' %}
+          <button class="ml-btn ml-btn-success ml-btn-sm"
+                  onclick="quickRespond('{{ inquiry.id }}', 'accepted')">
+            <i class="bi bi-check"></i> Accept
+          </button>
+          <button class="ml-btn ml-btn-ghost ml-btn-sm"
+                  onclick="quickRespond('{{ inquiry.id }}', 'responded')">
+            <i class="bi bi-reply"></i> Respond
+          </button>
+          {% elif inquiry.status == 'responded' %}
+          <span class="ml-badge badge-responded"><i class="bi bi-clock me-1"></i>Awaiting Client</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="ml-table-wrap" style="background:var(--card-background);border:1px solid var(--border-color);border-radius:var(--radius-md,.5rem);overflow:hidden;">
+      <div class="ml-empty">
+        <div class="ml-empty-icon"><i class="bi bi-chat-square-dots"></i></div>
+        <h5>{% if current_status %}No {{ current_status }} inquiries{% else %}No inquiries yet{% endif %}</h5>
+        <p>
+          {% if current_status %}
+            Try a different filter or <a href="{% url 'services:my_inquiries' %}">view all inquiries</a>.
+          {% else %}
+            When clients show interest in your services, their inquiries will appear here.
+          {% endif %}
+        </p>
+        {% if not current_status %}
+        <a href="{% url 'manage_listings' %}?tab=services" class="ml-btn ml-btn-primary">
+          <i class="bi bi-briefcase"></i> View My Services
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+
+    {# ── Pagination ────────────────────────────────────────────── #}
+    {% if inquiries.has_other_pages %}
+    <div class="ml-pagination">
+      {% if inquiries.has_previous %}
+      <a class="ml-page-btn"
+         href="?page={{ inquiries.previous_page_number }}{% if query_string %}&{{ query_string }}{% endif %}">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+      {% endif %}
+      {% for num in inquiries.paginator.page_range %}
+        {% if inquiries.number == num %}
+        <span class="ml-page-btn active">{{ num }}</span>
+        {% elif num > inquiries.number|add:'-3' and num < inquiries.number|add:'3' %}
+        <a class="ml-page-btn"
+           href="?page={{ num }}{% if query_string %}&{{ query_string }}{% endif %}">{{ num }}</a>
+        {% endif %}
+      {% endfor %}
+      {% if inquiries.has_next %}
+      <a class="ml-page-btn"
+         href="?page={{ inquiries.next_page_number }}{% if query_string %}&{{ query_string }}{% endif %}">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+  </div>{# /container-xl #}
+</div>{# /ml-wrap #}
+
+
+<div class="ml-modal-backdrop" id="quickResponseModal">
+  <div class="ml-modal">
+    <div class="ml-modal-header">
+      <h5 id="quickResponseModalLabel">Quick Response</h5>
+      <button class="ml-modal-close" onclick="closeQRModal()">&times;</button>
+    </div>
+    <div class="ml-modal-body">
+      <div class="ml-error-banner" id="quickResponseErrors" id="quickResponseErrors"></div>
+
+      <form method="post" id="quickResponseForm">
+        {% csrf_token %}
+        <input type="hidden" id="inquiry_id"      name="inquiry_id">
+        <input type="hidden" id="response_status" name="status">
+
+        <div style="margin-bottom:.85rem;">
+          <label class="ml-form-label" for="response_message">Response Message</label>
+          <textarea class="ml-form-control" id="response_message" name="provider_response"
+                    rows="4" required
+                    placeholder="Provide your response to this inquiry..."></textarea>
+        </div>
+
+        <div class="ml-form-row" id="additionalFields" style="display:none;">
+          <div>
+            <label class="ml-form-label" for="quoted_price">Quoted Price (₦)</label>
+            <input type="number" class="ml-form-control" id="quoted_price"
+                   name="provider_quote" min="0" step="0.01">
+          </div>
+          <div>
+            <label class="ml-form-label" for="estimated_delivery">Estimated Delivery (Days)</label>
+            <input type="number" class="ml-form-control" id="estimated_delivery"
+                   name="estimated_delivery" min="1">
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="ml-modal-footer">
+      <button class="ml-btn ml-btn-ghost" onclick="closeQRModal()">Cancel</button>
+      <button class="ml-btn ml-btn-primary" id="quickResponseSubmitBtn" onclick="submitQRForm()">
+        <span class="btn-label"><i class="bi bi-send me-1"></i>Send Response</span>
+        <span class="btn-spinner" style="display:none;">
+          <span style="display:inline-block;width:.85rem;height:.85rem;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:qrSpin .7s linear infinite;vertical-align:middle;margin-right:.35rem;"></span>
+          Sending…
+        </span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>@keyframes qrSpin{to{transform:rotate(360deg)}}</style>
+
+<script>
+/* ── Quick-respond modal helpers ─────────────────────────────── */
+function quickRespond(inquiryId, status) {
+    document.getElementById('inquiry_id').value      = inquiryId;
+    document.getElementById('response_status').value = status;
+
+    const label     = document.getElementById('quickResponseModalLabel');
+    const extra     = document.getElementById('additionalFields');
+    const msg       = document.getElementById('response_message');
+    const qp        = document.getElementById('quoted_price');
+    const ed        = document.getElementById('estimated_delivery');
+
+    if (status === 'accepted') {
+        label.textContent    = 'Accept Inquiry';
+        extra.style.display  = 'grid';
+        msg.placeholder      = 'Confirm acceptance and provide project details...';
+        qp.required = ed.required = true;
+    } else {
+        label.textContent    = 'Respond to Inquiry';
+        extra.style.display  = 'none';
+        msg.placeholder      = 'Provide your response to this inquiry...';
+        qp.required = ed.required = false;
+    }
+
+    document.getElementById('quickResponseErrors').classList.remove('show');
+    document.getElementById('quickResponseErrors').textContent = '';
+    document.getElementById('quickResponseModal').classList.add('open');
+}
+
+function closeQRModal() {
+    document.getElementById('quickResponseModal').classList.remove('open');
+    document.getElementById('quickResponseForm').reset();
+    document.getElementById('additionalFields').style.display = 'none';
+}
+
+/* Close on backdrop click */
+document.getElementById('quickResponseModal').addEventListener('click', function(e) {
+    if (e.target === this) closeQRModal();
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeQRModal();
+});
+
+/* ── AJAX submission ─────────────────────────────────────────── */
+async function submitQRForm() {
+    const form      = document.getElementById('quickResponseForm');
+    const submitBtn = document.getElementById('quickResponseSubmitBtn');
+    const errBanner = document.getElementById('quickResponseErrors');
+
+    submitBtn.querySelector('.btn-label').style.display  = 'none';
+    submitBtn.querySelector('.btn-spinner').style.display = 'inline';
+    submitBtn.disabled = true;
+    errBanner.classList.remove('show');
+
+    const formData  = new FormData(form);
+    const inquiryId = formData.get('inquiry_id');
+
+    try {
+        const response = await fetch(`/services/inquiry/${inquiryId}/respond/`, {
+            method:  'POST',
+            body:    formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            window.location.href = data.redirect || window.location.href;
+            return;
+        }
+
+        errBanner.textContent = data.error || JSON.stringify(data.errors) || 'Failed to send response.';
+        errBanner.classList.add('show');
+
+    } catch (err) {
+        errBanner.textContent = 'An unexpected error occurred. Please try again.';
+        errBanner.classList.add('show');
+    }
+
+    submitBtn.querySelector('.btn-label').style.display  = 'inline';
+    submitBtn.querySelector('.btn-spinner').style.display = 'none';
+    submitBtn.disabled = false;
+}
+</script>
+
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

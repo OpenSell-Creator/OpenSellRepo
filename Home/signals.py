@@ -13,11 +13,7 @@ def check_listing_expiration(sender, instance, **kwargs):
 
     if instance.expiration_date:
         days_left = instance.days_until_deletion
-        
-        # Only send notification if:
-        # 1. Days left is 1 or 3
-        # 2. No warning was previously sent
-        # 3. This isn't a new listing (has an id)
+
         if (days_left in [1, 3] and 
             not instance._original_deletion_warning_sent and 
             instance.id):
@@ -26,12 +22,12 @@ def check_listing_expiration(sender, instance, **kwargs):
                 user=instance.seller.user
             )[0]
             
-            if prefs.system_notifications:  # Assuming you have this field
+            if prefs.system_notifications:
                 create_notification(
                     user=instance.seller.user,
                     title=f"Listing Expiring Soon!",
                     message=f"Your listing '{instance.title}' will expire in {days_left} days",
-                    category="SYSTEM",  # Make sure this matches your NotificationCategory choices
+                    category="SYSTEM", 
                     content_object=instance
                 )
                 instance.deletion_warning_sent = True

@@ -2,73 +2,188 @@
 {% load static %}
 
 {% block 'Body' %}
+
+{# ── CSS Variables & Base Styles ─────────────────────────────────────────── #}
 <style>
-    .messages-wrapper {
-        max-width: 960px;
-        margin: 0 auto;
-        padding: 1rem;
-    }
+/* ── Messages App Variables ───────────────────────────────────────────────── */
+:root {
+    --msg-sent-bg:        var(--primary-color, #003366);
+    --msg-sent-text:      #ffffff;
+    --msg-received-bg:    var(--card-background, #ffffff);
+    --msg-received-border: var(--border-color, #dee2e6);
+    --msg-card-sent-bg:   rgba(0, 51, 102, 0.06);
+    --msg-card-sent-border: rgba(0, 51, 102, 0.2);
+    --msg-card-received-bg: var(--card-background, #ffffff);
+    --chat-bg:            var(--background-color, #f8f9fa);
+    --tab-active-color:   var(--primary-color, #003366);
+    --tab-active-border:  var(--accent-color, #c9aa71);
+}
 
-    .message-bubble {
-        max-width: 80%;
-        margin-bottom: 1rem;
-        border-radius: 0.75rem;
-        padding: 0.75rem 1rem;
-    }
+[data-bs-theme="dark"] {
+    --msg-card-sent-bg:   rgba(0, 51, 102, 0.22);
+    --msg-card-sent-border: rgba(0, 51, 102, 0.4);
+    --msg-card-received-bg: rgba(255, 255, 255, 0.05);
+    --chat-bg:            rgba(255, 255, 255, 0.03);
+}
 
-    .message-sent {
-        background: #e9ecef;
-        margin-left: auto;
-        border-bottom-right-radius: 0.25rem;
-    }
+/* ── Layout Wrapper ───────────────────────────────────────────────────────── */
+.messages-app {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 1.25rem 1rem 3rem;
+}
 
-    .message-received {
-        background: white;
-        border: 1px solid #dee2e6;
-        border-bottom-left-radius: 0.25rem;
-    }
+/* ── Message Bubbles — Plain ─────────────────────────────────────────────── */
+.message-bubble {
+    max-width: 78%;
+    margin-bottom: 0.9rem;
+    padding: 0.65rem 0.9rem;
+    border-radius: 1.1rem;
+    position: relative;
+    line-height: 1.5;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+.message-sent {
+    background-color: var(--msg-sent-bg);
+    color: var(--msg-sent-text);
+    margin-left: auto;
+    border-bottom-right-radius: 0.25rem;
+}
+.message-received {
+    background-color: var(--msg-received-bg);
+    color: var(--text-primary);
+    margin-right: auto;
+    border-bottom-left-radius: 0.25rem;
+    border: 1px solid var(--msg-received-border);
+}
+.message-content { margin-bottom: 0.2rem; }
+.message-content p:last-child { margin-bottom: 0; }
+.message-timestamp {
+    font-size: 0.72rem;
+    text-align: right;
+    opacity: 0.8;
+    margin-top: 0.2rem;
+}
+.message-sent  .message-timestamp { color: rgba(255,255,255,0.85); }
+.message-received .message-timestamp { color: var(--text-secondary); }
 
-    .message-timestamp {
-        font-size: 0.75rem;
-        color: #6c757d;
-    }
+/* ── Message Bubbles — Structured Card ───────────────────────────────────── */
+.message-card-bubble {
+    max-width: 88%;
+    border-radius: 0.85rem;
+    padding: 1rem 1.1rem;
+    margin-bottom: 1rem;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+.message-sent-card {
+    margin-left: auto;
+    background-color: var(--msg-card-sent-bg);
+    border: 1px solid var(--msg-card-sent-border);
+    color: var(--text-primary);
+}
+.message-received-card {
+    margin-right: auto;
+    background-color: var(--msg-card-received-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
 
-    .conversation-card {
-        transition: transform 0.2s;
-        border: 1px solid #dee2e6;
-        margin-bottom: 1rem;
-    }
+/* ── Shared Card Sub-elements ─────────────────────────────────────────────── */
+.structured-card-header {
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.55rem;
+    margin-bottom: 0.6rem;
+}
+.card-timestamp { color: var(--text-secondary); font-size: 0.72rem; }
+.structured-card-body { padding-top: 0.5rem; }
+.inquiry-main-message {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+}
+.response-type-label { font-size: 0.78rem; }
+.inquiry-details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem 1.25rem;
+    margin-top: 0.75rem;
+}
+.inquiry-detail-row { display: flex; flex-direction: column; gap: 0.1rem; }
+.inquiry-detail-row--full { grid-column: 1 / -1; }
+.detail-label { font-size: 0.73rem; color: var(--text-secondary); font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em; }
+.detail-value { font-size: 0.88rem; color: var(--text-primary); }
+.detail-value--highlight { color: var(--accent-color); font-weight: 700; font-size: 1rem; }
+.structured-card-actions { border-top: 1px solid var(--border-color); padding-top: 0.75rem; margin-top: 0.75rem; }
+.card-sender-label { font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.4rem; }
+.structured-card-status-notice {
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.4rem;
+    font-size: 0.84rem;
+    margin-top: 0.75rem;
+}
+.status-notice--accepted { background: rgba(25,135,84,0.1); color: #198754; border: 1px solid rgba(25,135,84,0.25); }
+.status-notice--declined { background: rgba(220,53,69,0.1);  color: #dc3545; border: 1px solid rgba(220,53,69,0.25); }
+.linked-item-row { padding-top: 0.6rem; border-top: 1px solid var(--border-color); margin-top: 0.5rem; }
 
-    .conversation-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
+/* ── Content-type & Status Badges ────────────────────────────────────────── */
+.content-type-badge { font-size: 0.68rem; padding: 0.18rem 0.5rem; font-weight: 500; border-radius: 0.25rem; }
+.badge-product    { background: rgba(13,110,253,0.1);  color: #0d6efd; }
+.badge-service    { background: rgba(25,135,84,0.1);   color: #198754; }
+.badge-request    { background: rgba(255,193,7,0.1);   color: #b45309; }
+.badge-inquiry-card  { background: rgba(25,135,84,0.12);  color: #198754; font-size: 0.7rem; }
+.badge-response-card { background: rgba(0,51,102,0.1);    color: var(--primary-color); font-size: 0.7rem; }
 
-    .chat-container {
-        height: calc(100vh - 300px);
-        min-height: 400px;
-        overflow-y: auto;
-        background: #f8f9fa;
-        border: 1px solid #dee2e6;
-        border-radius: 0.375rem;
-        padding: 1rem;
-        margin-bottom: 1rem;
-    }
+.badge-status-pending     { background: rgba(255,193,7,0.15);  color: #b45309;  font-size: 0.68rem; }
+.badge-status-responded   { background: rgba(13,110,253,0.12); color: #0d6efd;  font-size: 0.68rem; }
+.badge-status-negotiating { background: rgba(111,66,193,0.12); color: #6f42c1;  font-size: 0.68rem; }
+.badge-status-accepted    { background: rgba(25,135,84,0.12);  color: #198754;  font-size: 0.68rem; }
+.badge-status-declined    { background: rgba(220,53,69,0.12);  color: #dc3545;  font-size: 0.68rem; }
+.badge-status-completed   { background: rgba(13,202,240,0.12); color: #0dcaf0;  font-size: 0.68rem; }
+.badge-status-viewed      { background: rgba(13,110,253,0.12); color: #0d6efd;  font-size: 0.68rem; }
 
-    .message-form textarea {
-        resize: none;
-        border-radius: 0.375rem;
-    }
+.inbox-status-badge { font-size: 0.63rem; padding: 0.15rem 0.42rem; font-weight: 500; border-radius: 0.2rem; }
+.inbox-status-pending     { background: rgba(255,193,7,0.15);  color: #b45309; }
+.inbox-status-responded   { background: rgba(13,110,253,0.12); color: #0d6efd; }
+.inbox-status-negotiating { background: rgba(111,66,193,0.12); color: #6f42c1; }
+.inbox-status-accepted    { background: rgba(25,135,84,0.12);  color: #198754; }
+.inbox-status-declined    { background: rgba(220,53,69,0.12);  color: #dc3545; }
+.inbox-status-completed   { background: rgba(13,202,240,0.12); color: #0dcaf0; }
 
-    .unread-badge {
-        font-size: 0.75rem;
-        padding: 0.25rem 0.5rem;
-    }
+[data-bs-theme="dark"] .badge-product    { background: rgba(13,110,253,0.2); }
+[data-bs-theme="dark"] .badge-service    { background: rgba(25,135,84,0.2);  }
+[data-bs-theme="dark"] .badge-request    { background: rgba(255,193,7,0.2);  }
+[data-bs-theme="dark"] .badge-inquiry-card  { background: rgba(25,135,84,0.25); }
+[data-bs-theme="dark"] .badge-response-card { background: rgba(0,51,102,0.3);   }
+[data-bs-theme="dark"] .inbox-status-pending     { background: rgba(255,193,7,0.25);  }
+[data-bs-theme="dark"] .inbox-status-responded   { background: rgba(13,110,253,0.25); }
+[data-bs-theme="dark"] .inbox-status-accepted    { background: rgba(25,135,84,0.25);  }
+[data-bs-theme="dark"] .inbox-status-declined    { background: rgba(220,53,69,0.25);  }
+
+/* ── Encryption decorations ───────────────────────────────────────────────── */
+.encryption-icon { font-size: 0.65rem; opacity: 0.75; }
+
+/* ── Unread badge ────────────────────────────────────────────────────────── */
+.unread-badge { background-color: var(--accent-color) !important; color: #fff !important; }
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 576px) {
+    .message-bubble      { max-width: 92%; }
+    .message-card-bubble { max-width: 96%; }
+    .inquiry-details-grid { grid-template-columns: 1fr; }
+    .msg-nav-link { padding: 0.6rem 0.85rem; font-size: 0.82rem; }
+}
 </style>
 
-<div class="messages-wrapper">
+<div class="messages-app">
+
     {% block messages_content %}{% endblock %}
-    {% block 'messages' %}
-    {% endblock %}
+    {% block messages %}{% endblock %}
+
 </div>
+
 {% endblock %}
+
+{% block 'Footer' %}{% endblock %}

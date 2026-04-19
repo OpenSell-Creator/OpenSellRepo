@@ -1,0 +1,652 @@
+{% load static %}
+
+<div class="card service-card h-100 {% if service.provider.business_verification_status == 'verified' %}verified-provider{% endif %}">
+
+    {% if service.experience_level == 'expert' %}
+        <div class="sc-badge sc-badge--expert">
+            <i class="bi bi-star-fill"></i><span>Expert</span>
+        </div>
+    {% endif %}
+
+    {% if service.provider.business_verification_status == 'verified' %}
+        <div class="sc-badge sc-badge--verified" data-bs-toggle="tooltip" data-bs-placement="top" title="Verified Business Provider">
+            <i class="bi bi-shield-check-fill"></i>
+        </div>
+    {% endif %}
+
+    <div class="sc-image-wrap">
+        <a href="{% url 'services:detail' pk=service.id %}" class="sc-image-link" tabindex="-1" aria-hidden="true">
+            {% with primary_image=service.primary_image %}
+                {% if primary_image %}
+                    <img src="{{ primary_image.image.url }}" class="sc-image" alt="{{ service.title }}" loading="lazy">
+                {% else %}
+                    <div class="sc-placeholder">
+                        <i class="sc-placeholder-icon
+                            {% if service.service_type == 'digital' %}bi bi-laptop
+                            {% elif service.service_type == 'physical' %}bi bi-tools
+                            {% elif service.service_type == 'consulting' %}bi bi-chat-dots
+                            {% else %}bi bi-briefcase{% endif %}"></i>
+                        <span class="sc-placeholder-label">{{ service.get_service_type_display }}</span>
+                    </div>
+                {% endif %}
+            {% endwith %}
+        </a>
+
+        {% if user.is_authenticated and user != service.provider.user %}
+            <button class="sc-save-btn {% if service.is_saved %}saved{% endif %}"
+                data-item-id="{{ service.id }}"
+                data-item-type="service"
+                onclick="toggleSave(event, '{{ service.id }}', 'service')"
+                title="{% if service.is_saved %}Remove from saved{% else %}Save this service{% endif %}"
+                aria-label="{% if service.is_saved %}Remove from saved{% else %}Save this service{% endif %}">
+                <i class="bi {% if service.is_saved %}bi-bookmark-fill{% else %}bi-bookmark{% endif %}"></i>
+            </button>
+        {% endif %}
+
+        {% if user.is_authenticated and user == service.provider.user %}
+            <div class="sc-owner-icon" title="Your Service">
+                <i class="bi bi-person-check-fill"></i>
+            </div>
+            <div class="sc-actions-overlay">
+                <button class="sc-action-btn"
+                        onclick="window.location.href='{% url 'services:update' pk=service.id %}'"
+                        title="Edit Service"
+                        aria-label="Edit Service">
+                    <i class="bi bi-pencil-square"></i>
+                </button>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="sc-body">
+
+        <a href="{% url 'services:detail' pk=service.id %}" class="sc-title-link">
+            <h3 class="sc-title">{{ service.title|truncatechars:55 }}</h3>
+        </a>
+
+        <div class="sc-meta">
+
+            {# Row 1: Price + Pricing type #}
+            <div class="sc-row">
+                <span class="sc-price">{{ service.price_display }}</span>
+                <span class="sc-tag sc-tag--pricing pricing-{{ service.pricing_type }}">
+                    {% if service.pricing_type == 'fixed' %}<i class="bi bi-tag-fill"></i>
+                    {% elif service.pricing_type == 'hourly' %}<i class="bi bi-clock-fill"></i>
+                    {% elif service.pricing_type == 'project' %}<i class="bi bi-briefcase-fill"></i>
+                    {% else %}<i class="bi bi-chat-text-fill"></i>{% endif %}
+                    <span class="sc-tag-text">{{ service.get_pricing_type_display }}</span>
+                </span>
+            </div>
+
+            {# Row 2: Service type + Experience #}
+            <div class="sc-row sc-row--muted">
+                <span class="sc-inline-info">
+                    {% if service.service_type == 'digital' %}<i class="bi bi-laptop"></i>
+                    {% elif service.service_type == 'physical' %}<i class="bi bi-tools"></i>
+                    {% elif service.service_type == 'consulting' %}<i class="bi bi-chat-dots"></i>
+                    {% endif %}
+                    <span class="sc-clamp-1">{{ service.get_service_type_display }}</span>
+                </span>
+                <span class="sc-inline-info sc-inline-info--right">
+                    <i class="bi bi-award-fill sc-icon-accent"></i>
+                    <span class="sc-clamp-1">{{ service.get_experience_level_display }}</span>
+                </span>
+            </div>
+
+            {# Row 3: Provider + Location #}
+            <div class="sc-row">
+                <div class="sc-provider-wrap">
+                    <a href="{% url 'user_store' service.provider.user.username %}" class="sc-provider-link">
+                        {% if service.provider.business_verification_status == 'verified' %}
+                            <i class="bi bi-building-fill sc-icon-verified"></i>
+                        {% endif %}
+                        <span class="sc-provider-name">
+                            {% if service.provider.business_verification_status == 'verified' and service.provider.business_name %}
+                                {{ service.provider.business_name|truncatechars:18 }}
+                            {% else %}
+                                {{ service.provider.user.username|truncatechars:18 }}
+                            {% endif %}
+                        </span>
+                    </a>
+                </div>
+                <span class="sc-location">
+                    {% if service.delivery_method == 'remote' %}
+                        <i class="bi bi-globe sc-icon-accent"></i>
+                        <span class="sc-clamp-1">Remote</span>
+                    {% else %}
+                        <i class="bi bi-geo-alt-fill sc-icon-accent"></i>
+                        <span class="sc-clamp-1">
+                            {% if service.provider.location %}
+                                {% with loc=service.provider.location %}
+                                    {% if loc.city and loc.state %}{{ loc.city }}, {{ loc.state.name }}
+                                    {% elif loc.city %}{{ loc.city }}
+                                    {% elif loc.lga and loc.state %}{{ loc.lga.name }}, {{ loc.state.name }}
+                                    {% elif loc.state %}{{ loc.state.name }}
+                                    {% else %}Local{% endif %}
+                                {% endwith %}
+                            {% else %}Local Area{% endif %}
+                        </span>
+                    {% endif %}
+                </span>
+            </div>
+
+            {# Row 4: Stats bar #}
+            <div class="sc-stats-bar">
+                <span class="sc-stat"><i class="bi bi-eye"></i>{{ service.view_count }}</span>
+                <span class="sc-stat"><i class="bi bi-chat-dots"></i>{{ service.inquiries.count }}</span>
+                <span class="sc-stat sc-stat--gold"><i class="bi bi-star-fill"></i>{{ service.average_rating|floatformat:1 }}</span>
+            </div>
+
+            {# Row 5: Availability + Time #}
+            <div class="sc-row sc-row--footer">
+                <span class="sc-availability">
+                    <i class="bi bi-clock"></i>
+                    <span class="sc-clamp-1">{{ service.get_availability_display }}</span>
+                </span>
+                <span class="sc-time">{{ service.created_at|timesince }} ago</span>
+            </div>
+
+            {# Verified business footer #}
+            {% if service.provider.business_verification_status == 'verified' %}
+                <div class="sc-verified-footer">
+                    <span class="sc-verified-tag">
+                        <i class="bi bi-shield-check"></i>Verified Business
+                    </span>
+                    {% if service.provider.business_address_visible and service.provider.location %}
+                        <span class="sc-biz-address">
+                            <i class="bi bi-geo-alt"></i>
+                            <span class="sc-clamp-1">
+                                {% with loc=service.provider.location %}
+                                    {% if loc.address %}{{ loc.address|truncatechars:28 }}
+                                    {% elif loc.city %}{{ loc.city }}{% endif %}
+                                {% endwith %}
+                            </span>
+                        </span>
+                    {% endif %}
+                </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+
+<style>
+/* ================================================================
+   SERVICE CARD — 4-col desktop / 2-col mobile
+   Fully container-query–driven, zero overflow, unified token system
+   ================================================================ */
+
+/* 1 ── Container query registration ─────────────────────────── */
+.service-card {
+    container-type: inline-size;
+    container-name: sc;
+}
+
+/* 2 ── Base card shell ───────────────────────────────────────── */
+.service-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-width: 0;                     /* critical: prevents flex blowout */
+    background: var(--card-background);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-lg, 12px);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    word-break: break-word;
+}
+.service-card.verified-provider {
+    border-color: var(--success, #22c55e);
+    box-shadow: 0 0 0 2px var(--success, #22c55e), var(--shadow-md);
+}
+.service-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* 3 ── Badges (absolute, image-layer) ───────────────────────── */
+.sc-badge {
+    position: absolute;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    line-height: 1;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Expert badge — top-left pill */
+.sc-badge--expert {
+    top: 6px;
+    left: 6px;
+    padding: 3px 7px;
+    border-radius: 20px;
+    font-size: 0.58rem;
+    background: rgba(251, 191, 36, 0.92);
+    color: #fff;
+    backdrop-filter: blur(4px);
+}
+
+/* Verified badge — top-right circle */
+.sc-badge--verified {
+    top: 6px;
+    right: 6px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: var(--shadow-sm);
+    justify-content: center;
+}
+.sc-badge--verified i { color: var(--success, #22c55e); font-size: 12px; }
+
+/* 4 ── Image container — 4:3 aspect ratio ───────────────────── */
+.sc-image-wrap {
+    position: relative;
+    flex-shrink: 0;
+    padding-top: 75%;               /* 4:3 — wastes less vertical space at 4 cols */
+    overflow: hidden;
+    background: var(--background-color);
+}
+
+.sc-image-link {
+    position: absolute;
+    inset: 0;
+    display: block;
+}
+
+.sc-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.22s ease;
+}
+.service-card:hover .sc-image { transform: scale(1.04); }
+
+.sc-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    color: var(--text-secondary);
+}
+.sc-placeholder-icon {
+    font-size: clamp(1.4rem, 10cqi, 2.6rem);
+    opacity: 0.25;
+}
+.sc-placeholder-label {
+    font-size: clamp(0.5rem, 2cqi, 0.68rem);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    opacity: 0.5;
+}
+
+/* 5 ── Overlay action buttons ───────────────────────────────── */
+.sc-save-btn {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    z-index: 15;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.14);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.sc-save-btn:hover {
+    transform: scale(1.12);
+    border-color: var(--accent-color);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.18);
+}
+.sc-save-btn i { color: #6c757d; font-size: 0.85rem; transition: color 0.15s ease; }
+.sc-save-btn.saved { border-color: var(--accent-color); }
+.sc-save-btn.saved i { color: var(--accent-color); animation: scHeartBeat 0.55s ease; }
+
+.sc-actions-overlay {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    z-index: 15;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sc-action-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: none;
+    background: var(--primary-color);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,123,255,0.28);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.sc-action-btn:hover { transform: scale(1.12); box-shadow: 0 3px 10px rgba(0,123,255,0.4); }
+.sc-action-btn i { font-size: 0.75rem; }
+
+.sc-owner-icon {
+    position: absolute;
+    bottom: 6px;
+    left: 6px;
+    z-index: 15;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0,123,255,0.28);
+    transition: transform 0.15s ease;
+}
+.sc-owner-icon i { font-size: 0.8rem; }
+
+@keyframes scHeartBeat {
+    0%,100% { transform: scale(1); }
+    25%      { transform: scale(1.32); }
+    50%      { transform: scale(1); }
+    75%      { transform: scale(1.18); }
+}
+
+/* 6 ── Card body ─────────────────────────────────────────────── */
+.sc-body {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-width: 0;
+    padding: 10px;
+    gap: 5px;
+    overflow: hidden;
+}
+
+/* 7 ── Title ─────────────────────────────────────────────────── */
+.sc-title-link {
+    display: block;
+    text-decoration: none;
+    min-width: 0;
+    color: inherit;
+}
+.sc-title {
+    margin: 0 0 1px;
+    font-weight: 600;
+    line-height: 1.28;
+    color: var(--text-primary);
+    /* Fluid font that shrinks gracefully in narrow 4-col cards */
+    font-size: clamp(0.7rem, 3.8cqi, 0.875rem);
+    /* Clamp to exactly 2 lines */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 2.56em;             /* 2 lines × 1.28 line-height = stable height */
+}
+.sc-title-link:hover .sc-title { color: var(--primary-color); }
+
+/* 8 ── Meta container ────────────────────────────────────────── */
+.sc-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    margin-top: auto;               /* push to bottom of body */
+}
+
+/* 9 ── Generic row ───────────────────────────────────────────── */
+.sc-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+}
+.sc-row--muted { color: var(--text-secondary); }
+.sc-row--footer {
+    padding-top: 3px;
+    border-top: 1px solid var(--border-color);
+}
+
+/* 10 ── Price ────────────────────────────────────────────────── */
+.sc-price {
+    font-size: clamp(0.75rem, 3.2cqi, 0.95rem);
+    font-weight: 700;
+    color: var(--accent-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+}
+
+/* 11 ── Tag badges (pricing type, etc.) ─────────────────────── */
+.sc-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    border-radius: 4px;
+    padding: 2px 5px;
+    font-size: clamp(0.48rem, 1.9cqi, 0.6rem);
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.2;
+    max-width: 48%;
+}
+.sc-tag-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.pricing-fixed      { background: var(--primary-color, #0d6efd); }
+.pricing-hourly     { background: var(--info, #0dcaf0); }
+.pricing-project    { background: var(--success, #22c55e); }
+.pricing-negotiable { background: var(--warning, #f59e0b); }
+
+/* 12 ── Inline info (type / experience) ─────────────────────── */
+.sc-inline-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: clamp(0.58rem, 2.2cqi, 0.68rem);
+    color: var(--text-secondary);
+    font-weight: 500;
+    min-width: 0;
+    overflow: hidden;
+}
+.sc-inline-info i { flex-shrink: 0; color: var(--primary-color); font-size: inherit; }
+.sc-inline-info--right { flex-shrink: 0; }
+.sc-icon-accent { color: var(--accent-color) !important; }
+
+/* Generic single-line clamp */
+.sc-clamp-1 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+/* 13 ── Provider + Location ──────────────────────────────────── */
+.sc-provider-wrap {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+}
+.sc-provider-link {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    text-decoration: none;
+    color: var(--text-secondary);
+    min-width: 0;
+    overflow: hidden;
+    transition: color 0.15s ease;
+}
+.sc-provider-link:hover { color: var(--primary-color); }
+
+.sc-icon-verified { color: #22c55e !important; font-size: 0.65rem; flex-shrink: 0; }
+
+.sc-provider-name {
+    font-size: clamp(0.58rem, 2.2cqi, 0.68rem);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.sc-location {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    min-width: 0;
+    max-width: 46%;
+    font-size: clamp(0.52rem, 1.9cqi, 0.62rem);
+    color: var(--text-secondary);
+}
+
+/* 14 ── Stats bar ────────────────────────────────────────────── */
+.sc-stats-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 6px;
+    background: var(--background-color);
+    border-radius: var(--radius-sm, 6px);
+}
+.sc-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: clamp(0.52rem, 1.9cqi, 0.62rem);
+    color: var(--text-secondary);
+    font-weight: 500;
+    white-space: nowrap;
+}
+.sc-stat i { color: var(--primary-color); font-size: clamp(0.52rem, 1.9cqi, 0.64rem); flex-shrink: 0; }
+.sc-stat--gold i { color: #f59e0b; }
+
+/* 15 ── Availability + Time footer ──────────────────────────── */
+.sc-availability {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: clamp(0.5rem, 1.8cqi, 0.6rem);
+    color: var(--success, #22c55e);
+    font-weight: 500;
+    min-width: 0;
+    overflow: hidden;
+}
+.sc-availability i { flex-shrink: 0; }
+
+.sc-time {
+    font-size: clamp(0.48rem, 1.7cqi, 0.58rem);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* 16 ── Verified business footer ────────────────────────────── */
+.sc-verified-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: 4px;
+    border-top: 1px solid rgba(34,197,94,0.18);
+}
+.sc-verified-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: #22c55e;
+    font-size: clamp(0.52rem, 1.9cqi, 0.62rem);
+    font-weight: 600;
+}
+.sc-verified-tag i { flex-shrink: 0; }
+
+.sc-biz-address {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: var(--text-secondary);
+    font-size: clamp(0.48rem, 1.6cqi, 0.58rem);
+    min-width: 0;
+    overflow: hidden;
+}
+.sc-biz-address i { flex-shrink: 0; color: #6b7280; font-size: inherit; }
+
+/* 17 ── Dark mode ────────────────────────────────────────────── */
+[data-bs-theme="dark"] .service-card.verified-provider {
+    background: linear-gradient(135deg, var(--card-background) 0%, rgba(34,197,94,0.06) 100%);
+}
+[data-bs-theme="dark"] .sc-save-btn {
+    background: rgba(28,28,30,0.95);
+    border-color: rgba(255,255,255,0.1);
+}
+[data-bs-theme="dark"] .sc-save-btn:hover {
+    background: rgba(38,38,40,0.98);
+    border-color: var(--accent-color);
+}
+[data-bs-theme="dark"] .sc-badge--verified { background: var(--card-background); }
+[data-bs-theme="dark"] .sc-verified-footer { border-top-color: rgba(34,197,94,0.25); }
+
+/* 18 ── Viewport breakpoints (augment container queries) ─────── */
+@media (max-width: 1199.98px) {
+    .sc-body { padding: 9px; gap: 4px; }
+}
+@media (max-width: 767.98px) {
+    .sc-body { padding: 8px; gap: 3px; }
+    .sc-badge--expert { font-size: 0.54rem; padding: 2px 5px; top: 5px; left: 5px; }
+    .sc-badge--verified { width: 20px; height: 20px; top: 5px; right: 5px; }
+    .sc-badge--verified i { font-size: 11px; }
+    .sc-save-btn  { width: 26px; height: 26px; bottom: 5px; right: 5px; }
+    .sc-action-btn { width: 24px; height: 24px; }
+    .sc-owner-icon { width: 24px; height: 24px; bottom: 5px; left: 5px; }
+    .sc-actions-overlay { bottom: 5px; right: 5px; }
+}
+@media (max-width: 575.98px) {
+    .sc-body { padding: 7px; gap: 3px; }
+    .sc-save-btn   { width: 24px; height: 24px; bottom: 4px; right: 4px; }
+    .sc-action-btn { width: 22px; height: 22px; }
+    .sc-owner-icon { width: 22px; height: 22px; bottom: 4px; left: 4px; }
+    .sc-title { min-height: 2.3em; }
+}
+
+/* 19 ── Loading / Focus / Motion ─────────────────────────────── */
+.service-card.loading { opacity: 0.65; pointer-events: none; }
+
+.sc-save-btn:focus,
+.sc-action-btn:focus { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+    .service-card,
+    .sc-image,
+    .sc-save-btn,
+    .sc-action-btn,
+    .sc-provider-link { transition: none; }
+    .service-card:hover    { transform: none; }
+    .service-card:hover .sc-image { transform: none; }
+    .sc-save-btn.saved i   { animation: none; }
+}
+</style>

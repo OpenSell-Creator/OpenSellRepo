@@ -1,5 +1,5 @@
 // sw.js - FIXED VERSION with Better Error Handling
-const CACHE_NAME = 'opensell-v1.0.1';  // Updated version
+const CACHE_NAME = 'opensell-v1.0.2';  // Bumped: fix POST interception bug
 const OFFLINE_URL = '/offline/';
 
 const STATIC_CACHE_URLS = [
@@ -66,21 +66,12 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // NEVER cache API requests or non-GET requests
-    if (shouldSkipCache || event.request.method !== 'GET') {
-        event.respondWith(
-            fetch(event.request).catch(error => {
-                console.error('Fetch failed for:', url.pathname, error);
-                // Return a basic error response instead of failing silently
-                return new Response('Network error', {
-                    status: 503,
-                    statusText: 'Service Unavailable',
-                    headers: new Headers({
-                        'Content-Type': 'text/plain'
-                    })
-                });
-            })
-        );
+    if (event.request.method !== 'GET') {
+        return;
+    }
+
+    // Skip caching for API/admin patterns — let browser handle directly
+    if (shouldSkipCache) {
         return;
     }
 

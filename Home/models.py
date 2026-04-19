@@ -1,7 +1,7 @@
 import os
 import uuid
 from django.contrib.auth.models import User
-from User.models import Profile, Location
+from User.models import Profile, Location, SavedItem
 from User import models
 from django.urls import reverse, reverse_lazy
 from django.core.files.storage import default_storage
@@ -11,7 +11,6 @@ from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator, FileExtensionValidator
 from .utils import user_listing_path, category_image_path
 from django.db.models import Avg
-from django.db import models
 from django.db import models
 from imagekit.models import ProcessedImageField, ImageSpecField
 from imagekit.processors import ResizeToFit, ResizeToFill
@@ -228,13 +227,44 @@ class Product_Listing(models.Model):
         return self.reviews.aggregate(Avg('rating'))['rating__avg'] or 0
     
     def is_saved_by_user(self, user):
+        """Check if product is saved by a specific user"""
         if not user.is_authenticated:
             return False
-        return SavedProduct.objects.filter(
+        
+        from django.contrib.contenttypes.models import ContentType
+        
+        product_ct = ContentType.objects.get_for_model(Product_Listing)
+        return SavedItem.objects.filter(
             user=user,
-            product=self
+            content_type=product_ct,
+            object_id=str(self.id)
         ).exists()
         
+    @property
+    def save_count(self):
+        """Get total number of users who saved this product"""
+        from django.contrib.contenttypes.models import ContentType
+        
+        product_ct = ContentType.objects.get_for_model(Product_Listing)
+        return SavedItem.objects.filter(
+            content_type=product_ct,
+            object_id=str(self.id)
+        ).count()
+
+    @property
+    def saved_by_users(self):
+        """Get queryset of users who saved this product"""
+        from django.contrib.contenttypes.models import ContentType
+        from django.contrib.auth.models import User
+        
+        product_ct = ContentType.objects.get_for_model(Product_Listing)
+        user_ids = SavedItem.objects.filter(
+            content_type=product_ct,
+            object_id=str(self.id)
+        ).values_list('user_id', flat=True)
+        
+        return User.objects.filter(id__in=user_ids)
+    
     @property
     def stock_status(self):
         if self.is_always_available:
@@ -538,66 +568,6 @@ class Product_Image(models.Model):
         # Delete files using storage-agnostic method
         self.image.delete(save=False)
         super().delete(*args, **kwargs)
-
-class SavedProduct(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saved_products')
-    product = models.ForeignKey(Product_Listing, on_delete=models.CASCADE, related_name='saved_by')
-    saved_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        unique_together = ('user', 'product')
-        ordering = ['-saved_at']
-
-    def __str__(self):
-        return f"{self.user.username} saved {self.product.title}"
-    
-    def save(self, *args, **kwargs):
-        print(f"Saving product {self.product.id} for user {self.user.id}")
-        super().save(*args, **kwargs)
-
-    def delete(self, *args, **kwargs):
-        print(f"Deleting saved product {self.product.id} for user {self.user.id}")
-        super().delete(*args, **kwargs)
-    
-class ProductReport(models.Model):
-    REPORT_STATUS = [
-        ('pending', 'Pending Review'),
-        ('reviewing', 'Under Review'),
-        ('resolved', 'Resolved'),
-        ('dismissed', 'Dismissed'),
-    ]
-    
-    REPORT_REASONS = [
-        ('spam', 'Spam or Misleading Content'),
-        ('fraud', 'Fraudulent Listing'),
-        ('inappropriate', 'Inappropriate Content'),
-        ('expired', 'Expired or Sold Item'),
-        ('other', 'Other Reason')
-    ]
-    
-    product = models.ForeignKey('Product_Listing', on_delete=models.CASCADE, related_name='reports')
-    reason = models.CharField(max_length=20, choices=REPORT_REASONS)
-    details = models.TextField()
-    reporter_email = models.EmailField(blank=True, null=True)
-    reported_at = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=10, choices=REPORT_STATUS, default='pending')
-    reviewed_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_reports')
-    reviewed_at = models.DateTimeField(null=True, blank=True)
-    resolution_notes = models.TextField(blank=True, null=True)
-    
-    class Meta:
-        ordering = ['-reported_at']
-        
-    def __str__(self):
-        return f"Report for {self.product.title} - {self.get_reason_display()}"
-        
-    def mark_as_reviewed(self, admin_user, status='resolved', notes=None):
-        self.status = status
-        self.reviewed_by = admin_user
-        self.reviewed_at = timezone.now()
-        if notes:
-            self.resolution_notes = notes
-        self.save()
         
 class Banner(models.Model):
     # Simplified - only one banner type since they work the same way

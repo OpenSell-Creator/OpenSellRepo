@@ -1,0 +1,743 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load compress %}
+
+{% block page_css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/pages/services.css' %}">
+    <style>
+
+.srl-page { padding-top: 0.5rem; }
+
+/* OFFCANVAS — BOTTOM SHEET */
+.srl-offcanvas {
+    height: 88dvh;
+    max-height: 88dvh;
+    border-radius: 20px 20px 0 0;
+    overflow: hidden;
+}
+
+.srl-offcanvas-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.35rem 1.1rem 0.875rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--card-background);
+    background-image: linear-gradient(var(--border-color), var(--border-color));
+    background-size: 36px 3px;
+    background-repeat: no-repeat;
+    background-position: center 10px;
+}
+
+.srl-offcanvas-title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.srl-offcanvas-title-group .offcanvas-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.srl-offcanvas-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    background: var(--primary-color);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0 5px;
+}
+.srl-offcanvas-badge:empty { display: none; }
+
+.srl-offcanvas-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.srl-clear-all-link {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--danger, #dc3545);
+    text-decoration: none;
+    white-space: nowrap;
+}
+.srl-clear-all-link:hover { text-decoration: underline; }
+
+/* PAGE HEADER */
+.srl-page-header {
+    background: var(--card-background);
+    border-radius: 14px;
+    padding: 0.875rem 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 8px var(--shadow-color);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.srl-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.srl-title-group { display: flex; flex-direction: column; gap: 0.1rem; }
+
+.srl-page-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.2;
+}
+
+.srl-page-subtitle {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.srl-post-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 14px;
+    background: var(--success, #28a745);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 0.18s ease;
+    border: none;
+}
+.srl-post-btn:hover { background: #218838; color: #fff; transform: translateY(-1px); box-shadow: 0 3px 10px rgba(40,167,69,0.3); }
+
+/* Category strip */
+.srl-category-strip {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin: 0 -0.25rem;
+}
+.srl-category-strip::-webkit-scrollbar { display: none; }
+
+.srl-category-track {
+    display: flex;
+    gap: 6px;
+    padding: 2px 0.25rem 4px;
+    width: max-content;
+    min-width: 100%;
+}
+
+.srl-cat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    background: var(--background-color);
+    border: 1.5px solid var(--border-color);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-decoration: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+}
+.srl-cat-pill:hover { border-color: var(--primary-color); color: var(--primary-color); text-decoration: none; }
+.srl-cat-pill--active { background: var(--primary-color); border-color: var(--primary-color); color: #fff; }
+.srl-cat-pill--active:hover { color: #fff; filter: brightness(1.08); }
+
+.srl-cat-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    background: var(--primary-color);
+    color: #fff;
+    border-radius: 9px;
+    font-size: 0.63rem;
+    font-weight: 700;
+    padding: 0 4px;
+    line-height: 1;
+}
+.srl-cat-pill--active .srl-cat-count { background: rgba(255,255,255,0.25); }
+
+/* Controls bar */
+.srl-controls-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+.srl-controls-bar::-webkit-scrollbar { display: none; }
+
+.srl-filter-btn {
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    background: var(--primary-color);
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+.srl-filter-btn:hover,
+.srl-filter-btn:active { filter: brightness(1.1); }
+
+.srl-filter-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    background: var(--accent-color, #ff6600);
+    color: #fff;
+    border-radius: 9px;
+    font-size: 0.63rem;
+    font-weight: 700;
+    padding: 0 4px;
+    line-height: 1;
+}
+.srl-filter-badge:empty { display: none; }
+
+.srl-quick-links {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.srl-quick-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 11px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-decoration: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+    background: var(--background-color);
+}
+.srl-quick-link:hover { border-color: var(--primary-color); color: var(--primary-color); text-decoration: none; }
+.srl-quick-link--active { background: var(--primary-color); border-color: var(--primary-color); color: #fff; }
+.srl-quick-link--verified { border-color: rgba(34,197,94,0.35); color: #16a34a; }
+.srl-quick-link--verified:hover { background: #16a34a; border-color: #16a34a; color: #fff; }
+.srl-quick-link--expert { border-color: rgba(251,191,36,0.4); color: #b45309; }
+.srl-quick-link--expert:hover { background: #d97706; border-color: #d97706; color: #fff; }
+
+.srl-sort-control { display: flex; align-items: center; flex-shrink: 0; }
+
+.srl-sort-select {
+    padding: 6px 28px 6px 10px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 20px;
+    background: var(--background-color);
+    color: var(--text-primary);
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23666' viewBox='0 0 16 16'%3E%3Cpath d='M8 10.5l-4-4h8l-4 4z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    min-height: 34px;
+    white-space: nowrap;
+    transition: border-color 0.15s;
+}
+.srl-sort-select:focus { outline: none; border-color: var(--primary-color); }
+[data-bs-theme="dark"] .srl-sort-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23d4d4d4' viewBox='0 0 16 16'%3E%3Cpath d='M8 10.5l-4-4h8l-4 4z'/%3E%3C/svg%3E");
+}
+
+/* FAB */
+.srl-fab {
+    position: fixed;
+    bottom: 76px;
+    right: 16px;
+    z-index: 1040;
+}
+
+.srl-fab-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 11px 18px;
+    background: var(--primary-color);
+    color: #fff;
+    border: none;
+    border-radius: 24px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+.srl-fab-btn:hover,
+.srl-fab-btn:active { filter: brightness(1.1); transform: scale(1.04); }
+
+.srl-fab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    background: var(--accent-color, #ff6600);
+    color: #fff;
+    border-radius: 9px;
+    font-size: 0.63rem;
+    font-weight: 700;
+    padding: 0 4px;
+    line-height: 1;
+}
+.srl-fab-badge:empty { display: none; }
+
+@media (max-width: 360px) {
+    .srl-fab-label { display: none; }
+    .srl-fab-btn   { padding: 13px; border-radius: 50%; }
+}
+
+/* Sidebar */
+.srl-sidebar-wrap {
+    position: sticky;
+    top: 80px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
+    border-radius: 14px;
+}
+.srl-sidebar-wrap::-webkit-scrollbar { width: 4px; }
+.srl-sidebar-wrap::-webkit-scrollbar-track { background: transparent; }
+.srl-sidebar-wrap::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+
+/* Results meta */
+.srl-results-meta { padding-bottom: 0.6rem; margin-bottom: 0.25rem; }
+
+.srl-results-count {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+.srl-results-count--empty { font-style: italic; }
+
+/* Loading / end */
+.srl-loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 2rem;
+    text-align: center;
+}
+
+.srl-loading-text {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.srl-end-of-results {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.srl-end-of-results i {
+    font-size: 1.75rem;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.srl-end-of-results p {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.srl-end-of-results small { font-size: 0.75rem; }
+
+/* Empty state */
+.srl-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 3rem 1.5rem;
+    background: var(--card-background);
+    border-radius: 14px;
+    border: 1px dashed var(--border-color);
+    gap: 0.5rem;
+}
+
+.srl-empty-icon {
+    font-size: 2.5rem;
+    color: var(--text-secondary);
+    opacity: 0.4;
+    margin-bottom: 0.25rem;
+}
+
+.srl-empty-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.srl-empty-text {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin: 0;
+    max-width: 320px;
+}
+
+.srl-empty-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 0.5rem;
+}
+
+.srl-empty-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 18px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    transition: all 0.18s ease;
+}
+.srl-empty-btn--primary { background: var(--primary-color); color: #fff; }
+.srl-empty-btn--primary:hover { filter: brightness(1.1); color: #fff; }
+.srl-empty-btn--outline { background: transparent; color: var(--text-secondary); border: 1.5px solid var(--border-color); }
+.srl-empty-btn--outline:hover { border-color: var(--primary-color); color: var(--primary-color); }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .srl-page-header { padding: 0.75rem; gap: 0.6rem; border-radius: 10px; margin-bottom: 0.75rem; }
+    .srl-page-title  { font-size: 0.95rem; }
+    .srl-cat-pill    { padding: 5px 10px; font-size: 0.72rem; }
+    .srl-controls-bar { gap: 6px; }
+    .srl-filter-btn  { padding: 6px 12px; font-size: 0.74rem; }
+    .srl-sort-select { font-size: 0.72rem; padding: 5px 26px 5px 9px; min-height: 32px; }
+    .srl-fab         { bottom: 72px; }
+}
+
+@media (max-width: 576px) {
+    .srl-page-header  { padding: 0.6rem 0.75rem; gap: 0.5rem; border-radius: 8px; }
+    .srl-page-title   { font-size: 0.9rem; }
+    .srl-post-btn span { display: none; }
+    .srl-post-btn     { padding: 8px 10px; }
+    .srl-offcanvas    { height: 92dvh; max-height: 92dvh; }
+    .srl-empty-state  { padding: 2.5rem 1rem; }
+    .srl-empty-title  { font-size: 0.9rem; }
+}
+</style>
+{% endblock %}
+
+{% block page_js %}
+    <script type="text/javascript" src="{% static 'js/pages/services.js' %}"></script>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="srl-page"
+     data-lgas-url="{% url 'services:ajax_lgas' %}"
+     data-list-url="{% url 'services:list' %}">
+
+    {# MOBILE OFFCANVAS — bottom sheet, always in DOM, never conditional #}
+    <div class="offcanvas offcanvas-bottom srl-offcanvas" tabindex="-1" id="mobileFilters"
+         aria-labelledby="mobileFiltersTitle">
+        <div class="offcanvas-header srl-offcanvas-header">
+            <div class="srl-offcanvas-title-group">
+                <h5 class="offcanvas-title" id="mobileFiltersTitle">
+                    <i class="bi bi-sliders me-2"></i>Filters
+                </h5>
+                <span class="srl-offcanvas-badge" id="offcanvasBadge"></span>
+            </div>
+            <div class="srl-offcanvas-actions">
+                {% if request.GET.category or request.GET.query or request.GET.state or request.GET.service_type or request.GET.experience_level or request.GET.verified_business or request.GET.pricing_type or request.GET.min_price or request.GET.max_price or request.GET.lga or request.GET.available_only or request.GET.availability or request.GET.sort %}
+                <a href="{% url 'services:list' %}" class="srl-clear-all-link">Clear all</a>
+                {% endif %}
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+        </div>
+        <div class="offcanvas-body p-0">
+            {% include 'unified_filter_sidebar.html' with sidebar_id='mobile' item_type='services' filter_action_url=request.path categories=categories states=states lgas=lgas selected_category=selected_category selected_state=selected_state selected_lga=selected_lga subcategories=subcategories brands=brands %}
+        </div>
+    </div>
+
+    {# PAGE HEADER — always visible, never conditional #}
+    <div class="srl-page-header">
+
+        <div class="srl-title-row">
+            <div class="srl-title-group">
+                <h1 class="srl-page-title">Services</h1>
+                <p class="srl-page-subtitle d-none d-sm-block">Connect with skilled professionals across Nigeria</p>
+            </div>
+            {% if user.is_authenticated %}
+            <a href="{% url 'services:create' %}" class="srl-post-btn">
+                <i class="bi bi-plus-lg"></i>
+                <span>List Service</span>
+            </a>
+            {% endif %}
+        </div>
+
+        {# Category strip — always visible, horizontal scroll #}
+        <nav class="srl-category-strip" aria-label="Browse by category">
+            <div class="srl-category-track">
+                <a href="{% url 'services:list' %}"
+                   class="srl-cat-pill {% if not selected_category %}srl-cat-pill--active{% endif %}">
+                    All
+                </a>
+                {% for category in categories %}
+                <a href="{% url 'services:list' %}?category={{ category.code|default:category.id }}"
+                   class="srl-cat-pill {% if selected_category == category.code or selected_category == category.id|stringformat:'s' %}srl-cat-pill--active{% endif %}">
+                    {{ category.name }}
+                    {% if category.total_services %}
+                    <span class="srl-cat-count">{{ category.total_services }}</span>
+                    {% endif %}
+                </a>
+                {% endfor %}
+            </div>
+        </nav>
+
+        {# Controls bar — filter button + quick links + sort #}
+        <div class="srl-controls-bar">
+
+            <button type="button"
+                    class="srl-filter-btn d-flex d-lg-none"
+                    data-bs-toggle="offcanvas"
+                    data-bs-target="#mobileFilters"
+                    aria-controls="mobileFilters"
+                    aria-label="Open filters">
+                <i class="bi bi-sliders"></i>
+                <span>Filters</span>
+                <span class="srl-filter-badge" id="filterBadge"></span>
+            </button>
+
+            {# Quick-access links — mobile only, shown when no content filters active #}
+            {% if not selected_category and not request.GET.query and not request.GET.service_type and not request.GET.experience_level and not request.GET.verified_business and not request.GET.available_only %}
+            <div class="srl-quick-links d-flex d-lg-none">
+                <a href="{% url 'services:list' %}?sort=-created_at"
+                   class="srl-quick-link {% if current_sort == '-created_at' %}srl-quick-link--active{% endif %}">
+                    <i class="bi bi-clock-history"></i>Latest
+                </a>
+                <a href="{% url 'services:list' %}?verified_business=true"
+                   class="srl-quick-link srl-quick-link--verified">
+                    <i class="bi bi-shield-check"></i>Verified
+                </a>
+                <a href="{% url 'services:list' %}?experience_level=expert"
+                   class="srl-quick-link srl-quick-link--expert">
+                    <i class="bi bi-award"></i>Expert
+                </a>
+            </div>
+            {% endif %}
+
+            <div class="srl-sort-control ms-auto">
+                <label for="sortSelect" class="visually-hidden">Sort results</label>
+                <select class="srl-sort-select" id="sortSelect" aria-label="Sort results">
+                    <option value="smart"      {% if current_sort == 'smart' or not current_sort %}selected{% endif %}>Smart Sort</option>
+                    <option value="-created_at" {% if current_sort == '-created_at' %}selected{% endif %}>Newest</option>
+                    <option value="price_low"  {% if current_sort == 'price_low'  %}selected{% endif %}>Price: Low to High</option>
+                    <option value="price_high" {% if current_sort == 'price_high' %}selected{% endif %}>Price: High to Low</option>
+                    <option value="rating"     {% if current_sort == 'rating'     %}selected{% endif %}>Highest Rated</option>
+                </select>
+            </div>
+
+        </div>
+    </div>{# /srl-page-header #}
+
+    {# FAB — fixed, mobile-only, visible when filters are active #}
+    {% if request.GET.category or request.GET.query or request.GET.state or request.GET.service_type or request.GET.experience_level or request.GET.verified_business or request.GET.pricing_type or request.GET.min_price or request.GET.max_price or request.GET.lga or request.GET.available_only or request.GET.availability %}
+    <div class="srl-fab d-lg-none">
+        <button type="button"
+                class="srl-fab-btn"
+                data-bs-toggle="offcanvas"
+                data-bs-target="#mobileFilters"
+                aria-label="Open filters">
+            <i class="bi bi-sliders"></i>
+            <span class="srl-fab-label">Filters</span>
+            <span class="srl-fab-badge" id="fabBadge"></span>
+        </button>
+    </div>
+    {% endif %}
+
+    {# Global banners #}
+    {% if global_banners %}
+    {% include 'banner.html' with banners=global_banners %}
+    {% endif %}
+
+    {# MAIN LAYOUT #}
+    <div class="row g-3 g-lg-4">
+
+        {# Desktop sidebar #}
+        <div class="col-lg-3 d-none d-lg-block">
+            <div class="srl-sidebar-wrap">
+                {% include 'unified_filter_sidebar.html' with item_type='services' filter_action_url=request.path categories=categories states=states lgas=lgas selected_category=selected_category selected_state=selected_state selected_lga=selected_lga subcategories=subcategories brands=brands %}
+            </div>
+        </div>
+
+        {# Results column #}
+        <div class="col-12 col-lg-9">
+
+            <div class="srl-results-meta">
+                {% if services %}
+                <span class="srl-results-count">
+                    {{ services|length }} service{{ services|length|pluralize }}
+                    {% if request.GET.query %}for &ldquo;{{ request.GET.query }}&rdquo;{% endif %}
+                </span>
+                {% elif request.GET.query or selected_category %}
+                <span class="srl-results-count srl-results-count--empty">
+                    No services found{% if request.GET.query %} for &ldquo;{{ request.GET.query }}&rdquo;{% endif %}
+                </span>
+                {% endif %}
+            </div>
+
+            <div class="row row-cols-2 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-2 g-lg-3"
+                 id="services-grid">
+                {% for service in services %}
+                <div class="col">
+                    {% include 'services/service_card.html' with service=service %}
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="srl-empty-state">
+                        {% if request.GET.query or selected_category or request.GET.service_type or request.GET.experience_level %}
+                            <i class="bi bi-search srl-empty-icon"></i>
+                            <h5 class="srl-empty-title">No services match your filters</h5>
+                            <p class="srl-empty-text">Try adjusting or clearing your filters to see more results.</p>
+                            <div class="srl-empty-actions">
+                                <a href="{% url 'services:list' %}" class="srl-empty-btn srl-empty-btn--outline">
+                                    Clear all filters
+                                </a>
+                                <button type="button"
+                                        class="srl-empty-btn srl-empty-btn--primary d-lg-none"
+                                        data-bs-toggle="offcanvas"
+                                        data-bs-target="#mobileFilters">
+                                    <i class="bi bi-sliders me-1"></i>Adjust Filters
+                                </button>
+                            </div>
+                        {% else %}
+                            <i class="bi bi-tools srl-empty-icon"></i>
+                            <h5 class="srl-empty-title">Browse Services</h5>
+                            <p class="srl-empty-text">Pick a category above, use the filters, or list your own service.</p>
+                            {% if user.is_authenticated %}
+                            <a href="{% url 'services:create' %}" class="srl-empty-btn srl-empty-btn--primary">
+                                <i class="bi bi-plus-lg me-1"></i>List Your Service
+                            </a>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {# Load more + infinite scroll indicators #}
+            {% if page_obj.has_next %}
+            <div class="text-center mt-4">
+                <button class="btn btn-outline-primary" id="loadMoreServices"
+                        data-page="{{ page_obj.next_page_number }}">
+                    <i class="bi bi-arrow-down-circle me-2"></i>Load More Services
+                </button>
+            </div>
+            {% endif %}
+
+            <div class="srl-loading-container" id="loading-indicator" style="display:none;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="srl-loading-text">Loading more services…</p>
+            </div>
+
+            <div class="srl-end-of-results" id="end-of-results" style="display:none;">
+                <i class="bi bi-check-circle-fill"></i>
+                <p>You've seen all available services</p>
+                <small>Try adjusting your filters to find more options</small>
+            </div>
+
+        </div>{# /col results #}
+    </div>{# /row #}
+
+</div>{# /srl-page #}
+
+<script>
+(function () {
+    'use strict';
+
+    document.addEventListener('DOMContentLoaded', function () {
+
+        /* Badge count — excludes 'page' and 'sort' */
+        var SKIP = { page: true, sort: true };
+        var params = new URLSearchParams(window.location.search);
+        var count = 0;
+        params.forEach(function (val, key) {
+            if (!SKIP[key] && val.trim()) { count++; }
+        });
+
+        if (count > 0) {
+            var str = String(count);
+            ['filterBadge', 'fabBadge', 'offcanvasBadge'].forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el) { el.textContent = str; }
+            });
+        }
+
+        /* Sort select */
+        var sortSelect = document.getElementById('sortSelect');
+        if (sortSelect) {
+            sortSelect.addEventListener('change', function () {
+                var url = new URL(window.location.href);
+                if (this.value === 'smart') {
+                    url.searchParams.delete('sort');
+                } else {
+                    url.searchParams.set('sort', this.value);
+                }
+                url.searchParams.delete('page');
+                window.location.href = url.toString();
+            });
+        }
+
+    });
+}());
+</script>
+{% endblock %}
+
+{% block 'Footer'%}{% endblock %}

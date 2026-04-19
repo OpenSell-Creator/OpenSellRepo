@@ -1,25 +1,66 @@
+import uuid
 from django.db import models
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from User.models import Profile
-from Home.models import Product_Listing
 from django.utils import timezone
 import base64
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from django.conf import settings
-import os
 
 
 class Conversation(models.Model):
     participants = models.ManyToManyField('User.Profile', related_name='conversations')
-    product = models.ForeignKey('Home.Product_Listing', on_delete=models.CASCADE, related_name='conversations')
+    
+    # GENERIC FOREIGN KEY - works with ANY model
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True,blank=True)
+    object_id = models.CharField(max_length=36, null=True, blank=True)
+    content_object = GenericForeignKey('content_type', 'object_id')
+    
+    # Metadata
     updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, null=True)
+    
+    class Meta:
+        # Ensure one conversation per item per participant set
+        indexes = [
+            models.Index(fields=['content_type', 'object_id']),
+            models.Index(fields=['-updated_at']),
+        ]
     
     def __str__(self):
-        return f"Conversation about {self.product.title}"
+        # Safe string representation
+        try:
+            return f"Conversation about {self.content_object}"
+        except:
+            return f"Conversation #{self.id}"
     
-    def add_message(self, sender, content, inquiry_type):
-        # Encrypt the message before saving
+    def get_content_title(self):
+        """Get the title of the linked content (product/service/request)"""
+        try:
+            obj = self.content_object
+            if hasattr(obj, 'title'):
+                return obj.title
+            return str(obj)
+        except:
+            return "Item"
+    
+    def get_content_type_display(self):
+        """Get human-readable content type"""
+        type_map = {
+            'product_listing': 'Product',
+            'servicelisting': 'Service',
+            'buyerrequest': 'Buyer Request',
+        }
+        model_name = self.content_type.model.lower()
+        return type_map.get(model_name, 'Item')
+    
+    def add_message(self, sender, content, inquiry_type='CUSTOM'):
+        """Create and encrypt a new message"""
         encrypted_content = Message.encrypt_content(content)
         message = self.messages.create(
             sender=sender, 
@@ -27,10 +68,11 @@ class Conversation(models.Model):
             inquiry_type=inquiry_type
         )
         self.updated_at = timezone.now()
-        self.save()
+        self.save(update_fields=['updated_at'])
         return message
    
     def get_unread_messages_count_for_profile(self, user_profile):
+        """Get count of unread messages for a specific user"""
         return self.messages.filter(
             is_read=False
         ).exclude(
@@ -38,64 +80,130 @@ class Conversation(models.Model):
         ).count()
    
     def get_last_message(self):
+        """Get the most recent message (decrypted)"""
         last_message = self.messages.order_by('-timestamp').first()
         if last_message:
-            # Decrypt the content before returning
             last_message.decrypt_content()
         return last_message
    
     def get_other_participant(self, user_profile):
+        """Get the other person in the conversation"""
         return self.participants.exclude(id=user_profile.id).first()
+    
+    def mark_messages_read_for_user(self, user_profile):
+        """Mark all messages as read for a specific user"""
+        unread = self.messages.filter(
+            is_read=False
+        ).exclude(sender=user_profile)
+        count = unread.update(is_read=True)
+        return count
    
     @classmethod
     def get_unread_messages_count(cls, user_profile):
+        """Get total unread message count across all conversations"""
         return Message.objects.filter(
             conversation__participants=user_profile,
             is_read=False
         ).exclude(
             sender=user_profile
         ).count()
-
+    
+    @classmethod
+    def get_or_create_for_item(cls, item, user_profile):
+        """
+        Get or create a conversation for ANY item (product/service/request)
+        
+        Args:
+            item: The product/service/request object
+            user_profile: The user initiating the conversation
+            
+        Returns:
+            (conversation, created): Tuple of conversation and boolean
+        """
+        content_type = ContentType.objects.get_for_model(item)
+        
+        # Try to find existing conversation with both participants
+        existing = cls.objects.filter(
+            content_type=content_type,
+            object_id=str(item.id),
+            participants=user_profile
+        ).first()
+        
+        if existing:
+            return existing, False
+        
+        # Create new conversation
+        conversation = cls.objects.create(
+            content_type=content_type,
+            object_id=str(item.id)
+        )
+        
+        # Add participants
+        # Get the owner based on item type
+        if hasattr(item, 'seller'):  # Product
+            owner = item.seller
+        elif hasattr(item, 'provider'):  # Service
+            owner = item.provider
+        elif hasattr(item, 'buyer'):  # Buyer Request
+            owner = item.buyer
+        else:
+            raise ValueError(f"Unknown item type: {type(item)}")
+        
+        conversation.participants.add(user_profile, owner)
+        
+        return conversation, True
 
 class Message(models.Model):
+
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages')
     sender = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='sent_messages')
-    # Keep original content field for backward compatibility but don't use it for new messages
+    
+    # Encryption fields
     content = models.TextField(null=True, blank=True)
-    # New field for encrypted content
-    encrypted_content = models.BinaryField(null=True)
+    encrypted_content = models.BinaryField(null=True) 
+    
+    # Metadata
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
     
+    # Message type/category
     SUGGESTIONS_CHOICES = [
-        ('AVAILABILITY', 'Is this product available?'),
-        ('MORE_INFO', 'I would like more information about this product'),
+        ('AVAILABILITY', 'Is this available?'),
+        ('MORE_INFO', 'I would like more information'),
         ('PRICE_NEGOTIATION', 'Is the price negotiable?'),
-        ('LOCATION', 'Where can I inspect or pick up the product?'),
+        ('LOCATION', 'Where can I inspect or pick up?'),
         ('DELIVERY', 'Do you offer delivery services?'),
         ('PAYMENT_METHOD', 'What payment methods do you accept?'),
-        ('WARRANTY', 'Does this product come with a warranty or guarantee?'),
-        ('CONDITION', 'What is the condition of the product?'),
+        ('WARRANTY', 'Does this come with a warranty?'),
+        ('CONDITION', 'What is the condition?'),
+        ('SERVICE_INQUIRY', 'Service inquiry'),
+        ('REQUEST_RESPONSE', 'Response to request'),
         ('CUSTOM', 'Custom message'),
+        ('SERVICE_INQUIRY_CARD', 'Service Inquiry Card'),
+        ('SELLER_RESPONSE_CARD', 'Seller Response Card'),
     ]
-    inquiry_type = models.CharField(max_length=20, choices=SUGGESTIONS_CHOICES)
+    inquiry_type = models.CharField(max_length=20, choices=SUGGESTIONS_CHOICES, default='CUSTOM')
+    
+    class Meta:
+        ordering = ['timestamp']
+        indexes = [
+            models.Index(fields=['conversation', 'timestamp']),
+            models.Index(fields=['is_read']),
+        ]
     
     def __str__(self):
-        return f"Message from {self.sender} in conversation about {self.conversation.product}"
+        return f"Message from {self.sender} at {self.timestamp}"
     
+    # ENCRYPTION METHODS (unchanged - your existing code works!)
     @staticmethod
     def get_encryption_key():
         """Get or generate a Fernet key for encryption"""
-        # Use a secret key from settings or environment variable
-        # IMPORTANT: This should be a secure, unique value stored safely
         SECRET_KEY = getattr(settings, 'MESSAGE_ENCRYPTION_KEY', None)
         
         if not SECRET_KEY:
-            # Fallback to Django's secret key (not ideal but better than hardcoding)
             SECRET_KEY = settings.SECRET_KEY
         
-        # Use PBKDF2 to derive a secure key from the secret
-        salt = b'message_encryption_salt'  # Should be stored securely
+        salt = b'message_encryption_salt'
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,
@@ -129,10 +237,33 @@ class Message(models.Model):
     def decrypt_content(self):
         """Decrypt this message's content and store in content field"""
         if self.encrypted_content:
-            # Check if it's already bytes or needs conversion
             try:
                 self.content = self.__class__.decrypt_content_bytes(self.encrypted_content)
             except AttributeError:
-                # If we get here, encrypted_content is already bytes
                 self.content = self.__class__.decrypt_content_bytes(self.encrypted_content)
         return self.content
+    
+    @classmethod
+    def get_messages_for_conversation(cls, conversation, decrypt=True):
+        """
+        Efficiently get all messages for a conversation
+        
+        Args:
+            conversation: Conversation object
+            decrypt: Whether to decrypt messages
+            
+        Returns:
+            QuerySet of messages
+        """
+        messages = cls.objects.filter(
+            conversation=conversation
+        ).select_related('sender__user').order_by('timestamp')
+        
+        if decrypt:
+            for message in messages:
+                try:
+                    message.decrypt_content()
+                except Exception:
+                    message.content = "[Error decrypting message]"
+        
+        return messages

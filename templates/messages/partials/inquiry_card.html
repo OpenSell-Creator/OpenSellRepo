@@ -1,0 +1,180 @@
+<div class="message-bubble message-card-bubble
+    {% if msg.sender == request.user.profile %}message-sent-card{% else %}message-received-card{% endif %}
+    mb-3">
+
+    {# ── Card Header ──────────────────────────────────────────────────────── #}
+    <div class="structured-card-header d-flex align-items-center justify-content-between mb-2">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="badge badge-inquiry-card">
+                <i class="fas fa-file-alt me-1"></i> Service Inquiry
+            </span>
+            {% if linked_inquiry %}
+                <span class="badge badge-status-{{ linked_inquiry.status }}">
+                    {{ linked_inquiry.get_status_display }}
+                </span>
+            {% endif %}
+        </div>
+        <small class="card-timestamp">
+            {{ msg.timestamp|date:"g:i A, M d" }}
+            <i class="fas fa-lock ms-1 encryption-icon" title="Encrypted"></i>
+        </small>
+    </div>
+
+    {# ── Inquiry Body ─────────────────────────────────────────────────────── #}
+    {% if linked_inquiry %}
+        <div class="structured-card-body">
+
+            <p class="inquiry-main-message mb-3">{{ linked_inquiry.message }}</p>
+
+            <div class="inquiry-details-grid">
+
+                {% if linked_inquiry.budget %}
+                <div class="inquiry-detail-row">
+                    <span class="detail-label"><i class="fas fa-wallet me-1"></i>Budget</span>
+                    <span class="detail-value detail-value--highlight">{{ linked_inquiry.formatted_budget }}</span>
+                </div>
+                {% endif %}
+
+                {% if linked_inquiry.timeline %}
+                <div class="inquiry-detail-row">
+                    <span class="detail-label"><i class="fas fa-calendar me-1"></i>Timeline</span>
+                    <span class="detail-value">{{ linked_inquiry.timeline }}</span>
+                </div>
+                {% endif %}
+
+                {% if linked_inquiry.requirements %}
+                <div class="inquiry-detail-row inquiry-detail-row--full">
+                    <span class="detail-label"><i class="fas fa-list-check me-1"></i>Requirements</span>
+                    <span class="detail-value">{{ linked_inquiry.requirements }}</span>
+                </div>
+                {% endif %}
+
+                {% if linked_inquiry.preferred_contact != 'platform' %}
+                <div class="inquiry-detail-row">
+                    <span class="detail-label"><i class="fas fa-phone me-1"></i>Preferred Contact</span>
+                    <span class="detail-value">
+                        {{ linked_inquiry.get_preferred_contact_display }}
+                        {% if linked_inquiry.contact_phone %}&mdash; {{ linked_inquiry.contact_phone }}{% endif %}
+                    </span>
+                </div>
+                {% endif %}
+
+            </div>
+
+            {# ── Provider's response (quote + message) — shown once replied ── #}
+            {% if linked_inquiry.provider_response or linked_inquiry.provider_quote %}
+            <div class="inquiry-provider-reply mt-3">
+                <div class="inquiry-provider-reply-header">
+                    <i class="fas fa-reply me-1"></i>
+                    Provider's Response
+                </div>
+                {% if linked_inquiry.provider_response %}
+                <p class="inquiry-provider-reply-text mb-2">{{ linked_inquiry.provider_response }}</p>
+                {% endif %}
+                {% if linked_inquiry.provider_quote %}
+                <div class="inquiry-detail-row">
+                    <span class="detail-label"><i class="fas fa-tag me-1"></i>Quoted Price</span>
+                    <span class="detail-value detail-value--highlight">
+                        ₦ {{ linked_inquiry.provider_quote|floatformat:0 }}
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        {# ── Provider Action: Respond Button ──────────────────────────────── #}
+        {% if not is_buyer and linked_inquiry.status == 'pending' %}
+        <div class="structured-card-actions mt-3">
+            <button class="btn btn-sm btn-primary"
+                    onclick="openInquiryResponseModal('{{ linked_inquiry.id }}')">
+                <i class="fas fa-reply me-1"></i> Respond to Inquiry
+            </button>
+        </div>
+        {% endif %}
+
+        {# ── Role-aware status notices ─────────────────────────────────────── #}
+        {% if linked_inquiry.status == 'responded' %}
+            {% if is_buyer %}
+                {# Buyer sees: the provider replied — they should continue the conversation #}
+                <div class="structured-card-status-notice status-notice--accepted mt-3">
+                    <i class="fas fa-check-circle me-1"></i>
+                    The provider responded to your inquiry. Continue the conversation below.
+                </div>
+            {% else %}
+                {# Provider sees: they already replied #}
+                <div class="structured-card-status-notice status-notice--accepted mt-3">
+                    <i class="fas fa-check-circle me-1"></i>
+                    You responded to this inquiry. The conversation continues below.
+                </div>
+            {% endif %}
+        {% elif linked_inquiry.status == 'accepted' %}
+            {% if is_buyer %}
+                <div class="structured-card-status-notice status-notice--accepted mt-3">
+                    <i class="fas fa-handshake me-1"></i>
+                    You accepted this inquiry response. Finalise the details below.
+                </div>
+            {% else %}
+                <div class="structured-card-status-notice status-notice--accepted mt-3">
+                    <i class="fas fa-handshake me-1"></i>
+                    The client accepted your response. Coordinate the next steps below.
+                </div>
+            {% endif %}
+        {% elif linked_inquiry.status == 'declined' %}
+            {% if is_buyer %}
+                <div class="structured-card-status-notice status-notice--declined mt-3">
+                    <i class="fas fa-times-circle me-1"></i>
+                    You declined this inquiry.
+                </div>
+            {% else %}
+                <div class="structured-card-status-notice status-notice--declined mt-3">
+                    <i class="fas fa-times-circle me-1"></i>
+                    The client declined this inquiry.
+                </div>
+            {% endif %}
+        {% endif %}
+
+    {% else %}
+        <p class="text-muted fst-italic small mt-2">
+            <i class="fas fa-file-alt me-1"></i> Service inquiry — details unavailable.
+        </p>
+    {% endif %}
+
+    {# Sender label (only for received bubbles) #}
+    {% if msg.sender != request.user.profile %}
+    <div class="card-sender-label mt-2">
+        <small><i class="fas fa-user-circle me-1"></i>{{ msg.sender.user.username }}</small>
+    </div>
+    {% endif %}
+
+</div>
+
+<style>
+/* ── Provider reply block (inside inquiry card) ─────────────────────────── */
+.inquiry-provider-reply {
+    background: rgba(var(--primary-rgb, 0,51,102), 0.05);
+    border: 1px solid rgba(var(--primary-rgb, 0,51,102), 0.15);
+    border-left: 3px solid var(--primary-color, #003366);
+    border-radius: 0.45rem;
+    padding: 0.65rem 0.85rem;
+}
+.inquiry-provider-reply-header {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--primary-color, #003366);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.4rem;
+}
+.inquiry-provider-reply-text {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    line-height: 1.5;
+    white-space: pre-wrap;
+    margin-bottom: 0.5rem;
+}
+[data-bs-theme="dark"] .inquiry-provider-reply {
+    background: rgba(var(--primary-rgb, 0,51,102), 0.15);
+    border-color: rgba(var(--primary-rgb, 0,51,102), 0.3);
+}
+</style>

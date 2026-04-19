@@ -3,7 +3,474 @@
 {% load compress %}
 
 {% block page_css %}
-    <link rel="stylesheet" type="text/css" href="{% static 'css/pages/product_list.css' %}">
+<style>
+    
+    /* OFFCANVAS — BOTTOM SHEET */
+    .prl-offcanvas {
+        height: 88dvh;
+        max-height: 88dvh;
+        border-radius: 20px 20px 0 0;
+        overflow: hidden;
+    }
+
+    .prl-offcanvas-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1.35rem 1.1rem 0.875rem;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--card-background);
+        background-image: linear-gradient(var(--border-color), var(--border-color));
+        background-size: 36px 3px;
+        background-repeat: no-repeat;
+        background-position: center 10px;
+    }
+
+    .prl-offcanvas-title-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .prl-offcanvas-title-group .offcanvas-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .prl-offcanvas-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 20px;
+        height: 20px;
+        background: var(--primary-color);
+        color: #fff;
+        border-radius: 10px;
+        font-size: 0.68rem;
+        font-weight: 700;
+        padding: 0 5px;
+    }
+    .prl-offcanvas-badge:empty { display: none; }
+
+    .prl-offcanvas-actions {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .prl-clear-all-link {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--danger, #dc3545);
+        text-decoration: none;
+        white-space: nowrap;
+    }
+    .prl-clear-all-link:hover { text-decoration: underline; }
+
+    /* PAGE HEADER */
+    .prl-page-header {
+        background: var(--card-background);
+        border-radius: 14px;
+        padding: 0.875rem 1rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 8px var(--shadow-color);
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .prl-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+    }
+
+    .prl-title-group { display: flex; flex-direction: column; gap: 0.1rem; }
+
+    .prl-page-title {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .prl-page-subtitle {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin: 0;
+    }
+
+    .prl-search-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 8px 14px;
+        background: transparent;
+        color: var(--text-primary);
+        border: 1.5px solid var(--border-color);
+        border-radius: 10px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        text-decoration: none;
+        white-space: nowrap;
+        flex-shrink: 0;
+        transition: all 0.18s ease;
+    }
+    .prl-search-btn:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+        text-decoration: none;
+    }
+
+    /* Category strip */
+    .prl-category-strip {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        margin: 0 -0.25rem;
+    }
+    .prl-category-strip::-webkit-scrollbar { display: none; }
+
+    .prl-category-track {
+        display: flex;
+        gap: 6px;
+        padding: 2px 0.25rem 4px;
+        width: max-content;
+        min-width: 100%;
+    }
+
+    .prl-cat-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 12px;
+        background: var(--background-color);
+        border: 1.5px solid var(--border-color);
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-decoration: none;
+        white-space: nowrap;
+        flex-shrink: 0;
+        transition: all 0.15s ease;
+    }
+    .prl-cat-pill:hover { border-color: var(--primary-color); color: var(--primary-color); text-decoration: none; }
+    .prl-cat-pill--active { background: var(--primary-color); border-color: var(--primary-color); color: #fff; }
+    .prl-cat-pill--active:hover { color: #fff; filter: brightness(1.08); }
+
+    .prl-cat-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 18px;
+        height: 18px;
+        background: var(--primary-color);
+        color: #fff;
+        border-radius: 9px;
+        font-size: 0.63rem;
+        font-weight: 700;
+        padding: 0 4px;
+        line-height: 1;
+    }
+    .prl-cat-pill--active .prl-cat-count { background: rgba(255,255,255,0.25); }
+
+    /* Controls bar */
+    .prl-controls-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+    .prl-controls-bar::-webkit-scrollbar { display: none; }
+
+    .prl-filter-btn {
+        align-items: center;
+        gap: 6px;
+        padding: 7px 14px;
+        background: var(--primary-color);
+        color: #fff;
+        border: none;
+        border-radius: 20px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        white-space: nowrap;
+        flex-shrink: 0;
+        cursor: pointer;
+        transition: all 0.18s ease;
+    }
+    .prl-filter-btn:hover,
+    .prl-filter-btn:active { filter: brightness(1.1); }
+
+    .prl-filter-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 18px;
+        height: 18px;
+        background: var(--accent-color, #ff6600);
+        color: #fff;
+        border-radius: 9px;
+        font-size: 0.63rem;
+        font-weight: 700;
+        padding: 0 4px;
+        line-height: 1;
+    }
+    .prl-filter-badge:empty { display: none; }
+
+    .prl-quick-links {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
+    .prl-quick-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 11px;
+        border: 1.5px solid var(--border-color);
+        border-radius: 20px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-decoration: none;
+        white-space: nowrap;
+        flex-shrink: 0;
+        transition: all 0.15s ease;
+        background: var(--background-color);
+    }
+    .prl-quick-link:hover { border-color: var(--primary-color); color: var(--primary-color); text-decoration: none; }
+    .prl-quick-link--active { background: var(--primary-color); border-color: var(--primary-color); color: #fff; }
+    .prl-quick-link--verified { border-color: rgba(34,197,94,0.35); color: #16a34a; }
+    .prl-quick-link--verified:hover { background: #16a34a; border-color: #16a34a; color: #fff; }
+
+    .prl-sort-control { display: flex; align-items: center; flex-shrink: 0; }
+
+    .prl-sort-select {
+        padding: 6px 28px 6px 10px;
+        border: 1.5px solid var(--border-color);
+        border-radius: 20px;
+        background: var(--background-color);
+        color: var(--text-primary);
+        font-size: 0.75rem;
+        font-weight: 500;
+        cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23666' viewBox='0 0 16 16'%3E%3Cpath d='M8 10.5l-4-4h8l-4 4z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 8px center;
+        min-height: 34px;
+        white-space: nowrap;
+        transition: border-color 0.15s;
+    }
+    .prl-sort-select:focus { outline: none; border-color: var(--primary-color); }
+    [data-bs-theme="dark"] .prl-sort-select {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23d4d4d4' viewBox='0 0 16 16'%3E%3Cpath d='M8 10.5l-4-4h8l-4 4z'/%3E%3C/svg%3E");
+    }
+
+    /* FAB */
+    .prl-fab {
+        position: fixed;
+        bottom: 76px;
+        right: 16px;
+        z-index: 1040;
+    }
+
+    .prl-fab-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 11px 18px;
+        background: var(--primary-color);
+        color: #fff;
+        border: none;
+        border-radius: 24px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+    .prl-fab-btn:hover,
+    .prl-fab-btn:active { filter: brightness(1.1); transform: scale(1.04); }
+
+    .prl-fab-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 18px;
+        height: 18px;
+        background: var(--accent-color, #ff6600);
+        color: #fff;
+        border-radius: 9px;
+        font-size: 0.63rem;
+        font-weight: 700;
+        padding: 0 4px;
+        line-height: 1;
+    }
+    .prl-fab-badge:empty { display: none; }
+
+    @media (max-width: 360px) {
+        .prl-fab-label { display: none; }
+        .prl-fab-btn   { padding: 13px; border-radius: 50%; }
+    }
+
+    /* Sidebar */
+    .prl-sidebar-wrap {
+        position: sticky;
+        top: 80px;
+        max-height: calc(100vh - 100px);
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border-color) transparent;
+        border-radius: 14px;
+    }
+    .prl-sidebar-wrap::-webkit-scrollbar { width: 4px; }
+    .prl-sidebar-wrap::-webkit-scrollbar-track { background: transparent; }
+    .prl-sidebar-wrap::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+
+    /* Results meta */
+    .prl-results-meta { padding-bottom: 0.6rem; margin-bottom: 0.25rem; }
+
+    .prl-results-count {
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+    .prl-results-count strong { color: var(--text-primary); font-weight: 600; }
+    .prl-results-count--empty { font-style: italic; }
+
+    /* Loading / end */
+    .prl-loading-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 2rem;
+        text-align: center;
+    }
+
+    .prl-loading-text {
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+        margin: 0;
+    }
+
+    .prl-end-of-results {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 2rem;
+        text-align: center;
+        color: var(--text-secondary);
+    }
+
+    .prl-end-of-results i {
+        font-size: 1.75rem;
+        color: var(--primary-color);
+        margin-bottom: 0.5rem;
+    }
+
+    .prl-end-of-results p {
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        margin: 0;
+    }
+
+    .prl-end-of-results small { font-size: 0.75rem; }
+
+    /* Empty state */
+    .prl-empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 3rem 1.5rem;
+        background: var(--card-background);
+        border-radius: 14px;
+        border: 1px dashed var(--border-color);
+        gap: 0.5rem;
+    }
+
+    .prl-empty-icon {
+        font-size: 2.5rem;
+        color: var(--text-secondary);
+        opacity: 0.4;
+        margin-bottom: 0.25rem;
+    }
+
+    .prl-empty-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .prl-empty-text {
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+        margin: 0;
+        max-width: 320px;
+    }
+
+    .prl-empty-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+        margin-top: 0.5rem;
+    }
+
+    .prl-empty-btn {
+        display: inline-flex;
+        align-items: center;
+        padding: 8px 18px;
+        border-radius: 10px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+        border: none;
+        transition: all 0.18s ease;
+    }
+    .prl-empty-btn--primary { background: var(--primary-color); color: #fff; }
+    .prl-empty-btn--primary:hover { filter: brightness(1.1); color: #fff; }
+    .prl-empty-btn--outline { background: transparent; color: var(--text-secondary); border: 1.5px solid var(--border-color); }
+    .prl-empty-btn--outline:hover { border-color: var(--primary-color); color: var(--primary-color); }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .prl-page-header { padding: 0.75rem; gap: 0.6rem; border-radius: 10px; margin-bottom: 0.75rem; }
+        .prl-page-title  { font-size: 0.95rem; }
+        .prl-cat-pill    { padding: 5px 10px; font-size: 0.72rem; }
+        .prl-controls-bar { gap: 6px; }
+        .prl-filter-btn  { padding: 6px 12px; font-size: 0.74rem; }
+        .prl-sort-select { font-size: 0.72rem; padding: 5px 26px 5px 9px; min-height: 32px; }
+        .prl-fab         { bottom: 72px; }
+    }
+
+    @media (max-width: 576px) {
+        .prl-page-header  { padding: 0.6rem 0.75rem; gap: 0.5rem; border-radius: 8px; }
+        .prl-page-title   { font-size: 0.9rem; }
+        .prl-search-btn span { display: none; }
+        .prl-search-btn   { padding: 8px 10px; }
+        .prl-offcanvas    { height: 92dvh; max-height: 92dvh; }
+        .prl-empty-state  { padding: 2.5rem 1rem; }
+        .prl-empty-title  { font-size: 0.9rem; }
+    }
+</style>
 {% endblock %}
 
 {% block page_js %}
@@ -11,197 +478,129 @@
 {% endblock %}
 
 {% block 'Body' %}
-<div class="container">
-    {% if not selected_category %}
-    <div class="welcome-section">
-        <div class="welcome-header">
-            <h4 class="welcome-title">Browse Our Marketplace</h4>
-            <p class="welcome-subtitle">Find what you're looking for in our popular categories</p>
+<div class="prl-page"
+     data-list-url="{% url 'product_list' %}">
+
+    {# MOBILE OFFCANVAS — bottom sheet, always in DOM, never conditional #}
+    <div class="offcanvas offcanvas-bottom prl-offcanvas" tabindex="-1" id="mobileFilters"
+         aria-labelledby="mobileFiltersTitle">
+        <div class="offcanvas-header prl-offcanvas-header">
+            <div class="prl-offcanvas-title-group">
+                <h5 class="offcanvas-title" id="mobileFiltersTitle">
+                    <i class="bi bi-sliders me-2"></i>Filters
+                </h5>
+                <span class="prl-offcanvas-badge" id="offcanvasBadge"></span>
+            </div>
+            <div class="prl-offcanvas-actions">
+                {% if selected_category or request.GET.subcategory or request.GET.brand or request.GET.condition or request.GET.state or request.GET.verified_business or request.GET.min_price or request.GET.max_price or request.GET.lga %}
+                <a href="{% url 'product_list' %}" class="prl-clear-all-link">Clear all</a>
+                {% endif %}
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+        </div>
+        <div class="offcanvas-body p-0">
+            {% include 'unified_filter_sidebar.html' with sidebar_id='mobile' item_type='products' filter_action_url=request.path %}
+        </div>
+    </div>
+
+    {# PAGE HEADER — always visible, never conditional #}
+    <div class="prl-page-header">
+
+        <div class="prl-title-row">
+            <div class="prl-title-group">
+                <h1 class="prl-page-title">Marketplace</h1>
+                <p class="prl-page-subtitle d-none d-sm-block">Browse products from verified sellers across Nigeria</p>
+            </div>
+            <a href="/search/" class="prl-search-btn">
+                <i class="bi bi-search"></i>
+                <span>Search</span>
+            </a>
         </div>
 
-        <div class="categories-scroll-container">
-            <div class="categories-pills">
+        {# Category strip — always visible #}
+        <nav class="prl-category-strip" aria-label="Browse by category">
+            <div class="prl-category-track">
+                <a href="{% url 'product_list' %}"
+                   class="prl-cat-pill {% if not selected_category %}prl-cat-pill--active{% endif %}">
+                    All
+                </a>
                 {% for category in categories %}
-                    {% if category.product_count > 0 %}
-                    <a href="{% url 'product_list' %}?category={{ category.slug }}" class="category-pill">
-                        <span class="category-name">{{ category.name }}</span>
-                        <!-- 
-                        <span class="category-count">({{ category.product_count }})</span>
-                        -->
-                    </a>
-                    {% endif %}
+                {% if category.product_count > 0 %}
+                <a href="{% url 'product_list' %}?category={{ category.slug }}"
+                   class="prl-cat-pill {% if selected_category == category.slug %}prl-cat-pill--active{% endif %}">
+                    {{ category.name }}
+                    <span class="prl-cat-count">{{ category.product_count }}</span>
+                </a>
+                {% endif %}
                 {% endfor %}
             </div>
-        </div>
+        </nav>
 
-        <div class="action-buttons-mobile">
-            <a href="{% url 'product_list' %}?sort=-created_at" class="action-btn primary">
-                <i class="bi bi-clock-history"></i>
-                <span>Latest Products</span>
-            </a>
+        {# Controls bar — filter button + quick links + sort #}
+        <div class="prl-controls-bar">
 
-            <a href="/search/" class="action-btn outline">
-                <i class="bi bi-search"></i>
-                <span>Advanced Search</span>
-            </a>
+            <button type="button"
+                    class="prl-filter-btn d-flex d-lg-none"
+                    data-bs-toggle="offcanvas"
+                    data-bs-target="#mobileFilters"
+                    aria-controls="mobileFilters"
+                    aria-label="Open filters">
+                <i class="bi bi-sliders"></i>
+                <span>Filters</span>
+                <span class="prl-filter-badge" id="filterBadge"></span>
+            </button>
 
-            <a href="{% url 'product_list' %}?verified_business=true" class="action-btn verified-business">
-                <i class="bi bi-shield-check"></i>
-                <span>Verified Businesses</span>
-            </a>
-        </div>
-    </div>
-    {% endif %}
-
-    {% if selected_category_obj %}
-    <div class="filter-section">
-        <div class="filter-header">
-            <h5 class="filter-title">{{ selected_category_obj.name }} Filters</h5>
-            <span class="filter-subtitle">Refine your search</span>
-        </div>
-        
-        <form method="get" action="{% url 'product_list' %}" id="dropdownFilterForm">
-            <input type="hidden" name="category" value="{{ selected_category_obj.slug }}">
-            
-            <div class="filters-scroll-container">
-                <div class="filters-wrapper">
- 
-                    <div class="filter-control">
-                        <select name="subcategory" class="filter-select" id="dropdown_subcategory">
-                            <option value="">All Subcategories</option>
-                            {% for subcategory in subcategories %}
-                            <option value="{{ subcategory.slug }}" {% if selected_subcategory == subcategory.slug %}selected{% endif %}>
-                                {{ subcategory.name }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <!-- Brand Filter -->
-                    <div class="filter-control">
-                        <select name="brand" class="filter-select" id="dropdown_brand">
-                            <option value="">All Brands</option>
-                            {% for brand in brands %}
-                            <option value="{{ brand.slug }}" {% if selected_brand == brand.slug %}selected{% endif %}>
-                                {{ brand.name }} {% if brand.product_count %}({{ brand.product_count }}){% endif %}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <!-- Verified Business Filter -->
-                    <div class="filter-control verified-business-filter">
-                        <select name="verified_business" class="filter-select" id="dropdown_verified_business">
-                            <option value="">All Sellers</option>
-                            <option value="true" {% if request.GET.verified_business == 'true' %}selected{% endif %}>
-                                Verified Businesses Only
-                            </option>
-                        </select>
-                    </div>
-
-                    <!-- Condition Filter -->
-                    <div class="filter-control">
-                        <select name="condition" class="filter-select" id="dropdown_condition">
-                            <option value="">Any Condition</option>
-                            <option value="new" {% if request.GET.condition == 'new' %}selected{% endif %}>New</option>
-                            <option value="used" {% if request.GET.condition == 'used' %}selected{% endif %}>Used</option>
-                        </select>
-                    </div>
-
-                    <!-- Price Range Filter -->
-                    <div class="filter-control">
-                        <select name="price_range" class="filter-select" id="dropdown_price_range">
-                            <option value="">Any Price</option>
-                            <option value="0-10000" {% if request.GET.min_price == '0' and request.GET.max_price == '10000' %}selected{% endif %}>₦0 - ₦10,000</option>
-                            <option value="10000-50000" {% if request.GET.min_price == '10000' and request.GET.max_price == '50000' %}selected{% endif %}>₦10,000 - ₦50,000</option>
-                            <option value="50000-100000" {% if request.GET.min_price == '50000' and request.GET.max_price == '100000' %}selected{% endif %}>₦50,000 - ₦100,000</option>
-                            <option value="100000-500000" {% if request.GET.min_price == '100000' and request.GET.max_price == '500000' %}selected{% endif %}>₦100,000 - ₦500,000</option>
-                            <option value="500000-999999999" {% if request.GET.min_price == '500000' %}selected{% endif %}>₦500,000+</option>
-                        </select>
-                    </div>
-
-                    <!-- State Filter -->
-                    <div class="filter-control">
-                        <select name="state" class="filter-select" id="dropdown_state">
-                            <option value="">All States</option>
-                            {% for state in states %}
-                            <option value="{{ state.id }}" {% if request.GET.state|stringformat:"i" == state.id|stringformat:"i" %}selected{% endif %}>
-                                {{ state.name }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <!-- LGA Filter -->
-                    <div class="filter-control">
-                        <select name="lga" class="filter-select" id="dropdown_lga" {% if not request.GET.state %}disabled{% endif %}>
-                            <option value="">All LGAs</option>
-                            {% if request.GET.state %}
-                                {% for lga in lgas %}
-                                <option value="{{ lga.id }}" {% if request.GET.lga|stringformat:"i" == lga.id|stringformat:"i" %}selected{% endif %}>
-                                    {{ lga.name }}
-                                </option>
-                                {% endfor %}
-                            {% endif %}
-                        </select>
-                    </div>
-
-                    <!-- Clear Filters Button -->
-                    <button type="button" class="clear-filters-btn" id="clearDropdownFilters">
-                        <i class="bi bi-x-lg"></i>
-                        <span>Clear</span>
-                    </button>
-                </div>
+            {# Quick links — mobile only, no content filters active #}
+            {% if not selected_category and not request.GET.condition and not request.GET.state and not request.GET.verified_business and not request.GET.min_price %}
+            <div class="prl-quick-links d-flex d-lg-none">
+                <a href="{% url 'product_list' %}?sort=-created_at"
+                   class="prl-quick-link {% if current_sort == '-created_at' %}prl-quick-link--active{% endif %}">
+                    <i class="bi bi-clock-history"></i>Latest
+                </a>
+                <a href="{% url 'product_list' %}?verified_business=true"
+                   class="prl-quick-link prl-quick-link--verified">
+                    <i class="bi bi-shield-check"></i>Verified
+                </a>
             </div>
-        </form>
+            {% endif %}
+
+            <div class="prl-sort-control ms-auto">
+                <label for="sortSelect" class="visually-hidden">Sort results</label>
+                <select class="prl-sort-select" id="sortSelect" aria-label="Sort results">
+                    <option value="smart"      {% if current_sort == 'smart' or not current_sort %}selected{% endif %}>Smart Sort</option>
+                    <option value="-created_at" {% if current_sort == '-created_at' %}selected{% endif %}>Newest</option>
+                    <option value="created_at"  {% if current_sort == 'created_at'  %}selected{% endif %}>Oldest</option>
+                    <option value="price"       {% if current_sort == 'price'       %}selected{% endif %}>Price: Low to High</option>
+                    <option value="-price"      {% if current_sort == '-price'      %}selected{% endif %}>Price: High to Low</option>
+                    <option value="title"       {% if current_sort == 'title'       %}selected{% endif %}>Name: A → Z</option>
+                    <option value="-title"      {% if current_sort == '-title'      %}selected{% endif %}>Name: Z → A</option>
+                    <option value="condition"   {% if current_sort == 'condition'   %}selected{% endif %}>New First</option>
+                </select>
+            </div>
+
+        </div>
+    </div>{# /prl-page-header #}
+
+    {# FAB — fixed, mobile-only, visible when filters are active #}
+    {% if selected_category or request.GET.subcategory or request.GET.brand or request.GET.condition or request.GET.state or request.GET.verified_business or request.GET.min_price or request.GET.max_price or request.GET.lga %}
+    <div class="prl-fab d-lg-none">
+        <button type="button"
+                class="prl-fab-btn"
+                data-bs-toggle="offcanvas"
+                data-bs-target="#mobileFilters"
+                aria-label="Open filters">
+            <i class="bi bi-sliders"></i>
+            <span class="prl-fab-label">Filters</span>
+            <span class="prl-fab-badge" id="fabBadge"></span>
+        </button>
     </div>
     {% endif %}
 
-    <!-- Results Summary and Sort Options -->
-    <div class="results-header">
-        <div class="results-info">
-            {% if products %}
-
-                Showing all
-                <!-- 
-                {% if paginator %} {{ paginator.count }}{% endif %}--> products
-                {% if selected_category_obj %}
-                    in {{ selected_category_obj.name }}
-                    {% if selected_subcategory_obj %} > {{ selected_subcategory_obj.name }}{% endif %}
-                    {% if selected_brand_obj %} > {{ selected_brand_obj.name }}{% endif %}
-                {% endif %}
-            {% else %}
-                {% if selected_category_obj %}
-                    No products found in {{ selected_category_obj.name }}
-                {% else %}
-                    Browse categories above to find products
-                {% endif %}
-            {% endif %}
-        </div>
-        
-        <!-- Sort Options -->
-        {% if products or selected_category_obj %}
-        <div class="sort-control">
-            <label for="sortSelect" class="sort-label">Sort by:</label>
-            <select class="sort-select" id="sortSelect">
-                <option value="smart" {% if current_sort == 'smart' %}selected{% endif %}>Smart Sort</option>
-                <option value="-created_at" {% if current_sort == '-created_at' %}selected{% endif %}>Newest First</option>
-                <option value="created_at" {% if current_sort == 'created_at' %}selected{% endif %}>Oldest First</option>
-                <option value="price" {% if current_sort == 'price' %}selected{% endif %}>Price: Low to High</option>
-                <option value="-price" {% if current_sort == '-price' %}selected{% endif %}>Price: High to Low</option>
-                <option value="title" {% if current_sort == 'title' %}selected{% endif %}>Name: A to Z</option>
-                <option value="-title" {% if current_sort == '-title' %}selected{% endif %}>Name: Z to A</option>
-                <option value="condition" {% if current_sort == 'condition' %}selected{% endif %}>Condition: New First</option>
-            </select>
-        </div>
-        {% endif %}
-    </div>
-    
     {% if global_banners %}
     {% include 'banner.html' with banners=global_banners %}
     {% endif %}
 
-    <!-- FIXED PAGINATION DATA SCRIPT -->
+    {# Pagination data for infinite scroll #}
     <script type="application/json" id="pagination-data">
     {
         "current_page": {% if page_obj %}{{ page_obj.number }}{% else %}1{% endif %},
@@ -214,65 +613,128 @@
     }
     </script>
 
-    <div class="row g-4">
-        <!-- Desktop Sidebar -->
+    {# MAIN LAYOUT #}
+    <div class="row g-3 g-lg-4">
+
+        {# Desktop sidebar #}
         <div class="col-lg-3 d-none d-lg-block">
-            <div class="sticky-top" style="top: 80px;">
-                {% include 'filter_sidebar.html' %}
+            <div class="prl-sidebar-wrap">
+                {% include 'unified_filter_sidebar.html' with item_type='products' filter_action_url=request.path %}
             </div>
         </div>
 
-        <!-- Product Grid -->
+        {# Results column #}
         <div class="col-12 col-lg-9">
-            <div class="row row-cols-2 row-cols-sm-2 row-cols-md-3 row-cols-lg-3 row-cols-xl-4 g-2 g-md-3" id="products-grid">
+
+            <div class="prl-results-meta">
+                {% if products %}
+                <span class="prl-results-count">
+                    Showing products
+                    {% if selected_category_obj %}
+                        in <strong>{{ selected_category_obj.name }}</strong>
+                        {% if selected_subcategory_obj %} &rsaquo; <strong>{{ selected_subcategory_obj.name }}</strong>{% endif %}
+                        {% if selected_brand_obj %} &rsaquo; <strong>{{ selected_brand_obj.name }}</strong>{% endif %}
+                    {% endif %}
+                </span>
+                {% elif selected_category_obj %}
+                <span class="prl-results-count prl-results-count--empty">
+                    No products found in {{ selected_category_obj.name }}
+                </span>
+                {% endif %}
+            </div>
+
+            <div class="row row-cols-2 row-cols-sm-2 row-cols-md-3 row-cols-lg-3 row-cols-xl-4 g-2 g-md-3"
+                 id="products-grid">
                 {% for product in products %}
-                    <div class="col">
-                        {% include 'product_card.html' with product=product %}
-                    </div>
+                <div class="col">
+                    {% include 'product_card.html' with product=product %}
+                </div>
                 {% empty %}
-                    <div class="col-12">
-                        <div class="empty-state">
-                            {% if selected_category_obj %}
-                                <i class="bi bi-search empty-icon"></i>
-                                <h5 class="empty-title">No products found</h5>
-                                <p class="empty-text">Try adjusting your filters or search criteria</p>
-                                <a href="{% url 'product_list' %}" class="action-btn primary">
-                                    View All Categories
+                <div class="col-12">
+                    <div class="prl-empty-state">
+                        {% if selected_category_obj or request.GET.condition or request.GET.state or request.GET.verified_business %}
+                            <i class="bi bi-search prl-empty-icon"></i>
+                            <h5 class="prl-empty-title">No products found</h5>
+                            <p class="prl-empty-text">Try adjusting or clearing your filters to see more results.</p>
+                            <div class="prl-empty-actions">
+                                <a href="{% url 'product_list' %}" class="prl-empty-btn prl-empty-btn--outline">
+                                    Clear all filters
                                 </a>
-                            {% else %}
-                                <i class="bi bi-grid-3x3-gap empty-icon"></i>
-                                <h5 class="empty-title">Welcome to Our Marketplace</h5>
-                                <p class="empty-text">Select a category above to start browsing products</p>
-                            {% endif %}
-                        </div>
+                                <button type="button"
+                                        class="prl-empty-btn prl-empty-btn--primary d-lg-none"
+                                        data-bs-toggle="offcanvas"
+                                        data-bs-target="#mobileFilters">
+                                    <i class="bi bi-sliders me-1"></i>Adjust Filters
+                                </button>
+                            </div>
+                        {% else %}
+                            <i class="bi bi-grid-3x3-gap prl-empty-icon"></i>
+                            <h5 class="prl-empty-title">Browse Our Marketplace</h5>
+                            <p class="prl-empty-text">Pick a category above or use the filters to find products.</p>
+                        {% endif %}
                     </div>
+                </div>
                 {% endfor %}
             </div>
-            
-            <!-- Loading Indicator -->
-            <div class="loading-container" id="loading-indicator" style="display: none;">
-                <div class="loading-spinner">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <p class="loading-text">Loading more products...</p>
+
+            <div class="prl-loading-container" id="loading-indicator" style="display:none;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
                 </div>
+                <p class="prl-loading-text">Loading more products…</p>
             </div>
-            
-            <!-- End of Results Indicator -->
-            <div class="end-of-results" id="end-of-results" style="display: none;">
-                <div class="end-message">
-                    <i class="bi bi-check-circle-fill"></i>
-                    <p>You've reached the end of results</p>
-                    <small>Try adjusting your filters to find more products</small>
-                </div>
+
+            <div class="prl-end-of-results" id="end-of-results" style="display:none;">
+                <i class="bi bi-check-circle-fill"></i>
+                <p>You've reached the end of results</p>
+                <small>Try adjusting your filters to find more products</small>
             </div>
-        </div>
-    </div>
-    {% if not user.is_staff %}
-        {% include 'adsense_bottom.html' with ad_slot='PRODUCT_LIST_SLOT_ID' %}
-    {% endif %}
-</div>
+
+        </div>{# /col results #}
+    </div>{# /row #}
+
+</div>{# /prl-page #}
+
+<script>
+(function () {
+    'use strict';
+
+    document.addEventListener('DOMContentLoaded', function () {
+
+        /* Badge count — excludes 'page' and 'sort' */
+        var SKIP = { page: true, sort: true };
+        var params = new URLSearchParams(window.location.search);
+        var count = 0;
+        params.forEach(function (val, key) {
+            if (!SKIP[key] && val.trim()) { count++; }
+        });
+
+        if (count > 0) {
+            var str = String(count);
+            ['filterBadge', 'fabBadge', 'offcanvasBadge'].forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el) { el.textContent = str; }
+            });
+        }
+
+        /* Sort select */
+        var sortSelect = document.getElementById('sortSelect');
+        if (sortSelect) {
+            sortSelect.addEventListener('change', function () {
+                var url = new URL(window.location.href);
+                if (this.value === 'smart') {
+                    url.searchParams.delete('sort');
+                } else {
+                    url.searchParams.set('sort', this.value);
+                }
+                url.searchParams.delete('page');
+                window.location.href = url.toString();
+            });
+        }
+
+    });
+}());
+</script>
 {% endblock %}
 
 {% block 'Footer'%}{% endblock %}

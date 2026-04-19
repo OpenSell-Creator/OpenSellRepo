@@ -1,0 +1,1243 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load compress %}
+
+{% block page_css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/pages/services.css' %}">
+    <style>
+        /* ── Back button ──────────────────────────────────────── */
+        .back-button-container { margin-bottom: 0.75rem; padding: 0; }
+        .btn-back {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.4rem 0.875rem; background-color: var(--background-color);
+            border: 1px solid var(--border-color); border-radius: var(--radius-sm);
+            color: var(--text-primary); text-decoration: none;
+            font-size: 0.85rem; font-weight: 500; transition: all 0.25s ease; line-height: 1.4;
+        }
+        .btn-back:hover { background-color: var(--card-background); border-color: var(--accent-color); color: var(--accent-color); transform: translateX(-3px); }
+        .btn-back i { font-size: 0.875rem; transition: transform 0.25s ease; }
+        .btn-back:hover i { transform: translateX(-2px); }
+
+        /* ── Main wrapper card ─────────────────────────────────── */
+        .service-detail-card { border: 1px solid var(--border-color); border-radius: var(--radius-lg); overflow: hidden; }
+        .service-detail-container { padding: 1rem; }
+
+        /* ── Carousel ─────────────────────────────────────────── */
+        .main-carousel-wrapper {
+            border-radius: var(--radius-md); overflow: hidden; height: 520px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .carousel-main-img { width: 100%; height: 100%; object-fit: contain; background-color: var(--card-background); }
+        .thumbnail-gallery { margin-top: 0.625rem; }
+        .thumbnail-gallery .img-thumbnail {
+            width: 100%; height: 70px; object-fit: cover;
+            border-radius: var(--radius-sm); cursor: pointer;
+            border: 1px solid var(--border-color); padding: 0;
+        }
+        .thumbnail-wrapper { position: relative; transition: transform 0.2s ease; }
+        .thumbnail-wrapper:hover { transform: translateY(-2px); }
+        .thumbnail-wrapper.active::after {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            border: 2px solid var(--primary-color); border-radius: var(--radius-sm); pointer-events: none;
+        }
+
+        /* ── No-image placeholder ─────────────────────────────── */
+        .no-images-placeholder {
+            height: 520px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            background-color: var(--card-background);
+            border: 1px dashed var(--border-color); border-radius: var(--radius-md);
+            color: var(--text-muted);
+        }
+        .no-images-placeholder i { font-size: 3.5rem; margin-bottom: 0.75rem; opacity: 0.5; }
+
+        /* ── Breadcrumb ───────────────────────────────────────── */
+        .breadcrumb { font-size: 0.8rem; font-weight: 400; margin-bottom: 0.5rem; }
+        .breadcrumb-item+.breadcrumb-item::before { font-size: 0.75rem; }
+
+        /* ── Title ────────────────────────────────────────────── */
+        .service-title { font-size: 2.25rem; font-weight: 700; line-height: 1.2; margin-bottom: 0.75rem !important; color: var(--text-primary); }
+
+        /* ── Price badge ──────────────────────────────────────── */
+        .price-badge {
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            border-radius: var(--radius-md); color: var(--accent-color);
+            padding: 0.65rem 1rem; display: inline-block; margin-bottom: 0.875rem !important;
+        }
+        .price-badge .h2 { font-size: 1.6rem; line-height: 1; }
+
+        /* ── Info section ────────────────────────────────────── */
+        .info-section {
+            font-size: 0.8rem; font-weight: 500;
+            background-color: var(--background-color);
+            border: 1px solid var(--border-color); border-radius: var(--radius-md);
+            padding: 0.625rem !important; margin-bottom: 0.75rem !important;
+        }
+        .info-section .row { --bs-gutter-x: 0.5rem; --bs-gutter-y: 0.5rem; }
+        .info-section h4 {
+            font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;
+            display: flex; align-items: center; gap: 0.375rem; color: var(--text-primary);
+        }
+        .info-section h4 i { color: var(--accent-color); font-size: 0.875rem; }
+
+        /* ── Detail items (info grid) ────────────────────────── */
+        .detail-item {
+            background-color: var(--card-background); border-radius: var(--radius-sm);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            padding: 0.45rem 0.5rem !important; height: 100%; border: none;
+        }
+        .detail-item:hover { transform: translateY(-2px); box-shadow: 0 2px 8px var(--shadow-color); }
+        .detail-item i { color: var(--accent-color); font-size: 0.875rem; flex-shrink: 0; width: 1rem; text-align: center; }
+        .detail-item .small { font-size: 0.65rem; color: var(--text-secondary); margin-bottom: 0.1rem; display: block; }
+        .detail-item > div > div:not(.small) { font-size: 0.8rem; font-weight: 600; line-height: 1.3; }
+
+        /* ── Description / content sections ──────────────────── */
+        .service-description {
+            border: 1px solid var(--border-color); border-radius: var(--radius-md);
+            padding: 0.75rem !important; margin-bottom: 0.75rem !important;
+        }
+        .service-description h4 {
+            font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;
+            display: flex; align-items: center; gap: 0.375rem; color: var(--text-primary);
+        }
+        .service-description h4 i { color: var(--accent-color); font-size: 0.875rem; }
+        .description-content {
+            color: var(--text-secondary); max-height: 220px; overflow-y: auto;
+            font-size: 0.8rem; font-weight: 400; line-height: 1.55;
+        }
+        .description-content::-webkit-scrollbar { width: 3px; }
+        .description-content::-webkit-scrollbar-track { background: var(--card-background); }
+        .description-content::-webkit-scrollbar-thumb { background-color: var(--border-color); border-radius: var(--radius-full); }
+
+        /* ── Documents ────────────────────────────────────────── */
+        .document-item { background-color: var(--background-color); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.875rem; }
+        .document-item i { font-size: 1.5rem; color: var(--accent-color); }
+
+        /        /* ── Action buttons ──────────────────────────────────── */
+        .service-action-buttons .row { --bs-gutter-x: 0.5rem; --bs-gutter-y: 0.5rem; }
+        .btn-action-primary, .btn-action-secondary, .btn-action-boost, .btn-action-success, .btn-action-danger {
+            display: inline-flex; align-items: center; justify-content: center;
+            gap: 0.4rem; padding: 0.6rem 1rem; border-radius: var(--radius-lg);
+            font-size: 0.82rem; font-weight: 600; border: none; cursor: pointer;
+            transition: all 0.2s ease; text-decoration: none; white-space: nowrap; width: 100%;
+        }
+        .btn-action-primary { background-color: var(--primary-color); color: #fff; }
+        .btn-action-primary:hover { opacity: 0.88; color: #fff; }
+        .btn-action-secondary { background-color: var(--card-background); color: var(--text-primary); border: 1px solid var(--border-color); }
+        .btn-action-secondary:hover { border-color: var(--primary-color); color: var(--primary-color); }
+        .btn-action-secondary.saved-state { background-color: rgba(var(--primary-rgb,59,130,246),.1); border-color: var(--primary-color); color: var(--primary-color); }
+        .btn-action-boost { background-color: #f59e0b; color: #fff; }
+        .btn-action-boost:hover { opacity: 0.88; color: #fff; }
+        .btn-action-success { background-color: var(--success, #22c55e); color: #fff; }
+        .btn-action-danger { background-color: transparent; color: var(--danger, #ef4444); border: 1px solid var(--danger, #ef4444); }
+        .btn-action-danger:hover { background-color: var(--danger, #ef4444); color: #fff; }
+
+        /* ── Status / owner section ──────────────────────────── */
+        .service-status-section {
+            background-color: var(--background-color); border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); padding: 0.75rem !important; margin-bottom: 0.75rem !important;
+        }
+        .service-status-section:hover { box-shadow: 0 3px 10px var(--shadow-color); }
+        .service-status-section h6 {
+            font-size: 0.825rem; font-weight: 600; margin-bottom: 0.4rem;
+            display: flex; align-items: center; gap: 0.35rem;
+        }
+        .service-status-section h6 i { color: var(--accent-color); font-size: 0.825rem; }
+        .stock-status span { font-size: 0.8rem; font-weight: 500; display: inline-flex; align-items: center; gap: 0.35rem; }
+        .stock-status i { font-size: 0.825rem; }
+        .quick-actions { padding-top: 0.5rem; }
+        .quick-actions h6 { font-size: 0.825rem; font-weight: 600; margin-bottom: 0.5rem; }
+
+        /* ── Stats bar ────────────────────────────────────────── */
+        .service-stats { background-color: var(--card-background); border: 1px solid var(--border-color); border-radius: var(--radius-md); }
+        .stat-item { text-align: center; padding: 0.75rem 0.5rem; }
+        .stat-item i { font-size: 1.25rem; display: block; margin-bottom: 0.35rem; }
+        .stat-item h5 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.1rem; color: var(--text-primary); }
+        .stat-item small { font-size: 0.75rem; color: var(--text-muted); }
+
+        /* ── Contact buttons grid ────────────────────────────── */
+        .contact-buttons-grid { padding-top: 0.125rem; }
+        .contact-buttons-grid .row { --bs-gutter-x: 0.5rem; --bs-gutter-y: 0.5rem; }
+        .contact-buttons-grid .btn-contact {
+            display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+            padding: 0.6rem 0.5rem; font-size: 0.825rem; font-weight: 500;
+            border-radius: var(--radius-lg); transition: all 0.25s ease; width: 100%;
+        }
+        .contact-buttons-grid .btn-contact i { font-size: 1rem; flex-shrink: 0; }
+        .contact-buttons-grid .btn-contact:hover { transform: translateY(-2px); box-shadow: 0 4px 12px var(--shadow-color); }
+
+        /* ── Provider / Seller card ──────────────────────────── */
+        .seller-card {
+            background: var(--card-background); margin: 10px;
+            border: 1px solid var(--border-color); border-radius: var(--radius-lg);
+            box-shadow: 0 2px 12px var(--shadow-color); transition: box-shadow 0.3s ease; overflow: hidden;
+        }
+        .seller-card:hover { box-shadow: 0 6px 24px var(--shadow-color); }
+        .seller-card .card-header { padding: 0.625rem 0.875rem; border-bottom: 1px solid var(--border-color); }
+        .seller-card .card-header h5 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0; display: flex; align-items: center; gap: 0.375rem; }
+        .seller-card .card-header h5 i { color: var(--accent-color); font-size: 1rem; }
+        .seller-card .card-body { padding: 0.875rem; }
+
+        /* ── Verification status row ──────────────────────────── */
+        .verification-status-row {
+            background: linear-gradient(135deg, var(--background-color) 0%, var(--hover-bg) 100%);
+            border-bottom: 1px solid var(--border-color); padding: 0.5rem 0;
+        }
+        .verification-status-row .row { --bs-gutter-x: 0.5rem; --bs-gutter-y: 0.375rem; }
+
+        /* ── Status chips ─────────────────────────────────────── */
+        .status-chip {
+            display: flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0.75rem;
+            border-radius: var(--radius-md); border: 1px solid;
+            transition: all 0.25s ease; position: relative; overflow: hidden; height: 100%; min-height: 56px;
+        }
+        .status-chip::before {
+            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent); transition: left 0.4s;
+        }
+        .status-chip:hover::before { left: 100%; }
+        .status-chip.verified { background: linear-gradient(135deg, rgba(34,197,94,0.08) 0%, rgba(34,197,94,0.03) 100%); border-color: rgba(34,197,94,0.3); color: var(--text-primary); }
+        .status-chip.verified:hover { border-color: rgba(34,197,94,0.5); transform: translateY(-1px); box-shadow: 0 3px 12px rgba(34,197,94,0.12); }
+        .status-chip.unverified { background: linear-gradient(135deg, rgba(239,68,68,0.08) 0%, rgba(239,68,68,0.03) 100%); border-color: rgba(239,68,68,0.3); color: var(--text-primary); }
+        .status-chip.unverified:hover { border-color: rgba(239,68,68,0.5); transform: translateY(-1px); box-shadow: 0 3px 12px rgba(239,68,68,0.12); }
+        .status-icon { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: transform 0.25s ease; }
+        .status-chip.verified .status-icon { background: rgba(34,197,94,0.15); color: #22c55e; }
+        .status-chip.unverified .status-icon { background: rgba(239,68,68,0.15); color: #ef4444; }
+        .status-icon i { font-size: 1rem; }
+        .status-chip:hover .status-icon { transform: scale(1.08); }
+        .status-content { flex: 1; min-width: 0; }
+        .status-label { font-size: 0.625rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 0.15rem; display: block; }
+        .status-value { font-size: 0.775rem; font-weight: 600; color: var(--text-primary); line-height: 1.2; }
+
+        /* ── Unified provider profile ─────────────────────────── */
+        .seller-profile-unified { padding: 0.375rem 0; }
+        .seller-avatar-unified { width: 76px; height: 76px; object-fit: cover; border-radius: 50%; border: 2px solid var(--border-color); box-shadow: 0 2px 8px var(--shadow-color); display: block; margin: 0 auto; }
+        .seller-avatar-placeholder-unified {
+            width: 76px; height: 76px; border-radius: 50%;
+            background: var(--primary-color); color: var(--card-background);
+            display: flex; align-items: center; justify-content: center;
+            border: 2px solid var(--border-color); box-shadow: 0 2px 8px var(--shadow-color);
+            margin: 0 auto; font-size: 1.75rem; font-weight: 700;
+        }
+        .seller-profile-unified h5 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.25rem; display: flex; align-items: center; justify-content: center; gap: 0.3rem; flex-wrap: wrap; }
+        .seller-profile-unified p { font-size: 0.775rem; }
+
+        /* ── Rating / stars ───────────────────────────────────── */
+        .rating-wrapper { margin-bottom: 0.5rem; }
+        .stars-provider { display: flex; align-items: center; gap: 0.2rem; }
+        .stars-provider i { color: var(--accent-color); font-size: 0.9rem; }
+        .stars-provider .text-muted { color: var(--accent-color) !important; opacity: 0.4; }
+
+        /* ── Seller description ───────────────────────────────── */
+        .seller-description { color: var(--text-secondary); line-height: 1.5; font-size: 0.8rem; margin-bottom: 0.75rem !important; }
+
+        /* ── Seller details grid ──────────────────────────────── */
+        .seller-details-grid .row { --bs-gutter-x: 0.5rem; --bs-gutter-y: 0.5rem; }
+        .seller-details-grid .detail-item-compact {
+            display: flex; align-items: flex-start; gap: 0.4rem; padding: 0.55rem 0.6rem;
+            background: var(--background-color); border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); transition: transform 0.2s ease, box-shadow 0.2s ease; height: 100%;
+        }
+        .seller-details-grid .detail-item-compact:hover { transform: translateY(-1px); box-shadow: 0 2px 8px var(--shadow-color); border-color: var(--accent-color); }
+        .seller-details-grid .detail-item-compact i { color: var(--accent-color); font-size: 0.875rem; width: 16px; flex-shrink: 0; margin-top: 0.15rem; text-align: center; }
+        .seller-details-grid .detail-item-compact > div { flex: 1; min-width: 0; }
+        .seller-details-grid .detail-item-compact small { display: block; font-size: 0.625rem; color: var(--text-secondary); margin-bottom: 0.1rem; }
+        .seller-details-grid .detail-item-compact .fw-medium { font-size: 0.8rem; font-weight: 600; line-height: 1.3; }
+
+        /* Business info */
+        .business-link { font-size: 0.8rem; color: var(--primary-color); text-decoration: none; font-weight: 500; }
+        .business-link:hover { color: var(--accent-color); text-decoration: underline; }
+        .business-contact-grid { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; }
+        .contact-item {
+            display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.625rem;
+            background-color: var(--card-background); border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); font-size: 0.8rem; color: var(--text-primary); transition: border-color 0.2s ease;
+        }
+        .contact-item:hover { border-color: var(--accent-color); }
+        .contact-item i { color: var(--accent-color); flex-shrink: 0; }
+        .pro-seller-icon { color: #0d6efd !important; font-size: 1.1rem; filter: drop-shadow(0 1px 3px rgba(13,110,253,0.3)); animation: subtle-glow 2s ease-in-out infinite alternate; vertical-align: middle; }
+        @keyframes subtle-glow { from { filter: drop-shadow(0 1px 3px rgba(13,110,253,0.3)); } to { filter: drop-shadow(0 2px 5px rgba(13,110,253,0.5)); } }
+
+        /* ── Reviews ─────────────────────────────────────────── */
+        .reviews-section { background-color: var(--card-background); border: 1px solid var(--border-color); border-radius: var(--radius-md); }
+        .review-item { background-color: var(--background-color); border: 1px solid var(--border-color); border-radius: var(--radius-sm); }
+        .review-text { font-size: 0.875rem; color: var(--text-primary); margin-bottom: 0; }
+        .reply-item { background-color: var(--card-background); border-left: 3px solid var(--accent-color); padding: 0.5rem 0.75rem; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; font-size: 0.82rem; }
+        .rating-stars i { font-size: 0.75rem; }
+        .bi-star-fill.text-warning { color: var(--accent-color) !important; }
+
+        /* ── Safety tips card ─────────────────────────────────── */
+        .safety-tips-card { background: var(--card-background); border: 1px solid var(--border-color); border-radius: var(--radius-lg); box-shadow: 0 2px 12px var(--shadow-color); transition: box-shadow 0.3s ease; }
+        .safety-tips-card .card-header { padding: 0.625rem 0.875rem; }
+        .safety-tips-card .card-header h5 { font-size: 0.9rem; font-weight: 700; margin-bottom: 0; }
+        .safety-tips-card .card-body { padding: 0.75rem 0.875rem; }
+        .safety-tips-card li { color: var(--text-primary); font-size: 0.825rem; line-height: 1.5; margin-bottom: 0.375rem; display: flex; align-items: flex-start; gap: 0.4rem; }
+        .safety-tips-card .fa-check-circle { color: var(--success); font-size: 0.875rem; margin-top: 0.1rem; flex-shrink: 0; }
+        #toggle-tips-service { color: var(--primary-color); transition: color 0.25s ease; font-size: 0.825rem; display: inline-flex; align-items: center; gap: 0.35rem; }
+        #toggle-tips-service:hover { color: var(--accent-color); }
+        .toggle-icon { transition: transform 0.2s ease; font-size: 0.8rem; }
+        [aria-expanded="true"] .toggle-icon { transform: rotate(180deg); }
+
+        /* ── Section title ────────────────────────────────────── */
+        .section-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem !important; }
+
+        /* ── Responsive ──────────────────────────────────────── */
+        @media (max-width: 992px) {
+            .main-carousel-wrapper { height: 440px; }
+            .status-chip { padding: 0.5rem 0.65rem; min-height: 54px; gap: 0.45rem; }
+            .status-icon { width: 28px; height: 28px; }
+            .status-icon i { font-size: 0.95rem; }
+            .status-label { font-size: 0.6rem; }
+            .status-value { font-size: 0.75rem; }
+        }
+        @media (max-width: 768px) {
+            .service-title { font-size: 1.75rem !important; }
+            .main-carousel-wrapper { height: 380px; }
+            .service-action-buttons .btn { border-radius: var(--radius-lg); padding: 0.55rem 0.625rem; font-size: 0.8rem; }
+            .verification-status-row .row { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+            .verification-status-row .col-12.col-md-4 { flex: 0 0 auto; min-width: 140px; }
+            .status-chip { padding: 0.4rem 0.5rem; min-height: 50px; gap: 0.4rem; }
+            .status-icon { width: 24px; height: 24px; }
+            .status-icon i { font-size: 0.875rem; }
+            .status-label { font-size: 0.575rem; }
+            .status-value { font-size: 0.7rem; }
+            .seller-avatar-unified, .seller-avatar-placeholder-unified { width: 68px; height: 68px; }
+            .seller-profile-unified .col-md-4 { margin-bottom: 0.75rem; }
+            .contact-buttons-grid .btn-contact { padding: 0.55rem 0.4rem; font-size: 0.775rem; }
+            .contact-buttons-grid .btn-contact i { font-size: 0.95rem; }
+            .no-images-placeholder { height: 280px; }
+        }
+        @media (max-width: 576px) {
+            .service-title { font-size: 1.4rem !important; }
+            .main-carousel-wrapper { height: 320px; }
+            .breadcrumb { font-size: 0.7rem; }
+            .service-detail-container { padding: 0.75rem; }
+            .service-action-buttons .btn { padding: 0.5rem 0.5rem; font-size: 0.775rem; }
+            .status-chip { padding: 0.375rem 0.425rem; min-height: 46px; gap: 0.3rem; }
+            .status-icon { width: 22px; height: 22px; }
+            .status-icon i { font-size: 0.825rem; }
+            .status-label { font-size: 0.55rem; }
+            .status-value { font-size: 0.675rem; }
+            .seller-avatar-unified, .seller-avatar-placeholder-unified { width: 60px; height: 60px; }
+            .contact-buttons-grid .btn-contact { padding: 0.5rem 0.35rem; font-size: 0.75rem; }
+            .contact-buttons-grid .btn-contact i { font-size: 0.9rem; }
+            .contact-buttons-grid .btn-contact span { font-size: 0.73rem; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .status-chip, .status-icon, .contact-item, .seller-card, .detail-item, .thumbnail-wrapper, .btn-back { transition: none; }
+            .status-chip:hover { transform: none; }
+            .status-chip:hover .status-icon { transform: none; }
+            .status-chip::before { display: none; }
+            .pro-seller-icon { animation: none; }
+            .detail-item:hover { transform: none; }
+            .btn-back:hover { transform: none; }
+        }
+        .status-chip:focus, .contact-item:focus, .btn-back:focus { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+    </style>
+{% endblock %}
+
+{% block page_js %}
+    <script type="text/javascript" src="{% static 'js/pages/services.js' %}"></script>
+{% endblock %}
+
+{% block 'Body' %}
+
+<!-- Back Button -->
+<div class="back-button-container">
+    <button onclick="history.back()" class="btn-back">
+        <i class="fas fa-arrow-left"></i>
+        <span>Back</span>
+    </button>
+</div>
+
+<div class="card service-detail-card">
+    <div class="service-detail-container">
+        <div class="row g-4">
+
+            <!-- ═══════════════════════════════════════════════════
+                 LEFT COLUMN — Images
+            ════════════════════════════════════════════════════ -->
+            <div class="col-md-6">
+                <!-- Main Carousel -->
+                <div class="main-carousel-wrapper mb-2" style="border: 1px solid var(--border-color);">
+                    {% if images %}
+                        <div id="serviceCarousel" class="carousel slide w-100 h-100">
+                            <div class="carousel-inner h-100" style="border-radius: var(--radius-md);">
+                                {% for image in images %}
+                                <div class="carousel-item {% if image.is_primary %}active{% elif forloop.first %}active{% endif %} h-100">
+                                    <img src="{{ image.image.url }}" class="carousel-main-img"
+                                         alt="{{ image.caption|default:service.title }}"
+                                         style="background-color: var(--card-background);">
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% if images|length > 1 %}
+                            <button class="carousel-control-prev" type="button" data-bs-target="#serviceCarousel" data-bs-slide="prev">
+                                <span class="carousel-control-prev-icon" aria-hidden="true" style="filter:invert(1)"></span>
+                                <span class="visually-hidden">Previous</span>
+                            </button>
+                            <button class="carousel-control-next" type="button" data-bs-target="#serviceCarousel" data-bs-slide="next">
+                                <span class="carousel-control-next-icon" aria-hidden="true" style="filter:invert(1)"></span>
+                                <span class="visually-hidden">Next</span>
+                            </button>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <div class="no-images-placeholder w-100">
+                            {% if service.service_type == 'digital' %}<i class="bi bi-laptop"></i>
+                            {% elif service.service_type == 'physical' %}<i class="bi bi-tools"></i>
+                            {% elif service.service_type == 'consulting' %}<i class="bi bi-chat-dots"></i>
+                            {% else %}<i class="bi bi-briefcase"></i>{% endif %}
+                            <h5 class="mb-1">{{ service.get_service_type_display }} Service</h5>
+                            <p class="mb-0 small">No images provided for this service</p>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Thumbnail Navigation -->
+                {% if images|length > 1 %}
+                <div class="thumbnail-gallery">
+                    <div class="row g-2">
+                        {% for image in images %}
+                        <div class="col-2">
+                            <div class="thumbnail-wrapper {% if image.is_primary %}active{% elif forloop.first %}active{% endif %}">
+                                <img src="{{ image.image.url }}"
+                                     class="img-thumbnail"
+                                     alt="{{ image.caption|default:service.title }}"
+                                     data-bs-target="#serviceCarousel"
+                                     data-bs-slide-to="{{ forloop.counter0 }}"
+                                     role="button"
+                                     style="border-color: var(--border-color); background-color: var(--card-background);">
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- ═══════════════════════════════════════════════════
+                 RIGHT COLUMN — Details
+            ════════════════════════════════════════════════════ -->
+            <div class="col-md-6">
+                <div class="service-details h-100">
+                    <div class="card-body p-2">
+
+                        <!-- Service Header -->
+                        <div class="product-header mb-4">
+                            <nav aria-label="breadcrumb">
+                                <ol class="breadcrumb small mb-2">
+                                    <li class="breadcrumb-item">Services</li>
+                                    {% if service.category %}<li class="breadcrumb-item"><a href="{% url 'services:list' %}?category={{ service.category }}">{{ service.get_category_display }}</a></li>{% endif %}
+                                    <li class="breadcrumb-item active">{{ service.title|truncatechars:40 }}</li>
+                                </ol>
+                            </nav>
+                            <h1 class="service-title display-6 mb-2">{{ service.title }}</h1>
+                            <div class="d-flex flex-wrap gap-1 mb-3">
+                                <span class="badge bg-primary">{{ service.get_service_type_display }}</span>
+                                <span class="badge bg-info">{{ service.get_experience_level_display }}</span>
+                                {% if provider_details.is_verified_business %}<span class="badge bg-success"><i class="bi bi-shield-check me-1"></i>Verified Provider</span>{% endif %}
+                            </div>
+                            <div class="price-badge p-3 mb-4">
+                                <span class="h2 mb-0 fw-bold">{{ formatted_price }}</span>
+                                <div class="small mt-1 opacity-75">{{ service.get_pricing_type_display }}</div>
+                            </div>
+                        </div>
+
+                        <!-- Service Info Grid -->
+                        <div class="product-info-advanced mb-2">
+                            <div class="info-section mb-4 p-3">
+                                <h4 class="fw-semibold mb-3"><i class="fas fa-info-circle me-2"></i>Service Details</h4>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <div class="detail-item d-flex align-items-center p-2">
+                                            <i class="bi bi-tag me-2"></i>
+                                            <div>
+                                                <div class="small">Category</div>
+                                                <div>{{ service.get_category_display|default:"General" }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="detail-item d-flex align-items-center p-2">
+                                            <i class="bi bi-bar-chart me-2"></i>
+                                            <div>
+                                                <div class="small">Experience</div>
+                                                <div>{{ service.get_experience_level_display }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="detail-item d-flex align-items-center p-2">
+                                            <i class="bi bi-truck me-2"></i>
+                                            <div>
+                                                <div class="small">Delivery</div>
+                                                <div>{{ service.get_delivery_method_display }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="detail-item d-flex align-items-center p-2">
+                                            <i class="fas fa-clock me-2"></i>
+                                            <div>
+                                                <div class="small">Listed</div>
+                                                <div>{{ created_at|timesince }} ago</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% if service.location %}
+                                    <div class="col-6">
+                                        <div class="detail-item d-flex align-items-center p-2">
+                                            <i class="fas fa-map-marker-alt me-2"></i>
+                                            <div>
+                                                <div class="small">Location</div>
+                                                <div>{{ service.location }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    <div class="col-6">
+                                        <div class="detail-item d-flex align-items-center p-2">
+                                            <i class="fas fa-eye me-2"></i>
+                                            <div>
+                                                <div class="small">Views</div>
+                                                <div>{{ service.view_count }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Description -->
+                            <div class="service-description mb-4 p-3">
+                                <h4 class="fw-semibold mb-3"><i class="fas fa-align-left me-2"></i>Service Description</h4>
+                                <div class="description-content">{{ service.description|linebreaks }}</div>
+                            </div>
+
+                            <!-- What You Get -->
+                            {% if service.what_you_get %}
+                            <div class="service-description mb-4 p-3">
+                                <h4 class="fw-semibold mb-3"><i class="bi bi-gift me-2"></i>What You Get</h4>
+                                <div class="description-content">{{ service.what_you_get|linebreaks }}</div>
+                            </div>
+                            {% endif %}
+
+                            <!-- Skills & Expertise -->
+                            {% if service.skills_offered %}
+                            <div class="service-description mb-4 p-3">
+                                <h4 class="fw-semibold mb-3"><i class="bi bi-tools me-2"></i>Skills &amp; Expertise</h4>
+                                <div class="description-content">{{ service.skills_offered|linebreaks }}</div>
+                            </div>
+                            {% endif %}
+
+                            <!-- Requirements -->
+                            {% if service.requirements %}
+                            <div class="service-description mb-4 p-3">
+                                <h4 class="fw-semibold mb-3"><i class="bi bi-clipboard-check me-2"></i>Requirements</h4>
+                                <div class="description-content">{{ service.requirements|linebreaks }}</div>
+                            </div>
+                            {% endif %}
+
+                            <!-- Documents & Portfolio -->
+                            {% if documents %}
+                            <div class="service-description mb-4 p-3">
+                                <h4 class="fw-semibold mb-3"><i class="bi bi-file-earmark-text me-2"></i>Documents &amp; Portfolio</h4>
+                                <div class="row g-3">
+                                    {% for document in documents %}
+                                    <div class="col-md-6">
+                                        <div class="document-item p-3">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <i class="bi bi-file-earmark-text"></i>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="mb-0 small fw-semibold">{{ document.title }}</h6>
+                                                    <small class="text-muted">{{ document.document.size|filesizeformat }}</small>
+                                                </div>
+                                                <a href="{{ document.document.url }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                                    <i class="bi bi-download"></i>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Action Buttons Row (Share + Save or Edit/Delete for owner) -->
+                        <div class="service-action-buttons mb-4">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <button type="button" class="btn-action-primary" onclick="shareService()">
+                                        <i class="fas fa-share-alt me-2"></i>
+                                        <span>Share</span>
+                                    </button>
+                                </div>
+
+                                {% if user.is_authenticated and user == service.provider.user %}
+                                    <!-- OWNER: Boost/manage -->
+                                    <div class="col-6">
+                                        <a href="{% url 'manage_listings' %}?tab=services" class="btn-action-boost">
+                                            <i class="bi bi-list-ul me-2"></i>My Services
+                                        </a>
+                                    </div>
+                                {% else %}
+                                    <!-- VISITOR: Save -->
+                                    <div class="col-6">
+                                        {% if user.is_authenticated %}
+                                            <button type="button"
+                                                    class="btn-action-secondary save-service-btn {% if is_saved %}saved-state{% endif %}"
+                                                    data-service-id="{{ service.id }}"
+                                                    onclick="toggleSave(event, '{{ service.id }}', 'service')"
+                                                    data-saved="{% if is_saved %}true{% else %}false{% endif %}">
+                                                <i class="bi {% if is_saved %}bi-bookmark-fill{% else %}bi-bookmark{% endif %} me-2"></i>
+                                                <span class="save-text">{% if is_saved %}Saved{% else %}Save{% endif %}</span>
+                                            </button>
+                                        {% else %}
+                                            <a href="{% url 'account_login' %}" class="btn-action-secondary">
+                                                <i class="bi bi-bookmark me-2"></i>Save
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Status / Availability Section -->
+                        <div class="service-status-section mb-4">
+                            <!-- Availability (visible to all) -->
+                            <div class="stock-status mb-3">
+                                <h6 class="fw-semibold mb-2"><i class="fas fa-circle me-2"></i>Availability</h6>
+                                <div class="d-flex align-items-center gap-2">
+                                    {% if service.is_available %}
+                                        <span class="text-success"><i class="fas fa-check-circle me-2"></i>Available for Hire</span>
+                                    {% else %}
+                                        <span class="text-danger"><i class="fas fa-times-circle me-2"></i>Currently Unavailable</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Owner only actions -->
+                            {% if user.is_authenticated and user == service.provider.user %}
+                            <div class="quick-actions">
+                                <h6 class="fw-semibold mb-2"><i class="fas fa-bolt me-2"></i>Actions</h6>
+                                <div class="d-flex gap-2">
+                                    <a href="{% url 'services:update' pk=service.id %}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-edit me-2"></i>Edit
+                                    </a>
+                                    <a href="{% url 'services:delete' pk=service.id %}" class="btn btn-sm btn-danger">
+                                        <i class="fas fa-trash me-2"></i>Delete
+                                    </a>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Bar (full width, inside main card) -->
+        <div class="service-stats p-3 mt-2 mb-2">
+            <div class="row g-0">
+                <div class="col-4">
+                    <div class="stat-item">
+                        <i class="bi bi-eye text-primary"></i>
+                        <h5>{{ service.view_count }}</h5>
+                        <small>Views</small>
+                    </div>
+                </div>
+                <div class="col-4" style="border-left: 1px solid var(--border-color); border-right: 1px solid var(--border-color);">
+                    <div class="stat-item">
+                        <i class="bi bi-chat-dots text-success"></i>
+                        <h5>{{ service.inquiries.count }}</h5>
+                        <small>Inquiries</small>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="stat-item">
+                        <i class="bi bi-star-fill text-warning"></i>
+                        <h5>{{ average_rating|floatformat:1 }}</h5>
+                        <small>Rating</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Buttons Grid (visitor actions, full width inside main card) -->
+        {% if user != service.provider.user %}
+        <div class="contact-buttons-grid mt-2 mb-2">
+            <div class="row g-2">
+                {% if can_inquire %}
+                <div class="col-6">
+                    <button class="btn btn-success w-100 btn-contact" data-bs-toggle="modal" data-bs-target="#inquiryModal">
+                        <i class="bi bi-chat-dots"></i>
+                        <span>Send Inquiry</span>
+                    </button>
+                </div>
+                <div class="col-6">
+                    {% if conversation %}
+                    <a href="{% url 'conversation_detail' conversation_uuid=conversation.uuid %}" class="btn btn-primary w-100 btn-contact">
+                        <i class="bi bi-envelope-open"></i>
+                        <span>Continue Chat</span>
+                    </a>
+                    {% else %}
+                    <button class="btn btn-outline-primary w-100 btn-contact" data-bs-toggle="modal" data-bs-target="#messageModal">
+                        <i class="bi bi-envelope"></i>
+                        <span>Send Message</span>
+                    </button>
+                    {% endif %}
+                </div>
+                <div class="col-6">
+                    <a href="{% url 'user_store' username=service.provider.user.username %}" class="btn btn-secondary w-100 btn-contact">
+                        <i class="fas fa-store"></i>
+                        <span>Store</span>
+                    </a>
+                </div>
+                <div class="col-6">
+                    <a href="{% url 'report_item' 'service' service.id %}" class="btn btn-outline-danger w-100 btn-contact">
+                        <i class="fas fa-flag"></i>
+                        <span>Report</span>
+                    </a>
+                </div>
+
+                {% elif user.is_authenticated %}
+                <div class="col-12">
+                    <div class="alert alert-warning text-center mb-2 py-2 small">
+                        <i class="bi bi-exclamation-triangle me-2"></i>You've already sent an inquiry for this service
+                    </div>
+                </div>
+                {% if user_inquiry %}
+                <div class="col-6">
+                    <a href="{% url 'services:inquiry_detail' pk=user_inquiry.id %}" class="btn btn-outline-primary w-100 btn-contact">
+                        <i class="bi bi-eye"></i>
+                        <span>View Inquiry</span>
+                    </a>
+                </div>
+                {% endif %}
+                <div class="col-6">
+                    {% if conversation %}
+                    <a href="{% url 'conversation_detail' conversation_uuid=conversation.uuid %}" class="btn btn-outline-primary w-100 btn-contact">
+                        <i class="bi bi-envelope-open"></i>
+                        <span>View Messages</span>
+                    </a>
+                    {% else %}
+                    <button class="btn btn-outline-primary w-100 btn-contact" data-bs-toggle="modal" data-bs-target="#messageModal">
+                        <i class="bi bi-envelope"></i>
+                        <span>Send Message</span>
+                    </button>
+                    {% endif %}
+                </div>
+                <div class="col-6">
+                    <a href="{% url 'report_item' 'service' service.id %}" class="btn btn-outline-danger w-100 btn-contact">
+                        <i class="fas fa-flag"></i>
+                        <span>Report</span>
+                    </a>
+                </div>
+
+                {% else %}
+                <div class="col-12">
+                    <a href="{% url 'account_login' %}?next={{ service.get_absolute_url }}" class="btn btn-primary w-100 btn-contact">
+                        <i class="bi bi-box-arrow-in-right"></i>
+                        <span>Login to Inquire</span>
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+{% if global_banners %}
+{% include 'banner.html' with banners=global_banners %}
+{% endif %}
+
+<!-- Provider Information Card -->
+{% if user != service.provider.user %}
+<div class="card seller-card mt-3 mb-4">
+    <div class="card-header py-3">
+        <h5 class="mb-0 fw-bold">
+            <i class="fas fa-user-circle me-2"></i>
+            {% if provider_details.is_verified_business %}Business{% else %}Provider{% endif %} Information
+        </h5>
+    </div>
+
+    <!-- Verification Status Row -->
+    <div class="verification-status-row">
+        <div class="container-fluid px-3 py-2">
+            <div class="row g-2">
+                <div class="col-12 col-md-4">
+                    <div class="status-chip {% if provider_details.is_verified_business %}verified{% else %}unverified{% endif %}">
+                        <div class="status-icon">
+                            {% if provider_details.is_verified_business %}<i class="bi bi-patch-check-fill"></i>
+                            {% else %}<i class="bi bi-shield-exclamation"></i>{% endif %}
+                        </div>
+                        <div class="status-content">
+                            <div class="status-label">Business</div>
+                            <div class="status-value">{% if provider_details.is_verified_business %}Verified{% else %}Unverified{% endif %}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="status-chip {% if service.provider.user.is_active %}verified{% else %}unverified{% endif %}">
+                        <div class="status-icon">
+                            {% if service.provider.user.is_active %}<i class="bi bi-person-check-fill"></i>
+                            {% else %}<i class="bi bi-person-x-fill"></i>{% endif %}
+                        </div>
+                        <div class="status-content">
+                            <div class="status-label">Account</div>
+                            <div class="status-value">{% if service.provider.user.is_active %}Active{% else %}Inactive{% endif %}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-body py-3">
+        <div class="seller-profile-unified">
+            <div class="row g-3">
+                <!-- Left: Avatar & Basic Info -->
+                <div class="col-md-4">
+                    <div class="text-center">
+                        {% if service.provider.user.profile.photo %}
+                            <img src="{{ service.provider.user.profile.photo.url }}"
+                                 alt="{{ provider_details.name }}"
+                                 class="seller-avatar-unified mb-2">
+                        {% else %}
+                            <div class="seller-avatar-placeholder-unified mb-2">
+                                <span class="h4 mb-0">{{ provider_details.name|first|upper }}</span>
+                            </div>
+                        {% endif %}
+
+                        <h5 class="fw-bold mb-1">
+                            {{ provider_details.business_name|default:provider_details.name }}
+                            {% if provider_details.is_verified_business %}
+                                <i class="bi bi-patch-check-fill pro-seller-icon"></i>
+                            {% endif %}
+                        </h5>
+                        <p class="text-muted small mb-2">
+                            {% if provider_details.is_verified_business %}
+                                {{ provider_details.business_type|default:"Business" }}
+                            {% else %}
+                                @{{ service.provider.user.username }}
+                            {% endif %}
+                        </p>
+
+                        {% if provider_details.average_rating %}
+                        <div class="rating-wrapper mb-2">
+                            <div class="d-flex align-items-center justify-content-center gap-1">
+                                <div class="stars-provider">
+                                    {% for i in "12345"|make_list %}
+                                        {% if forloop.counter <= provider_details.average_rating|floatformat:0|add:0 %}
+                                            <i class="bi bi-star-fill"></i>
+                                        {% else %}
+                                            <i class="bi bi-star text-muted"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                                <span class="small fw-semibold">{{ provider_details.average_rating|floatformat:1 }}</span>
+                            </div>
+                            <small class="text-muted">{{ provider_details.total_reviews }} reviews</small>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Right: Details -->
+                <div class="col-md-8">
+                    {% if provider_details.is_verified_business and provider_details.business_description %}
+                    <div class="seller-description mb-3">
+                        <p class="small mb-0">{{ provider_details.business_description|truncatechars:200 }}</p>
+                    </div>
+                    {% elif service.provider.user.profile.bio %}
+                    <div class="seller-description mb-3">
+                        <p class="small mb-0">{{ service.provider.user.profile.bio|truncatechars:200 }}</p>
+                    </div>
+                    {% endif %}
+
+                    <div class="seller-details-grid">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="detail-item-compact">
+                                    <i class="fas fa-calendar-alt"></i>
+                                    <div>
+                                        <small class="text-muted">Member Since</small>
+                                        <div class="fw-medium small">{{ provider_details.member_since|date:"M Y" }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="detail-item-compact">
+                                    <i class="bi bi-briefcase"></i>
+                                    <div>
+                                        <small class="text-muted">Total Services</small>
+                                        <div class="fw-medium small">{{ provider_details.total_services }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="detail-item-compact">
+                                    <i class="bi bi-star-fill"></i>
+                                    <div>
+                                        <small class="text-muted">Avg Rating</small>
+                                        <div class="fw-medium small">{{ provider_details.average_rating|floatformat:1 }}/5</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="detail-item-compact">
+                                    <i class="bi bi-chat-square-text"></i>
+                                    <div>
+                                        <small class="text-muted">Total Reviews</small>
+                                        <div class="fw-medium small">{{ provider_details.total_reviews }}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {% if provider_details.is_verified_business and provider_details.business_phone %}
+                            <div class="col-6">
+                                <div class="detail-item-compact">
+                                    <i class="fas fa-phone"></i>
+                                    <div>
+                                        <small class="text-muted">Business Phone</small>
+                                        <div class="fw-medium small">{{ provider_details.business_phone }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% if provider_details.is_verified_business and provider_details.business_website %}
+                            <div class="col-12">
+                                <div class="detail-item-compact">
+                                    <i class="fas fa-globe"></i>
+                                    <div>
+                                        <small class="text-muted">Website</small>
+                                        <a href="{{ provider_details.business_website }}" target="_blank" class="business-link small">
+                                            Visit Website <i class="bi bi-box-arrow-up-right"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Business contact info for verified businesses -->
+                    {% if provider_details.is_verified_business %}
+                    <div class="mt-3">
+                        <div class="business-contact-grid">
+                            {% if provider_details.business_email %}
+                            <div class="contact-item">
+                                <i class="bi bi-envelope-fill"></i>
+                                <span class="small">{{ provider_details.business_email }}</span>
+                            </div>
+                            {% endif %}
+                            {% if provider_details.business_phone %}
+                            <div class="contact-item">
+                                <i class="bi bi-telephone-fill"></i>
+                                <span class="small">{{ provider_details.business_phone }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Reviews Section -->
+{% if reviews %}
+<div class="mt-0 container-fluid">
+    <div class="reviews-section p-3 mt-3 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0 fw-semibold"><i class="bi bi-star-fill text-warning me-2"></i>Reviews ({{ total_reviews }})</h5>
+            {% if has_more_reviews %}
+            <button class="btn btn-outline-primary btn-sm" id="loadMoreReviews">Load More</button>
+            {% endif %}
+        </div>
+        <div id="reviewsList">
+            {% for review in reviews %}
+            <div class="review-item mb-3 p-3">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <strong class="small">{{ review.reviewer.username }}</strong>
+                        <div class="rating-stars mt-1">
+                            {% for i in "12345"|make_list %}
+                                {% if forloop.counter <= review.rating %}
+                                    <i class="bi bi-star-fill text-warning"></i>
+                                {% else %}
+                                    <i class="bi bi-star text-muted"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <small class="text-muted">{{ review.created_at|timesince }} ago</small>
+                </div>
+                <p class="review-text">{{ review.comment }}</p>
+                {% if review.replies.all %}
+                <div class="mt-2">
+                    {% for reply in review.replies.all %}
+                    <div class="reply-item">
+                        <div class="d-flex justify-content-between mb-1">
+                            <strong>{{ reply.replier.username }}</strong>
+                            <small class="text-muted">{{ reply.created_at|timesince }} ago</small>
+                        </div>
+                        <p class="mb-0">{{ reply.reply_text }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Safety Tips Card -->
+<div class="mt-0 container-fluid">
+    <div class="card safety-tips-card mt-3 mb-4">
+        <div class="card-header py-2">
+            <h5 class="mb-0 fw-bold">
+                <i class="fas fa-shield-alt me-2"></i>Safety Tips
+            </h5>
+        </div>
+        <div class="card-body py-3">
+            <ul class="list-unstyled mb-0">
+                <li class="mb-2"><i class="fas fa-check-circle me-2" style="color: var(--success)"></i>Verify provider credentials before hiring.</li>
+                <li class="mb-2"><i class="fas fa-check-circle me-2" style="color: var(--success)"></i>Discuss project details and timeline clearly.</li>
+            </ul>
+            <div class="collapse" id="hidden-tips-service">
+                <ul class="list-unstyled mt-3 mb-0">
+                    <li class="mb-2"><i class="fas fa-check-circle me-2" style="color: var(--success)"></i>Use secure payment methods.</li>
+                    <li class="mb-2"><i class="fas fa-check-circle me-2" style="color: var(--success)"></i>Start with smaller projects for new providers.</li>
+                    <li class="mb-0"><i class="fas fa-check-circle me-2" style="color: var(--success)"></i>Report suspicious services or providers immediately.</li>
+                </ul>
+            </div>
+            <a id="toggle-tips-service"
+               class="d-block text-decoration-none mt-3"
+               data-bs-toggle="collapse"
+               href="#hidden-tips-service"
+               role="button"
+               aria-expanded="false"
+               aria-controls="hidden-tips-service">
+                <span class="text-primary fw-medium">
+                    <i class="fas fa-chevron-down toggle-icon me-2"></i>
+                    <span id="toggle-text-service">See more safety tips</span>
+                </span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Related Services -->
+{% if related_services %}
+<div class="mt-0 container-fluid">
+    <h2 class="section-title text-center mb-4">Related Services</h2>
+    <div class="row g-3">
+        {% for related_service in related_services %}
+        <div class="col-6 col-md-2">
+            {% include 'services/service_card.html' with service=related_service %}
+        </div>
+        {% empty %}
+        <p>No related services found.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- ── Inquiry Modal ──────────────────────────────────────────── -->
+{% if can_inquire %}
+<div class="modal fade" id="inquiryModal" tabindex="-1" aria-labelledby="inquiryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="background-color:var(--card-background);border-color:var(--border-color);">
+            <div class="modal-header" style="border-color:var(--border-color);">
+                <h5 class="modal-title" id="inquiryModalLabel" style="color:var(--text-primary);">
+                    <i class="bi bi-chat-dots me-2"></i>Send Inquiry — {{ service.title|truncatechars:40 }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'services:create_inquiry' service.id %}" id="inquiryForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div id="inquiryFormError" class="alert alert-danger d-none"></div>
+                    {{ inquiry_form.as_p }}
+                </div>
+                <div class="modal-footer" style="border-color:var(--border-color);">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-send me-2"></i>Send Inquiry</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ── Message Modal ──────────────────────────────────────────── -->
+{% if user.is_authenticated and user != service.provider.user %}
+<div class="modal fade" id="messageModal" tabindex="-1" aria-labelledby="messageModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background-color:var(--card-background);border-color:var(--border-color);">
+            <div class="modal-header" style="border-color:var(--border-color);">
+                <h5 class="modal-title" id="messageModalLabel" style="color:var(--text-primary);">
+                    <i class="bi bi-envelope me-2"></i>Send Message
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'services:send_message' service.id %}" id="messageForm">
+                {% csrf_token %}
+                <div class="modal-body">{{ message_form.as_p }}</div>
+                <div class="modal-footer" style="border-color:var(--border-color);">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-send me-2"></i>Send Message</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ── Share Modal ────────────────────────────────────────────── -->
+<div class="modal fade" id="shareModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background-color:var(--card-background);border-color:var(--border-color);">
+            <div class="modal-header" style="border-color:var(--border-color);">
+                <h5 class="modal-title" style="color:var(--text-primary);">Share Service</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3 text-center mb-3">
+                    <div class="col-4">
+                        <button class="btn btn-outline-success w-100 py-2" onclick="shareToWhatsApp()">
+                            <i class="bi bi-whatsapp fs-5 d-block mb-1"></i><small>WhatsApp</small>
+                        </button>
+                    </div>
+                    <div class="col-4">
+                        <button class="btn btn-outline-info w-100 py-2" onclick="shareToTwitter()">
+                            <i class="bi bi-twitter-x fs-5 d-block mb-1"></i><small>Twitter/X</small>
+                        </button>
+                    </div>
+                    <div class="col-4">
+                        <button class="btn btn-outline-secondary w-100 py-2" onclick="copyServiceLink()">
+                            <i class="bi bi-link-45deg fs-5 d-block mb-1"></i><small>Copy Link</small>
+                        </button>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="shareUrl" class="form-control form-control-sm"
+                           value="{{ request.build_absolute_uri }}" readonly
+                           style="background-color:var(--card-background);color:var(--text-primary);border-color:var(--border-color);">
+                    <button class="btn btn-outline-primary btn-sm" onclick="copyServiceLink()"><i class="bi bi-clipboard"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function shareService() { new bootstrap.Modal(document.getElementById('shareModal')).show(); }
+function shareToWhatsApp() {
+    const text = encodeURIComponent('Check out this service: {{ service.title }}\n{{ service.get_absolute_url }}');
+    window.open('https://wa.me/?text=' + text, '_blank');
+}
+function shareToTwitter() {
+    const text = encodeURIComponent('Found this great service: {{ service.title }}');
+    const url  = encodeURIComponent('{{ service.get_absolute_url }}');
+    window.open('https://twitter.com/intent/tweet?text=' + text + '&url=' + url, '_blank');
+}
+function copyServiceLink() {
+    const shareUrl = document.getElementById('shareUrl');
+    shareUrl.select();
+    navigator.clipboard.writeText(shareUrl.value);
+    const btn = event.target.closest('button');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-check"></i>';
+    setTimeout(() => { btn.innerHTML = orig; }, 2000);
+}
+// Toggle safety tips text
+document.addEventListener('DOMContentLoaded', function () {
+    const tipToggle = document.getElementById('toggle-tips-service');
+    if (tipToggle) {
+        tipToggle.addEventListener('click', function () {
+            const txt = document.getElementById('toggle-text-service');
+            const expanded = this.getAttribute('aria-expanded') === 'true';
+            if (txt) txt.textContent = expanded ? 'See more safety tips' : 'See fewer safety tips';
+        });
+    }
+});
+</script>
+
+{% endblock %}
+{% block 'Footer' %}{% endblock %}
+
+{% block additional_js %}
+<script>
+/* Inquiry form — prevent double-submit, AJAX handling */
+(function () {
+    'use strict';
+    function attachInquiryHandler() {
+        var form = document.getElementById('inquiryForm');
+        if (!form) return;
+        var fresh = form.cloneNode(true);
+        form.parentNode.replaceChild(fresh, form);
+        fresh.addEventListener('submit', function (e) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            var submitBtn = fresh.querySelector('button[type="submit"]');
+            var originalHTML = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending...';
+            var errorDiv = document.getElementById('inquiryFormError');
+            if (!errorDiv) {
+                errorDiv = document.createElement('div');
+                errorDiv.id = 'inquiryFormError';
+                errorDiv.className = 'alert alert-danger mt-2 d-none';
+                var mb = fresh.querySelector('.modal-body');
+                if (mb) mb.prepend(errorDiv);
+            }
+            errorDiv.classList.add('d-none');
+            errorDiv.textContent = '';
+            var redirecting = false;
+            fetch(fresh.action, { method: 'POST', body: new FormData(fresh), headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success && data.redirect) {
+                    redirecting = true;
+                    if (typeof showNotification === 'function') showNotification('Inquiry sent successfully!', 'success');
+                    var modalEl = document.getElementById('inquiryModal');
+                    if (modalEl) {
+                        var bsModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                        modalEl.addEventListener('hidden.bs.modal', function () { window.location.href = data.redirect; }, { once: true });
+                        bsModal.hide();
+                    } else { window.location.href = data.redirect; }
+                } else {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalHTML;
+                    var msg = '';
+                    if (data.errors) { Object.entries(data.errors).forEach(function (e) { msg += e[1].join(' ') + ' '; }); }
+                    errorDiv.textContent = msg.trim() || data.error || 'An error occurred. Please try again.';
+                    errorDiv.classList.remove('d-none');
+                }
+            })
+            .catch(function () {
+                if (redirecting) return;
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalHTML;
+                errorDiv.textContent = 'Could not connect. Please check your connection and try again.';
+                errorDiv.classList.remove('d-none');
+            });
+        }, true);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attachInquiryHandler);
+    else attachInquiryHandler();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,156 @@
+{% load static %}
+
+<div class="categories-scroll-container">
+    <div class="categories-pills">
+        {% for category in categories %}
+            {% if category.name %}
+                {# Handle different category data structures #}
+                
+                {# For Services: categories is a dict with category_key: {name, total_services} #}
+                {% if category.total_services is not None %}
+                    {% if category.total_services > 0 %}
+                    <a href="{% url list_url %}?category={{ category.category_key }}" class="category-pill">
+                        <span class="category-name">{{ category.name }}</span>
+                    </a>
+                    {% endif %}
+                
+                {# For Products: categories are Category objects with product_count #}
+                {% elif category.product_count is not None %}
+                    {% if category.product_count > 0 %}
+                    <a href="{% url list_url %}?category={{ category.slug }}" class="category-pill">
+                        <span class="category-name">{{ category.name }}</span>
+                    </a>
+                    {% endif %}
+                
+                {# For Buyer Requests: categories are Category objects with request_count #}
+                {% elif category.request_count is not None %}
+                    {% if category.request_count > 0 %}
+                    <a href="{% url list_url %}?category={{ category.id }}" class="category-pill">
+                        <span class="category-name">{{ category.name }}</span>
+
+                    </a>
+                    {% endif %}
+                
+                {# Fallback: Generic category with slug or id #}
+                {% else %}
+                    <a href="{% url list_url %}?category={{ category.slug|default:category.id }}" class="category-pill">
+                        <span class="category-name">{{ category.name }}</span>
+                    </a>
+                {% endif %}
+            {% endif %}
+        {% empty %}
+            <div class="text-muted text-center py-3">
+                <i class="bi bi-inbox"></i>
+                <p>No categories available</p>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+/* Categories Pills - Compact */
+.categories-scroll-container {
+    margin-bottom: 1rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.categories-scroll-container::-webkit-scrollbar {
+    display: none;
+}
+
+.categories-pills {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    min-width: max-content;
+}
+
+.category-pill {
+    display: flex;
+    align-items: center;
+    padding: 0.65rem 0.75rem;
+    background: var(--background-color);
+    border: 1px solid var(--text-primary);
+    border-radius: 10px;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    white-space: nowrap;
+    flex-shrink: 0;
+    justify-content: space-between;
+    font-size: 0.85rem;
+}
+
+.category-pill::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 3px;
+    height: 100%;
+    background: var(--primary-color);
+    transform: scaleY(0);
+    transition: transform 0.2s ease;
+}
+
+.category-pill:hover {
+    background: var(--hover-bg);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px var(--shadow-color);
+    color: var(--text-primary);
+    text-decoration: none;
+}
+
+.category-pill:hover::before {
+    transform: scaleY(1);
+}
+
+.category-name {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.category-count {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    background: var(--primary-color);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 8px;
+    min-width: 18px;
+    text-align: center;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .categories-pills {
+        display: flex;
+        grid-template-columns: none;
+        gap: 0.65rem;
+        overflow-x: visible;
+    }
+
+    .category-pill {
+        min-width: 180px;
+        padding: 0.6rem 0.75rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .category-pill {
+        min-width: 140px;
+        padding: 0.6rem 0.65rem;
+        font-size: 0.75rem;
+    }
+
+    .category-name {
+        font-size: 0.75rem;
+    }
+}
+</style>

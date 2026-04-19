@@ -1,0 +1,1021 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/pages/buyer_requests.css' %}">
+    <style>
+        /* Section Cards - Minimal styling for classification */
+        .section-card {
+            background: var(--card-background);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .section-card:hover {
+            border-color: var(--accent-color);
+        }
+        
+        /* Section Titles with accent color icons */
+        .section-title {
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 1.1rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+        
+        .section-title i {
+            color: var(--accent-color);
+        }
+
+        /* Keep original form control styling */
+        .form-control, .form-select {
+            border-width: 2px;
+            border-style: solid;
+            border-color: var(--border-color);
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.2);
+        }
+
+        .form-check-input {
+            border-width: 2px;
+            border-color: var(--border-color);
+        }
+
+        .form-check-input:checked {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        /* File Input Styling - minimal changes */
+        .file-input-wrapper {
+            background-color: var(--card-background);
+            border-radius: var(--radius-md);
+        }
+
+        .file-input-wrapper input[type="file"] {
+            border: none;
+            background: transparent;
+        }
+
+        /* Button with primary color */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            border: none;
+            font-weight: 600;
+            padding: 0.875rem 2rem;
+            border-radius: var(--radius-md);
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(13, 110, 253, 0.3);
+        }
+
+        /* Accent color for icons in form helpers */
+        .form-text i,
+        .alert i {
+            color: var(--accent-color);
+        }
+
+        .text-success i {
+            color: var(--success) !important;
+        }
+
+        /* Alert styling */
+        .alert-sm {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        /* Dark Theme Adjustments */
+        [data-bs-theme="dark"] .section-card {
+            background: var(--dark-card-background);
+            border-color: var(--dark-border-color);
+        }
+
+        [data-bs-theme="dark"] .section-card:hover {
+            border-color: var(--dark-accent-color);
+        }
+
+        [data-bs-theme="dark"] .section-title {
+            border-bottom-color: var(--dark-border-color);
+        }
+
+        [data-bs-theme="dark"] .file-input-wrapper {
+            background-color: var(--dark-card-background);
+        }
+
+        [data-bs-theme="dark"] .form-control:focus, 
+        [data-bs-theme="dark"] .form-select:focus {
+            box-shadow: 0 0 0 3px rgba(205, 127, 50, 0.2);
+        }
+
+        /* Form Text - keep original styling */
+        .form-text {
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+            color: var(--text-secondary) !important;
+            padding-left: 0.5rem;
+        }
+        
+        /* Image Preview Styling - minimal changes */
+        .image-preview-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .image-preview {
+            width: 80px;
+            height: 80px;
+            border-radius: 4px;
+            object-fit: cover;
+            border: 2px solid var(--border-color);
+            position: relative;
+        }
+        
+        .image-preview.primary {
+            border-color: var(--primary-color);
+        }
+        
+        /* Loading Overlay - keep original */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(2px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+        
+        .loading-overlay.show {
+            opacity: 1;
+            display: flex !important;
+        }
+        
+        .loading-content {
+            text-align: center;
+            padding: 2rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            max-width: 90vw;
+            width: 100%;
+            max-width: 400px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Dark theme support */
+        [data-bs-theme="dark"] .loading-overlay {
+            background-color: rgba(33, 37, 41, 0.95);
+        }
+        
+        [data-bs-theme="dark"] .loading-content {
+            background: #2d3748;
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Mobile responsive - keep original breakpoints */
+        @media (max-width: 768px) {
+            .section-card {
+                margin-bottom: 1.5rem;
+                padding: 1rem;
+            }
+            
+            .card-body {
+                padding: 1rem !important;
+            }
+            
+            .card-header {
+                padding: 1rem !important;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .form-label .d-flex {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block page_js %}
+    <script type="text/javascript" src="{% static 'js/pages/buyer_requests.js' %}"></script>
+{% endblock %}
+
+{% block 'Body' %}
+    <!-- Enhanced Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-content">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <div id="uploadProgressText" class="fw-bold mb-2">Processing your request...</div>
+            <div id="uploadProgressBar" class="progress mb-2">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+            </div>
+            <div id="uploadStatusText" class="text-muted small">Please wait, we're submitting your request details</div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card">
+                    <div class="card-header bg-card-header py-3">
+                        <h3 class="mb-0">{{ title }}</h3>
+                        <p class="text-muted mb-0">Tell sellers what you're looking for</p>
+                    </div>
+                    <div class="card-body p-4 p-lg-5 position-relative">
+                        
+                        <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate id="requestForm">
+                            {% csrf_token %}
+                            
+                            <div class="row g-4">
+                                <!-- Left Column -->
+                                <div class="col-md-6">
+                                    <!-- Basic Request Setup -->
+                                    <div class="section-card mb-4">
+                                        <h4 class="section-title mb-4">
+                                            <i class="bi bi-info-circle-fill me-2"></i>Basic Request Setup
+                                        </h4>
+                                        
+                                        <!-- Title Input -->
+                                        <div class="form-floating mb-3">
+                                            {{ form.title }}
+                                            <label for="id_title">What are you looking for?</label>
+                                            {% for error in form.title.errors %}
+                                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                        
+                                        <!-- Request Type Input -->
+                                        <div class="form-floating mb-3">
+                                            {{ form.request_type }}
+                                            <label for="id_request_type">Request Type</label>
+                                            {% for error in form.request_type.errors %}
+                                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                        
+                                        <!-- PRODUCT FIELDS GROUP -->
+                                        <div id="product-fields-group">
+                                            <!-- Category Input (for product/both) -->
+                                            <div class="form-floating mb-3" id="category-field">
+                                                {{ form.category }}
+                                                <label for="id_category">Product Category</label>
+                                                {% for error in form.category.errors %}
+                                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                            
+                                            <!-- Subcategory Input -->
+                                            <div class="form-floating mb-3" id="subcategory-field">
+                                                {{ form.subcategory }}
+                                                <label for="id_subcategory">Subcategory</label>
+                                                {% for error in form.subcategory.errors %}
+                                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                            
+                                            <!-- Brand Input -->
+                                            <div class="form-floating mb-3" id="brand-field">
+                                                {{ form.brand }}
+                                                <label for="id_brand">Brand (Optional)</label>
+                                                {% for error in form.brand.errors %}
+                                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                            
+                                            <!-- Preferred Condition Input -->
+                                            <div class="form-floating mb-3" id="condition-field">
+                                                {{ form.preferred_condition }}
+                                                <label for="id_preferred_condition">Preferred Condition</label>
+                                                {% for error in form.preferred_condition.errors %}
+                                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- SERVICE FIELDS GROUP -->
+                                        <div id="service-fields-group">
+                                            <!-- Service Category Input (for service/both) -->
+                                            <div class="form-floating mb-3" id="service-category-field">
+                                                {{ form.service_category }}
+                                                <label for="id_service_category">Service Category</label>
+                                                {% for error in form.service_category.errors %}
+                                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Budget & Requirements -->
+                                    <div class="section-card">
+                                        <h4 class="section-title mb-4">
+                                            <i class="bi bi-currency-exchange me-2"></i>Budget & Requirements
+                                        </h4>
+                                        
+                                        <!-- Budget Range Input -->
+                                        <div class="form-floating mb-3">
+                                            {{ form.budget_range }}
+                                            <label for="id_budget_range">Budget Range</label>
+                                            {% for error in form.budget_range.errors %}
+                                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                        
+                                        <!-- Custom Budget Fields -->
+                                        <div id="customBudgetFields" style="{% if form.budget_range.value == 'custom' %}display: block;{% else %}display: none;{% endif %}">
+                                            <div class="row g-3 mb-3">
+                                                <div class="col-6">
+                                                    <div class="form-floating">
+                                                        {{ form.formatted_budget_min }}
+                                                        <label for="id_formatted_budget_min">Minimum Budget</label>
+                                                        {% for error in form.formatted_budget_min.errors %}
+                                                            <div class="invalid-feedback d-block">{{ error }}</div>
+                                                        {% endfor %}
+                                                    </div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <div class="form-floating">
+                                                        {{ form.formatted_budget_max }}
+                                                        <label for="id_formatted_budget_max">Maximum Budget</label>
+                                                        {% for error in form.formatted_budget_max.errors %}
+                                                            <div class="invalid-feedback d-block">{{ error }}</div>
+                                                        {% endfor %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Urgency Input -->
+                                        <div class="form-floating mb-3">
+                                            {{ form.urgency }}
+                                            <label for="id_urgency">Urgency Level</label>
+                                            {% for error in form.urgency.errors %}
+                                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                        
+                                        <!-- Needed By Input -->
+                                        <div class="form-floating mb-3">
+                                            {{ form.needed_by }}
+                                            <label for="id_needed_by">Needed By (Optional)</label>
+                                            {% for error in form.needed_by.errors %}
+                                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                        
+                                        <!-- Quantity Input -->
+                                        <div class="form-floating mb-3" id="quantity-field">
+                                            {{ form.quantity_needed }}
+                                            <label for="id_quantity_needed">Quantity Needed</label>
+                                            {% for error in form.quantity_needed.errors %}
+                                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+
+                                        <!-- Service-specific fields -->
+                                        <div class="form-floating mb-3" id="project-duration-field">
+                                            {{ form.project_duration }}
+                                            <label for="id_project_duration">Project Duration</label>
+                                            {% for error in form.project_duration.errors %}
+                                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+
+                                        <div class="form-floating mb-3" id="skill-level-field">
+                                            {{ form.skill_level_required }}
+                                            <label for="id_skill_level_required">Skill Level Required</label>
+                                            {% for error in form.skill_level_required.errors %}
+                                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+
+                                        <div class="form-floating mb-3" id="delivery-preference-field">
+                                            {{ form.delivery_preference }}
+                                            <label for="id_delivery_preference">Delivery Preference</label>
+                                            {% for error in form.delivery_preference.errors %}
+                                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Column -->
+                                <div class="col-md-6">
+                                    <!-- Request Description -->
+                                    <div class="section-card mb-4">
+                                        <h4 class="section-title mb-4">
+                                            <i class="bi bi-card-text me-2"></i>Request Description
+                                        </h4>
+                                        
+                                        <!-- Description Input -->
+                                        <div class="mb-4">
+                                            <label class="form-label">Detailed Description</label>
+                                            <div class="form-floating position-relative">
+                                                {{ form.description }}
+                                                <label for="id_description">Describe what you need in detail...</label>
+                                                {% for error in form.description.errors %}
+                                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                            <div class="form-text text-muted">
+                                                <i class="bi bi-lightbulb me-1"></i>
+                                                Include specifications, features, and any special requirements.
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Location & Contact -->
+                                    <div class="section-card mb-4">
+                                        <h4 class="section-title mb-4">
+                                            <i class="bi bi-geo-alt me-2"></i>Location & Contact
+                                        </h4>
+                                        
+                                        <!-- Nationwide Acceptance -->
+                                        <div class="form-check form-switch mb-3">
+                                            {{ form.accept_nationwide }}
+                                            <label class="form-check-label" for="id_accept_nationwide">
+                                                Accept responses from anywhere in Nigeria
+                                            </label>
+                                        </div>
+                                        
+                                        <!-- Show Phone -->
+                                        <div class="form-check form-switch mb-3">
+                                            {{ form.show_phone }}
+                                            <label class="form-check-label" for="id_show_phone">
+                                                Show my phone number to responders
+                                            </label>
+                                        </div>
+                                        
+                                        <!-- Contact Instructions -->
+                                        <div class="form-floating mb-3">
+                                            {{ form.contact_instructions }}
+                                            <label for="id_contact_instructions">Contact Instructions (Optional)</label>
+                                            {% for error in form.contact_instructions.errors %}
+                                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+
+                                    <!-- Request Images -->
+                                    <div class="section-card">
+                                        <h4 class="section-title mb-4">
+                                            <i class="bi bi-image me-2"></i>Request Images
+                                        </h4>
+                                        
+                                        <!-- Images Upload -->
+                                        <div class="mb-4">
+                                            <label class="form-label">Request Images (Optional)</label>
+                                            <div class="file-input-wrapper border rounded p-3">
+                                                <!-- Display existing images if editing -->
+                                                {% if form.instance.pk and form.instance.images.all %}
+                                                <div class="existing-images mb-3">
+                                                    <p class="form-text">Current Images:</p>
+                                                    <div class="row g-2">
+                                                        {% for img in form.instance.images.all %}
+                                                        <div class="col-4 col-md-3">
+                                                            <div class="position-relative">
+                                                                <img src="{{ img.image.url }}" class="img-thumbnail" alt="Request image">
+                                                                {% if img.is_primary %}
+                                                                <span class="badge bg-primary position-absolute top-0 end-0">Primary</span>
+                                                                {% endif %}
+                                                            </div>
+                                                        </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                    <p class="form-text mt-2">Upload new images to replace existing ones, or leave empty to keep current images.</p>
+                                                </div>
+                                                {% endif %}
+                                                
+                                                <div class="image-preview-container mb-2" id="imagePreviewContainer">
+                                                    <!-- Image previews will be added here dynamically -->
+                                                </div>
+                                                
+                                                {{ form.images }}
+                                                {% for error in form.images.errors %}
+                                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                                {% endfor %}
+                                                <div class="form-text text-muted">
+                                                    Upload images to help sellers understand what you need (max 5 images)
+                                                </div>
+                                                <div id="imageUploadStats" class="mt-2 small text-muted d-none">
+                                                    <div>Files selected: <span id="numFiles">0</span>/5</div>
+                                                    <div>Total size: <span id="totalSize">0 KB</span> (Max 25MB)</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-grid mt-4">
+                                <button type="submit" id="submitButton" class="btn btn-primary btn-lg">{{ save_button }}</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification System -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <!-- Success Toast -->
+        <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    <span id="successToastMessage">Request submitted successfully!</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+        
+        <!-- Error Toast -->
+        <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <span id="errorToastMessage">An error occurred. Please try again.</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // Replace the ENTIRE <script> section in request_form.html (starting around line 445)
+    document.addEventListener('DOMContentLoaded', function() {
+        const categorySelect = document.getElementById('id_category');
+        const subcategorySelect = document.getElementById('id_subcategory');
+        const brandSelect = document.getElementById('id_brand');
+        const budgetRangeSelect = document.getElementById('id_budget_range');
+        const customBudgetFields = document.getElementById('customBudgetFields');
+        const form = document.getElementById('requestForm');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const progressBar = document.querySelector('#uploadProgressBar .progress-bar');
+        const progressText = document.getElementById('uploadProgressText');
+        const statusText = document.getElementById('uploadStatusText');
+        const imageField = document.querySelector('input[name="images"]');
+        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+        const submitButton = document.getElementById('submitButton');
+        const imageUploadStats = document.getElementById('imageUploadStats');
+        const numFilesEl = document.getElementById('numFiles');
+        const totalSizeEl = document.getElementById('totalSize');
+
+        // Request Type handling - SINGLE DECLARATION
+        const requestTypeSelect = document.getElementById('id_request_type');
+        const productFieldsGroup = document.getElementById('product-fields-group');
+        const serviceFieldsGroup = document.getElementById('service-fields-group');
+        const quantityField = document.getElementById('quantity-field');
+        const projectDurationField = document.getElementById('project-duration-field');
+        const skillLevelField = document.getElementById('skill-level-field');
+        const deliveryPreferenceField = document.getElementById('delivery-preference-field');
+
+        // Toast setup
+        const successToast = document.getElementById('successToast');
+        const errorToast = document.getElementById('errorToast');
+        const successToastMessage = document.getElementById('successToastMessage');
+        const errorToastMessage = document.getElementById('errorToastMessage');
+        const successToastBS = new bootstrap.Toast(successToast, { delay: 5000 });
+        const errorToastBS = new bootstrap.Toast(errorToast, { delay: 5000 });
+
+        function showSuccessToast(message) {
+            successToastMessage.textContent = message;
+            successToastBS.show();
+        }
+
+        function showErrorToast(message) {
+            errorToastMessage.textContent = message;
+            errorToastBS.show();
+        }
+
+        function handleRequestTypeChange() {
+            const requestType = requestTypeSelect.value;
+            
+            // Get individual field references
+            const categoryInput = document.getElementById('id_category');
+            const serviceCategoryInput = document.getElementById('id_service_category');
+            
+            if (requestType === 'product') {
+                // Show product fields, hide service fields
+                if (productFieldsGroup) productFieldsGroup.style.display = 'block';
+                if (serviceFieldsGroup) serviceFieldsGroup.style.display = 'none';
+                if (quantityField) quantityField.style.display = 'block';
+                if (projectDurationField) projectDurationField.style.display = 'none';
+                if (skillLevelField) skillLevelField.style.display = 'none';
+                if (deliveryPreferenceField) deliveryPreferenceField.style.display = 'none';
+                
+                // Make service fields optional
+                if (serviceCategoryInput) serviceCategoryInput.removeAttribute('required');
+                if (document.getElementById('id_project_duration')) {
+                    document.getElementById('id_project_duration').removeAttribute('required');
+                }
+                if (document.getElementById('id_skill_level_required')) {
+                    document.getElementById('id_skill_level_required').removeAttribute('required');
+                }
+                if (document.getElementById('id_delivery_preference')) {
+                    document.getElementById('id_delivery_preference').removeAttribute('required');
+                }
+                
+            } else if (requestType === 'service') {
+                // Show service fields, hide product fields
+                if (productFieldsGroup) productFieldsGroup.style.display = 'none';
+                if (serviceFieldsGroup) serviceFieldsGroup.style.display = 'block';
+                if (quantityField) quantityField.style.display = 'none';
+                if (projectDurationField) projectDurationField.style.display = 'block';
+                if (skillLevelField) skillLevelField.style.display = 'block';
+                if (deliveryPreferenceField) deliveryPreferenceField.style.display = 'block';
+                
+                // Make product fields optional
+                if (categoryInput) categoryInput.removeAttribute('required');
+                if (document.getElementById('id_subcategory')) {
+                    document.getElementById('id_subcategory').removeAttribute('required');
+                }
+                if (document.getElementById('id_brand')) {
+                    document.getElementById('id_brand').removeAttribute('required');
+                }
+                if (document.getElementById('id_quantity_needed')) {
+                    document.getElementById('id_quantity_needed').removeAttribute('required');
+                }
+                
+                // Make service category required
+                if (serviceCategoryInput) serviceCategoryInput.setAttribute('required', 'required');
+                
+            } else if (requestType === 'both') {
+                // Show all fields
+                if (productFieldsGroup) productFieldsGroup.style.display = 'block';
+                if (serviceFieldsGroup) serviceFieldsGroup.style.display = 'block';
+                if (quantityField) quantityField.style.display = 'block';
+                if (projectDurationField) projectDurationField.style.display = 'block';
+                if (skillLevelField) skillLevelField.style.display = 'block';
+                if (deliveryPreferenceField) deliveryPreferenceField.style.display = 'block';
+                
+                // Make both category types optional since at least one will be filled
+                if (categoryInput) categoryInput.removeAttribute('required');
+                if (serviceCategoryInput) serviceCategoryInput.removeAttribute('required');
+            }
+        }
+
+        // Initial setup and event listener
+        if (requestTypeSelect) {
+            handleRequestTypeChange(); // Set initial state
+            requestTypeSelect.addEventListener('change', handleRequestTypeChange);
+        }
+
+        // Handle budget range changes
+        if (budgetRangeSelect && customBudgetFields) {
+            function handleBudgetRangeChange() {
+                const selectedRange = budgetRangeSelect.value;
+                
+                if (selectedRange === 'custom') {
+                    customBudgetFields.style.display = 'block';
+                    document.getElementById('id_formatted_budget_min').required = true;
+                    document.getElementById('id_formatted_budget_max').required = true;
+                } else {
+                    customBudgetFields.style.display = 'none';
+                    document.getElementById('id_formatted_budget_min').required = false;
+                    document.getElementById('id_formatted_budget_max').required = false;
+                }
+            }
+            
+            handleBudgetRangeChange();
+            budgetRangeSelect.addEventListener('change', handleBudgetRangeChange);
+        }
+
+        // Update subcategories when category changes
+        if (categorySelect) {
+            categorySelect.addEventListener('change', function() {
+                const categoryId = this.value;
+                subcategorySelect.innerHTML = '<option value="">Select Subcategory</option>';
+                brandSelect.innerHTML = '<option value="">Select Brand</option>';
+        
+                if (categoryId) {
+                    fetch(`{% url 'buyer_requests:ajax_subcategories' %}?category=${categoryId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            data.forEach(subcategory => {
+                                const option = document.createElement('option');
+                                option.value = subcategory.id;
+                                option.textContent = subcategory.name;
+                                subcategorySelect.appendChild(option);
+                            });
+                        })
+                        .catch(error => {
+                            showErrorToast('Error loading subcategories. Please try selecting another category.');
+                        });
+                }
+            });
+        }
+
+        // Update brands when subcategory changes
+        if (subcategorySelect) {
+            subcategorySelect.addEventListener('change', function() {
+                const subcategoryId = this.value;
+                brandSelect.innerHTML = '<option value="">Select Brand</option>';
+        
+                if (subcategoryId) {
+                    fetch(`{% url 'buyer_requests:ajax_brands' %}?subcategory=${subcategoryId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            data.forEach(brand => {
+                                const option = document.createElement('option');
+                                option.value = brand.id;
+                                option.textContent = brand.name;
+                                brandSelect.appendChild(option);
+                            });
+                        })
+                        .catch(error => {
+                            showErrorToast('Error loading brands. Please try selecting another subcategory.');
+                        });
+                }
+            });
+        }
+        
+        // Budget formatting for custom range
+        const budgetMinInput = document.getElementById('id_formatted_budget_min');
+        const budgetMaxInput = document.getElementById('id_formatted_budget_max');
+        
+        if (budgetMinInput && budgetMaxInput) {
+            const formatBudget = (value) => {
+                value = value.replace(/[^\d]/g, '');
+                if (value) {
+                    value = parseInt(value, 10);
+                    return '₦ ' + value.toLocaleString('en-NG');
+                }
+                return '';
+            };
+
+            budgetMinInput.addEventListener('input', (e) => {
+                e.target.value = formatBudget(e.target.value);
+            });
+            
+            budgetMaxInput.addEventListener('input', (e) => {
+                e.target.value = formatBudget(e.target.value);
+            });
+        }
+
+        // Enhanced image preview functionality
+        if (imageField) {
+            imageField.addEventListener('change', function() {
+                const maxFiles = 5;
+                const maxSize = 5 * 1024 * 1024; // 5MB per file
+                const maxTotalSize = 25 * 1024 * 1024; // 25MB total
+                const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+                const files = this.files;
+                
+                imagePreviewContainer.innerHTML = '';
+                
+                if (files.length > maxFiles) {
+                    showErrorToast(`You can only upload a maximum of ${maxFiles} images.`);
+                    return;
+                }
+                
+                let totalSize = 0;
+                const filesToProcess = Math.min(files.length, maxFiles);
+                
+                for (let i = 0; i < filesToProcess; i++) {
+                    totalSize += files[i].size;
+                }
+                
+                if (files.length > 0) {
+                    imageUploadStats.classList.remove('d-none');
+                    numFilesEl.textContent = filesToProcess;
+                    totalSizeEl.textContent = formatFileSize(totalSize);
+                    
+                    if (totalSize > maxTotalSize) {
+                        showErrorToast(`Total file size exceeds the maximum allowed (25MB).`);
+                        this.value = '';
+                        imagePreviewContainer.innerHTML = '';
+                        imageUploadStats.classList.add('d-none');
+                        return;
+                    }
+                } else {
+                    imageUploadStats.classList.add('d-none');
+                }
+                
+                let hasError = false;
+                for (let i = 0; i < filesToProcess; i++) {
+                    const file = files[i];
+                    
+                    if (file.size > maxSize) {
+                        showErrorToast(`Image "${file.name}" is too large. Maximum size is 5MB.`);
+                        hasError = true;
+                        break;
+                    }
+                    
+                    if (!validTypes.includes(file.type)) {
+                        showErrorToast(`File "${file.name}" is not a supported format. Only JPG, JPEG or PNG files are allowed.`);
+                        hasError = true;
+                        break;
+                    }
+                    
+                    createImagePreview(file, i);
+                }
+                
+                if (hasError) {
+                    this.value = '';
+                    imagePreviewContainer.innerHTML = '';
+                    imageUploadStats.classList.add('d-none');
+                }
+            });
+            
+            function createImagePreview(file, index) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const container = document.createElement('div');
+                    container.className = 'position-relative';
+                    
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'image-preview';
+                    if (index === 0) img.classList.add('primary');
+                    img.title = file.name;
+                    
+                    container.appendChild(img);
+                    
+                    if (index === 0) {
+                        const badge = document.createElement('span');
+                        badge.className = 'badge bg-primary position-absolute top-0 end-0';
+                        badge.textContent = 'Primary';
+                        container.appendChild(badge);
+                    }
+                    
+                    const sizeLabel = document.createElement('div');
+                    sizeLabel.className = 'text-center small text-muted mt-1';
+                    sizeLabel.textContent = formatFileSize(file.size);
+                    container.appendChild(sizeLabel);
+                    
+                    imagePreviewContainer.appendChild(container);
+                };
+                reader.readAsDataURL(file);
+            }
+            
+            function formatFileSize(bytes) {
+                if (bytes < 1024) return bytes + ' B';
+                else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+                else return (bytes / 1048576).toFixed(1) + ' MB';
+            }
+        }
+        
+        // Enhanced form submission handling
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                if (!form.checkValidity()) {
+                    e.stopPropagation();
+                    form.classList.add('was-validated');
+                    return;
+                }
+                
+                submitButton.disabled = true;
+                showLoadingOverlay();
+                
+                const hasImages = imageField && imageField.files.length > 0;
+                let totalBytes = 0;
+                let fileCount = 0;
+                
+                if (hasImages) {
+                    fileCount = Math.min(imageField.files.length, 5);
+                    for (let i = 0; i < fileCount; i++) {
+                        totalBytes += imageField.files[i].size;
+                    }
+                }
+                
+                const formData = new FormData(form);
+                
+                let progress = 0;
+                let progressInterval;
+                const simulatedUploadDuration = hasImages ? Math.max(2000, (totalBytes / (500 * 1024)) * 1000) : 1500;
+                
+                if (hasImages) {
+                    progressText.textContent = 'Uploading images...';
+                    statusText.textContent = `Uploading ${fileCount} image${fileCount !== 1 ? 's' : ''}...`;
+                    
+                    progressInterval = setInterval(() => {
+                        const progressPercent = Math.min(progress + 2, 95);
+                        progress = progressPercent;
+                        
+                        if (progressPercent >= 90) {
+                            clearInterval(progressInterval);
+                            progressText.textContent = 'Processing your request...';
+                            statusText.textContent = 'Almost done! Finalizing your buyer request...';
+                            progressBar.style.width = '95%';
+                            submitForm(formData, progressInterval);
+                        } else {
+                            progressBar.style.width = `${progressPercent}%`;
+                        }
+                    }, 100);
+                } else {
+                    progressText.textContent = 'Processing your request...';
+                    statusText.textContent = 'Creating your buyer request...';
+                    progressBar.style.width = '60%';
+                    setTimeout(() => submitForm(formData, null), 1000);
+                }
+            });
+        }
+
+        function submitForm(formData, progressInterval) {
+            // Use getAttribute so we get null (not the resolved absolute URL) when
+            // no action is set — then fall back to the current page URL.
+            // fetch(form.action) when action="" resolves to "" which throws in some browsers.
+            const submitUrl = form.getAttribute('action') || window.location.href;
+
+            fetch(submitUrl, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    // Read as text first so we never fail trying to .json() an HTML error page
+                    return response.text().then(text => {
+                        let message;
+                        try {
+                            const data = JSON.parse(text);
+                            message = data.error || JSON.stringify(data.errors) || `Server error: ${response.status}`;
+                        } catch (_) {
+                            message = `Server error: ${response.status}`;
+                        }
+                        throw new Error(message);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (progressInterval) clearInterval(progressInterval);
+                
+                progressBar.style.width = '100%';
+                progressText.textContent = 'Success!';
+                statusText.textContent = data.message || 'Your buyer request has been saved successfully.';
+
+                showSuccessToast(data.message || 'Request saved successfully!');
+
+                setTimeout(() => {
+                    window.location.href = data.redirect_url || '{% url "buyer_requests:my_requests" %}';
+                }, 1000);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                
+                if (progressInterval) clearInterval(progressInterval);
+                progressText.textContent = 'Error!';
+                statusText.textContent = error.message || 'There was a problem processing your request.';
+                progressBar.classList.remove('bg-primary');
+                progressBar.classList.add('bg-danger');
+                
+                showErrorToast(error.message || 'Failed to create buyer request. Please try again.');
+                
+                setTimeout(() => {
+                    hideLoadingOverlay();
+                    submitButton.disabled = false;
+                    
+                    const progressBar = document.querySelector('#uploadProgressBar .progress-bar');
+                    if (progressBar) {
+                        progressBar.classList.remove('bg-danger');
+                        progressBar.classList.add('bg-primary');
+                        progressBar.style.width = '0%';
+                    }
+                }, 3000);
+            });
+        }
+
+        function showLoadingOverlay() {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            document.body.classList.add('loading-active');
+            loadingOverlay.classList.add('show');
+        }
+        
+        function hideLoadingOverlay() {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            document.body.classList.remove('loading-active');
+            loadingOverlay.classList.remove('show');
+        }
+    });
+    </script>
+{% endblock %}
+{% block 'Footer'%}{% endblock %}

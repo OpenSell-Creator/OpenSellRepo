@@ -6,7 +6,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 
-from .models import Category, Subcategory, Brand, Product_Listing, Banner, Review, ReviewReply, ProductReport
+from .models import Category, Subcategory, Brand, Product_Listing, Banner, Review, ReviewReply
+from User.models import ItemReport
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
@@ -27,14 +28,6 @@ class BrandAdmin(admin.ModelAdmin):
     prepopulated_fields = {'slug': ('name',)}
     search_fields = ('name',)
 
-class ProductReportInline(admin.TabularInline):
-    model = ProductReport
-    extra = 0
-    readonly_fields = ('reason', 'details', 'reporter_email', 'reported_at', 'status')
-    can_delete = False
-    
-    def has_add_permission(self, request, obj=None):
-        return False
 
 @admin.register(Product_Listing)
 class ProductAdmin(admin.ModelAdmin):
@@ -44,7 +37,6 @@ class ProductAdmin(admin.ModelAdmin):
     date_hierarchy = 'created_at'
     list_per_page = 20
     actions = ['suspend_listings', 'unsuspend_listings', 'delete_listings']
-    inlines = [ProductReportInline]
 
     fieldsets = (
         (None, {
@@ -56,25 +48,61 @@ class ProductAdmin(admin.ModelAdmin):
         ('Status', {
             'fields': ('is_suspended', 'suspension_reason', 'suspended_at', 'suspended_by')
         }),
+        ('Reports', {
+            'fields': ('report_summary',),
+            'classes': ('collapse',)
+        }),
     )
     
-    readonly_fields = ('suspended_at', 'suspended_by')
+    readonly_fields = ('suspended_at', 'suspended_by', 'report_summary')
     
     def get_queryset(self, request):
         return super().get_queryset(request).select_related(
             'category', 'subcategory', 'brand', 'seller', 'seller__user'
-        ).prefetch_related('reports')
+        )
 
     def report_count(self, obj):
-        count = obj.reports.count()
+        from django.contrib.contenttypes.models import ContentType
+        ct = ContentType.objects.get_for_model(Product_Listing)
+        count = ItemReport.objects.filter(content_type=ct, object_id=str(obj.id)).count()
+        
         if count > 0:
+            url = reverse('admin:User_itemreport_changelist') + f'?content_type__id__exact={ct.id}&object_id={obj.id}'
             return format_html(
-                '<span style="color: {};">{}</span>',
-                'red' if count > 2 else 'orange' if count > 0 else 'inherit',
+                '<a href="{}" style="color: {};">{} reports</a>',
+                url,
+                'red' if count > 2 else 'orange',
                 count
             )
-        return count
+        return '0 reports'
     report_count.short_description = 'Reports'
+    
+    def report_summary(self, obj):
+        """Show report summary in admin detail view"""
+        from django.contrib.contenttypes.models import ContentType
+        ct = ContentType.objects.get_for_model(Product_Listing)
+        reports = ItemReport.objects.filter(content_type=ct, object_id=str(obj.id)).order_by('-reported_at')
+        
+        if not reports.exists():
+            return format_html('<p>No reports</p>')
+        
+        html = '<table style="width:100%; border-collapse: collapse;">'
+        html += '<tr style="background: #f0f0f0;"><th>Date</th><th>Reason</th><th>Status</th><th>Action</th></tr>'
+        
+        for report in reports:
+            url = reverse('admin:User_itemreport_change', args=[report.id])
+            html += f'''
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td>{report.reported_at.strftime("%Y-%m-%d %H:%M")}</td>
+                    <td>{report.get_reason_display()}</td>
+                    <td><span style="color: {"red" if report.status == "pending" else "green"};">{report.get_status_display()}</span></td>
+                    <td><a href="{url}">View</a></td>
+                </tr>
+            '''
+        
+        html += '</table>'
+        return format_html(html)
+    report_summary.short_description = 'Reports Summary'
     
     def suspension_status(self, obj):
         if obj.is_suspended:
@@ -150,38 +178,7 @@ class ProductAdmin(admin.ModelAdmin):
         
         return render(request, 'admin/reported_listings.html', context)
 
-@admin.register(ProductReport)
-class ProductReportAdmin(admin.ModelAdmin):
-    list_display = ('product', 'reason', 'status', 'reported_at', 'reviewed_by')
-    list_filter = ('status', 'reason', 'reported_at')
-    search_fields = ('product__title', 'details', 'reporter_email')
-    date_hierarchy = 'reported_at'
-    readonly_fields = ('product', 'reason', 'details', 'reporter_email', 'reported_at')
-    fieldsets = (
-        (None, {
-            'fields': ('product', 'reason', 'details', 'reporter_email', 'reported_at')
-        }),
-        ('Review', {
-            'fields': ('status', 'reviewed_by', 'reviewed_at', 'resolution_notes')
-        }),
-    )
-    actions = ['mark_as_resolved', 'mark_as_dismissed']
-    
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related('product', 'reviewed_by')
-    
-    def mark_as_resolved(self, request, queryset):
-        for report in queryset:
-            report.mark_as_reviewed(request.user, status='resolved', notes='Marked as resolved by admin')
-        self.message_user(request, f"{queryset.count()} reports marked as resolved.", messages.SUCCESS)
-    mark_as_resolved.short_description = "Mark selected reports as resolved"
-    
-    def mark_as_dismissed(self, request, queryset):
-        for report in queryset:
-            report.mark_as_reviewed(request.user, status='dismissed', notes='Marked as dismissed by admin')
-        self.message_user(request, f"{queryset.count()} reports marked as dismissed.", messages.SUCCESS)
-    mark_as_dismissed.short_description = "Mark selected reports as dismissed"
-    
+
 @admin.register(Banner)
 class BannerAdmin(admin.ModelAdmin):
     list_display = ('id', 'get_display_name', 'display_location', 'is_active', 'priority', 'start_date', 'end_date')

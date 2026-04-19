@@ -30,7 +30,7 @@
 
     <div class="product-image-container">
         <a href="{% url 'product_detail' pk=product.id %}">
-            {% with primary_image=product.images.filter.first %}
+            {% with primary_image=product.images.first %}
                 {% if primary_image %}
                     <img src="{{ primary_image.image.url }}" class="product-image" alt="{{ product.title }}" loading="lazy">
                 {% else %}
@@ -41,17 +41,18 @@
             {% endwith %}
         </a>
 
+        {# FIXED: Use unified save system with correct function name #}
         {% if user.is_authenticated and user != product.seller.user %}
-            <button class="save-button btn-icon {% if product.is_saved %}saved{% endif %}"
-                data-product-id="{{ product.id }}"
-                onclick="toggleSaveProduct(event, '{{ product.id }}')"
-                title="{% if product.is_saved %}Remove from saved{% else %}Save this product{% endif %}">
-                <i class="bi {% if product.is_saved %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
-            </button>
+                <button class="save-button {% if product.is_saved %}saved{% endif %}"
+                    data-item-id="{{ product.id }}"
+                    data-item-type="product"
+                    onclick="toggleSave(event, '{{ product.id }}', 'product')"
+                    title="{% if product.is_saved %}Remove from saved{% else %}Save this product{% endif %}">
+                    <i class="bi {% if product.is_saved %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+                </button>
         {% endif %}
 
         {% if user.is_authenticated and user == product.seller.user %}
-
             <div class="owner-check-icon">
                 <i class="bi bi-person-check-fill" title="Your Product"></i>
             </div>
@@ -146,4 +147,3 @@
         </div>
     </div>
 </div>
-

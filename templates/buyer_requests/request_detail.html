@@ -1,0 +1,1208 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load compress %}
+
+{% block page_css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/pages/buyer_requests.css' %}">
+    <style>
+        /* ── Back button ──────────────────────────────────────── */
+        .back-button-container { margin-bottom: 0.75rem; padding: 0; }
+        .btn-back {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.4rem 0.875rem; background-color: var(--background-color);
+            border: 1px solid var(--border-color); border-radius: var(--radius-sm);
+            color: var(--text-primary); text-decoration: none;
+            font-size: 0.85rem; font-weight: 500; transition: all 0.25s ease; line-height: 1.4;
+        }
+        .btn-back:hover { background-color: var(--card-background); border-color: var(--accent-color); color: var(--accent-color); transform: translateX(-3px); }
+        .btn-back i { font-size: 0.875rem; transition: transform 0.25s ease; }
+        .btn-back:hover i { transform: translateX(-2px); }
+
+        /* ── Main wrapper card ─────────────────────────────────── */
+        .request-detail-card { border: 1px solid var(--border-color); border-radius: var(--radius-lg); overflow: hidden; }
+        .request-detail-container { padding: 1rem; }
+
+        /* ── Carousel ─────────────────────────────────────────── */
+        .main-carousel-wrapper {
+            border-radius: var(--radius-md); overflow: hidden; height: 520px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .carousel-main-img { width: 100%; height: 100%; object-fit: contain; background-color: var(--card-background); }
+        .thumbnail-gallery { margin-top: 0.625rem; }
+        .thumbnail-gallery .img-thumbnail {
+            width: 100%; height: 70px; object-fit: cover;
+            border-radius: var(--radius-sm); cursor: pointer;
+            border: 1px solid var(--border-color); padding: 0;
+        }
+        .thumbnail-wrapper { position: relative; transition: transform 0.2s ease; }
+        .thumbnail-wrapper:hover { transform: translateY(-2px); }
+        .thumbnail-wrapper.active::after {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            border: 2px solid var(--primary-color); border-radius: var(--radius-sm); pointer-events: none;
+        }
+
+        /* ── No-image placeholder ─────────────────────────────── */
+        .no-images-placeholder {
+            height: 520px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            background-color: var(--card-background);
+            border: 1px dashed var(--border-color); border-radius: var(--radius-md);
+            color: var(--text-muted);
+        }
+        .no-images-placeholder i { font-size: 3.5rem; margin-bottom: 0.75rem; opacity: 0.5; }
+
+        /* ── Breadcrumb ───────────────────────────────────────── */
+        .breadcrumb { font-size: 0.8rem; font-weight: 400; margin-bottom: 0.5rem; }
+        .breadcrumb-item+.breadcrumb-item::before { font-size: 0.75rem; }
+
+        /* ── Title ────────────────────────────────────────────── */
+        .request-title { font-size: 2.25rem; font-weight: 700; line-height: 1.2; margin-bottom: 0.75rem !important; color: var(--text-primary); }
+
+        /* ── Price/budget badge ───────────────────────────────── */
+        .price-badge {
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            border-radius: var(--radius-md); color: var(--accent-color);
+            padding: 0.65rem 1rem; display: inline-block; margin-bottom: 0.875rem !important;
+        }
+        .price-badge .h2 { font-size: 1.6rem; line-height: 1; }
+
+        /* ── Info section ────────────────────────────────────── */
+        .info-section {
+            font-size: 0.8rem; font-weight: 500;
+            background-color: var(--background-color);
+            border: 1px solid var(--border-color); border-radius: var(--radius-md);
+            padding: 0.625rem !important; margin-bottom: 0.75rem !important;
+        }
+        .info-section .row { --bs-gutter-x: 0.5rem; --bs-gutter-y: 0.5rem; }
+        .info-section h4 {
+            font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;
+            display: flex; align-items: center; gap: 0.375rem; color: var(--text-primary);
+        }
+        .info-section h4 i { color: var(--accent-color); font-size: 0.875rem; }
+
+        /* ── Detail items (info grid) ────────────────────────── */
+        .detail-item {
+            background-color: var(--card-background); border-radius: var(--radius-sm);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            padding: 0.45rem 0.5rem !important; height: 100%; border: none;
+        }
+        .detail-item:hover { transform: translateY(-2px); box-shadow: 0 2px 8px var(--shadow-color); }
+        .detail-item i { color: var(--accent-color); font-size: 0.875rem; flex-shrink: 0; width: 1rem; text-align: center; }
+        .detail-item .small { font-size: 0.65rem; color: var(--text-secondary); margin-bottom: 0.1rem; display: block; }
+        .detail-item > div > div:not(.small) { font-size: 0.8rem; font-weight: 600; line-height: 1.3; }
+
+        /* ── Description sections ─────────────────────────────── */
+        .request-description {
+            border: 1px solid var(--border-color); border-radius: var(--radius-md);
+            padding: 0.75rem !important; margin-bottom: 0.75rem !important;
+        }
+        .request-description h4 {
+            font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;
+            display: flex; align-items: center; gap: 0.375rem; color: var(--text-primary);
+        }
+        .request-description h4 i { color: var(--accent-color); font-size: 0.875rem; }
+        .description-content {
+            color: var(--text-secondary); max-height: 220px; overflow-y: auto;
+            font-size: 0.8rem; font-weight: 400; line-height: 1.55;
+        }
+        .description-content::-webkit-scrollbar { width: 3px; }
+        .description-content::-webkit-scrollbar-track { background: var(--card-background); }
+        .description-content::-webkit-scrollbar-thumb { background-color: var(--border-color); border-radius: var(--radius-full); }
+
+        /* ── Action buttons (top of details col) ─────────────── */
+        .request-action-buttons .row { --bs-gutter-x: 0.5rem; --bs-gutter-y: 0.5rem; }
+        .btn-action-primary, .btn-action-secondary, .btn-action-boost, .btn-action-success, .btn-action-danger {
+            display: inline-flex; align-items: center; justify-content: center;
+            gap: 0.4rem; padding: 0.6rem 1rem; border-radius: var(--radius-lg);
+            font-size: 0.82rem; font-weight: 600; border: none; cursor: pointer;
+            transition: all 0.2s ease; text-decoration: none; white-space: nowrap; width: 100%;
+        }
+        .btn-action-primary { background-color: var(--primary-color); color: #fff; }
+        .btn-action-primary:hover { opacity: 0.88; color: #fff; }
+        .btn-action-secondary { background-color: var(--card-background); color: var(--text-primary); border: 1px solid var(--border-color); }
+        .btn-action-secondary:hover { border-color: var(--primary-color); color: var(--primary-color); }
+        .btn-action-secondary.saved-state { background-color: rgba(var(--primary-rgb,59,130,246),.1); border-color: var(--primary-color); color: var(--primary-color); }
+        .btn-action-boost { background-color: #f59e0b; color: #fff; }
+        .btn-action-boost:hover { opacity: 0.88; color: #fff; }
+        .btn-action-success { background-color: var(--success, #22c55e); color: #fff; }
+        .btn-action-danger { background-color: transparent; color: var(--danger, #ef4444); border: 1px solid var(--danger, #ef4444); }
+        .btn-action-danger:hover { background-color: var(--danger, #ef4444); color: #fff; }
+
+        /* ── Status / owner section ──────────────────────────── */
+        .request-status-section {
+            background-color: var(--background-color); border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); padding: 0.75rem !important; margin-bottom: 0.75rem !important;
+        }
+        .request-status-section:hover { box-shadow: 0 3px 10px var(--shadow-color); }
+        .request-status-section h6 {
+            font-size: 0.825rem; font-weight: 600; margin-bottom: 0.4rem;
+            display: flex; align-items: center; gap: 0.35rem;
+        }
+        .request-status-section h6 i { color: var(--accent-color); font-size: 0.825rem; }
+        .stock-status span { font-size: 0.8rem; font-weight: 500; display: inline-flex; align-items: center; gap: 0.35rem; }
+        .stock-status i { font-size: 0.825rem; }
+        .quick-actions { padding-top: 0.5rem; }
+        .quick-actions h6 { font-size: 0.825rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .expiry-warning {
+            font-size: 0.8rem; padding: 0.45rem 0.75rem; border-radius: var(--radius-md); margin-bottom: 0.5rem;
+            display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem;
+            background-color: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.3); color: #b45309;
+        }
+
+        /* ── Contact buttons grid ────────────────────────────── */
+        .contact-buttons-grid { padding-top: 0.125rem; }
+        .contact-buttons-grid .row { --bs-gutter-x: 0.5rem; --bs-gutter-y: 0.5rem; }
+        .contact-buttons-grid .btn-contact {
+            display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+            padding: 0.6rem 0.5rem; font-size: 0.825rem; font-weight: 500;
+            border-radius: var(--radius-lg); transition: all 0.25s ease; width: 100%;
+        }
+        .contact-buttons-grid .btn-contact i { font-size: 1rem; flex-shrink: 0; }
+        .contact-buttons-grid .btn-contact:hover { transform: translateY(-2px); box-shadow: 0 4px 12px var(--shadow-color); }
+
+        /* ── Stats bar ────────────────────────────────────────── */
+        .request-stats { background-color: var(--card-background); border: 1px solid var(--border-color); border-radius: var(--radius-md); }
+        .stat-item { text-align: center; padding: 0.75rem 0.5rem; }
+        .stat-item i { font-size: 1.25rem; display: block; margin-bottom: 0.35rem; }
+        .stat-item h5 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.1rem; color: var(--text-primary); }
+        .stat-item small { font-size: 0.75rem; color: var(--text-muted); }
+
+        /* ── Buyer/Seller card ────────────────────────────────── */
+        .seller-card {
+            background: var(--card-background); margin: 10px;
+            border: 1px solid var(--border-color); border-radius: var(--radius-lg);
+            box-shadow: 0 2px 12px var(--shadow-color); transition: box-shadow 0.3s ease; overflow: hidden;
+        }
+        .seller-card:hover { box-shadow: 0 6px 24px var(--shadow-color); }
+        .seller-card .card-header { padding: 0.625rem 0.875rem; border-bottom: 1px solid var(--border-color); }
+        .seller-card .card-header h5 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0; display: flex; align-items: center; gap: 0.375rem; }
+        .seller-card .card-header h5 i { color: var(--accent-color); font-size: 1rem; }
+        .seller-card .card-body { padding: 0.875rem; }
+
+        /* ── Verification status row ──────────────────────────── */
+        .verification-status-row {
+            background: linear-gradient(135deg, var(--background-color) 0%, var(--hover-bg) 100%);
+            border-bottom: 1px solid var(--border-color); padding: 0.5rem 0;
+        }
+        .verification-status-row .row { --bs-gutter-x: 0.5rem; --bs-gutter-y: 0.375rem; }
+
+        /* ── Status chips ─────────────────────────────────────── */
+        .status-chip {
+            display: flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0.75rem;
+            border-radius: var(--radius-md); border: 1px solid;
+            transition: all 0.25s ease; position: relative; overflow: hidden; height: 100%; min-height: 56px;
+        }
+        .status-chip::before {
+            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent); transition: left 0.4s;
+        }
+        .status-chip:hover::before { left: 100%; }
+        .status-chip.verified { background: linear-gradient(135deg, rgba(34,197,94,0.08) 0%, rgba(34,197,94,0.03) 100%); border-color: rgba(34,197,94,0.3); color: var(--text-primary); }
+        .status-chip.verified:hover { border-color: rgba(34,197,94,0.5); transform: translateY(-1px); box-shadow: 0 3px 12px rgba(34,197,94,0.12); }
+        .status-chip.pending { background: linear-gradient(135deg, rgba(251,191,36,0.08) 0%, rgba(251,191,36,0.03) 100%); border-color: rgba(251,191,36,0.3); color: var(--text-primary); }
+        .status-chip.pending:hover { border-color: rgba(251,191,36,0.5); transform: translateY(-1px); box-shadow: 0 3px 12px rgba(251,191,36,0.12); }
+        .status-chip.unverified { background: linear-gradient(135deg, rgba(239,68,68,0.08) 0%, rgba(239,68,68,0.03) 100%); border-color: rgba(239,68,68,0.3); color: var(--text-primary); }
+        .status-chip.unverified:hover { border-color: rgba(239,68,68,0.5); transform: translateY(-1px); box-shadow: 0 3px 12px rgba(239,68,68,0.12); }
+        .status-icon { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: transform 0.25s ease; }
+        .status-chip.verified .status-icon { background: rgba(34,197,94,0.15); color: #22c55e; }
+        .status-chip.pending .status-icon { background: rgba(251,191,36,0.15); color: #fbbf24; }
+        .status-chip.unverified .status-icon { background: rgba(239,68,68,0.15); color: #ef4444; }
+        .status-icon i { font-size: 1rem; }
+        .status-chip:hover .status-icon { transform: scale(1.08); }
+        .status-content { flex: 1; min-width: 0; }
+        .status-label { font-size: 0.625rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 0.15rem; display: block; }
+        .status-value { font-size: 0.775rem; font-weight: 600; color: var(--text-primary); line-height: 1.2; }
+
+        /* ── Unified buyer profile ─────────────────────────────── */
+        .seller-profile-unified { padding: 0.375rem 0; }
+        .seller-avatar-unified { width: 76px; height: 76px; object-fit: cover; border-radius: 50%; border: 2px solid var(--border-color); box-shadow: 0 2px 8px var(--shadow-color); display: block; margin: 0 auto; }
+        .seller-avatar-placeholder-unified {
+            width: 76px; height: 76px; border-radius: 50%;
+            background: var(--primary-color); color: var(--card-background);
+            display: flex; align-items: center; justify-content: center;
+            border: 2px solid var(--border-color); box-shadow: 0 2px 8px var(--shadow-color);
+            margin: 0 auto; font-size: 1.75rem; font-weight: 700;
+        }
+        .seller-profile-unified h5 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.25rem; display: flex; align-items: center; justify-content: center; gap: 0.3rem; flex-wrap: wrap; }
+        .seller-profile-unified p { font-size: 0.775rem; }
+
+        /* ── Rating ───────────────────────────────────────────── */
+        .rating-wrapper { margin-bottom: 0.5rem; }
+        .rating-wrapper .stars { font-size: 0.875rem; }
+        .rating-wrapper .fa-star, .rating-wrapper .fas.fa-star { color: var(--accent-color); }
+        .rating-wrapper .far.fa-star { color: var(--accent-color); opacity: 0.4; }
+        .rating-wrapper .rating-value { font-size: 0.825rem; font-weight: 600; }
+        .rating-wrapper small { font-size: 0.725rem; display: block; margin-top: 0.125rem; }
+
+        /* ── Seller description ───────────────────────────────── */
+        .seller-description { color: var(--text-secondary); line-height: 1.5; font-size: 0.8rem; margin-bottom: 0.75rem !important; }
+
+        /* ── Seller details grid ──────────────────────────────── */
+        .seller-details-grid .row { --bs-gutter-x: 0.5rem; --bs-gutter-y: 0.5rem; }
+        .seller-details-grid .detail-item-compact {
+            display: flex; align-items: flex-start; gap: 0.4rem; padding: 0.55rem 0.6rem;
+            background: var(--background-color); border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); transition: transform 0.2s ease, box-shadow 0.2s ease; height: 100%;
+        }
+        .seller-details-grid .detail-item-compact:hover { transform: translateY(-1px); box-shadow: 0 2px 8px var(--shadow-color); border-color: var(--accent-color); }
+        .seller-details-grid .detail-item-compact i { color: var(--accent-color); font-size: 0.875rem; width: 16px; flex-shrink: 0; margin-top: 0.15rem; text-align: center; }
+        .seller-details-grid .detail-item-compact > div { flex: 1; min-width: 0; }
+        .seller-details-grid .detail-item-compact small { display: block; font-size: 0.625rem; color: var(--text-secondary); margin-bottom: 0.1rem; }
+        .seller-details-grid .detail-item-compact .fw-medium { font-size: 0.8rem; font-weight: 600; line-height: 1.3; }
+
+        /* Business info */
+        .business-link { font-size: 0.8rem; color: var(--primary-color); text-decoration: none; font-weight: 500; }
+        .business-link:hover { color: var(--accent-color); text-decoration: underline; }
+        .business-contact-grid { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; }
+        .contact-item {
+            display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.625rem;
+            background-color: var(--card-background); border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); font-size: 0.8rem; color: var(--text-primary); transition: border-color 0.2s ease;
+        }
+        .contact-item:hover { border-color: var(--accent-color); }
+        .contact-item i { color: var(--accent-color); flex-shrink: 0; }
+        .pro-seller-icon { color: #0d6efd !important; font-size: 1.1rem; filter: drop-shadow(0 1px 3px rgba(13,110,253,0.3)); animation: subtle-glow 2s ease-in-out infinite alternate; vertical-align: middle; }
+        @keyframes subtle-glow { from { filter: drop-shadow(0 1px 3px rgba(13,110,253,0.3)); } to { filter: drop-shadow(0 2px 5px rgba(13,110,253,0.5)); } }
+
+        /* ── Responses section ────────────────────────────────── */
+        .responses-section { background-color: var(--card-background); border: 1px solid var(--border-color); border-radius: var(--radius-md); }
+        .response-card { background-color: var(--background-color); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0.875rem; }
+        .response-body { font-size: 0.875rem; color: var(--text-primary); }
+        .response-details { font-size: 0.8rem; color: var(--text-muted); }
+        .response-status-badge { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.7rem; font-weight: 600; }
+        .response-status-badge.pending { background-color: rgba(245,158,11,.1); color: #d97706; border: 1px solid #f59e0b; }
+        .response-status-badge.accepted { background-color: rgba(34,197,94,.1); color: #16a34a; border: 1px solid #22c55e; }
+        .response-status-badge.rejected { background-color: rgba(239,68,68,.1); color: #dc2626; border: 1px solid #ef4444; }
+
+        /* ── Safety tips card ─────────────────────────────────── */
+        .safety-tips-card { background: var(--card-background); border: 1px solid var(--border-color); border-radius: var(--radius-lg); box-shadow: 0 2px 12px var(--shadow-color); transition: box-shadow 0.3s ease; }
+        .safety-tips-card .card-header { padding: 0.625rem 0.875rem; }
+        .safety-tips-card .card-header h5 { font-size: 0.9rem; font-weight: 700; margin-bottom: 0; }
+        .safety-tips-card .card-body { padding: 0.75rem 0.875rem; }
+        .safety-tips-card li { color: var(--text-primary); font-size: 0.825rem; line-height: 1.5; margin-bottom: 0.375rem; display: flex; align-items: flex-start; gap: 0.4rem; }
+        .safety-tips-card .fa-check-circle { color: var(--success); font-size: 0.875rem; margin-top: 0.1rem; flex-shrink: 0; }
+        #toggle-tips-request { color: var(--primary-color); transition: color 0.25s ease; font-size: 0.825rem; display: inline-flex; align-items: center; gap: 0.35rem; }
+        #toggle-tips-request:hover { color: var(--accent-color); }
+        .toggle-icon { transition: transform 0.2s ease; font-size: 0.8rem; }
+        [aria-expanded="true"] .toggle-icon { transform: rotate(180deg); }
+
+        /* ── Section title ────────────────────────────────────── */
+        .section-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem !important; }
+
+        /* ── Responsive ──────────────────────────────────────── */
+        @media (max-width: 992px) {
+            .main-carousel-wrapper { height: 440px; }
+            .status-chip { padding: 0.5rem 0.65rem; min-height: 54px; gap: 0.45rem; }
+            .status-icon { width: 28px; height: 28px; }
+            .status-icon i { font-size: 0.95rem; }
+            .status-label { font-size: 0.6rem; }
+            .status-value { font-size: 0.75rem; }
+        }
+        @media (max-width: 768px) {
+            .request-title { font-size: 1.75rem !important; }
+            .main-carousel-wrapper { height: 380px; }
+            .request-action-buttons .btn { border-radius: var(--radius-sm); padding: 0.55rem 0.625rem; font-size: 0.8rem; }
+            .verification-status-row .row { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+            .verification-status-row .col-12.col-md-4 { flex: 0 0 auto; min-width: 140px; }
+            .status-chip { padding: 0.4rem 0.5rem; min-height: 50px; gap: 0.4rem; }
+            .status-icon { width: 24px; height: 24px; }
+            .status-icon i { font-size: 0.875rem; }
+            .status-label { font-size: 0.575rem; }
+            .status-value { font-size: 0.7rem; }
+            .seller-avatar-unified, .seller-avatar-placeholder-unified { width: 68px; height: 68px; }
+            .seller-profile-unified .col-md-4 { margin-bottom: 0.75rem; }
+            .contact-buttons-grid .btn-contact { padding: 0.55rem 0.4rem; font-size: 0.775rem; }
+            .contact-buttons-grid .btn-contact i { font-size: 0.95rem; }
+            .no-images-placeholder { height: 280px; }
+        }
+        @media (max-width: 576px) {
+            .request-title { font-size: 1.4rem !important; }
+            .main-carousel-wrapper { height: 320px; }
+            .breadcrumb { font-size: 0.7rem; }
+            .request-detail-container { padding: 0.75rem; }
+            .request-action-buttons .btn { padding: 0.5rem 0.5rem; font-size: 0.775rem; }
+            .status-chip { padding: 0.375rem 0.425rem; min-height: 46px; gap: 0.3rem; }
+            .status-icon { width: 22px; height: 22px; }
+            .status-icon i { font-size: 0.825rem; }
+            .status-label { font-size: 0.55rem; }
+            .status-value { font-size: 0.675rem; }
+            .seller-avatar-unified, .seller-avatar-placeholder-unified { width: 60px; height: 60px; }
+            .contact-buttons-grid .btn-contact { padding: 0.5rem 0.35rem; font-size: 0.75rem; }
+            .contact-buttons-grid .btn-contact i { font-size: 0.9rem; }
+            .contact-buttons-grid .btn-contact span { font-size: 0.73rem; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .status-chip, .status-icon, .contact-item, .seller-card, .detail-item, .thumbnail-wrapper, .btn-back { transition: none; }
+            .status-chip:hover { transform: none; }
+            .status-chip:hover .status-icon { transform: none; }
+            .status-chip::before { display: none; }
+            .pro-seller-icon { animation: none; }
+            .detail-item:hover { transform: none; }
+            .btn-back:hover { transform: none; }
+        }
+        .status-chip:focus, .contact-item:focus, .btn-back:focus { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+    </style>
+{% endblock %}
+
+{% block page_js %}
+    <script type="text/javascript" src="{% static 'js/pages/buyer_requests.js' %}"></script>
+{% endblock %}
+
+{% block 'Body' %}
+
+<!-- Back Button -->
+<div class="back-button-container">
+    <button onclick="history.back()" class="btn-back">
+        <i class="fas fa-arrow-left"></i>
+        <span>Back</span>
+    </button>
+</div>
+
+<div class="card request-detail-card">
+    <div class="request-detail-container">
+        <div class="row g-4">
+
+            <!-- ═══════════════════════════════════════════════════
+                 LEFT COLUMN — Images
+            ════════════════════════════════════════════════════ -->
+            <div class="col-md-6">
+                <!-- Main Carousel -->
+                <div class="main-carousel-wrapper mb-2" style="border: 1px solid var(--border-color);">
+                    {% if images %}
+                        <div id="requestCarousel" class="carousel slide w-100 h-100">
+                            <div class="carousel-inner h-100" style="border-radius: var(--radius-md);">
+                                {% for image in images %}
+                                <div class="carousel-item {% if image.is_primary %}active{% elif forloop.first %}active{% endif %} h-100">
+                                    <img src="{{ image.image.url }}" class="carousel-main-img"
+                                         alt="{{ image.caption|default:request.title }}"
+                                         style="background-color: var(--card-background);">
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% if images|length > 1 %}
+                            <button class="carousel-control-prev" type="button" data-bs-target="#requestCarousel" data-bs-slide="prev">
+                                <span class="carousel-control-prev-icon" aria-hidden="true" style="filter:invert(1)"></span>
+                                <span class="visually-hidden">Previous</span>
+                            </button>
+                            <button class="carousel-control-next" type="button" data-bs-target="#requestCarousel" data-bs-slide="next">
+                                <span class="carousel-control-next-icon" aria-hidden="true" style="filter:invert(1)"></span>
+                                <span class="visually-hidden">Next</span>
+                            </button>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <div class="no-images-placeholder w-100">
+                            {% if request.request_type == 'product' %}<i class="bi bi-box-seam"></i>
+                            {% elif request.request_type == 'service' %}<i class="bi bi-tools"></i>
+                            {% else %}<i class="bi bi-person-gear"></i>{% endif %}
+                            <h5 class="mb-1">{{ request.get_request_type_display }} Request</h5>
+                            <p class="mb-0 small">No images provided for this request</p>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Thumbnail Navigation -->
+                {% if images|length > 1 %}
+                <div class="thumbnail-gallery">
+                    <div class="row g-2">
+                        {% for image in images %}
+                        <div class="col-2">
+                            <div class="thumbnail-wrapper {% if image.is_primary %}active{% elif forloop.first %}active{% endif %}">
+                                <img src="{{ image.image.url }}"
+                                     class="img-thumbnail"
+                                     alt="{{ image.caption|default:request.title }}"
+                                     data-bs-target="#requestCarousel"
+                                     data-bs-slide-to="{{ forloop.counter0 }}"
+                                     role="button"
+                                     style="border-color: var(--border-color); background-color: var(--card-background);">
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- ═══════════════════════════════════════════════════
+                 RIGHT COLUMN — Details
+            ════════════════════════════════════════════════════ -->
+            <div class="col-md-6">
+                <div class="request-details h-100">
+                    <div class="card-body p-2">
+
+                        <!-- Request Header -->
+                        <div class="product-header mb-4">
+                            <nav aria-label="breadcrumb">
+                                <ol class="breadcrumb small mb-2">
+                                    <li class="breadcrumb-item">
+                                        {% if request.category %}{{ request.category.name }}
+                                        {% elif request.service_category %}{{ request.get_service_category_display }}
+                                        {% else %}General{% endif %}
+                                    </li>
+                                    {% if request.subcategory %}<li class="breadcrumb-item">{{ request.subcategory.name }}</li>{% endif %}
+                                    <li class="breadcrumb-item active">{{ request.title|truncatechars:40 }}</li>
+                                </ol>
+                            </nav>
+                            <h1 class="request-title display-6 mb-2">{{ request.title }}</h1>
+                            <div class="d-flex flex-wrap gap-1 mb-3">
+                                <span class="badge bg-primary">{{ request.get_request_type_display }}</span>
+                                <span class="badge bg-{{ request.urgency_color|default:'secondary' }}">{{ request.get_urgency_display }}</span>
+                                {% if request.is_featured %}<span class="badge bg-warning text-dark"><i class="bi bi-star-fill me-1"></i>Featured</span>{% endif %}
+                                {% if request.buyer_is_verified_business %}<span class="badge bg-success"><i class="bi bi-shield-check me-1"></i>Verified Buyer</span>{% endif %}
+                            </div>
+                            <div class="price-badge p-3 mb-4">
+                                <span class="h2 mb-0 fw-bold">{{ request.formatted_budget }}</span>
+                                <div class="small mt-1 opacity-75">Budget Range</div>
+                            </div>
+                        </div>
+
+                        <!-- Request Info Grid -->
+                        <div class="product-info-advanced mb-2">
+                            <div class="info-section mb-4 p-3">
+                                <h4 class="fw-semibold mb-3"><i class="fas fa-info-circle me-2"></i>Request Details</h4>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <div class="detail-item d-flex align-items-center p-2">
+                                            <i class="bi bi-tag me-2"></i>
+                                            <div>
+                                                <div class="small">Category</div>
+                                                <div>{% if request.category %}{{ request.category.name }}{% elif request.service_category %}{{ request.get_service_category_display }}{% else %}Not specified{% endif %}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="detail-item d-flex align-items-center p-2">
+                                            <i class="bi bi-shield-check me-2"></i>
+                                            <div>
+                                                <div class="small">Condition</div>
+                                                <div>{{ request.get_preferred_condition_display }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% if request.brand %}
+                                    <div class="col-6">
+                                        <div class="detail-item d-flex align-items-center p-2">
+                                            <i class="bi bi-award me-2"></i>
+                                            <div>
+                                                <div class="small">Brand</div>
+                                                <div>{{ request.brand.name }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    {% if request.quantity_needed > 1 %}
+                                    <div class="col-6">
+                                        <div class="detail-item d-flex align-items-center p-2">
+                                            <i class="bi bi-123 me-2"></i>
+                                            <div>
+                                                <div class="small">Quantity Needed</div>
+                                                <div>{{ request.quantity_needed }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    <div class="col-6">
+                                        <div class="detail-item d-flex align-items-center p-2">
+                                            <i class="fas fa-clock me-2"></i>
+                                            <div>
+                                                <div class="small">Posted</div>
+                                                <div>{{ request.created_at|timesince }} ago</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="detail-item d-flex align-items-center p-2">
+                                            <i class="bi bi-calendar-x me-2"></i>
+                                            <div>
+                                                <div class="small">Expires</div>
+                                                <div>{{ request.days_remaining }} days left</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="detail-item d-flex align-items-center p-2">
+                                            <i class="fas fa-map-marker-alt me-2"></i>
+                                            <div>
+                                                <div class="small">Location</div>
+                                                <div>{% if request.accept_nationwide %}Nationwide{% elif request.buyer.location %}{{ request.buyer.location.city|default:request.buyer.location.lga.name|default:request.buyer.location.state.name }}{% else %}Not specified{% endif %}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="detail-item d-flex align-items-center p-2">
+                                            <i class="fas fa-eye me-2"></i>
+                                            <div>
+                                                <div class="small">Views</div>
+                                                <div>{{ request.view_count }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% if request.needed_by %}
+                                    <div class="col-12">
+                                        <div class="detail-item d-flex align-items-center p-2">
+                                            <i class="bi bi-calendar-check me-2"></i>
+                                            <div>
+                                                <div class="small">Needed By</div>
+                                                <div>{{ request.needed_by|date:"F d, Y g:i A" }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Description -->
+                            <div class="request-description mb-4 p-3">
+                                <h4 class="fw-semibold mb-3"><i class="fas fa-align-left me-2"></i>Description</h4>
+                                <div class="description-content">{{ request.description|linebreaks }}</div>
+                            </div>
+
+                            <!-- Contact Instructions -->
+                            {% if request.contact_instructions %}
+                            <div class="request-description mb-4 p-3">
+                                <h4 class="fw-semibold mb-3"><i class="bi bi-info-circle me-2"></i>Contact Instructions</h4>
+                                <div class="description-content">{{ request.contact_instructions|linebreaks }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Action Buttons Row (Share + Save/Bump) -->
+                        <div class="request-action-buttons mb-4">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <button type="button" class="btn-action-primary" onclick="shareRequest()">
+                                        <i class="fas fa-share-alt me-2"></i>
+                                        <span>Share</span>
+                                    </button>
+                                </div>
+
+                                {% if user.is_authenticated and user.profile == request.buyer %}
+                                    <!-- OWNER: Bump -->
+                                    <div class="col-6">
+                                        {% if request.can_be_bumped %}
+                                        <form method="post" action="{% url 'buyer_requests:bump_request' request.id %}" class="d-inline w-100">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn-action-boost w-100">
+                                                <i class="bi bi-arrow-up-circle me-2"></i>Bump
+                                            </button>
+                                        </form>
+                                        {% else %}
+                                        <button class="btn-action-success" disabled>
+                                            <i class="bi bi-check-circle me-2"></i>Bumped
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                {% else %}
+                                    <!-- VISITOR: Save -->
+                                    <div class="col-6">
+                                        {% if user.is_authenticated %}
+                                            <button type="button"
+                                                    class="btn-action-secondary save-request-btn {% if is_saved %}saved-state{% endif %}"
+                                                    data-request-id="{{ request.id }}"
+                                                    data-item-type="request"
+                                                    onclick="toggleSave(event, '{{ request.id }}', 'request')"
+                                                    data-saved="{% if is_saved %}true{% else %}false{% endif %}">
+                                                <i class="bi {% if is_saved %}bi-bookmark-fill{% else %}bi-bookmark{% endif %} me-2"></i>
+                                                <span class="save-text">{% if is_saved %}Saved{% else %}Save{% endif %}</span>
+                                            </button>
+                                        {% else %}
+                                            <a href="{% url 'account_login' %}" class="btn-action-secondary">
+                                                <i class="bi bi-bookmark me-2"></i>Save
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Status / Owner Section -->
+                        <div class="request-status-section mb-4">
+                            <!-- Status (Visible to All) -->
+                            <div class="stock-status mb-3">
+                                <h6 class="fw-semibold mb-2"><i class="bi bi-activity me-2"></i>Request Status</h6>
+                                <div class="d-flex align-items-center gap-2">
+                                    {% if request.status == 'active' %}
+                                        <span class="text-success"><i class="fas fa-check-circle me-2"></i>Active — Accepting Responses</span>
+                                    {% elif request.status == 'fulfilled' %}
+                                        <span class="text-primary"><i class="fas fa-check-double me-2"></i>Fulfilled</span>
+                                    {% elif request.status == 'closed' %}
+                                        <span class="text-danger"><i class="fas fa-times-circle me-2"></i>Closed</span>
+                                    {% elif request.status == 'expired' %}
+                                        <span class="text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Expired</span>
+                                    {% else %}
+                                        <span class="text-secondary"><i class="fas fa-circle me-2"></i>{{ request.get_status_display }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Owner-only section -->
+                            {% if user.is_authenticated and user.profile == request.buyer %}
+
+                            <!-- Expiry warning -->
+                            {% if request.days_remaining <= 3 %}
+                            <div class="expiry-warning mb-3">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span>Your request expires in {{ request.days_remaining }} day{{ request.days_remaining|pluralize }}. Bump it to keep it visible.</span>
+                            </div>
+                            {% endif %}
+
+                            <!-- Owner quick actions -->
+                            <div class="quick-actions">
+                                <h6 class="fw-semibold mb-2"><i class="fas fa-bolt me-2"></i>Actions</h6>
+                                <div class="d-flex gap-2">
+                                    <a href="{% url 'buyer_requests:update' pk=request.id %}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-edit me-2"></i>Edit
+                                    </a>
+                                    <a href="{% url 'buyer_requests:delete' pk=request.id %}" class="btn btn-sm btn-danger">
+                                        <i class="fas fa-trash me-2"></i>Delete
+                                    </a>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Bar (full width, inside main card) -->
+        <div class="request-stats p-3 mt-2 mb-2">
+            <div class="row g-0">
+                <div class="col-4">
+                    <div class="stat-item">
+                        <i class="bi bi-eye text-primary"></i>
+                        <h5>{{ request.view_count }}</h5>
+                        <small>Views</small>
+                    </div>
+                </div>
+                <div class="col-4" style="border-left: 1px solid var(--border-color); border-right: 1px solid var(--border-color);">
+                    <div class="stat-item">
+                        <i class="bi bi-chat-dots text-success"></i>
+                        <h5>{{ request.response_count }}</h5>
+                        <small>Responses</small>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="stat-item">
+                        <i class="bi bi-telephone text-info"></i>
+                        <h5>{{ request.contact_count }}</h5>
+                        <small>Contacts</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Buttons Grid (visitor actions, full width inside main card) -->
+        {% if user != request.buyer.user %}
+        <div class="contact-buttons-grid mt-2 mb-2">
+            <div class="row g-2">
+                {% if can_respond %}
+                <div class="col-6">
+                    <button class="btn btn-primary w-100 btn-contact" data-bs-toggle="modal" data-bs-target="#responseModal">
+                        <i class="bi bi-chat-dots"></i>
+                        <span>Send Response</span>
+                    </button>
+                </div>
+                <div class="col-6">
+                    {% if existing_conversation %}
+                    <a href="{% url 'conversation_detail' conversation_uuid=existing_conversation.uuid %}" class="btn btn-outline-primary w-100 btn-contact">
+                        <i class="bi bi-envelope-open"></i>
+                        <span>Continue Chat</span>
+                    </a>
+                    {% else %}
+                    <a href="{% url 'send_request_message' request_id=request.id %}" class="btn btn-outline-primary w-100 btn-contact">
+                        <i class="bi bi-envelope"></i>
+                        <span>Send Message</span>
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="col-6">
+                    <a href="{% url 'buyer_requests:report_request' request.id %}" class="btn btn-outline-danger w-100 btn-contact">
+                        <i class="fas fa-flag"></i>
+                        <span>Report</span>
+                    </a>
+                </div>
+                {% elif user.is_authenticated %}
+                <div class="col-12">
+                    <div class="alert alert-warning text-center mb-2 py-2 small">
+                        <i class="bi bi-exclamation-triangle me-2"></i>You've already responded to this request
+                    </div>
+                </div>
+                <div class="col-6">
+                    {% if existing_conversation %}
+                    <a href="{% url 'conversation_detail' conversation_uuid=existing_conversation.uuid %}" class="btn btn-outline-primary w-100 btn-contact">
+                        <i class="bi bi-envelope-open"></i>
+                        <span>View Messages</span>
+                    </a>
+                    {% else %}
+                    <a href="{% url 'send_request_message' request_id=request.id %}" class="btn btn-outline-primary w-100 btn-contact">
+                        <i class="bi bi-envelope"></i>
+                        <span>Send Message</span>
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="col-6">
+                    <a href="{% url 'buyer_requests:report_request' request.id %}" class="btn btn-outline-danger w-100 btn-contact">
+                        <i class="fas fa-flag"></i>
+                        <span>Report</span>
+                    </a>
+                </div>
+                {% else %}
+                <div class="col-12">
+                    <a href="{% url 'account_login' %}?next={{ request.get_absolute_url }}" class="btn btn-primary w-100 btn-contact">
+                        <i class="bi bi-box-arrow-in-right"></i>
+                        <span>Login to Respond</span>
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+{% if global_banners %}
+{% include 'banner.html' with banners=global_banners %}
+{% endif %}
+
+<!-- Buyer Information Card -->
+{% if user.profile != request.buyer %}
+<div class="card seller-card mt-3 mb-4">
+    <div class="card-header py-3">
+        <h5 class="mb-0 fw-bold">
+            <i class="fas fa-user-circle me-2"></i>
+            {% if request.buyer_is_verified_business %}Business{% else %}Buyer{% endif %} Information
+        </h5>
+    </div>
+
+    <!-- Verification Status Row -->
+    <div class="verification-status-row">
+        <div class="container-fluid px-3 py-2">
+            <div class="row g-2">
+                <div class="col-12 col-md-4">
+                    <div class="status-chip {% if request.buyer_is_verified_business %}verified{% elif request.buyer.has_pending_verification %}pending{% else %}unverified{% endif %}">
+                        <div class="status-icon">
+                            {% if request.buyer_is_verified_business %}<i class="bi bi-patch-check-fill"></i>
+                            {% elif request.buyer.has_pending_verification %}<i class="bi bi-clock-history"></i>
+                            {% else %}<i class="bi bi-shield-exclamation"></i>{% endif %}
+                        </div>
+                        <div class="status-content">
+                            <div class="status-label">Business</div>
+                            <div class="status-value">
+                                {% if request.buyer_is_verified_business %}Verified
+                                {% elif request.buyer.has_pending_verification %}Pending
+                                {% else %}Unverified{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="status-chip {% if request.buyer.user.is_active %}verified{% else %}unverified{% endif %}">
+                        <div class="status-icon">
+                            {% if request.buyer.user.is_active %}<i class="bi bi-person-check-fill"></i>
+                            {% else %}<i class="bi bi-person-x-fill"></i>{% endif %}
+                        </div>
+                        <div class="status-content">
+                            <div class="status-label">Account</div>
+                            <div class="status-value">{% if request.buyer.user.is_active %}Active{% else %}Inactive{% endif %}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-body py-3">
+        <div class="seller-profile-unified">
+            <div class="row g-3">
+                <!-- Left: Avatar & Basic Info -->
+                <div class="col-md-4">
+                    <div class="text-center">
+                        {% if request.buyer.photo %}
+                            <img src="{{ request.buyer.photo.url }}"
+                                 alt="{{ request.buyer.user.username }}"
+                                 class="seller-avatar-unified mb-2">
+                        {% else %}
+                            <div class="seller-avatar-placeholder-unified mb-2">
+                                <span class="h4 mb-0">{{ request.buyer.user.username|first|upper }}</span>
+                            </div>
+                        {% endif %}
+
+                        <h5 class="fw-bold mb-1">
+                            {% if request.buyer_is_verified_business and request.buyer.business_name %}
+                                {{ request.buyer.business_name }}
+                            {% else %}
+                                {{ request.buyer.user.get_full_name|default:request.buyer.user.username }}
+                            {% endif %}
+                        </h5>
+                        <p class="text-muted small mb-2">
+                            {% if request.buyer_is_verified_business %}
+                                {{ request.buyer.get_business_type_display|default:"Business" }}
+                            {% else %}
+                                @{{ request.buyer.user.username }}
+                            {% endif %}
+                        </p>
+                        <div class="rating-wrapper mb-2">
+                            <small class="text-muted">Member since {{ request.buyer.user.date_joined|date:"M Y" }}</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Details -->
+                <div class="col-md-8">
+                    {% if request.buyer_is_verified_business and request.buyer.business_description %}
+                    <div class="seller-description mb-3">
+                        <p class="small mb-0">{{ request.buyer.business_description|truncatechars:200 }}</p>
+                    </div>
+                    {% elif request.buyer.user.profile.bio %}
+                    <div class="seller-description mb-3">
+                        <p class="small mb-0">{{ request.buyer.user.profile.bio|truncatechars:200 }}</p>
+                    </div>
+                    {% endif %}
+
+                    <div class="seller-details-grid">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="detail-item-compact">
+                                    <i class="fas fa-calendar-alt"></i>
+                                    <div>
+                                        <small class="text-muted">Member Since</small>
+                                        <div class="fw-medium small">{{ request.buyer.user.date_joined|date:"M Y" }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="detail-item-compact">
+                                    <i class="bi bi-chat-square-text"></i>
+                                    <div>
+                                        <small class="text-muted">Total Requests</small>
+                                        <div class="fw-medium small">{{ request.buyer.buyer_requests.count }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="detail-item-compact">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    <div>
+                                        <small class="text-muted">Location</small>
+                                        <div class="fw-medium small">
+                                            {% if request.accept_nationwide %}Nationwide
+                                            {% elif request.buyer.location %}{{ request.buyer.location.city|default:request.buyer.location.lga.name|default:request.buyer.location.state.name }}
+                                            {% else %}Not specified{% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% if request.show_phone and request.buyer.phone_number %}
+                            <div class="col-6">
+                                <div class="detail-item-compact">
+                                    <i class="fas fa-phone"></i>
+                                    <div>
+                                        <small class="text-muted">Phone</small>
+                                        <div class="fw-medium small">{{ request.buyer.phone_number }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% if request.buyer_is_verified_business and request.buyer.business_phone %}
+                            <div class="col-6">
+                                <div class="detail-item-compact">
+                                    <i class="fas fa-phone"></i>
+                                    <div>
+                                        <small class="text-muted">Business Phone</small>
+                                        <div class="fw-medium small">{{ request.buyer.business_phone }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% if request.buyer_is_verified_business and request.buyer.business_website %}
+                            <div class="col-12">
+                                <div class="detail-item-compact">
+                                    <i class="fas fa-globe"></i>
+                                    <div>
+                                        <small class="text-muted">Website</small>
+                                        <a href="{{ request.buyer.business_website }}" target="_blank" class="business-link small">
+                                            Visit Website <i class="bi bi-box-arrow-up-right"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Business info section for verified businesses -->
+                    {% if request.buyer_is_verified_business %}
+                    <div class="mt-3">
+                        {% if request.buyer.business_email or request.buyer.business_phone %}
+                        <div class="business-contact-grid mt-2">
+                            {% if request.buyer.business_email %}
+                            <div class="contact-item mb-1">
+                                <i class="bi bi-envelope-fill"></i>
+                                <span class="small">{{ request.buyer.business_email }}</span>
+                            </div>
+                            {% endif %}
+                            {% if request.buyer.business_phone %}
+                            <div class="contact-item mb-1">
+                                <i class="bi bi-telephone-fill"></i>
+                                <span class="small">{{ request.buyer.business_phone }}</span>
+                            </div>
+                            {% endif %}
+                            {% if request.buyer.business_website %}
+                            <div class="contact-item">
+                                <i class="bi bi-globe"></i>
+                                <a href="{{ request.buyer.business_website }}" target="_blank" class="business-link small">
+                                    Visit Website <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Responses Section (Owner view) -->
+{% if responses %}
+<div class="mt-0 container-fluid">
+    <div class="responses-section p-3 mt-3 mb-4">
+        <h5 class="mb-3 fw-semibold"><i class="bi bi-chat-dots text-success me-2"></i>Responses ({{ responses|length }})</h5>
+        {% for response in responses %}
+        <div class="response-card mb-3">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <div class="d-flex align-items-center gap-2">
+                    <strong class="small">{{ response.seller.user.username }}</strong>
+                    {% if response.is_verified_seller %}<span class="badge bg-success" style="font-size:0.65rem;"><i class="bi bi-shield-check"></i> Verified</span>{% endif %}
+                    {% if response.is_featured_response %}<span class="badge bg-warning text-dark" style="font-size:0.65rem;"><i class="bi bi-star-fill"></i> Featured</span>{% endif %}
+                    {% if response.status %}
+                    <span class="response-status-badge {{ response.status }}">{{ response.get_status_display }}</span>
+                    {% endif %}
+                </div>
+                <small class="text-muted">{{ response.created_at|timesince }} ago</small>
+            </div>
+            <div class="response-body">
+                <p class="mb-2">{{ response.message|linebreaks }}</p>
+                {% if response.offered_price %}
+                <div class="response-details"><strong>Offered Price:</strong> {{ response.formatted_price }}</div>
+                {% endif %}
+                {% if response.availability %}
+                <div class="response-details mt-1"><strong>Availability:</strong> {{ response.availability }}</div>
+                {% endif %}
+            </div>
+            {% if user.profile == request.buyer and response.status == 'pending' %}
+            <div class="d-flex gap-2 mt-2">
+                <form method="post" action="{% url 'buyer_requests:update_response_status' response.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="status" value="accepted">
+                    <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-check-lg me-1"></i>Accept</button>
+                </form>
+                <form method="post" action="{% url 'buyer_requests:update_response_status' response.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="status" value="rejected">
+                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-lg me-1"></i>Decline</button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Safety Tips Card -->
+<div class="mt-0 container-fluid">
+    <div class="card safety-tips-card mt-3 mb-4">
+        <div class="card-header py-2">
+            <h5 class="mb-0 fw-bold">
+                <i class="fas fa-shield-alt me-2"></i>Safety Tips
+            </h5>
+        </div>
+        <div class="card-body py-3">
+            <ul class="list-unstyled mb-0">
+                <li class="mb-2"><i class="fas fa-check-circle me-2" style="color: var(--success)"></i>Verify buyer credentials before responding.</li>
+                <li class="mb-2"><i class="fas fa-check-circle me-2" style="color: var(--success)"></i>Meet in public places for transactions.</li>
+            </ul>
+            <div class="collapse" id="hidden-tips-request">
+                <ul class="list-unstyled mt-3 mb-0">
+                    <li class="mb-2"><i class="fas fa-check-circle me-2" style="color: var(--success)"></i>Never send money or products in advance.</li>
+                    <li class="mb-2"><i class="fas fa-check-circle me-2" style="color: var(--success)"></i>Use secure payment methods.</li>
+                    <li class="mb-0"><i class="fas fa-check-circle me-2" style="color: var(--success)"></i>Report suspicious requests immediately.</li>
+                </ul>
+            </div>
+            <a id="toggle-tips-request"
+               class="d-block text-decoration-none mt-3"
+               data-bs-toggle="collapse"
+               href="#hidden-tips-request"
+               role="button"
+               aria-expanded="false"
+               aria-controls="hidden-tips-request">
+                <span class="text-primary fw-medium">
+                    <i class="fas fa-chevron-down toggle-icon me-2"></i>
+                    <span id="toggle-text-request">See more safety tips</span>
+                </span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Similar Requests -->
+{% if similar_requests %}
+<div class="mt-0 container-fluid">
+    <h2 class="section-title text-center mb-4">Similar Requests</h2>
+    <div class="row g-3">
+        {% for similar_request in similar_requests %}
+        <div class="col-6 col-md-2">
+            {% include 'buyer_requests/request_card.html' with request=similar_request %}
+        </div>
+        {% empty %}
+        <p>No similar requests found.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- ── Response Modal ──────────────────────────────────────────── -->
+{% if can_respond %}
+<div class="modal fade" id="responseModal" tabindex="-1" aria-labelledby="responseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content" style="background-color:var(--card-background);border-color:var(--border-color);">
+            <div class="modal-header" style="border-color:var(--border-color);">
+                <h5 class="modal-title" id="responseModalLabel" style="color:var(--text-primary);">
+                    <i class="bi bi-chat-dots me-2"></i>Respond to Request
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'buyer_requests:create_response' request.id %}" id="responseForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" style="color:var(--text-primary);">How can you help?</label>
+                        <select name="response_type" id="id_response_type" class="form-select"
+                                style="background-color:var(--card-background);color:var(--text-primary);border-color:var(--border-color);">
+                            {% for value, label in response_form.fields.response_type.choices %}
+                            <option value="{{ value }}" {% if response_form.fields.response_type.initial == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3 field-existing-product" style="display:none;">
+                        <label class="form-label" style="color:var(--text-primary);">Select your product</label>
+                        <select name="related_product" class="form-select"
+                                style="background-color:var(--card-background);color:var(--text-primary);border-color:var(--border-color);">
+                            {% for value, label in response_form.fields.related_product.choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" style="color:var(--text-primary);">Your Message</label>
+                        <textarea name="message" rows="4" class="form-control"
+                                  placeholder="Describe how you can fulfill this request..."
+                                  style="background-color:var(--card-background);color:var(--text-primary);border-color:var(--border-color);"></textarea>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" style="color:var(--text-primary);">Your Price (optional)</label>
+                            <input type="number" name="offered_price" class="form-control"
+                                   placeholder="Enter your price"
+                                   style="background-color:var(--card-background);color:var(--text-primary);border-color:var(--border-color);">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" style="color:var(--text-primary);">Availability</label>
+                            <input type="text" name="availability" class="form-control"
+                                   placeholder="e.g. Available now"
+                                   style="background-color:var(--card-background);color:var(--text-primary);border-color:var(--border-color);">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-color:var(--border-color);">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-send me-2"></i>Send Response</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ── Share Modal ────────────────────────────────────────────── -->
+<div class="modal fade" id="shareModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background-color:var(--card-background);border-color:var(--border-color);">
+            <div class="modal-header" style="border-color:var(--border-color);">
+                <h5 class="modal-title" style="color:var(--text-primary);">Share Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3 text-center mb-3">
+                    <div class="col-4">
+                        <button class="btn btn-outline-success w-100 py-2" onclick="shareToWhatsApp()">
+                            <i class="bi bi-whatsapp fs-5 d-block mb-1"></i><small>WhatsApp</small>
+                        </button>
+                    </div>
+                    <div class="col-4">
+                        <button class="btn btn-outline-info w-100 py-2" onclick="shareToTwitter()">
+                            <i class="bi bi-twitter-x fs-5 d-block mb-1"></i><small>Twitter/X</small>
+                        </button>
+                    </div>
+                    <div class="col-4">
+                        <button class="btn btn-outline-secondary w-100 py-2" onclick="copyRequestLink()">
+                            <i class="bi bi-link-45deg fs-5 d-block mb-1"></i><small>Copy Link</small>
+                        </button>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="shareUrl" class="form-control form-control-sm"
+                           value="{{ request.build_absolute_uri }}" readonly
+                           style="background-color:var(--card-background);color:var(--text-primary);border-color:var(--border-color);">
+                    <button class="btn btn-outline-primary btn-sm" onclick="copyRequestLink()"><i class="bi bi-clipboard"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function shareRequest() { new bootstrap.Modal(document.getElementById('shareModal')).show(); }
+function shareToWhatsApp() {
+    const text = encodeURIComponent('Check out this buyer request: {{ request.title }}\n{{ request.build_absolute_uri }}');
+    window.open('https://wa.me/?text=' + text, '_blank');
+}
+function shareToTwitter() {
+    const text = encodeURIComponent('Found this buyer request: {{ request.title }}');
+    const url  = encodeURIComponent('{{ request.build_absolute_uri }}');
+    window.open('https://twitter.com/intent/tweet?text=' + text + '&url=' + url, '_blank');
+}
+function copyRequestLink() {
+    const shareUrl = document.getElementById('shareUrl');
+    shareUrl.select();
+    navigator.clipboard.writeText(shareUrl.value);
+    const btn = event.target.closest('button');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-check"></i>';
+    setTimeout(() => { btn.innerHTML = orig; }, 2000);
+}
+// Toggle safety tips text
+document.addEventListener('DOMContentLoaded', function () {
+    const tipToggle = document.getElementById('toggle-tips-request');
+    if (tipToggle) {
+        tipToggle.addEventListener('click', function () {
+            const txt = document.getElementById('toggle-text-request');
+            const expanded = this.getAttribute('aria-expanded') === 'true';
+            if (txt) txt.textContent = expanded ? 'See more safety tips' : 'See fewer safety tips';
+        });
+    }
+});
+</script>
+
+{% endblock %}
+{% block 'Footer' %}{% endblock %}
