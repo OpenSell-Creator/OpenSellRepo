@@ -13,7 +13,9 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.template.loader import render_to_string
 from User.models import Profile, Location, SavedItem, State, LGA, SavedItem
-from Home.models import Category, Subcategory, Brand  
+from Home.models import Category, Subcategory, Brand 
+from django.contrib.contenttypes.models import ContentType
+from Messages.models import Conversation
 
 def buyer_request_image_path(instance, filename):
     """Generate upload path for buyer request images"""
@@ -267,7 +269,9 @@ class BuyerRequest(models.Model):
         for image in self.images.all():
             image.delete()
         
-        for conversation in self.conversations.all():
+        
+        content_type = ContentType.objects.get_for_model(self.__class__)
+        for conversation in Conversation.objects.filter(content_type=content_type, object_id=str(self.id)):
             conversation.delete()
         
         request_path = f'buyer_requests/{self.buyer.user.username}/{self.id}/'

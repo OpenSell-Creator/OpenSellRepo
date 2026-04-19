@@ -3,7 +3,8 @@ from django.dispatch import receiver
 from django.utils import timezone
 from django.db.models import F
 from datetime import timedelta
-
+from django.contrib.contenttypes.models import ContentType
+from Messages.models import Conversation
 from .models import (
     BuyerRequest, SellerResponse, BuyerRequestImage, RequestAccess
 )
@@ -182,7 +183,8 @@ def cleanup_request_files(sender, instance, **kwargs):
             pass
     
     # Delete all conversations and messages
-    for conversation in instance.conversations.all():
+    content_type = ContentType.objects.get_for_model(instance.__class__)
+    for conversation in Conversation.objects.filter(content_type=content_type, object_id=str(instance.id)):
         conversation.delete()
 
 

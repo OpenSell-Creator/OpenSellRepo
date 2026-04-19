@@ -495,7 +495,7 @@ class BuyerRequestCreateView(LoginRequiredMixin, CreateView):
     model = BuyerRequest
     form_class = BuyerRequestForm
     template_name = 'buyer_requests/request_form.html'
-    success_url = reverse_lazy('buyer_requests:my_requests')
+    success_url = reverse_lazy('manage_listings')
     
     def get_form_kwargs(self):
         """Pass the current user to the form"""
@@ -713,7 +713,7 @@ class BuyerRequestDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView
     """Delete view for buyer requests (following ProductDeleteView pattern)"""
     model = BuyerRequest
     template_name = 'buyer_requests/request_confirm_delete.html'
-    success_url = reverse_lazy('buyer_requests:my_requests')
+    success_url = reverse_lazy('manage_listings')
 
     def test_func(self):
         request = self.get_object()

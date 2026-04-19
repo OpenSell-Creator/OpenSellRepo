@@ -624,7 +624,7 @@ class ServiceCreateView(LoginRequiredMixin, CreateView):
     model = ServiceListing
     form_class = ServiceListingForm
     template_name = 'services/service_form.html'
-    success_url = reverse_lazy('services:my_services')
+    success_url = reverse_lazy('manage_listings')
     
     def get_form_kwargs(self):
         """Pass the current user to the form"""
