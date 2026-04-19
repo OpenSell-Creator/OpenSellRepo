@@ -194,159 +194,155 @@
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
         <script src="https://accounts.google.com/gsi/client" async></script>
 
-        {% compress js %}
-            <script>
-                // This resolves the correct URL regardless of your URL configuration
+        <script>
                 window.SAVE_TOGGLE_URL = "{% url 'toggle_save' %}";
-                
-                // Debug: Log the URL (remove in production)
                 console.log('Save Toggle URL:', window.SAVE_TOGGLE_URL);
-            </script>
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    const form = document.getElementById('sidebarFilterForm');
-                    if (!form) return;
-                    
-                    // Handle category change for subcategory loading
-                    const categorySelect = document.getElementById('sidebar_category');
-                    const subcategorySelect = document.getElementById('sidebar_subcategory');
-                    const brandSelect = document.getElementById('sidebar_brand');
-                    
-                    if (categorySelect && subcategorySelect) {
-                        categorySelect.addEventListener('change', function() {
-                            const categoryValue = this.value;
-                            subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
-                            if (brandSelect) brandSelect.innerHTML = '<option value="">All Brands</option>';
+        </script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const form = document.getElementById('sidebarFilterForm');
+                if (!form) return;
+                const categorySelect = document.getElementById('sidebar_category');
+                const subcategorySelect = document.getElementById('sidebar_subcategory');
+                const brandSelect = document.getElementById('sidebar_brand');
+                
+                if (categorySelect && subcategorySelect) {
+                    categorySelect.addEventListener('change', function() {
+                        const categoryValue = this.value;
+                        subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
+                        if (brandSelect) brandSelect.innerHTML = '<option value="">All Brands</option>';
+                        
+                        if (categoryValue) {
+                            // Determine AJAX URL based on item type
+                            const itemType = '{{ item_type }}';
+                            let ajaxUrl = '';
                             
-                            if (categoryValue) {
-                                // Determine AJAX URL based on item type
-                                const itemType = '{{ item_type }}';
-                                let ajaxUrl = '';
-                                
-                                if (itemType === 'products') {
-                                    ajaxUrl = `/ajax/subcategories/?category=${categoryValue}`;
-                                } else if (itemType === 'requests') {
-                                    ajaxUrl = `/buyer-requests/ajax/subcategories/?category=${categoryValue}`;
-                                }
-                                
-                                if (ajaxUrl) {
-                                    fetch(ajaxUrl)
-                                        .then(response => response.json())
-                                        .then(data => {
-                                            data.forEach(subcategory => {
-                                                const option = document.createElement('option');
-                                                option.value = subcategory.slug || subcategory.id;
-                                                option.textContent = subcategory.name;
-                                                subcategorySelect.appendChild(option);
-                                            });
-                                        })
-                                        .catch(error => console.error('Error loading subcategories:', error));
-                                }
+                            if (itemType === 'products') {
+                                ajaxUrl = `/ajax/subcategories/?category=${categoryValue}`;
+                            } else if (itemType === 'requests') {
+                                ajaxUrl = `/buyer-requests/ajax/subcategories/?category=${categoryValue}`;
                             }
-                        });
-                    }
-                    
-                    // Handle subcategory change for brand loading
-                    if (subcategorySelect && brandSelect) {
-                        subcategorySelect.addEventListener('change', function() {
-                            const subcategoryValue = this.value;
-                            brandSelect.innerHTML = '<option value="">All Brands</option>';
                             
-                            if (subcategoryValue) {
-                                const itemType = '{{ item_type }}';
-                                let ajaxUrl = '';
-                                
-                                if (itemType === 'products') {
-                                    ajaxUrl = `/ajax/brands/?subcategory=${subcategoryValue}`;
-                                } else if (itemType === 'requests') {
-                                    ajaxUrl = `/buyer-requests/ajax/brands/?subcategory=${subcategoryValue}`;
-                                }
-                                
-                                if (ajaxUrl) {
-                                    fetch(ajaxUrl)
-                                        .then(response => response.json())
-                                        .then(data => {
-                                            data.forEach(brand => {
-                                                const option = document.createElement('option');
-                                                option.value = brand.slug || brand.id;
-                                                option.textContent = brand.name;
-                                                brandSelect.appendChild(option);
-                                            });
-                                        })
-                                        .catch(error => console.error('Error loading brands:', error));
-                                }
-                            }
-                        });
-                    }
-                    
-                    // Handle state change for LGA loading
-                    const stateSelect = document.getElementById('sidebar_state');
-                    const lgaSelect = document.getElementById('sidebar_lga');
-                    
-                    if (stateSelect && lgaSelect) {
-                        stateSelect.addEventListener('change', function() {
-                            const stateId = this.value;
-                            lgaSelect.innerHTML = '<option value="">All LGAs</option>';
-                            lgaSelect.disabled = !stateId;
-                            
-                            if (stateId) {
-                                const itemType = '{{ item_type }}';
-                                let ajaxUrl = `/ajax/lgas/?state=${stateId}`;
-                                
-                                // All three use same LGA endpoint
-                                if (itemType === 'requests') {
-                                    ajaxUrl = `/buyer-requests/ajax/lgas/?state=${stateId}`;
-                                } else if (itemType === 'services') {
-                                    ajaxUrl = `/services/ajax/lgas/?state=${stateId}`;
-                                }
-                                
+                            if (ajaxUrl) {
                                 fetch(ajaxUrl)
                                     .then(response => response.json())
                                     .then(data => {
-                                        data.forEach(lga => {
+                                        data.forEach(subcategory => {
                                             const option = document.createElement('option');
-                                            option.value = lga.id;
-                                            option.textContent = lga.name;
-                                            lgaSelect.appendChild(option);
+                                            option.value = subcategory.slug || subcategory.id;
+                                            option.textContent = subcategory.name;
+                                            subcategorySelect.appendChild(option);
                                         });
-                                        lgaSelect.disabled = false;
                                     })
-                                    .catch(error => console.error('Error loading LGAs:', error));
+                                    .catch(error => console.error('Error loading subcategories:', error));
                             }
-                        });
-                    }
-                    
-                    // Clear all filters
-                    const clearBtn = document.getElementById('clearSidebarFilters');
-                    if (clearBtn) {
-                        clearBtn.addEventListener('click', function() {
-                            window.location.href = form.action;
-                        });
-                    }
-                    
-                    // Auto-submit on radio/checkbox change
-                    const radioInputs = form.querySelectorAll('input[type="radio"], input[type="checkbox"]');
-                    radioInputs.forEach(input => {
-                        input.addEventListener('change', function() {
-                            // Don't auto-submit for category/state changes
-                            if (this.id !== 'sidebar_category' && this.id !== 'sidebar_state') {
-                                form.submit();
-                            }
-                        });
+                        }
                     });
-                    
-                    // Auto-submit on select change (except category/state)
-                    const selectInputs = form.querySelectorAll('select');
-                    selectInputs.forEach(input => {
-                        input.addEventListener('change', function() {
-                            if (this.id !== 'sidebar_category' && this.id !== 'sidebar_state') {
-                                form.submit();
+                }
+                
+                // Handle subcategory change for brand loading
+                if (subcategorySelect && brandSelect) {
+                    subcategorySelect.addEventListener('change', function() {
+                        const subcategoryValue = this.value;
+                        brandSelect.innerHTML = '<option value="">All Brands</option>';
+                        
+                        if (subcategoryValue) {
+                            const itemType = '{{ item_type }}';
+                            let ajaxUrl = '';
+                            
+                            if (itemType === 'products') {
+                                ajaxUrl = `/ajax/brands/?subcategory=${subcategoryValue}`;
+                            } else if (itemType === 'requests') {
+                                ajaxUrl = `/buyer-requests/ajax/brands/?subcategory=${subcategoryValue}`;
                             }
-                        });
+                            
+                            if (ajaxUrl) {
+                                fetch(ajaxUrl)
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        data.forEach(brand => {
+                                            const option = document.createElement('option');
+                                            option.value = brand.slug || brand.id;
+                                            option.textContent = brand.name;
+                                            brandSelect.appendChild(option);
+                                        });
+                                    })
+                                    .catch(error => console.error('Error loading brands:', error));
+                            }
+                        }
+                    });
+                }
+                
+                // Handle state change for LGA loading
+                const stateSelect = document.getElementById('sidebar_state');
+                const lgaSelect = document.getElementById('sidebar_lga');
+                
+                if (stateSelect && lgaSelect) {
+                    stateSelect.addEventListener('change', function() {
+                        const stateId = this.value;
+                        lgaSelect.innerHTML = '<option value="">All LGAs</option>';
+                        lgaSelect.disabled = !stateId;
+                        
+                        if (stateId) {
+                            const itemType = '{{ item_type }}';
+                            let ajaxUrl = `/ajax/lgas/?state=${stateId}`;
+                            
+                            // All three use same LGA endpoint
+                            if (itemType === 'requests') {
+                                ajaxUrl = `/buyer-requests/ajax/lgas/?state=${stateId}`;
+                            } else if (itemType === 'services') {
+                                ajaxUrl = `/services/ajax/lgas/?state=${stateId}`;
+                            }
+                            
+                            fetch(ajaxUrl)
+                                .then(response => response.json())
+                                .then(data => {
+                                    data.forEach(lga => {
+                                        const option = document.createElement('option');
+                                        option.value = lga.id;
+                                        option.textContent = lga.name;
+                                        lgaSelect.appendChild(option);
+                                    });
+                                    lgaSelect.disabled = false;
+                                })
+                                .catch(error => console.error('Error loading LGAs:', error));
+                        }
+                    });
+                }
+                
+                // Clear all filters
+                const clearBtn = document.getElementById('clearSidebarFilters');
+                if (clearBtn) {
+                    clearBtn.addEventListener('click', function() {
+                        window.location.href = form.action;
+                    });
+                }
+                
+                // Auto-submit on radio/checkbox change
+                const radioInputs = form.querySelectorAll('input[type="radio"], input[type="checkbox"]');
+                radioInputs.forEach(input => {
+                    input.addEventListener('change', function() {
+                        // Don't auto-submit for category/state changes
+                        if (this.id !== 'sidebar_category' && this.id !== 'sidebar_state') {
+                            form.submit();
+                        }
                     });
                 });
-            </script>
+                
+                // Auto-submit on select change (except category/state)
+                const selectInputs = form.querySelectorAll('select');
+                selectInputs.forEach(input => {
+                    input.addEventListener('change', function() {
+                        if (this.id !== 'sidebar_category' && this.id !== 'sidebar_state') {
+                            form.submit();
+                        }
+                    });
+                });
+            });
+        </script>
 
+        {% compress js %}
+            
             {# Then load the unified save script #}
             <script type="text/javascript" src="{% static 'js/unified_save.js' %}"></script>
             <script type="text/javascript" src="{% static 'js/base/theme-manager.js' %}"></script>
