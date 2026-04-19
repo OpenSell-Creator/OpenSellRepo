@@ -53,6 +53,11 @@ def format_budget(budget_range, budget_min=None, budget_max=None):
     }
     return budget_map.get(budget_range, 'Not specified')
 
+try:
+    from Home.views import get_active_banners
+except ImportError:
+    def get_active_banners(location='global'):
+        return []
 class BuyerRequestListView(ListView):
     """List view for buyer requests (following ProductListView pattern)"""
     model = BuyerRequest
@@ -332,6 +337,9 @@ class BuyerRequestListView(ListView):
         context['selected_delivery_preference']= self.request.GET.get('delivery_preference', '')
         context['selected_skill_level']        = self.request.GET.get('skill_level_required', '')
         
+        # Get global banners
+        global_banners = get_active_banners('global')
+        context['global_banners'] = global_banners
         return context
 
 class BuyerRequestDetailView(DetailView):
@@ -487,7 +495,10 @@ class BuyerRequestDetailView(DetailView):
         
         if self.request.user.is_authenticated:
             add_request_messaging_context(context, self.object, self.request.user)
-        
+            
+        # Get global banners
+        global_banners = get_active_banners('global')
+        context['global_banners'] = global_banners
         return context
 
 class BuyerRequestCreateView(LoginRequiredMixin, CreateView):
