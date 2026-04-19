@@ -96,6 +96,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',
     'User.apps.UserConfig',
     'Home.apps.HomeConfig',
     'BuyerRequest.apps.BuyerRequestConfig',
