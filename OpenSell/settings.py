@@ -544,9 +544,9 @@ if DEBUG:
 else:
     CACHES = {
         'default': {
-            'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
-            'LOCATION': 'django_cache_table',
-            'TIMEOUT': 86400,
+            'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+            'LOCATION': '/home/ubuntu/opensell_cache',
+            'TIMEOUT': 300,
         }
     }
     COMPRESS_OFFLINE = True
