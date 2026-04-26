@@ -217,7 +217,19 @@ def get_sorted_products(base_queryset, user=None, limit=None):
         
         if limit:
             sorted_queryset = sorted_queryset[:limit]
-        
+
+        # Fetch all related data in bulk to avoid N+1 queries
+        sorted_queryset = sorted_queryset.select_related(
+            'seller',
+            'seller__user',
+            'seller__location',
+            'seller__location__state',
+            'category',
+            'subcategory',
+        ).prefetch_related(
+            'images',
+        )
+
         return sorted_queryset
         
     except Exception:
