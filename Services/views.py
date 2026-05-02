@@ -587,6 +587,7 @@ class ServiceDetailView(DetailView):
 
         # Add time since creation (following existing pattern)
         context['created_at'] = self.object.created_at
+        context['now'] = timezone.now()
         time_since_creation = timezone.now() - self.object.created_at
         
         if time_since_creation.days > 0:

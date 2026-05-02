@@ -2,1020 +2,667 @@
 {% load static %}
 
 {% block page_css %}
-    <link rel="stylesheet" type="text/css" href="{% static 'css/pages/buyer_requests.css' %}">
-    <style>
-        /* Section Cards - Minimal styling for classification */
-        .section-card {
-            background: var(--card-background);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-md);
-            padding: 1.5rem;
-            transition: border-color 0.3s ease;
-        }
-        
-        .section-card:hover {
-            border-color: var(--accent-color);
-        }
-        
-        /* Section Titles with accent color icons */
-        .section-title {
-            color: var(--text-primary);
-            font-weight: 600;
-            font-size: 1.1rem;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 0.5rem;
-        }
-        
-        .section-title i {
-            color: var(--accent-color);
-        }
+<link rel="stylesheet" type="text/css" href="{% static 'css/pages/buyer_requests.css' %}">
+<style>
+    /* ── Section Cards ── */
+    .section-card { background:var(--card-background); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.5rem; transition:border-color 0.3s ease; }
+    .section-card:hover { border-color:var(--accent-color); }
+    .section-title { color:var(--text-primary); font-weight:600; font-size:1.05rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; }
+    .section-title i { color:var(--accent-color); }
 
-        /* Keep original form control styling */
-        .form-control, .form-select {
-            border-width: 2px;
-            border-style: solid;
-            border-color: var(--border-color);
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
-        }
+    /* ── Controls ── */
+    .form-control, .form-select { border-width:2px; border-color:var(--border-color); transition:border-color 0.3s ease,box-shadow 0.3s ease; font-size:0.9375rem; }
+    .form-control:focus, .form-select:focus { border-color:var(--accent-color); box-shadow:0 0 0 3px rgba(184,115,51,0.18); }
+    .form-control.is-invalid,.form-select.is-invalid { border-color:#dc3545; box-shadow:none; }
+    .form-control.is-valid,.form-select.is-valid { border-color:#198754; box-shadow:none; }
+    .form-check-input { border-width:2px; border-color:var(--border-color); }
+    .form-check-input:checked { background-color:var(--primary-color); border-color:var(--primary-color); }
 
-        .form-control:focus, .form-select:focus {
-            border-color: var(--accent-color);
-            box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.2);
-        }
+    .form-label { font-size:0.875rem; font-weight:500; color:var(--text-primary); margin-bottom:0.35rem; }
+    .form-label .req { color:#dc3545; margin-left:2px; font-size:0.8rem; }
+    .form-label .opt { font-size:0.72rem; font-weight:400; color:var(--text-secondary); background:var(--border-color); border-radius:3px; padding:1px 5px; margin-left:4px; }
+    .form-text { font-size:0.78rem; margin-top:0.25rem; color:var(--text-secondary)!important; padding-left:0.25rem; }
 
-        .form-check-input {
-            border-width: 2px;
-            border-color: var(--border-color);
-        }
+    /* ── Error msg ── */
+    .field-error-msg { font-size:0.8rem; color:#dc3545; margin-top:0.3rem; display:flex; align-items:center; gap:4px; animation:errorSlide 0.2s ease; }
+    @keyframes errorSlide{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 
-        .form-check-input:checked {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
+    /* ── Upload zone ── */
+    .upload-zone { border:2px dashed var(--border-color); border-radius:var(--radius-md); padding:1.1rem; background:var(--card-background); transition:border-color 0.25s,background 0.25s; cursor:pointer; }
+    .upload-zone:hover,.upload-zone.drag-over { border-color:var(--accent-color); background:rgba(184,115,51,0.04); }
+    .upload-zone label { display:flex; flex-direction:column; align-items:center; gap:0.35rem; cursor:pointer; text-align:center; }
+    .upload-icon { font-size:1.8rem; color:var(--accent-color); opacity:0.8; }
+    .upload-title { font-size:0.85rem; font-weight:600; color:var(--text-primary); }
+    .upload-hint  { font-size:0.75rem; color:var(--text-secondary); }
+    .upload-meta  { display:flex; flex-wrap:wrap; justify-content:center; gap:0.35rem; margin-top:0.4rem; }
+    .upload-badge { font-size:0.68rem; padding:2px 7px; border-radius:20px; background:rgba(184,115,51,0.1); color:var(--accent-color); border:1px solid rgba(184,115,51,0.25); font-weight:500; }
+    .upload-zone input[type="file"] { display:none; }
 
-        /* File Input Styling - minimal changes */
-        .file-input-wrapper {
-            background-color: var(--card-background);
-            border-radius: var(--radius-md);
-        }
+    /* ── Image preview grid ── */
+    .image-preview-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(88px,1fr)); gap:9px; margin-top:0.65rem; }
+    .preview-card { position:relative; border-radius:6px; overflow:hidden; border:2px solid var(--border-color); background:#f8f9fa; }
+    .preview-card.primary { border-color:var(--primary-color,#0d6efd); }
+    .preview-card img { width:100%; height:78px; object-fit:cover; display:block; }
+    .preview-card .preview-info { padding:3px 5px; font-size:0.63rem; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; background:var(--card-background); }
+    .preview-card .primary-badge { position:absolute; top:3px; right:3px; font-size:0.58rem; padding:1px 5px; background:var(--primary-color,#0d6efd); color:#fff; border-radius:3px; }
+    .preview-card .compress-badge { position:absolute; top:3px; left:3px; font-size:0.6rem; padding:1px 5px; background:#198754; color:#fff; border-radius:3px; }
 
-        .file-input-wrapper input[type="file"] {
-            border: none;
-            background: transparent;
-        }
+    /* ── Upload stats ── */
+    .upload-stats { display:flex; align-items:center; justify-content:space-between; padding:0.35rem 0.7rem; border-radius:var(--radius-md); background:rgba(0,0,0,0.03); margin-top:0.45rem; font-size:0.77rem; color:var(--text-secondary); }
+    .upload-stats .stat-item { display:flex; align-items:center; gap:4px; }
 
-        /* Button with primary color */
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-            border: none;
-            font-weight: 600;
-            padding: 0.875rem 2rem;
-            border-radius: var(--radius-md);
-            transition: all 0.3s ease;
-        }
+    /* ── Compression status ── */
+    .compress-status { display:flex; align-items:center; gap:0.5rem; padding:0.45rem 0.7rem; border-radius:var(--radius-md); font-size:0.78rem; margin-top:0.45rem; }
+    .compress-status.running { background:#e7f3ff; color:#0d6efd; border:1px solid #b8d4ff; }
+    .compress-status.done    { background:#d1f2e4; color:#198754; border:1px solid #a3dcc0; }
+    .compress-status.warn    { background:#fff3cd; color:#856404; border:1px solid #ffe08a; }
 
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(13, 110, 253, 0.3);
-        }
+    /* ── Loading overlay ── */
+    .loading-overlay { position:fixed; inset:0; background:rgba(255,255,255,0.95); backdrop-filter:blur(3px); z-index:1050; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity 0.3s ease; }
+    .loading-overlay.show { opacity:1; pointer-events:all; }
+    .loading-content { text-align:center; padding:2rem; background:white; border-radius:14px; box-shadow:0 12px 40px rgba(0,0,0,0.12); width:min(90vw,420px); border:1px solid rgba(0,0,0,0.08); }
+    [data-bs-theme="dark"] .loading-overlay { background:rgba(33,37,41,0.95); }
+    [data-bs-theme="dark"] .loading-content { background:#2d3748; color:#fff; border-color:rgba(255,255,255,0.1); }
 
-        /* Accent color for icons in form helpers */
-        .form-text i,
-        .alert i {
-            color: var(--accent-color);
-        }
+    /* ── Error banner ── */
+    .form-error-banner { background:#fff5f5; border:1px solid #f5c6cb; border-radius:var(--radius-md); padding:0.875rem 1rem; font-size:0.85rem; color:#721c24; display:none; }
+    .form-error-banner.visible { display:flex; align-items:flex-start; gap:0.5rem; }
+    .form-error-banner ul { margin:0; padding-left:1.1rem; }
+    [data-bs-theme="dark"] .form-error-banner { background:#3d1a1e; border-color:#7a2d37; color:#f8d7da; }
 
-        .text-success i {
-            color: var(--success) !important;
-        }
+    /* ── Buttons ── */
+    .btn-primary { background:linear-gradient(135deg,var(--primary-color) 0%,var(--secondary-color) 100%); border:none; font-weight:600; padding:0.875rem 2rem; border-radius:var(--radius-md); transition:all 0.3s ease; }
+    .btn-primary:hover { transform:translateY(-2px); box-shadow:0 4px 14px rgba(13,110,253,0.3); }
 
-        /* Alert styling */
-        .alert-sm {
-            padding: 0.5rem 0.75rem;
-            font-size: 0.875rem;
-        }
+    /* ── Dark ── */
+    [data-bs-theme="dark"] .section-card { background:var(--dark-card-background); border-color:var(--dark-border-color); }
+    [data-bs-theme="dark"] .upload-zone { background:var(--dark-card-background); }
+    [data-bs-theme="dark"] .upload-stats { background:rgba(255,255,255,0.05); }
+    [data-bs-theme="dark"] .preview-card { background:#3d4451; }
 
-        /* Dark Theme Adjustments */
-        [data-bs-theme="dark"] .section-card {
-            background: var(--dark-card-background);
-            border-color: var(--dark-border-color);
-        }
-
-        [data-bs-theme="dark"] .section-card:hover {
-            border-color: var(--dark-accent-color);
-        }
-
-        [data-bs-theme="dark"] .section-title {
-            border-bottom-color: var(--dark-border-color);
-        }
-
-        [data-bs-theme="dark"] .file-input-wrapper {
-            background-color: var(--dark-card-background);
-        }
-
-        [data-bs-theme="dark"] .form-control:focus, 
-        [data-bs-theme="dark"] .form-select:focus {
-            box-shadow: 0 0 0 3px rgba(205, 127, 50, 0.2);
-        }
-
-        /* Form Text - keep original styling */
-        .form-text {
-            font-size: 0.8rem;
-            margin-top: 0.25rem;
-            color: var(--text-secondary) !important;
-            padding-left: 0.5rem;
-        }
-        
-        /* Image Preview Styling - minimal changes */
-        .image-preview-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        
-        .image-preview {
-            width: 80px;
-            height: 80px;
-            border-radius: 4px;
-            object-fit: cover;
-            border: 2px solid var(--border-color);
-            position: relative;
-        }
-        
-        .image-preview.primary {
-            border-color: var(--primary-color);
-        }
-        
-        /* Loading Overlay - keep original */
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background-color: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(2px);
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            transition: opacity 0.3s ease-in-out;
-        }
-        
-        .loading-overlay.show {
-            opacity: 1;
-            display: flex !important;
-        }
-        
-        .loading-content {
-            text-align: center;
-            padding: 2rem;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            max-width: 90vw;
-            width: 100%;
-            max-width: 400px;
-            border: 1px solid rgba(0, 0, 0, 0.1);
-        }
-        
-        /* Dark theme support */
-        [data-bs-theme="dark"] .loading-overlay {
-            background-color: rgba(33, 37, 41, 0.95);
-        }
-        
-        [data-bs-theme="dark"] .loading-content {
-            background: #2d3748;
-            color: #fff;
-            border-color: rgba(255, 255, 255, 0.1);
-        }
-
-        /* Mobile responsive - keep original breakpoints */
-        @media (max-width: 768px) {
-            .section-card {
-                margin-bottom: 1.5rem;
-                padding: 1rem;
-            }
-            
-            .card-body {
-                padding: 1rem !important;
-            }
-            
-            .card-header {
-                padding: 1rem !important;
-            }
-        }
-
-        @media (max-width: 576px) {
-            .form-label .d-flex {
-                flex-direction: column;
-                align-items: flex-start !important;
-                gap: 0.5rem;
-            }
-        }
-    </style>
+    @media(max-width:768px){.section-card{padding:1rem;} .card-body{padding:1rem!important;}}
+</style>
 {% endblock %}
 
 {% block page_js %}
-    <script type="text/javascript" src="{% static 'js/pages/buyer_requests.js' %}"></script>
+<script type="text/javascript" src="{% static 'js/pages/buyer_requests.js' %}"></script>
 {% endblock %}
 
 {% block 'Body' %}
-    <!-- Enhanced Loading Overlay -->
-    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
-        <div class="loading-content">
-            <div class="spinner-border text-primary mb-3" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <div id="uploadProgressText" class="fw-bold mb-2">Processing your request...</div>
-            <div id="uploadProgressBar" class="progress mb-2">
-                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
-            </div>
-            <div id="uploadStatusText" class="text-muted small">Please wait, we're submitting your request details</div>
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-content">
+        <div class="spinner-border text-primary mb-3" role="status"><span class="visually-hidden">Loading…</span></div>
+        <div id="uploadProgressText" class="fw-bold mb-2">Processing your request…</div>
+        <div id="uploadProgressBar" class="progress mb-2" style="height:8px;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width:0%"></div>
         </div>
+        <div id="uploadStatusText" class="text-muted small">Please wait, we're submitting your request details</div>
     </div>
-    
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-10">
-                <div class="card">
-                    <div class="card-header bg-card-header py-3">
-                        <h3 class="mb-0">{{ title }}</h3>
-                        <p class="text-muted mb-0">Tell sellers what you're looking for</p>
+</div>
+
+<div class="container py-3">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card">
+                <div class="card-header bg-card-header py-3">
+                    <h3 class="mb-0">{{ title }}</h3>
+                    <p class="text-muted mb-0 small">Tell sellers exactly what you're looking for</p>
+                </div>
+                <div class="card-body p-4 p-lg-5">
+
+                    {% if form.errors %}
+                    <div class="form-error-banner visible mb-4">
+                        <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
+                        <div>
+                            <strong>Please fix the following errors:</strong>
+                            <ul class="mt-1 mb-0">
+                                {% for field in form %}{% for e in field.errors %}<li>{{ field.label }}: {{ e }}</li>{% endfor %}{% endfor %}
+                                {% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}
+                            </ul>
+                        </div>
                     </div>
-                    <div class="card-body p-4 p-lg-5 position-relative">
-                        
-                        <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate id="requestForm">
-                            {% csrf_token %}
-                            
-                            <div class="row g-4">
-                                <!-- Left Column -->
-                                <div class="col-md-6">
-                                    <!-- Basic Request Setup -->
-                                    <div class="section-card mb-4">
-                                        <h4 class="section-title mb-4">
-                                            <i class="bi bi-info-circle-fill me-2"></i>Basic Request Setup
-                                        </h4>
-                                        
-                                        <!-- Title Input -->
-                                        <div class="form-floating mb-3">
-                                            {{ form.title }}
-                                            <label for="id_title">What are you looking for?</label>
-                                            {% for error in form.title.errors %}
-                                                <div class="invalid-feedback d-block">{{ error }}</div>
-                                            {% endfor %}
+                    {% endif %}
+
+                    <div class="form-error-banner mb-4" id="clientErrorBanner">
+                        <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
+                        <div><strong>Please fix the following errors:</strong><ul id="clientErrorList" class="mt-1 mb-0"></ul></div>
+                    </div>
+
+                    <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate id="requestForm">
+                        {% csrf_token %}
+                        <div class="row g-4">
+
+                            <!-- ═══ LEFT COLUMN ═══ -->
+                            <div class="col-md-6">
+
+                                <!-- Basic Request Setup -->
+                                <div class="section-card mb-4">
+                                    <h4 class="section-title mb-4"><i class="bi bi-info-circle-fill me-2"></i>Basic Request Setup</h4>
+
+                                    <div class="mb-3">
+                                        <label class="form-label" for="id_title">What are you looking for? <span class="req">*</span></label>
+                                        {{ form.title }}
+                                        {% for e in form.title.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                        <div class="form-text">Max 255 characters. E.g. "iPhone 13 Pro Max 256GB" or "Logo Designer"</div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label" for="id_request_type">Request Type <span class="req">*</span></label>
+                                        {{ form.request_type }}
+                                        {% for e in form.request_type.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                        <div class="form-text">Select "Product" for physical items, "Service" for professional help, or "Both".</div>
+                                    </div>
+
+                                    <!-- Product fields group -->
+                                    <div id="product-fields-group">
+                                        <div class="mb-3" id="category-field">
+                                            <label class="form-label" for="id_category">Product Category <span class="req">*</span></label>
+                                            {{ form.category }}
+                                            {% for e in form.category.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                         </div>
-                                        
-                                        <!-- Request Type Input -->
-                                        <div class="form-floating mb-3">
-                                            {{ form.request_type }}
-                                            <label for="id_request_type">Request Type</label>
-                                            {% for error in form.request_type.errors %}
-                                                <div class="invalid-feedback d-block">{{ error }}</div>
-                                            {% endfor %}
+                                        <div class="mb-3" id="subcategory-field">
+                                            <label class="form-label" for="id_subcategory">Subcategory <span class="opt">Optional</span></label>
+                                            {{ form.subcategory }}
+                                            {% for e in form.subcategory.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                            <div class="form-text">Select a category first to load subcategories.</div>
                                         </div>
-                                        
-                                        <!-- PRODUCT FIELDS GROUP -->
-                                        <div id="product-fields-group">
-                                            <!-- Category Input (for product/both) -->
-                                            <div class="form-floating mb-3" id="category-field">
-                                                {{ form.category }}
-                                                <label for="id_category">Product Category</label>
-                                                {% for error in form.category.errors %}
-                                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                                {% endfor %}
-                                            </div>
-                                            
-                                            <!-- Subcategory Input -->
-                                            <div class="form-floating mb-3" id="subcategory-field">
-                                                {{ form.subcategory }}
-                                                <label for="id_subcategory">Subcategory</label>
-                                                {% for error in form.subcategory.errors %}
-                                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                                {% endfor %}
-                                            </div>
-                                            
-                                            <!-- Brand Input -->
-                                            <div class="form-floating mb-3" id="brand-field">
-                                                {{ form.brand }}
-                                                <label for="id_brand">Brand (Optional)</label>
-                                                {% for error in form.brand.errors %}
-                                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                                {% endfor %}
-                                            </div>
-                                            
-                                            <!-- Preferred Condition Input -->
-                                            <div class="form-floating mb-3" id="condition-field">
-                                                {{ form.preferred_condition }}
-                                                <label for="id_preferred_condition">Preferred Condition</label>
-                                                {% for error in form.preferred_condition.errors %}
-                                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                                {% endfor %}
-                                            </div>
+                                        <div class="mb-3" id="brand-field">
+                                            <label class="form-label" for="id_brand">Brand <span class="opt">Optional</span></label>
+                                            {{ form.brand }}
+                                            {% for e in form.brand.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                         </div>
-                                        
-                                        <!-- SERVICE FIELDS GROUP -->
-                                        <div id="service-fields-group">
-                                            <!-- Service Category Input (for service/both) -->
-                                            <div class="form-floating mb-3" id="service-category-field">
-                                                {{ form.service_category }}
-                                                <label for="id_service_category">Service Category</label>
-                                                {% for error in form.service_category.errors %}
-                                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                                {% endfor %}
-                                            </div>
+                                        <div class="mb-3" id="condition-field">
+                                            <label class="form-label" for="id_preferred_condition">Preferred Condition <span class="opt">Optional</span></label>
+                                            {{ form.preferred_condition }}
+                                            {% for e in form.preferred_condition.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                         </div>
                                     </div>
 
-                                    <!-- Budget & Requirements -->
-                                    <div class="section-card">
-                                        <h4 class="section-title mb-4">
-                                            <i class="bi bi-currency-exchange me-2"></i>Budget & Requirements
-                                        </h4>
-                                        
-                                        <!-- Budget Range Input -->
-                                        <div class="form-floating mb-3">
-                                            {{ form.budget_range }}
-                                            <label for="id_budget_range">Budget Range</label>
-                                            {% for error in form.budget_range.errors %}
-                                                <div class="invalid-feedback d-block">{{ error }}</div>
-                                            {% endfor %}
-                                        </div>
-                                        
-                                        <!-- Custom Budget Fields -->
-                                        <div id="customBudgetFields" style="{% if form.budget_range.value == 'custom' %}display: block;{% else %}display: none;{% endif %}">
-                                            <div class="row g-3 mb-3">
-                                                <div class="col-6">
-                                                    <div class="form-floating">
-                                                        {{ form.formatted_budget_min }}
-                                                        <label for="id_formatted_budget_min">Minimum Budget</label>
-                                                        {% for error in form.formatted_budget_min.errors %}
-                                                            <div class="invalid-feedback d-block">{{ error }}</div>
-                                                        {% endfor %}
-                                                    </div>
-                                                </div>
-                                                <div class="col-6">
-                                                    <div class="form-floating">
-                                                        {{ form.formatted_budget_max }}
-                                                        <label for="id_formatted_budget_max">Maximum Budget</label>
-                                                        {% for error in form.formatted_budget_max.errors %}
-                                                            <div class="invalid-feedback d-block">{{ error }}</div>
-                                                        {% endfor %}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Urgency Input -->
-                                        <div class="form-floating mb-3">
-                                            {{ form.urgency }}
-                                            <label for="id_urgency">Urgency Level</label>
-                                            {% for error in form.urgency.errors %}
-                                                <div class="invalid-feedback d-block">{{ error }}</div>
-                                            {% endfor %}
-                                        </div>
-                                        
-                                        <!-- Needed By Input -->
-                                        <div class="form-floating mb-3">
-                                            {{ form.needed_by }}
-                                            <label for="id_needed_by">Needed By (Optional)</label>
-                                            {% for error in form.needed_by.errors %}
-                                                <div class="invalid-feedback d-block">{{ error }}</div>
-                                            {% endfor %}
-                                        </div>
-                                        
-                                        <!-- Quantity Input -->
-                                        <div class="form-floating mb-3" id="quantity-field">
-                                            {{ form.quantity_needed }}
-                                            <label for="id_quantity_needed">Quantity Needed</label>
-                                            {% for error in form.quantity_needed.errors %}
-                                                <div class="invalid-feedback d-block">{{ error }}</div>
-                                            {% endfor %}
-                                        </div>
-
-                                        <!-- Service-specific fields -->
-                                        <div class="form-floating mb-3" id="project-duration-field">
-                                            {{ form.project_duration }}
-                                            <label for="id_project_duration">Project Duration</label>
-                                            {% for error in form.project_duration.errors %}
-                                                <div class="invalid-feedback d-block">{{ error }}</div>
-                                            {% endfor %}
-                                        </div>
-
-                                        <div class="form-floating mb-3" id="skill-level-field">
-                                            {{ form.skill_level_required }}
-                                            <label for="id_skill_level_required">Skill Level Required</label>
-                                            {% for error in form.skill_level_required.errors %}
-                                                <div class="invalid-feedback d-block">{{ error }}</div>
-                                            {% endfor %}
-                                        </div>
-
-                                        <div class="form-floating mb-3" id="delivery-preference-field">
-                                            {{ form.delivery_preference }}
-                                            <label for="id_delivery_preference">Delivery Preference</label>
-                                            {% for error in form.delivery_preference.errors %}
-                                                <div class="invalid-feedback d-block">{{ error }}</div>
-                                            {% endfor %}
+                                    <!-- Service fields group -->
+                                    <div id="service-fields-group">
+                                        <div class="mb-3" id="service-category-field">
+                                            <label class="form-label" for="id_service_category">Service Category <span class="req">*</span></label>
+                                            {{ form.service_category }}
+                                            {% for e in form.service_category.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- Right Column -->
-                                <div class="col-md-6">
-                                    <!-- Request Description -->
-                                    <div class="section-card mb-4">
-                                        <h4 class="section-title mb-4">
-                                            <i class="bi bi-card-text me-2"></i>Request Description
-                                        </h4>
-                                        
-                                        <!-- Description Input -->
-                                        <div class="mb-4">
-                                            <label class="form-label">Detailed Description</label>
-                                            <div class="form-floating position-relative">
-                                                {{ form.description }}
-                                                <label for="id_description">Describe what you need in detail...</label>
-                                                {% for error in form.description.errors %}
-                                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                                {% endfor %}
-                                            </div>
-                                            <div class="form-text text-muted">
-                                                <i class="bi bi-lightbulb me-1"></i>
-                                                Include specifications, features, and any special requirements.
-                                            </div>
-                                        </div>
+                                <!-- Budget & Requirements -->
+                                <div class="section-card">
+                                    <h4 class="section-title mb-4"><i class="bi bi-currency-exchange me-2"></i>Budget & Requirements</h4>
+
+                                    <div class="mb-3">
+                                        <label class="form-label" for="id_budget_range">Budget Range <span class="req">*</span></label>
+                                        {{ form.budget_range }}
+                                        {% for e in form.budget_range.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                     </div>
 
-                                    <!-- Location & Contact -->
-                                    <div class="section-card mb-4">
-                                        <h4 class="section-title mb-4">
-                                            <i class="bi bi-geo-alt me-2"></i>Location & Contact
-                                        </h4>
-                                        
-                                        <!-- Nationwide Acceptance -->
-                                        <div class="form-check form-switch mb-3">
-                                            {{ form.accept_nationwide }}
-                                            <label class="form-check-label" for="id_accept_nationwide">
-                                                Accept responses from anywhere in Nigeria
-                                            </label>
-                                        </div>
-                                        
-                                        <!-- Show Phone -->
-                                        <div class="form-check form-switch mb-3">
-                                            {{ form.show_phone }}
-                                            <label class="form-check-label" for="id_show_phone">
-                                                Show my phone number to responders
-                                            </label>
-                                        </div>
-                                        
-                                        <!-- Contact Instructions -->
-                                        <div class="form-floating mb-3">
-                                            {{ form.contact_instructions }}
-                                            <label for="id_contact_instructions">Contact Instructions (Optional)</label>
-                                            {% for error in form.contact_instructions.errors %}
-                                                <div class="invalid-feedback d-block">{{ error }}</div>
-                                            {% endfor %}
-                                        </div>
-                                    </div>
-
-                                    <!-- Request Images -->
-                                    <div class="section-card">
-                                        <h4 class="section-title mb-4">
-                                            <i class="bi bi-image me-2"></i>Request Images
-                                        </h4>
-                                        
-                                        <!-- Images Upload -->
-                                        <div class="mb-4">
-                                            <label class="form-label">Request Images (Optional)</label>
-                                            <div class="file-input-wrapper border rounded p-3">
-                                                <!-- Display existing images if editing -->
-                                                {% if form.instance.pk and form.instance.images.all %}
-                                                <div class="existing-images mb-3">
-                                                    <p class="form-text">Current Images:</p>
-                                                    <div class="row g-2">
-                                                        {% for img in form.instance.images.all %}
-                                                        <div class="col-4 col-md-3">
-                                                            <div class="position-relative">
-                                                                <img src="{{ img.image.url }}" class="img-thumbnail" alt="Request image">
-                                                                {% if img.is_primary %}
-                                                                <span class="badge bg-primary position-absolute top-0 end-0">Primary</span>
-                                                                {% endif %}
-                                                            </div>
-                                                        </div>
-                                                        {% endfor %}
-                                                    </div>
-                                                    <p class="form-text mt-2">Upload new images to replace existing ones, or leave empty to keep current images.</p>
-                                                </div>
-                                                {% endif %}
-                                                
-                                                <div class="image-preview-container mb-2" id="imagePreviewContainer">
-                                                    <!-- Image previews will be added here dynamically -->
-                                                </div>
-                                                
-                                                {{ form.images }}
-                                                {% for error in form.images.errors %}
-                                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                                {% endfor %}
-                                                <div class="form-text text-muted">
-                                                    Upload images to help sellers understand what you need (max 5 images)
-                                                </div>
-                                                <div id="imageUploadStats" class="mt-2 small text-muted d-none">
-                                                    <div>Files selected: <span id="numFiles">0</span>/5</div>
-                                                    <div>Total size: <span id="totalSize">0 KB</span> (Max 25MB)</div>
-                                                </div>
+                                    <!-- Custom budget -->
+                                    <div id="customBudgetFields" style="{% if form.budget_range.value == 'custom' %}display:block;{% else %}display:none;{% endif %}">
+                                        <div class="row g-3 mb-3">
+                                            <div class="col-6">
+                                                <label class="form-label" for="id_formatted_budget_min">Minimum Budget <span class="req">*</span></label>
+                                                {{ form.formatted_budget_min }}
+                                                {% for e in form.formatted_budget_min.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label" for="id_formatted_budget_max">Maximum Budget <span class="req">*</span></label>
+                                                {{ form.formatted_budget_max }}
+                                                {% for e in form.formatted_budget_max.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                             </div>
                                         </div>
+                                        <div class="form-text mb-2">Enter amounts in Naira (₦). Max must be greater than min.</div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label" for="id_urgency">Urgency Level <span class="req">*</span></label>
+                                        {{ form.urgency }}
+                                        {% for e in form.urgency.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label" for="id_needed_by">Needed By <span class="opt">Optional</span></label>
+                                        {{ form.needed_by }}
+                                        {% for e in form.needed_by.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                        <div class="form-text">Leave blank if flexible on timing.</div>
+                                    </div>
+
+                                    <div class="mb-3" id="quantity-field">
+                                        <label class="form-label" for="id_quantity_needed">Quantity Needed <span class="req">*</span></label>
+                                        {{ form.quantity_needed }}
+                                        {% for e in form.quantity_needed.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                        <div class="form-text">Minimum: 1 unit.</div>
+                                    </div>
+
+                                    <!-- Service-specific -->
+                                    <div class="mb-3" id="project-duration-field">
+                                        <label class="form-label" for="id_project_duration">Project Duration <span class="opt">Optional</span></label>
+                                        {{ form.project_duration }}
+                                        {% for e in form.project_duration.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                        <div class="form-text">E.g. "2 weeks", "1 month"</div>
+                                    </div>
+
+                                    <div class="mb-3" id="skill-level-field">
+                                        <label class="form-label" for="id_skill_level_required">Skill Level Required <span class="opt">Optional</span></label>
+                                        {{ form.skill_level_required }}
+                                        {% for e in form.skill_level_required.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                    </div>
+
+                                    <div class="mb-3" id="delivery-preference-field">
+                                        <label class="form-label" for="id_delivery_preference">Delivery Preference <span class="opt">Optional</span></label>
+                                        {{ form.delivery_preference }}
+                                        {% for e in form.delivery_preference.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="d-grid mt-4">
-                                <button type="submit" id="submitButton" class="btn btn-primary btn-lg">{{ save_button }}</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+                            <!-- ═══ RIGHT COLUMN ═══ -->
+                            <div class="col-md-6">
 
-    <!-- Toast Notification System -->
-    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-        <!-- Success Toast -->
-        <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="d-flex">
-                <div class="toast-body">
-                    <i class="bi bi-check-circle-fill me-2"></i>
-                    <span id="successToastMessage">Request submitted successfully!</span>
+                                <!-- Request Description -->
+                                <div class="section-card mb-4">
+                                    <h4 class="section-title mb-4"><i class="bi bi-card-text me-2"></i>Request Description</h4>
+
+                                    <div class="mb-3">
+                                        <label class="form-label" for="id_description">Detailed Description <span class="req">*</span></label>
+                                        {{ form.description }}
+                                        {% for e in form.description.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                        <div class="form-text"><i class="bi bi-lightbulb me-1"></i>Include specifications, features, preferred condition, and any special requirements.</div>
+                                    </div>
+                                </div>
+
+                                <!-- Location & Contact -->
+                                <div class="section-card mb-4">
+                                    <h4 class="section-title mb-4"><i class="bi bi-geo-alt me-2"></i>Location & Contact</h4>
+
+                                    <div class="form-check form-switch mb-2">
+                                        {{ form.accept_nationwide }}
+                                        <label class="form-check-label small" for="id_accept_nationwide">Accept responses from anywhere in Nigeria</label>
+                                    </div>
+
+                                    <div class="form-check form-switch mb-3">
+                                        {{ form.show_phone }}
+                                        <label class="form-check-label small" for="id_show_phone">Show my phone number to responders</label>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label" for="id_contact_instructions">Contact Instructions <span class="opt">Optional</span></label>
+                                        {{ form.contact_instructions }}
+                                        {% for e in form.contact_instructions.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                    </div>
+                                </div>
+
+                                <!-- Request Images -->
+                                <div class="section-card">
+                                    <h4 class="section-title mb-3"><i class="bi bi-image me-2"></i>Reference Images</h4>
+
+                                    {% if form.instance.pk and form.instance.images.all %}
+                                    <div class="mb-3">
+                                        <p class="form-text fw-semibold mb-2">Current Images:</p>
+                                        <div class="row g-2">
+                                            {% for img in form.instance.images.all %}
+                                            <div class="col-3">
+                                                <div class="position-relative">
+                                                    <img src="{{ img.image.url }}" class="img-thumbnail w-100" style="height:68px;object-fit:cover;" alt="">
+                                                    {% if img.is_primary %}<span class="badge bg-primary position-absolute top-0 end-0" style="font-size:0.58rem;">Primary</span>{% endif %}
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        <p class="form-text mt-2">Upload new images to replace, or leave empty to keep current.</p>
+                                    </div>
+                                    {% endif %}
+
+                                    <div class="upload-zone" id="imageDropZone">
+                                        <label for="id_images">
+                                            <i class="bi bi-cloud-arrow-up upload-icon"></i>
+                                            <span class="upload-title">Click to select or drag & drop</span>
+                                            <span class="upload-hint">Help sellers understand exactly what you need</span>
+                                            <div class="upload-meta">
+                                                <span class="upload-badge"><i class="bi bi-filetype-jpg me-1"></i>JPG</span>
+                                                <span class="upload-badge"><i class="bi bi-filetype-png me-1"></i>PNG</span>
+                                                <span class="upload-badge">Max 5 images</span>
+                                                <span class="upload-badge">5 MB each · 25 MB total</span>
+                                            </div>
+                                        </label>
+                                        {{ form.images }}
+                                    </div>
+
+                                    <div id="imageCompressStatus" class="compress-status running d-none">
+                                        <div class="spinner-border spinner-border-sm flex-shrink-0"></div>
+                                        <span>Optimizing images…</span>
+                                    </div>
+
+                                    <div class="image-preview-grid" id="imagePreviewContainer"></div>
+
+                                    <div id="imageUploadStats" class="upload-stats d-none">
+                                        <div class="stat-item"><i class="bi bi-images"></i><span id="numFiles">0</span>/5 files</div>
+                                        <div class="stat-item"><i class="bi bi-hdd"></i><span id="totalSize">0 KB</span></div>
+                                        <div class="stat-item text-success d-none" id="imgSavedStat"><i class="bi bi-arrow-down-circle"></i><span id="imgSavedPct">0%</span> saved</div>
+                                    </div>
+                                    {% for e in form.images.errors %}<div class="field-error-msg mt-1"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-grid mt-4">
+                            <button type="submit" id="submitButton" class="btn btn-primary btn-lg">
+                                <i class="bi bi-check-lg me-2"></i>{{ save_button }}
+                            </button>
+                        </div>
+                    </form>
                 </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-        </div>
-        
-        <!-- Error Toast -->
-        <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="d-flex">
-                <div class="toast-body">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                    <span id="errorToastMessage">An error occurred. Please try again.</span>
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
         </div>
     </div>
+</div>
+
+<!-- Toasts -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:1100">
+    <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body"><i class="bi bi-check-circle-fill me-2"></i><span id="successToastMessage">Request submitted!</span></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+    <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body"><i class="bi bi-exclamation-triangle-fill me-2"></i><span id="errorToastMessage">Error</span></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
 
 <script>
-    // Replace the ENTIRE <script> section in request_form.html (starting around line 445)
-    document.addEventListener('DOMContentLoaded', function() {
-        const categorySelect = document.getElementById('id_category');
-        const subcategorySelect = document.getElementById('id_subcategory');
-        const brandSelect = document.getElementById('id_brand');
-        const budgetRangeSelect = document.getElementById('id_budget_range');
-        const customBudgetFields = document.getElementById('customBudgetFields');
-        const form = document.getElementById('requestForm');
-        const loadingOverlay = document.getElementById('loadingOverlay');
-        const progressBar = document.querySelector('#uploadProgressBar .progress-bar');
-        const progressText = document.getElementById('uploadProgressText');
-        const statusText = document.getElementById('uploadStatusText');
-        const imageField = document.querySelector('input[name="images"]');
-        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
-        const submitButton = document.getElementById('submitButton');
-        const imageUploadStats = document.getElementById('imageUploadStats');
-        const numFilesEl = document.getElementById('numFiles');
-        const totalSizeEl = document.getElementById('totalSize');
+/* ═══════════════════════════════════════════
+   FastImageCompressor
+═══════════════════════════════════════════ */
+class FastImageCompressor {
+    constructor(){this.maxUploadSize=1024*1024;this.quality=0.85;this.maxDimension=1920;}
+    async compress(file){if(file.size<=this.maxUploadSize)return file;try{return await this._do(file);}catch(e){return file;}}
+    _do(file){return new Promise((res,rej)=>{const reader=new FileReader();reader.onload=e=>{const img=new Image();img.onload=()=>{let w=img.width,h=img.height;if(w>this.maxDimension||h>this.maxDimension){const r=Math.min(this.maxDimension/w,this.maxDimension/h);w=Math.round(w*r);h=Math.round(h*r);}const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.fillStyle='#FFF';ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);canvas.toBlob(blob=>{res(new File([blob],file.name.replace(/\.\w+$/,'.jpg'),{type:'image/jpeg'}));},'image/jpeg',this.quality);};img.onerror=()=>rej(new Error('load'));img.src=e.target.result;};reader.onerror=()=>rej(new Error('read'));reader.readAsDataURL(file);});}
+    static fmtSize(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB';}
+}
 
-        // Request Type handling - SINGLE DECLARATION
-        const requestTypeSelect = document.getElementById('id_request_type');
-        const productFieldsGroup = document.getElementById('product-fields-group');
-        const serviceFieldsGroup = document.getElementById('service-fields-group');
-        const quantityField = document.getElementById('quantity-field');
-        const projectDurationField = document.getElementById('project-duration-field');
-        const skillLevelField = document.getElementById('skill-level-field');
-        const deliveryPreferenceField = document.getElementById('delivery-preference-field');
+document.addEventListener('DOMContentLoaded', function () {
+    /* ── Elements ── */
+    const form              = document.getElementById('requestForm');
+    const categorySelect    = document.getElementById('id_category');
+    const subcategorySelect = document.getElementById('id_subcategory');
+    const brandSelect       = document.getElementById('id_brand');
+    const budgetRangeSelect = document.getElementById('id_budget_range');
+    const customBudgetFields= document.getElementById('customBudgetFields');
+    const requestTypeSelect = document.getElementById('id_request_type');
+    const productFieldsGroup= document.getElementById('product-fields-group');
+    const serviceFieldsGroup= document.getElementById('service-fields-group');
+    const quantityField     = document.getElementById('quantity-field');
+    const projectDurField   = document.getElementById('project-duration-field');
+    const skillLevelField   = document.getElementById('skill-level-field');
+    const delivPrefField    = document.getElementById('delivery-preference-field');
+    const imageField        = document.querySelector('input[name="images"]');
+    const imagePreview      = document.getElementById('imagePreviewContainer');
+    const imageStatsBar     = document.getElementById('imageUploadStats');
+    const imgCompressStatus = document.getElementById('imageCompressStatus');
+    const submitButton      = document.getElementById('submitButton');
+    const loadingOverlay    = document.getElementById('loadingOverlay');
+    const progressBar       = document.querySelector('#uploadProgressBar .progress-bar');
+    const progressText      = document.getElementById('uploadProgressText');
+    const statusText        = document.getElementById('uploadStatusText');
+    const clientErrorBanner = document.getElementById('clientErrorBanner');
+    const clientErrorList   = document.getElementById('clientErrorList');
+    const imageDropZone     = document.getElementById('imageDropZone');
+    const budgetMinInput    = document.getElementById('id_formatted_budget_min');
+    const budgetMaxInput    = document.getElementById('id_formatted_budget_max');
 
-        // Toast setup
-        const successToast = document.getElementById('successToast');
-        const errorToast = document.getElementById('errorToast');
-        const successToastMessage = document.getElementById('successToastMessage');
-        const errorToastMessage = document.getElementById('errorToastMessage');
-        const successToastBS = new bootstrap.Toast(successToast, { delay: 5000 });
-        const errorToastBS = new bootstrap.Toast(errorToast, { delay: 5000 });
+    /* ── Toasts ── */
+    const successToast = new bootstrap.Toast(document.getElementById('successToast'), {delay:5000});
+    const errorToast   = new bootstrap.Toast(document.getElementById('errorToast'),   {delay:6000});
+    function showSuccessToast(m){document.getElementById('successToastMessage').textContent=m;successToast.show();}
+    function showErrorToast(m){document.getElementById('errorToastMessage').textContent=m;errorToast.show();}
+    function showOverlay(){loadingOverlay.classList.add('show');}
+    function hideOverlay(){loadingOverlay.classList.remove('show');}
 
-        function showSuccessToast(message) {
-            successToastMessage.textContent = message;
-            successToastBS.show();
-        }
+    /* ══════════════════════════════
+       Request type toggle
+    ══════════════════════════════ */
+    function syncRequestType() {
+        const t = requestTypeSelect?.value || 'product';
+        const showProduct = t === 'product' || t === 'both';
+        const showService = t === 'service' || t === 'both';
 
-        function showErrorToast(message) {
-            errorToastMessage.textContent = message;
-            errorToastBS.show();
-        }
+        if (productFieldsGroup) productFieldsGroup.style.display = showProduct ? 'block' : 'none';
+        if (serviceFieldsGroup) serviceFieldsGroup.style.display = showService ? 'block' : 'none';
+        if (quantityField)      quantityField.style.display      = showProduct ? 'block' : 'none';
+        if (projectDurField)    projectDurField.style.display    = showService ? 'block' : 'none';
+        if (skillLevelField)    skillLevelField.style.display    = showService ? 'block' : 'none';
+        if (delivPrefField)     delivPrefField.style.display     = showService ? 'block' : 'none';
+    }
+    if (requestTypeSelect) { syncRequestType(); requestTypeSelect.addEventListener('change', syncRequestType); }
 
-        function handleRequestTypeChange() {
-            const requestType = requestTypeSelect.value;
-            
-            // Get individual field references
-            const categoryInput = document.getElementById('id_category');
-            const serviceCategoryInput = document.getElementById('id_service_category');
-            
-            if (requestType === 'product') {
-                // Show product fields, hide service fields
-                if (productFieldsGroup) productFieldsGroup.style.display = 'block';
-                if (serviceFieldsGroup) serviceFieldsGroup.style.display = 'none';
-                if (quantityField) quantityField.style.display = 'block';
-                if (projectDurationField) projectDurationField.style.display = 'none';
-                if (skillLevelField) skillLevelField.style.display = 'none';
-                if (deliveryPreferenceField) deliveryPreferenceField.style.display = 'none';
-                
-                // Make service fields optional
-                if (serviceCategoryInput) serviceCategoryInput.removeAttribute('required');
-                if (document.getElementById('id_project_duration')) {
-                    document.getElementById('id_project_duration').removeAttribute('required');
-                }
-                if (document.getElementById('id_skill_level_required')) {
-                    document.getElementById('id_skill_level_required').removeAttribute('required');
-                }
-                if (document.getElementById('id_delivery_preference')) {
-                    document.getElementById('id_delivery_preference').removeAttribute('required');
-                }
-                
-            } else if (requestType === 'service') {
-                // Show service fields, hide product fields
-                if (productFieldsGroup) productFieldsGroup.style.display = 'none';
-                if (serviceFieldsGroup) serviceFieldsGroup.style.display = 'block';
-                if (quantityField) quantityField.style.display = 'none';
-                if (projectDurationField) projectDurationField.style.display = 'block';
-                if (skillLevelField) skillLevelField.style.display = 'block';
-                if (deliveryPreferenceField) deliveryPreferenceField.style.display = 'block';
-                
-                // Make product fields optional
-                if (categoryInput) categoryInput.removeAttribute('required');
-                if (document.getElementById('id_subcategory')) {
-                    document.getElementById('id_subcategory').removeAttribute('required');
-                }
-                if (document.getElementById('id_brand')) {
-                    document.getElementById('id_brand').removeAttribute('required');
-                }
-                if (document.getElementById('id_quantity_needed')) {
-                    document.getElementById('id_quantity_needed').removeAttribute('required');
-                }
-                
-                // Make service category required
-                if (serviceCategoryInput) serviceCategoryInput.setAttribute('required', 'required');
-                
-            } else if (requestType === 'both') {
-                // Show all fields
-                if (productFieldsGroup) productFieldsGroup.style.display = 'block';
-                if (serviceFieldsGroup) serviceFieldsGroup.style.display = 'block';
-                if (quantityField) quantityField.style.display = 'block';
-                if (projectDurationField) projectDurationField.style.display = 'block';
-                if (skillLevelField) skillLevelField.style.display = 'block';
-                if (deliveryPreferenceField) deliveryPreferenceField.style.display = 'block';
-                
-                // Make both category types optional since at least one will be filled
-                if (categoryInput) categoryInput.removeAttribute('required');
-                if (serviceCategoryInput) serviceCategoryInput.removeAttribute('required');
-            }
-        }
+    /* ── Budget range toggle ── */
+    function syncBudgetFields() {
+        if (!customBudgetFields) return;
+        customBudgetFields.style.display = budgetRangeSelect?.value === 'custom' ? 'block' : 'none';
+    }
+    if (budgetRangeSelect) { syncBudgetFields(); budgetRangeSelect.addEventListener('change', syncBudgetFields); }
 
-        // Initial setup and event listener
-        if (requestTypeSelect) {
-            handleRequestTypeChange(); // Set initial state
-            requestTypeSelect.addEventListener('change', handleRequestTypeChange);
-        }
-
-        // Handle budget range changes
-        if (budgetRangeSelect && customBudgetFields) {
-            function handleBudgetRangeChange() {
-                const selectedRange = budgetRangeSelect.value;
-                
-                if (selectedRange === 'custom') {
-                    customBudgetFields.style.display = 'block';
-                    document.getElementById('id_formatted_budget_min').required = true;
-                    document.getElementById('id_formatted_budget_max').required = true;
-                } else {
-                    customBudgetFields.style.display = 'none';
-                    document.getElementById('id_formatted_budget_min').required = false;
-                    document.getElementById('id_formatted_budget_max').required = false;
-                }
-            }
-            
-            handleBudgetRangeChange();
-            budgetRangeSelect.addEventListener('change', handleBudgetRangeChange);
-        }
-
-        // Update subcategories when category changes
-        if (categorySelect) {
-            categorySelect.addEventListener('change', function() {
-                const categoryId = this.value;
-                subcategorySelect.innerHTML = '<option value="">Select Subcategory</option>';
-                brandSelect.innerHTML = '<option value="">Select Brand</option>';
-        
-                if (categoryId) {
-                    fetch(`{% url 'buyer_requests:ajax_subcategories' %}?category=${categoryId}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            data.forEach(subcategory => {
-                                const option = document.createElement('option');
-                                option.value = subcategory.id;
-                                option.textContent = subcategory.name;
-                                subcategorySelect.appendChild(option);
-                            });
-                        })
-                        .catch(error => {
-                            showErrorToast('Error loading subcategories. Please try selecting another category.');
-                        });
-                }
-            });
-        }
-
-        // Update brands when subcategory changes
-        if (subcategorySelect) {
-            subcategorySelect.addEventListener('change', function() {
-                const subcategoryId = this.value;
-                brandSelect.innerHTML = '<option value="">Select Brand</option>';
-        
-                if (subcategoryId) {
-                    fetch(`{% url 'buyer_requests:ajax_brands' %}?subcategory=${subcategoryId}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            data.forEach(brand => {
-                                const option = document.createElement('option');
-                                option.value = brand.id;
-                                option.textContent = brand.name;
-                                brandSelect.appendChild(option);
-                            });
-                        })
-                        .catch(error => {
-                            showErrorToast('Error loading brands. Please try selecting another subcategory.');
-                        });
-                }
-            });
-        }
-        
-        // Budget formatting for custom range
-        const budgetMinInput = document.getElementById('id_formatted_budget_min');
-        const budgetMaxInput = document.getElementById('id_formatted_budget_max');
-        
-        if (budgetMinInput && budgetMaxInput) {
-            const formatBudget = (value) => {
-                value = value.replace(/[^\d]/g, '');
-                if (value) {
-                    value = parseInt(value, 10);
-                    return '₦ ' + value.toLocaleString('en-NG');
-                }
-                return '';
-            };
-
-            budgetMinInput.addEventListener('input', (e) => {
-                e.target.value = formatBudget(e.target.value);
-            });
-            
-            budgetMaxInput.addEventListener('input', (e) => {
-                e.target.value = formatBudget(e.target.value);
-            });
-        }
-
-        // Enhanced image preview functionality
-        if (imageField) {
-            imageField.addEventListener('change', function() {
-                const maxFiles = 5;
-                const maxSize = 5 * 1024 * 1024; // 5MB per file
-                const maxTotalSize = 25 * 1024 * 1024; // 25MB total
-                const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
-                const files = this.files;
-                
-                imagePreviewContainer.innerHTML = '';
-                
-                if (files.length > maxFiles) {
-                    showErrorToast(`You can only upload a maximum of ${maxFiles} images.`);
-                    return;
-                }
-                
-                let totalSize = 0;
-                const filesToProcess = Math.min(files.length, maxFiles);
-                
-                for (let i = 0; i < filesToProcess; i++) {
-                    totalSize += files[i].size;
-                }
-                
-                if (files.length > 0) {
-                    imageUploadStats.classList.remove('d-none');
-                    numFilesEl.textContent = filesToProcess;
-                    totalSizeEl.textContent = formatFileSize(totalSize);
-                    
-                    if (totalSize > maxTotalSize) {
-                        showErrorToast(`Total file size exceeds the maximum allowed (25MB).`);
-                        this.value = '';
-                        imagePreviewContainer.innerHTML = '';
-                        imageUploadStats.classList.add('d-none');
-                        return;
-                    }
-                } else {
-                    imageUploadStats.classList.add('d-none');
-                }
-                
-                let hasError = false;
-                for (let i = 0; i < filesToProcess; i++) {
-                    const file = files[i];
-                    
-                    if (file.size > maxSize) {
-                        showErrorToast(`Image "${file.name}" is too large. Maximum size is 5MB.`);
-                        hasError = true;
-                        break;
-                    }
-                    
-                    if (!validTypes.includes(file.type)) {
-                        showErrorToast(`File "${file.name}" is not a supported format. Only JPG, JPEG or PNG files are allowed.`);
-                        hasError = true;
-                        break;
-                    }
-                    
-                    createImagePreview(file, i);
-                }
-                
-                if (hasError) {
-                    this.value = '';
-                    imagePreviewContainer.innerHTML = '';
-                    imageUploadStats.classList.add('d-none');
-                }
-            });
-            
-            function createImagePreview(file, index) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const container = document.createElement('div');
-                    container.className = 'position-relative';
-                    
-                    const img = document.createElement('img');
-                    img.src = e.target.result;
-                    img.className = 'image-preview';
-                    if (index === 0) img.classList.add('primary');
-                    img.title = file.name;
-                    
-                    container.appendChild(img);
-                    
-                    if (index === 0) {
-                        const badge = document.createElement('span');
-                        badge.className = 'badge bg-primary position-absolute top-0 end-0';
-                        badge.textContent = 'Primary';
-                        container.appendChild(badge);
-                    }
-                    
-                    const sizeLabel = document.createElement('div');
-                    sizeLabel.className = 'text-center small text-muted mt-1';
-                    sizeLabel.textContent = formatFileSize(file.size);
-                    container.appendChild(sizeLabel);
-                    
-                    imagePreviewContainer.appendChild(container);
-                };
-                reader.readAsDataURL(file);
-            }
-            
-            function formatFileSize(bytes) {
-                if (bytes < 1024) return bytes + ' B';
-                else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-                else return (bytes / 1048576).toFixed(1) + ' MB';
-            }
-        }
-        
-        // Enhanced form submission handling
-        if (form) {
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                if (!form.checkValidity()) {
-                    e.stopPropagation();
-                    form.classList.add('was-validated');
-                    return;
-                }
-                
-                submitButton.disabled = true;
-                showLoadingOverlay();
-                
-                const hasImages = imageField && imageField.files.length > 0;
-                let totalBytes = 0;
-                let fileCount = 0;
-                
-                if (hasImages) {
-                    fileCount = Math.min(imageField.files.length, 5);
-                    for (let i = 0; i < fileCount; i++) {
-                        totalBytes += imageField.files[i].size;
-                    }
-                }
-                
-                const formData = new FormData(form);
-                
-                let progress = 0;
-                let progressInterval;
-                const simulatedUploadDuration = hasImages ? Math.max(2000, (totalBytes / (500 * 1024)) * 1000) : 1500;
-                
-                if (hasImages) {
-                    progressText.textContent = 'Uploading images...';
-                    statusText.textContent = `Uploading ${fileCount} image${fileCount !== 1 ? 's' : ''}...`;
-                    
-                    progressInterval = setInterval(() => {
-                        const progressPercent = Math.min(progress + 2, 95);
-                        progress = progressPercent;
-                        
-                        if (progressPercent >= 90) {
-                            clearInterval(progressInterval);
-                            progressText.textContent = 'Processing your request...';
-                            statusText.textContent = 'Almost done! Finalizing your buyer request...';
-                            progressBar.style.width = '95%';
-                            submitForm(formData, progressInterval);
-                        } else {
-                            progressBar.style.width = `${progressPercent}%`;
-                        }
-                    }, 100);
-                } else {
-                    progressText.textContent = 'Processing your request...';
-                    statusText.textContent = 'Creating your buyer request...';
-                    progressBar.style.width = '60%';
-                    setTimeout(() => submitForm(formData, null), 1000);
-                }
-            });
-        }
-
-        function submitForm(formData, progressInterval) {
-            // Use getAttribute so we get null (not the resolved absolute URL) when
-            // no action is set — then fall back to the current page URL.
-            // fetch(form.action) when action="" resolves to "" which throws in some browsers.
-            const submitUrl = form.getAttribute('action') || window.location.href;
-
-            fetch(submitUrl, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => {
-                if (!response.ok) {
-                    // Read as text first so we never fail trying to .json() an HTML error page
-                    return response.text().then(text => {
-                        let message;
-                        try {
-                            const data = JSON.parse(text);
-                            message = data.error || JSON.stringify(data.errors) || `Server error: ${response.status}`;
-                        } catch (_) {
-                            message = `Server error: ${response.status}`;
-                        }
-                        throw new Error(message);
-                    });
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (progressInterval) clearInterval(progressInterval);
-                
-                progressBar.style.width = '100%';
-                progressText.textContent = 'Success!';
-                statusText.textContent = data.message || 'Your buyer request has been saved successfully.';
-
-                showSuccessToast(data.message || 'Request saved successfully!');
-
-                setTimeout(() => {
-                    window.location.href = data.redirect_url || '{% url "manage_listings" %}';
-                }, 1000);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                
-                if (progressInterval) clearInterval(progressInterval);
-                progressText.textContent = 'Error!';
-                statusText.textContent = error.message || 'There was a problem processing your request.';
-                progressBar.classList.remove('bg-primary');
-                progressBar.classList.add('bg-danger');
-                
-                showErrorToast(error.message || 'Failed to create buyer request. Please try again.');
-                
-                setTimeout(() => {
-                    hideLoadingOverlay();
-                    submitButton.disabled = false;
-                    
-                    const progressBar = document.querySelector('#uploadProgressBar .progress-bar');
-                    if (progressBar) {
-                        progressBar.classList.remove('bg-danger');
-                        progressBar.classList.add('bg-primary');
-                        progressBar.style.width = '0%';
-                    }
-                }, 3000);
-            });
-        }
-
-        function showLoadingOverlay() {
-            const loadingOverlay = document.getElementById('loadingOverlay');
-            document.body.classList.add('loading-active');
-            loadingOverlay.classList.add('show');
-        }
-        
-        function hideLoadingOverlay() {
-            const loadingOverlay = document.getElementById('loadingOverlay');
-            document.body.classList.remove('loading-active');
-            loadingOverlay.classList.remove('show');
-        }
+    /* ── Budget formatters ── */
+    [budgetMinInput, budgetMaxInput].forEach(inp => {
+        if (!inp) return;
+        const fmt = v => { v=v.replace(/[^\d]/g,''); return v?'₦ '+parseInt(v,10).toLocaleString('en-NG'):''; };
+        inp.addEventListener('input', e=>e.target.value=fmt(e.target.value));
+        inp.addEventListener('blur',  e=>e.target.value=fmt(e.target.value));
     });
-    </script>
+
+    /* ── Category → Subcategory AJAX ── */
+    if (categorySelect) {
+        categorySelect.addEventListener('change', function () {
+            const id = this.value;
+            if (subcategorySelect) subcategorySelect.innerHTML='<option value="">Select Subcategory</option>';
+            if (brandSelect) brandSelect.innerHTML='<option value="">Select Brand (Optional)</option>';
+            if (!id) return;
+            fetch(`/ajax/load-subcategories/?category=${id}`)
+                .then(r=>r.json())
+                .then(data=>data.forEach(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=s.name;subcategorySelect?.appendChild(o);}))
+                .catch(()=>showErrorToast('Error loading subcategories. Please try again.'));
+        });
+    }
+    if (subcategorySelect) {
+        subcategorySelect.addEventListener('change', function () {
+            const id = this.value;
+            if (brandSelect) brandSelect.innerHTML='<option value="">Select Brand (Optional)</option>';
+            if (!id) return;
+            fetch(`/ajax/load-brands/?subcategory=${id}`)
+                .then(r=>r.json())
+                .then(data=>data.forEach(b=>{const o=document.createElement('option');o.value=b.id;o.textContent=b.name;brandSelect?.appendChild(o);}))
+                .catch(()=>showErrorToast('Error loading brands. Please try again.'));
+        });
+    }
+
+    /* ══════════════════════════════
+       Image compressor + upload
+    ══════════════════════════════ */
+    const compressor = new FastImageCompressor();
+    let isProcessingImages = false;
+    const IMG_MAX_FILES=5, IMG_MAX_EACH=5*1024*1024, IMG_MAX_TOTAL=25*1024*1024;
+    const IMG_TYPES=['image/jpeg','image/jpg','image/png'];
+
+    if (imageDropZone) {
+        imageDropZone.addEventListener('dragover',  e=>{e.preventDefault();imageDropZone.classList.add('drag-over');});
+        imageDropZone.addEventListener('dragleave', ()=>imageDropZone.classList.remove('drag-over'));
+        imageDropZone.addEventListener('drop', e=>{
+            e.preventDefault();imageDropZone.classList.remove('drag-over');
+            if(imageField&&e.dataTransfer.files.length){const dt=new DataTransfer();Array.from(e.dataTransfer.files).slice(0,IMG_MAX_FILES).forEach(f=>dt.items.add(f));imageField.files=dt.files;imageField.dispatchEvent(new Event('change'));}
+        });
+    }
+
+    if (imageField) {
+        imageField.addEventListener('change', async function () {
+            if (isProcessingImages) return;
+            const raw = Array.from(this.files);
+            if (!raw.length) { clearPreviews(); return; }
+
+            if (raw.length > IMG_MAX_FILES)      { showErrorToast(`Maximum ${IMG_MAX_FILES} images allowed.`); this.value=''; clearPreviews(); return; }
+            for (const f of raw) {
+                if (!IMG_TYPES.includes(f.type)) { showErrorToast(`"${f.name}" is not supported. Use JPG or PNG.`); this.value=''; clearPreviews(); return; }
+                if (f.size > IMG_MAX_EACH)        { showErrorToast(`"${f.name}" exceeds the 5 MB per file limit.`); this.value=''; clearPreviews(); return; }
+            }
+            const rawTotal = raw.reduce((s,f)=>s+f.size,0);
+            if (rawTotal > IMG_MAX_TOTAL) { showErrorToast('Total image size exceeds 25 MB.'); this.value=''; clearPreviews(); return; }
+
+            isProcessingImages = true;
+            clearPreviews();
+            imgCompressStatus.className='compress-status running';
+            imgCompressStatus.classList.remove('d-none');
+            imgCompressStatus.innerHTML='<div class="spinner-border spinner-border-sm flex-shrink-0"></div><span>Optimizing images…</span>';
+
+            try {
+                const compressed = await Promise.all(raw.map(f=>compressor.compress(f)));
+                const dt=new DataTransfer(); compressed.forEach(f=>dt.items.add(f)); this.files=dt.files;
+                const compTotal=compressed.reduce((s,f)=>s+f.size,0);
+                const pct=((rawTotal-compTotal)/rawTotal*100);
+                imgCompressStatus.className='compress-status done';
+                imgCompressStatus.innerHTML=`<i class="bi bi-check-circle-fill flex-shrink-0"></i><span>Ready! ${pct>5?`Saved ${pct.toFixed(0)}%`:''} — ${FastImageCompressor.fmtSize(rawTotal)} → ${FastImageCompressor.fmtSize(compTotal)}</span>`;
+                setTimeout(()=>imgCompressStatus.classList.add('d-none'),5000);
+
+                imageStatsBar.classList.remove('d-none');
+                document.getElementById('numFiles').textContent  = compressed.length;
+                document.getElementById('totalSize').textContent = FastImageCompressor.fmtSize(compTotal);
+                const savedStat = document.getElementById('imgSavedStat');
+                if(pct>5){savedStat?.classList.remove('d-none');const sp=document.getElementById('imgSavedPct');if(sp)sp.textContent=pct.toFixed(0)+'%';}
+
+                compressed.forEach((f,i)=>buildPreview(f,i,raw[i],pct>5));
+            } catch(err) {
+                imgCompressStatus.className='compress-status warn';
+                imgCompressStatus.innerHTML='<i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i><span>Could not optimise. Using originals.</span>';
+                setTimeout(()=>imgCompressStatus.classList.add('d-none'),3500);
+                raw.forEach((f,i)=>buildPreview(f,i,f,false));
+                imageStatsBar.classList.remove('d-none');
+                document.getElementById('numFiles').textContent  = raw.length;
+                document.getElementById('totalSize').textContent = FastImageCompressor.fmtSize(rawTotal);
+            } finally { isProcessingImages=false; }
+        });
+    }
+
+    function clearPreviews(){imagePreview.innerHTML='';imageStatsBar.classList.add('d-none');imgCompressStatus.classList.add('d-none');}
+
+    function buildPreview(file,index,original,wasCompressed){
+        const reader=new FileReader();
+        reader.onload=e=>{
+            const card=document.createElement('div');card.className='preview-card'+(index===0?' primary':'');
+            const img=document.createElement('img');img.src=e.target.result;img.title=file.name;card.appendChild(img);
+            if(index===0){const b=document.createElement('span');b.className='primary-badge';b.textContent='Primary';card.appendChild(b);}
+            if(wasCompressed&&file.size<original.size){const b=document.createElement('span');b.className='compress-badge';b.textContent='✓';card.appendChild(b);}
+            const info=document.createElement('div');info.className='preview-info';info.title=file.name;
+            info.textContent=`${file.name.length>13?file.name.slice(0,12)+'…':file.name} · ${FastImageCompressor.fmtSize(file.size)}`;
+            card.appendChild(info);imagePreview.appendChild(card);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    /* ══════════════════════════════
+       Client-side validation
+    ══════════════════════════════ */
+    function validateForm() {
+        const errors = [];
+        const mark = (id, ok, msg) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.toggle('is-invalid', !ok);
+            el.classList.toggle('is-valid', ok && el.value?.trim().length > 0);
+            if (!ok) errors.push(msg);
+        };
+        mark('id_title',        !!document.getElementById('id_title')?.value.trim(), 'Request title is required.');
+        mark('id_request_type', !!requestTypeSelect?.value,                           'Request type is required.');
+        mark('id_description',  !!document.getElementById('id_description')?.value.trim(), 'Detailed description is required.');
+        mark('id_urgency',      !!document.getElementById('id_urgency')?.value,       'Urgency level is required.');
+        mark('id_budget_range', !!budgetRangeSelect?.value,                           'Budget range is required.');
+
+        const rt = requestTypeSelect?.value || '';
+        if (rt === 'product' || rt === 'both') {
+            if (!categorySelect?.value) { errors.push('Product category is required.'); categorySelect?.classList.add('is-invalid'); }
+        }
+        if (rt === 'service' || rt === 'both') {
+            const sc = document.getElementById('id_service_category');
+            if (!sc?.value) { errors.push('Service category is required.'); sc?.classList.add('is-invalid'); }
+        }
+        if (budgetRangeSelect?.value === 'custom') {
+            const mn = budgetMinInput?.value.replace(/[^\d]/g,'');
+            const mx = budgetMaxInput?.value.replace(/[^\d]/g,'');
+            if (!mn||parseInt(mn,10)<1) { errors.push('Minimum budget is required for custom range.'); budgetMinInput?.classList.add('is-invalid'); }
+            if (!mx||parseInt(mx,10)<1) { errors.push('Maximum budget is required for custom range.'); budgetMaxInput?.classList.add('is-invalid'); }
+            if (mn&&mx&&parseInt(mn,10)>=parseInt(mx,10)) { errors.push('Maximum budget must be greater than minimum budget.'); budgetMaxInput?.classList.add('is-invalid'); }
+        }
+        return errors;
+    }
+
+    /* ══════════════════════════════
+       Form submission
+    ══════════════════════════════ */
+    let isSubmitting = false;
+
+    form?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (isSubmitting) return;
+
+        const errors = validateForm();
+        if (errors.length) {
+            clientErrorList.innerHTML = errors.map(er=>`<li>${er}</li>`).join('');
+            clientErrorBanner.classList.add('visible');
+            clientErrorBanner.scrollIntoView({behavior:'smooth',block:'nearest'});
+            showErrorToast('Please fix the highlighted errors before submitting.');
+            return;
+        }
+        clientErrorBanner.classList.remove('visible');
+
+        isSubmitting = true;
+        submitButton.disabled = true;
+        showOverlay();
+
+        const hasImages = imageField?.files.length > 0;
+        const totalBytes = hasImages ? Array.from(imageField.files).reduce((s,f)=>s+f.size,0) : 0;
+        const formData = new FormData(form);
+
+        let progress = 0;
+        const duration = hasImages ? Math.max(2000, totalBytes/(500*1024)*1000) : 1500;
+        progressBar.style.width='0%';
+        progressText.textContent = hasImages ? 'Uploading images…' : 'Processing your request…';
+        statusText.textContent   = hasImages ? `Uploading ${imageField.files.length} image${imageField.files.length!==1?'s':''}…` : 'Creating buyer request…';
+
+        const interval = setInterval(()=>{
+            progress = Math.min(progress+2, 95);
+            progressBar.style.width=progress+'%';
+            if(progress>=90){clearInterval(interval);progressText.textContent='Finalizing…';submitFormData(formData);}
+        }, duration/50);
+    });
+
+    function submitFormData(formData) {
+        const url = form.getAttribute('action') || window.location.href;
+        fetch(url, {method:'POST', body:formData, headers:{'X-Requested-With':'XMLHttpRequest'}})
+        .then(r=>r.text().then(text=>{let data;try{data=JSON.parse(text);}catch(_){throw new Error('Unexpected server response.');}return{ok:r.ok,data};}))
+        .then(result=>{
+            progressBar.style.width='100%';
+            if(result.data.success||result.ok){
+                progressBar.classList.replace('bg-primary','bg-success');
+                progressText.textContent='Success!';
+                statusText.textContent=result.data.message||'Request posted!';
+                showSuccessToast(result.data.message||'Your request has been posted successfully!');
+                setTimeout(()=>{window.location.href=result.data.redirect_url||'{% url "manage_listings" %}';},1000);
+            } else {
+                throw new Error(result.data.error||'Failed to post request.');
+            }
+        })
+        .catch(err=>{
+            progressBar.classList.add('bg-danger');
+            progressText.textContent='Error';
+            statusText.textContent=err.message;
+            showErrorToast(err.message||'Failed to post request. Please try again.');
+            setTimeout(()=>{hideOverlay();isSubmitting=false;submitButton.disabled=false;progressBar.classList.remove('bg-danger');progressBar.style.width='0%';},3000);
+        });
+    }
+});
+</script>
 {% endblock %}
-{% block 'Footer'%}{% endblock %}
+{% block 'Footer' %}{% endblock %}
