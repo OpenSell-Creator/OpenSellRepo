@@ -2,7 +2,176 @@
 
 {% block page_css %}
 <style>
-    /* ── Section Cards ── */
+    /* ══════════════════════════════════════
+       Tab Wizard — Progress Header
+    ══════════════════════════════════════ */
+    .wizard-header {
+        padding: 1.25rem 1.5rem 0;
+        background: var(--card-background);
+        border-bottom: 1px solid var(--border-color);
+    }
+    .wizard-steps {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        overflow-x: auto;
+        scrollbar-width: none;
+        padding-bottom: 0;
+    }
+    .wizard-steps::-webkit-scrollbar { display: none; }
+
+    .wizard-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.35rem;
+        cursor: pointer;
+        flex: 1;
+        min-width: 80px;
+        padding-bottom: 0.75rem;
+        border-bottom: 3px solid transparent;
+        transition: border-color 0.25s, color 0.25s;
+        position: relative;
+        color: var(--text-secondary);
+        font-size: 0.78rem;
+        font-weight: 500;
+        user-select: none;
+    }
+    .wizard-step + .wizard-step::before {
+        content: '';
+        position: absolute;
+        left: -50%;
+        top: 17px;
+        width: 100%;
+        height: 2px;
+        background: var(--border-color);
+        z-index: 0;
+        transition: background 0.3s;
+    }
+    .wizard-step.completed + .wizard-step::before { background: var(--accent-color, #0d6efd); }
+
+    .wizard-step .step-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        border: 2px solid var(--border-color);
+        background: var(--card-background);
+        z-index: 1;
+        transition: all 0.25s;
+    }
+    .wizard-step.active {
+        color: var(--accent-color, #0d6efd);
+        border-bottom-color: var(--accent-color, #0d6efd);
+    }
+    .wizard-step.active .step-icon {
+        border-color: var(--accent-color, #0d6efd);
+        background: var(--accent-color, #0d6efd);
+        color: #fff;
+    }
+    .wizard-step.completed { color: #198754; }
+    .wizard-step.completed .step-icon {
+        border-color: #198754;
+        background: #198754;
+        color: #fff;
+    }
+    .wizard-step.has-error { color: #dc3545; }
+    .wizard-step.has-error .step-icon { border-color: #dc3545; background: #dc3545; color: #fff; }
+
+    .step-label { font-size: 0.72rem; text-align: center; line-height: 1.2; }
+
+    /* ══════════════════════════════════════
+       Tab Panes
+    ══════════════════════════════════════ */
+    .tab-pane-wizard {
+        display: none;
+        animation: fadeInTab 0.25s ease;
+    }
+    .tab-pane-wizard.active { display: block; }
+    @keyframes fadeInTab {
+        from { opacity: 0; transform: translateY(6px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ══════════════════════════════════════
+       Nav Buttons
+    ══════════════════════════════════════ */
+    .wizard-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding-top: 1.1rem;
+        border-top: 1px solid var(--border-color);
+        margin-top: 1.5rem;
+    }
+    /* Buttons: auto width, never full-width */
+    .wizard-nav .btn {
+        flex: 0 0 auto;
+        width: auto;
+        min-width: 90px;
+        max-width: 160px;
+        padding: 0.55rem 1.1rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        border-radius: var(--radius-md, 0.5rem);
+        white-space: nowrap;
+    }
+    .wizard-nav .btn-submit {
+        min-width: 110px;
+        max-width: 200px;
+    }
+    .step-counter {
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+        text-align: center;
+        flex: 1;
+        white-space: nowrap;
+    }
+    /* Mobile: keep buttons compact */
+    @media (max-width: 400px) {
+        .wizard-nav .btn { min-width: 76px; padding: 0.5rem 0.75rem; font-size: 0.8rem; }
+        .step-counter { font-size: 0.7rem; }
+    }
+
+    /* ══════════════════════════════════════
+       Image Upload — background upload state
+    ══════════════════════════════════════ */
+    .bg-upload-status {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.55rem 0.85rem;
+        border-radius: var(--radius-md);
+        font-size: 0.8rem;
+        margin-top: 0.5rem;
+        transition: all 0.3s;
+    }
+    .bg-upload-status.uploading  { background:#e7f3ff; color:#0d6efd; border:1px solid #b8d4ff; }
+    .bg-upload-status.done       { background:#d1f2e4; color:#198754; border:1px solid #a3dcc0; }
+    .bg-upload-status.error      { background:#fff3cd; color:#856404; border:1px solid #ffe08a; }
+
+    .upload-progress-bar-wrap {
+        height: 4px;
+        border-radius: 2px;
+        background: rgba(0,0,0,0.08);
+        overflow: hidden;
+        margin-top: 4px;
+    }
+    .upload-progress-fill {
+        height: 100%;
+        width: 0%;
+        background: #0d6efd;
+        border-radius: 2px;
+        transition: width 0.3s ease;
+    }
+
+    /* ══════════════════════════════════════
+       Keep original styles intact below
+    ══════════════════════════════════════ */
     .section-card {
         background: var(--card-background);
         border: 1px solid var(--border-color);
@@ -21,7 +190,6 @@
     }
     .section-title i { color: var(--accent-color); }
 
-    /* ── Form Controls ── */
     .form-control, .form-select {
         border-width: 2px;
         border-color: var(--border-color);
@@ -32,45 +200,24 @@
         border-color: var(--accent-color);
         box-shadow: 0 0 0 3px rgba(184,115,51,0.18);
     }
-    .form-control.is-invalid, .form-select.is-invalid {
-        border-color: #dc3545;
-        box-shadow: none;
-    }
-    .form-control.is-valid, .form-select.is-valid {
-        border-color: #198754;
-        box-shadow: none;
-    }
+    .form-control.is-invalid, .form-select.is-invalid { border-color: #dc3545; box-shadow: none; }
+    .form-control.is-valid,   .form-select.is-valid   { border-color: #198754; box-shadow: none; }
+
     .form-label {
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: var(--text-primary);
-        margin-bottom: 0.35rem;
+        font-size: 0.875rem; font-weight: 500;
+        color: var(--text-primary); margin-bottom: 0.35rem;
     }
     .form-label .req { color: #dc3545; margin-left: 2px; font-size: 0.8rem; }
     .form-label .opt {
-        font-size: 0.72rem;
-        font-weight: 400;
-        color: var(--text-secondary);
-        background: var(--border-color);
-        border-radius: 3px;
-        padding: 1px 5px;
-        margin-left: 4px;
+        font-size: 0.72rem; font-weight: 400;
+        color: var(--text-secondary); background: var(--border-color);
+        border-radius: 3px; padding: 1px 5px; margin-left: 4px;
     }
-    .form-text {
-        font-size: 0.78rem;
-        margin-top: 0.25rem;
-        color: var(--text-secondary) !important;
-        padding-left: 0.25rem;
-    }
+    .form-text { font-size: 0.78rem; margin-top: 0.25rem; color: var(--text-secondary) !important; padding-left: 0.25rem; }
 
-    /* ── Inline field error ── */
     .field-error-msg {
-        font-size: 0.8rem;
-        color: #dc3545;
-        margin-top: 0.3rem;
-        display: flex;
-        align-items: center;
-        gap: 4px;
+        font-size: 0.8rem; color: #dc3545; margin-top: 0.3rem;
+        display: flex; align-items: center; gap: 4px;
         animation: errorSlide 0.2s ease;
     }
     @keyframes errorSlide {
@@ -78,208 +225,82 @@
         to   { opacity:1; transform:translateY(0); }
     }
 
-    /* ── Upload zone ── */
     .upload-zone {
-        border: 2px dashed var(--border-color);
-        border-radius: var(--radius-md);
-        padding: 1.25rem;
-        background: var(--card-background);
-        transition: border-color 0.25s, background 0.25s;
-        cursor: pointer;
+        border: 2px dashed var(--border-color); border-radius: var(--radius-md);
+        padding: 1.25rem; background: var(--card-background);
+        transition: border-color 0.25s, background 0.25s; cursor: pointer;
     }
-    .upload-zone:hover, .upload-zone.drag-over {
-        border-color: var(--accent-color);
-        background: rgba(184,115,51,0.04);
-    }
-    .upload-zone .upload-label {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.4rem;
-        cursor: pointer;
-        text-align: center;
-    }
-    .upload-zone .upload-icon { font-size: 2rem; color: var(--accent-color); opacity: 0.8; }
-    .upload-zone .upload-title { font-size: 0.875rem; font-weight: 600; color: var(--text-primary); }
-    .upload-zone .upload-hint { font-size: 0.75rem; color: var(--text-secondary); }
-    .upload-zone .upload-meta {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 0.4rem;
-        margin-top: 0.5rem;
-    }
+    .upload-zone:hover, .upload-zone.drag-over { border-color: var(--accent-color); background: rgba(184,115,51,0.04); }
+    .upload-zone .upload-label { display:flex; flex-direction:column; align-items:center; gap:0.4rem; cursor:pointer; text-align:center; }
+    .upload-zone .upload-icon  { font-size:2rem; color:var(--accent-color); opacity:0.8; }
+    .upload-zone .upload-title { font-size:0.875rem; font-weight:600; color:var(--text-primary); }
+    .upload-zone .upload-hint  { font-size:0.75rem; color:var(--text-secondary); }
+    .upload-zone .upload-meta  { display:flex; flex-wrap:wrap; justify-content:center; gap:0.4rem; margin-top:0.5rem; }
     .upload-badge {
-        font-size: 0.7rem;
-        padding: 2px 8px;
-        border-radius: 20px;
-        background: rgba(184,115,51,0.1);
-        color: var(--accent-color);
-        border: 1px solid rgba(184,115,51,0.25);
-        font-weight: 500;
+        font-size:0.7rem; padding:2px 8px; border-radius:20px;
+        background:rgba(184,115,51,0.1); color:var(--accent-color);
+        border:1px solid rgba(184,115,51,0.25); font-weight:500;
     }
-    .upload-zone input[type="file"] {
-        display: none;
-    }
+    .upload-zone input[type="file"] { display:none; }
 
-    /* ── Image preview grid ── */
-    .image-preview-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-        gap: 10px;
-        margin-top: 0.75rem;
-    }
-    .preview-card {
-        position: relative;
-        border-radius: 6px;
-        overflow: hidden;
-        border: 2px solid var(--border-color);
-        background: #f8f9fa;
-        transition: border-color 0.2s;
-    }
-    .preview-card.primary { border-color: var(--primary-color, #0d6efd); }
-    .preview-card img {
-        width: 100%;
-        height: 80px;
-        object-fit: cover;
-        display: block;
-    }
-    .preview-card .preview-info {
-        padding: 3px 5px;
-        font-size: 0.65rem;
-        color: var(--text-secondary);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        background: var(--card-background);
-    }
-    .preview-card .primary-badge {
-        position: absolute;
-        top: 3px;
-        right: 3px;
-        font-size: 0.6rem;
-        padding: 1px 5px;
-        background: var(--primary-color, #0d6efd);
-        color: #fff;
-        border-radius: 3px;
-    }
-    .preview-card .compress-badge {
-        position: absolute;
-        top: 3px;
-        left: 3px;
-        font-size: 0.6rem;
-        padding: 1px 5px;
-        background: #198754;
-        color: #fff;
-        border-radius: 3px;
-    }
+    .image-preview-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:10px; margin-top:0.75rem; }
+    .preview-card { position:relative; border-radius:6px; overflow:hidden; border:2px solid var(--border-color); background:#f8f9fa; transition:border-color 0.2s; }
+    .preview-card.primary { border-color:var(--primary-color,#0d6efd); }
+    .preview-card img { width:100%; height:80px; object-fit:cover; display:block; }
+    .preview-card .preview-info { padding:3px 5px; font-size:0.65rem; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; background:var(--card-background); }
+    .preview-card .primary-badge  { position:absolute; top:3px; right:3px; font-size:0.6rem; padding:1px 5px; background:var(--primary-color,#0d6efd); color:#fff; border-radius:3px; }
+    .preview-card .compress-badge { position:absolute; top:3px; left:3px; font-size:0.6rem; padding:1px 5px; background:#198754; color:#fff; border-radius:3px; }
 
-    /* ── Upload stats bar ── */
-    .upload-stats {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0.4rem 0.75rem;
-        border-radius: var(--radius-md);
-        background: rgba(0,0,0,0.03);
-        margin-top: 0.5rem;
-        font-size: 0.775rem;
-        color: var(--text-secondary);
-    }
-    .upload-stats .stat-item { display: flex; align-items: center; gap: 4px; }
+    .upload-stats { display:flex; align-items:center; justify-content:space-between; padding:0.4rem 0.75rem; border-radius:var(--radius-md); background:rgba(0,0,0,0.03); margin-top:0.5rem; font-size:0.775rem; color:var(--text-secondary); }
+    .upload-stats .stat-item { display:flex; align-items:center; gap:4px; }
 
-    /* ── Compression status ── */
-    .compress-status {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 0.75rem;
-        border-radius: var(--radius-md);
-        font-size: 0.8rem;
-        margin-top: 0.5rem;
-    }
-    .compress-status.running { background: #e7f3ff; color: #0d6efd; border: 1px solid #b8d4ff; }
-    .compress-status.done    { background: #d1f2e4; color: #198754; border: 1px solid #a3dcc0; }
-    .compress-status.warn    { background: #fff3cd; color: #856404; border: 1px solid #ffe08a; }
+    .compress-status { display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.75rem; border-radius:var(--radius-md); font-size:0.8rem; margin-top:0.5rem; }
+    .compress-status.running { background:#e7f3ff; color:#0d6efd; border:1px solid #b8d4ff; }
+    .compress-status.done    { background:#d1f2e4; color:#198754; border:1px solid #a3dcc0; }
+    .compress-status.warn    { background:#fff3cd; color:#856404; border:1px solid #ffe08a; }
 
-    /* ── Loading overlay ── */
     .loading-overlay {
-        position: fixed; inset: 0;
-        background: rgba(255,255,255,0.95);
-        backdrop-filter: blur(3px);
-        z-index: 1050;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s ease;
+        position:fixed; inset:0; background:rgba(255,255,255,0.95);
+        backdrop-filter:blur(3px); z-index:1050;
+        display:flex; align-items:center; justify-content:center;
+        opacity:0; pointer-events:none; transition:opacity 0.3s ease;
     }
-    .loading-overlay.show { opacity: 1; pointer-events: all; }
+    .loading-overlay.show { opacity:1; pointer-events:all; }
     .loading-content {
-        text-align: center;
-        padding: 2rem;
-        background: white;
-        border-radius: 14px;
-        box-shadow: 0 12px 40px rgba(0,0,0,0.12);
-        width: min(90vw, 420px);
-        border: 1px solid rgba(0,0,0,0.08);
+        text-align:center; padding:2rem; background:white; border-radius:14px;
+        box-shadow:0 12px 40px rgba(0,0,0,0.12); width:min(90vw,420px);
+        border:1px solid rgba(0,0,0,0.08);
     }
-    [data-bs-theme="dark"] .loading-overlay { background: rgba(33,37,41,0.95); }
-    [data-bs-theme="dark"] .loading-content { background: #2d3748; color: #fff; border-color: rgba(255,255,255,0.1); }
+    [data-bs-theme="dark"] .loading-overlay { background:rgba(33,37,41,0.95); }
+    [data-bs-theme="dark"] .loading-content { background:#2d3748; color:#fff; border-color:rgba(255,255,255,0.1); }
 
-    /* ── Summary banner ── */
-    .form-error-banner {
-        background: #fff5f5;
-        border: 1px solid #f5c6cb;
-        border-radius: var(--radius-md);
-        padding: 0.875rem 1rem;
-        font-size: 0.85rem;
-        color: #721c24;
-        display: none;
-    }
-    .form-error-banner.visible { display: flex; align-items: flex-start; gap: 0.5rem; }
-    .form-error-banner ul { margin: 0; padding-left: 1.1rem; }
-    [data-bs-theme="dark"] .form-error-banner { background: #3d1a1e; border-color: #7a2d37; color: #f8d7da; }
+    .form-error-banner { background:#fff5f5; border:1px solid #f5c6cb; border-radius:var(--radius-md); padding:0.875rem 1rem; font-size:0.85rem; color:#721c24; display:none; }
+    .form-error-banner.visible { display:flex; align-items:flex-start; gap:0.5rem; }
+    .form-error-banner ul { margin:0; padding-left:1.1rem; }
+    [data-bs-theme="dark"] .form-error-banner { background:#3d1a1e; border-color:#7a2d37; color:#f8d7da; }
 
-    /* ── Buttons ── */
     .btn-primary {
-        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-        border: none;
-        font-weight: 600;
-        padding: 0.875rem 2rem;
-        border-radius: var(--radius-md);
-        transition: all 0.3s ease;
+        background:linear-gradient(135deg,var(--primary-color) 0%,var(--secondary-color) 100%);
+        border:none; font-weight:600; padding:0.875rem 2rem;
+        border-radius:var(--radius-md); transition:all 0.3s ease;
     }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(13,110,253,0.3); }
+    .btn-primary:hover { transform:translateY(-2px); box-shadow:0 4px 14px rgba(13,110,253,0.3); }
 
-    #generateDescriptionBtn {
-        font-size: 0.75rem;
-        padding: 0.25rem 0.6rem;
-        border-radius: 0.375rem;
-        transition: all 0.2s ease;
-    }
-    #generateDescriptionBtn:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    #generateDescriptionBtn { font-size:0.75rem; padding:0.25rem 0.6rem; border-radius:0.375rem; transition:all 0.2s ease; }
+    #generateDescriptionBtn:hover { transform:translateY(-1px); box-shadow:0 2px 6px rgba(0,0,0,0.1); }
 
-    /* ── form-check ── */
-    .form-check-input { border-width: 2px; border-color: var(--border-color); }
-    .form-check-input:checked { background-color: var(--primary-color); border-color: var(--primary-color); }
+    .form-check-input { border-width:2px; border-color:var(--border-color); }
+    .form-check-input:checked { background-color:var(--primary-color); border-color:var(--primary-color); }
 
-    /* ── Dark theme ── */
-    [data-bs-theme="dark"] .section-card { background: var(--dark-card-background); border-color: var(--dark-border-color); }
-    [data-bs-theme="dark"] .section-card:hover { border-color: var(--dark-accent-color); }
-    [data-bs-theme="dark"] .upload-zone { background: var(--dark-card-background); }
-    [data-bs-theme="dark"] .preview-card { background: #3d4451; }
-    [data-bs-theme="dark"] .upload-stats { background: rgba(255,255,255,0.05); }
+    [data-bs-theme="dark"] .section-card  { background:var(--dark-card-background); border-color:var(--dark-border-color); }
+    [data-bs-theme="dark"] .section-card:hover { border-color:var(--dark-accent-color); }
+    [data-bs-theme="dark"] .upload-zone  { background:var(--dark-card-background); }
+    [data-bs-theme="dark"] .preview-card { background:#3d4451; }
+    [data-bs-theme="dark"] .upload-stats { background:rgba(255,255,255,0.05); }
 
-    /* ── Responsive ── */
-    @media (max-width: 768px) {
-        .section-card { padding: 1rem; margin-bottom: 1.25rem; }
-        .card-body { padding: 1rem !important; }
-    }
-    @media (max-width: 576px) {
-        .form-label .d-flex { flex-direction: column; align-items: flex-start !important; gap: 0.5rem; }
-    }
+    @media (max-width:768px) { .section-card { padding:1rem; margin-bottom:1.25rem; } .card-body { padding:1rem !important; } }
+    @media (max-width:576px) { .form-label .d-flex { flex-direction:column; align-items:flex-start !important; gap:0.5rem; } }
+    @media (max-width:480px) { .wizard-step .step-label { display:none; } .wizard-step { min-width:50px; } }
 </style>
 {% endblock %}
 
@@ -298,13 +319,34 @@
 
 <div class="container py-3">
     <div class="row justify-content-center">
-        <div class="col-lg-10">
+        <div class="col-lg-9">
             <div class="card">
-                <div class="card-header bg-card-header py-3">
-                    <h3 class="mb-0">{{ title }}</h3>
-                    <p class="text-muted mb-0 small">Manage your product listing details</p>
+                <!-- Wizard Header -->
+                <div class="wizard-header">
+                    <h3 class="mb-1">{{ title }}</h3>
+                    <p class="text-muted mb-3 small">Fill in each section and click Next to continue</p>
+
+                    <div class="wizard-steps" id="wizardSteps">
+                        <div class="wizard-step active" data-step="0">
+                            <div class="step-icon"><i class="bi bi-info-circle"></i></div>
+                            <span class="step-label">Basic Info</span>
+                        </div>
+                        <div class="wizard-step" data-step="1">
+                            <div class="step-icon"><i class="bi bi-currency-exchange"></i></div>
+                            <span class="step-label">Pricing</span>
+                        </div>
+                        <div class="wizard-step" data-step="2">
+                            <div class="step-icon"><i class="bi bi-card-text"></i></div>
+                            <span class="step-label">Description</span>
+                        </div>
+                        <div class="wizard-step" data-step="3">
+                            <div class="step-icon"><i class="bi bi-image"></i></div>
+                            <span class="step-label">Images</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body p-4 p-lg-5">
+
+                <div class="card-body p-4">
 
                     <!-- Server-side error banner -->
                     {% if form.errors %}
@@ -313,14 +355,8 @@
                         <div>
                             <strong>Please fix the following errors:</strong>
                             <ul class="mt-1 mb-0">
-                                {% for field in form %}
-                                    {% for error in field.errors %}
-                                        <li>{{ field.label }}: {{ error }}</li>
-                                    {% endfor %}
-                                {% endfor %}
-                                {% for error in form.non_field_errors %}
-                                    <li>{{ error }}</li>
-                                {% endfor %}
+                                {% for field in form %}{% for error in field.errors %}<li>{{ field.label }}: {{ error }}</li>{% endfor %}{% endfor %}
+                                {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
                             </ul>
                         </div>
                     </div>
@@ -337,190 +373,197 @@
 
                     <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate id="productForm">
                         {% csrf_token %}
-                        <div class="row g-4">
-                            <!-- Left Column -->
-                            <div class="col-md-6">
-                                <!-- Basic Product Setup -->
-                                <div class="section-card mb-4">
-                                    <h4 class="section-title mb-4"><i class="bi bi-info-circle-fill me-2"></i>Basic Product Setup</h4>
 
-                                    <!-- Title -->
-                                    <div class="mb-3">
-                                        <label class="form-label" for="id_title">Product Title <span class="req">*</span></label>
-                                        {{ form.title }}
-                                        {% if form.title.errors %}
-                                            {% for e in form.title.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                        {% endif %}
-                                        <div class="form-text">Max 255 characters. E.g. "Samsung 55" QLED TV 4K"</div>
-                                    </div>
+                        <!-- ══ TAB 1: Basic Info ══ -->
+                        <div class="tab-pane-wizard active" id="tab-0">
+                            <div class="section-card">
+                                <h4 class="section-title mb-4"><i class="bi bi-info-circle-fill me-2"></i>Basic Product Setup</h4>
 
-                                    <!-- Category -->
-                                    <div class="mb-3">
-                                        <label class="form-label" for="id_category">Category <span class="req">*</span></label>
-                                        {{ form.category }}
-                                        {% for e in form.category.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    </div>
-
-                                    <!-- Subcategory -->
-                                    <div class="mb-3">
-                                        <label class="form-label" for="id_subcategory">Subcategory <span class="req">*</span></label>
-                                        {{ form.subcategory }}
-                                        {% for e in form.subcategory.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                        <div class="form-text">Select a category first to load subcategories.</div>
-                                    </div>
-
-                                    <!-- Brand -->
-                                    <div class="mb-3">
-                                        <label class="form-label" for="id_brand">Brand <span class="opt">Optional</span></label>
-                                        {{ form.brand }}
-                                        {% for e in form.brand.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    </div>
-
-                                    <!-- Condition -->
-                                    <div class="mb-3">
-                                        <label class="form-label" for="id_condition">Condition <span class="req">*</span></label>
-                                        {{ form.condition }}
-                                        {% for e in form.condition.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    </div>
+                                <div class="mb-3">
+                                    <label class="form-label" for="id_title">Product Title <span class="req">*</span></label>
+                                    {{ form.title }}
+                                    {% if form.title.errors %}{% for e in form.title.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}{% endif %}
+                                    <div class="form-text">Max 255 characters. E.g. "Samsung 55" QLED TV 4K"</div>
                                 </div>
 
-                                <!-- Pricing & Availability -->
-                                <div class="section-card">
-                                    <h4 class="section-title mb-4"><i class="bi bi-currency-exchange me-2"></i>Pricing & Availability</h4>
-
-                                    <!-- Price -->
-                                    <div class="mb-3">
-                                        <label class="form-label" for="id_formatted_price">Price <span class="req">*</span></label>
-                                        <input type="text" name="formatted_price"
-                                            class="form-control {% if form.formatted_price.errors %}is-invalid{% endif %}"
-                                            id="id_formatted_price"
-                                            placeholder="₦ 0"
-                                            value="{{ form.formatted_price.value|default:'' }}"
-                                            autocomplete="off">
-                                        {% for e in form.formatted_price.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                        <div class="form-text">Enter in Naira (₦). Numbers only, e.g. ₦ 50,000</div>
-                                    </div>
-
-                                    <!-- Listing Type -->
-                                    <div class="mb-3">
-                                        <label class="form-label" for="id_listing_type">Listing Type <span class="req">*</span></label>
-                                        {{ form.listing_type }}
-                                        {% for e in form.listing_type.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                        {% if is_verified_business %}
-                                            <div class="form-text text-success"><i class="bi bi-check-circle me-1"></i>As a verified business you have access to all listing types including permanent.</div>
-                                        {% else %}
-                                            <div class="form-text"><i class="bi bi-info-circle me-1"></i><a href="{% url 'business_verification_form' %}" class="text-decoration-none">Apply for business verification</a> to unlock permanent listings.</div>
-                                        {% endif %}
-                                    </div>
-
-                                    <!-- Quantity -->
-                                    <div class="mb-3" id="quantityContainer">
-                                        <label class="form-label" for="id_quantity">Quantity <span class="req">*</span></label>
-                                        {{ form.quantity }}
-                                        {% for e in form.quantity.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                        <div class="form-text">Number of units you have available. Minimum: 1</div>
-                                    </div>
-
-                                    <!-- Always Available -->
-                                    <div class="form-check form-switch mb-2">
-                                        {{ form.is_always_available }}
-                                        <label class="form-check-label" for="id_is_always_available">Always Available</label>
-                                    </div>
-                                    <div class="form-text mb-2">Products marked always available won't be removed automatically.</div>
-                                </div>
-                            </div>
-
-                            <!-- Right Column -->
-                            <div class="col-md-6">
-                                <!-- Product Description -->
-                                <div class="section-card mb-4">
-                                    <h4 class="section-title mb-4"><i class="bi bi-card-text me-2"></i>Product Description</h4>
-
-                                    <div class="mb-3">
-                                        <label class="form-label d-flex justify-content-between align-items-center" for="id_description">
-                                            <span>Description <span class="req">*</span></span>
-                                            <button type="button" id="generateDescriptionBtn" class="btn btn-outline-primary btn-sm">
-                                                <i class="bi bi-magic me-1"></i>Generate with AI
-                                            </button>
-                                        </label>
-                                        <div class="position-relative">
-                                            {{ form.description }}
-                                            <div id="aiGenerationStatus" class="position-absolute top-0 end-0 me-2 mt-2 d-none">
-                                                <div class="spinner-border spinner-border-sm text-primary" role="status" style="width:1rem;height:1rem;"><span class="visually-hidden">Generating...</span></div>
-                                            </div>
-                                        </div>
-                                        {% for e in form.description.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                        <div class="form-text"><i class="bi bi-lightbulb me-1"></i>Fill in the product title first, then click "Generate with AI" for an automated description you can edit.</div>
-                                        <div id="aiGenerationMessage" class="mt-2 d-none">
-                                            <div class="alert alert-success py-2 small mb-0" id="aiSuccessMessage"><i class="bi bi-check-circle me-1"></i>AI description generated! Feel free to edit and customize it.</div>
-                                            <div class="alert alert-warning py-2 small mb-0" id="aiErrorMessage"><i class="bi bi-exclamation-triangle me-1"></i><span id="aiErrorText">Could not generate description.</span></div>
-                                        </div>
-                                    </div>
+                                <div class="mb-3">
+                                    <label class="form-label" for="id_category">Category <span class="req">*</span></label>
+                                    {{ form.category }}
+                                    {% for e in form.category.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                 </div>
 
-                                <!-- Product Images -->
-                                <div class="section-card">
-                                    <h4 class="section-title mb-3"><i class="bi bi-image me-2"></i>Product Images</h4>
+                                <div class="mb-3">
+                                    <label class="form-label" for="id_subcategory">Subcategory <span class="req">*</span></label>
+                                    {{ form.subcategory }}
+                                    {% for e in form.subcategory.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                    <div class="form-text">Select a category first to load subcategories.</div>
+                                </div>
 
-                                    {% if form.instance.pk and form.instance.images.all %}
-                                    <div class="mb-3">
-                                        <p class="form-text fw-semibold mb-2">Current Images:</p>
-                                        <div class="row g-2">
-                                            {% for img in form.instance.images.all %}
-                                            <div class="col-3">
-                                                <div class="position-relative">
-                                                    <img src="{{ img.image.url }}" class="img-thumbnail w-100" style="height:70px;object-fit:cover;" alt="Product image">
-                                                    {% if img.is_primary %}<span class="badge bg-primary position-absolute top-0 end-0" style="font-size:0.6rem;">Primary</span>{% endif %}
-                                                </div>
-                                            </div>
-                                            {% endfor %}
-                                        </div>
-                                        <p class="form-text mt-2">Upload new images to replace existing ones, or leave empty to keep current.</p>
-                                    </div>
-                                    {% endif %}
+                                <div class="mb-3">
+                                    <label class="form-label" for="id_brand">Brand <span class="opt">Optional</span></label>
+                                    {{ form.brand }}
+                                    {% for e in form.brand.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                </div>
 
-                                    <!-- Drop zone -->
-                                    <div class="upload-zone" id="imageDropZone">
-                                        <label class="upload-label" for="id_images">
-                                            <i class="bi bi-cloud-arrow-up upload-icon"></i>
-                                            <span class="upload-title">Click to select or drag & drop images</span>
-                                            <span class="upload-hint">First image will be set as primary</span>
-                                            <div class="upload-meta">
-                                                <span class="upload-badge"><i class="bi bi-filetype-jpg me-1"></i>JPG</span>
-                                                <span class="upload-badge"><i class="bi bi-filetype-png me-1"></i>PNG</span>
-                                                <span class="upload-badge">Max 5 images</span>
-                                                <span class="upload-badge">5MB each · 25MB total</span>
-                                            </div>
-                                        </label>
-                                        {{ form.images }}
-                                    </div>
-
-                                    <!-- Compression status -->
-                                    <div id="compressionStatus" class="compress-status running d-none">
-                                        <div class="spinner-border spinner-border-sm flex-shrink-0"></div>
-                                        <span>Optimizing images for faster upload…</span>
-                                    </div>
-
-                                    <!-- Preview grid -->
-                                    <div class="image-preview-grid" id="imagePreviewContainer"></div>
-
-                                    <!-- Stats -->
-                                    <div id="imageUploadStats" class="upload-stats d-none">
-                                        <div class="stat-item"><i class="bi bi-images"></i><span id="numFiles">0</span>/5 files</div>
-                                        <div class="stat-item"><i class="bi bi-hdd"></i><span id="totalSize">0 KB</span> total</div>
-                                        <div class="stat-item text-success d-none" id="savedStat"><i class="bi bi-arrow-down-circle"></i><span id="savedPercent">0%</span> saved</div>
-                                    </div>
-
-                                    {% for e in form.images.errors %}<div class="field-error-msg mt-2"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                <div class="mb-0">
+                                    <label class="form-label" for="id_condition">Condition <span class="req">*</span></label>
+                                    {{ form.condition }}
+                                    {% for e in form.condition.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                 </div>
                             </div>
                         </div>
 
-                        <div class="d-grid mt-4">
-                            <button type="submit" id="submitButton" class="btn btn-primary btn-lg">
-                                <i class="bi bi-check-lg me-2"></i>{{ save }}
+                        <!-- ══ TAB 2: Pricing & Availability ══ -->
+                        <div class="tab-pane-wizard" id="tab-1">
+                            <div class="section-card">
+                                <h4 class="section-title mb-4"><i class="bi bi-currency-exchange me-2"></i>Pricing &amp; Availability</h4>
+
+                                <div class="mb-3">
+                                    <label class="form-label" for="id_formatted_price">Price <span class="req">*</span></label>
+                                    <input type="text" name="formatted_price"
+                                        class="form-control {% if form.formatted_price.errors %}is-invalid{% endif %}"
+                                        id="id_formatted_price"
+                                        placeholder="₦ 0"
+                                        value="{{ form.formatted_price.value|default:'' }}"
+                                        autocomplete="off">
+                                    {% for e in form.formatted_price.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                    <div class="form-text">Enter in Naira (₦). Numbers only, e.g. ₦ 50,000</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label" for="id_listing_type">Listing Type <span class="req">*</span></label>
+                                    {{ form.listing_type }}
+                                    {% for e in form.listing_type.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                    {% if is_verified_business %}
+                                        <div class="form-text text-success"><i class="bi bi-check-circle me-1"></i>As a verified business you have access to all listing types including permanent.</div>
+                                    {% else %}
+                                        <div class="form-text"><i class="bi bi-info-circle me-1"></i><a href="{% url 'business_verification_form' %}" class="text-decoration-none">Apply for business verification</a> to unlock permanent listings.</div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3" id="quantityContainer">
+                                    <label class="form-label" for="id_quantity">Quantity <span class="req">*</span></label>
+                                    {{ form.quantity }}
+                                    {% for e in form.quantity.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                    <div class="form-text">Number of units available. Minimum: 1</div>
+                                </div>
+
+                                <div class="form-check form-switch mb-2">
+                                    {{ form.is_always_available }}
+                                    <label class="form-check-label" for="id_is_always_available">Always Available</label>
+                                </div>
+                                <div class="form-text">Products marked always available won't be removed automatically.</div>
+                            </div>
+                        </div>
+
+                        <!-- ══ TAB 3: Description ══ -->
+                        <div class="tab-pane-wizard" id="tab-2">
+                            <div class="section-card">
+                                <h4 class="section-title mb-4"><i class="bi bi-card-text me-2"></i>Product Description</h4>
+
+                                <div class="mb-3">
+                                    <label class="form-label d-flex justify-content-between align-items-center" for="id_description">
+                                        <span>Description <span class="req">*</span></span>
+                                        <button type="button" id="generateDescriptionBtn" class="btn btn-outline-primary btn-sm">
+                                            <i class="bi bi-magic me-1"></i>Generate with AI
+                                        </button>
+                                    </label>
+                                    <div class="position-relative">
+                                        {{ form.description }}
+                                        <div id="aiGenerationStatus" class="position-absolute top-0 end-0 me-2 mt-2 d-none">
+                                            <div class="spinner-border spinner-border-sm text-primary" role="status" style="width:1rem;height:1rem;"><span class="visually-hidden">Generating...</span></div>
+                                        </div>
+                                    </div>
+                                    {% for e in form.description.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                    <div class="form-text"><i class="bi bi-lightbulb me-1"></i>Fill in the product title first, then click "Generate with AI" for an automated description you can edit.</div>
+                                    <div id="aiGenerationMessage" class="mt-2 d-none">
+                                        <div class="alert alert-success py-2 small mb-0" id="aiSuccessMessage"><i class="bi bi-check-circle me-1"></i>AI description generated! Feel free to edit and customize it.</div>
+                                        <div class="alert alert-warning py-2 small mb-0" id="aiErrorMessage"><i class="bi bi-exclamation-triangle me-1"></i><span id="aiErrorText">Could not generate description.</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ══ TAB 4: Images ══ -->
+                        <div class="tab-pane-wizard" id="tab-3">
+                            <div class="section-card">
+                                <h4 class="section-title mb-3"><i class="bi bi-image me-2"></i>Product Images</h4>
+
+                                {% if form.instance.pk and form.instance.images.all %}
+                                <div class="mb-3">
+                                    <p class="form-text fw-semibold mb-2">Current Images:</p>
+                                    <div class="row g-2">
+                                        {% for img in form.instance.images.all %}
+                                        <div class="col-3">
+                                            <div class="position-relative">
+                                                <img src="{{ img.image.url }}" class="img-thumbnail w-100" style="height:70px;object-fit:cover;" alt="Product image">
+                                                {% if img.is_primary %}<span class="badge bg-primary position-absolute top-0 end-0" style="font-size:0.6rem;">Primary</span>{% endif %}
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    <p class="form-text mt-2">Upload new images to replace existing ones, or leave empty to keep current.</p>
+                                </div>
+                                {% endif %}
+
+                                <!-- Drop zone -->
+                                <div class="upload-zone" id="imageDropZone">
+                                    <label class="upload-label" for="id_images">
+                                        <i class="bi bi-cloud-arrow-up upload-icon"></i>
+                                        <span class="upload-title">Click to select or drag &amp; drop images</span>
+                                        <span class="upload-hint">First image will be set as primary</span>
+                                        <div class="upload-meta">
+                                            <span class="upload-badge"><i class="bi bi-filetype-jpg me-1"></i>JPG</span>
+                                            <span class="upload-badge"><i class="bi bi-filetype-png me-1"></i>PNG</span>
+                                            <span class="upload-badge">Max 5 images</span>
+                                            <span class="upload-badge">5MB each · 25MB total</span>
+                                        </div>
+                                    </label>
+                                    {{ form.images }}
+                                </div>
+
+                                <!-- Compression status -->
+                                <div id="compressionStatus" class="compress-status running d-none">
+                                    <div class="spinner-border spinner-border-sm flex-shrink-0"></div>
+                                    <span>Optimizing images for faster upload…</span>
+                                </div>
+
+                                <!-- Background upload status -->
+                                <div id="bgUploadStatus" class="bg-upload-status d-none">
+                                    <div class="spinner-border spinner-border-sm flex-shrink-0" id="bgUploadSpinner"></div>
+                                    <div class="flex-grow-1">
+                                        <span id="bgUploadText">Uploading images in the background…</span>
+                                        <div class="upload-progress-bar-wrap">
+                                            <div class="upload-progress-fill" id="bgUploadProgressFill"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Preview grid -->
+                                <div class="image-preview-grid" id="imagePreviewContainer"></div>
+
+                                <!-- Stats -->
+                                <div id="imageUploadStats" class="upload-stats d-none">
+                                    <div class="stat-item"><i class="bi bi-images"></i><span id="numFiles">0</span>/5 files</div>
+                                    <div class="stat-item"><i class="bi bi-hdd"></i><span id="totalSize">0 KB</span> total</div>
+                                    <div class="stat-item text-success d-none" id="savedStat"><i class="bi bi-arrow-down-circle"></i><span id="savedPercent">0%</span> saved</div>
+                                </div>
+
+                                {% for e in form.images.errors %}<div class="field-error-msg mt-2"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- ══ Wizard navigation ══ -->
+                        <div class="wizard-nav">
+                            <button type="button" class="btn btn-outline-secondary" id="prevBtn" style="display:none;">
+                                <i class="bi bi-arrow-left me-1"></i>Back
+                            </button>
+                            <div class="step-counter" id="stepCounter">Step 1 of 4</div>
+                            <button type="button" class="btn btn-primary" id="nextBtn">
+                                Next <i class="bi bi-arrow-right ms-1"></i>
                             </button>
                         </div>
+
                     </form>
                 </div>
             </div>
@@ -549,11 +592,7 @@
    FastImageCompressor  (canvas-based, 1MB target)
 ═══════════════════════════════════════════ */
 class FastImageCompressor {
-    constructor() {
-        this.maxUploadSize = 1024 * 1024;
-        this.quality = 0.85;
-        this.maxDimension = 1920;
-    }
+    constructor() { this.maxUploadSize = 1024*1024; this.quality = 0.85; this.maxDimension = 1920; }
     async compress(file) {
         if (file.size <= this.maxUploadSize) return file;
         try { return await this._doCompress(file); }
@@ -569,11 +608,9 @@ class FastImageCompressor {
                     let {w, h} = this._dims(img);
                     canvas.width = w; canvas.height = h;
                     const ctx = canvas.getContext('2d');
-                    ctx.fillStyle = '#FFF';
-                    ctx.fillRect(0, 0, w, h);
-                    ctx.drawImage(img, 0, 0, w, h);
+                    ctx.fillStyle = '#FFF'; ctx.fillRect(0,0,w,h); ctx.drawImage(img,0,0,w,h);
                     canvas.toBlob(blob => {
-                        res(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), {type:'image/jpeg'}));
+                        res(new File([blob], file.name.replace(/\.\w+$/,'.jpg'), {type:'image/jpeg'}));
                     }, 'image/jpeg', this.quality);
                 };
                 img.onerror = () => rej(new Error('Image load failed'));
@@ -602,6 +639,8 @@ class FastImageCompressor {
    DOM Ready
 ═══════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', function () {
+
+    /* ── Core refs ── */
     const form              = document.getElementById('productForm');
     const categorySelect    = document.getElementById('id_category');
     const subcategorySelect = document.getElementById('id_subcategory');
@@ -613,7 +652,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const totalSizeEl       = document.getElementById('totalSize');
     const savedStat         = document.getElementById('savedStat');
     const savedPercentEl    = document.getElementById('savedPercent');
-    const submitButton      = document.getElementById('submitButton');
     const loadingOverlay    = document.getElementById('loadingOverlay');
     const progressBar       = document.querySelector('#uploadProgressBar .progress-bar');
     const progressText      = document.getElementById('uploadProgressText');
@@ -625,6 +663,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const quantityField     = document.getElementById('id_quantity');
     const clientErrorBanner = document.getElementById('clientErrorBanner');
     const clientErrorList   = document.getElementById('clientErrorList');
+    const bgUploadStatus    = document.getElementById('bgUploadStatus');
+    const bgUploadText      = document.getElementById('bgUploadText');
+    const bgUploadSpinner   = document.getElementById('bgUploadSpinner');
+    const bgUploadFill      = document.getElementById('bgUploadProgressFill');
 
     /* ── Toasts ── */
     const successToast = new bootstrap.Toast(document.getElementById('successToast'), {delay:5000});
@@ -636,7 +678,130 @@ document.addEventListener('DOMContentLoaded', function () {
     function showOverlay() { loadingOverlay.classList.add('show'); }
     function hideOverlay() { loadingOverlay.classList.remove('show'); }
 
-    /* ── Listing type: hide quantity for permanent ── */
+    /* ══════════════════════════════════════
+       TAB WIZARD
+    ══════════════════════════════════════ */
+    const TOTAL_STEPS = 4;
+    let currentStep = 0;
+    let stepValidity = [false, false, false, true]; // images tab is optional
+
+    const prevBtn     = document.getElementById('prevBtn');
+    const nextBtn     = document.getElementById('nextBtn');
+    const stepCounter = document.getElementById('stepCounter');
+    const stepEls     = document.querySelectorAll('.wizard-step');
+    const tabPanes    = document.querySelectorAll('.tab-pane-wizard');
+
+    // If server returned errors, try to jump to the first broken tab
+    {% if form.errors %}
+    (function detectErrorTab() {
+        const fieldTabMap = {
+            'id_title': 0, 'id_category': 0, 'id_subcategory': 0, 'id_brand': 0, 'id_condition': 0,
+            'id_formatted_price': 1, 'id_listing_type': 1, 'id_quantity': 1,
+            'id_description': 2,
+            'id_images': 3,
+        };
+        const invalidEls = document.querySelectorAll('.is-invalid, .field-error-msg');
+        if (invalidEls.length) {
+            for (const [id, tab] of Object.entries(fieldTabMap)) {
+                if (document.getElementById(id)?.classList.contains('is-invalid')) {
+                    currentStep = tab;
+                    break;
+                }
+            }
+        }
+    })();
+    {% endif %}
+
+    function goToStep(n) {
+        tabPanes.forEach((p, i) => p.classList.toggle('active', i === n));
+        stepEls.forEach((s, i) => {
+            s.classList.remove('active', 'completed', 'has-error');
+            if (i < n) s.classList.add(stepValidity[i] === false ? 'has-error' : 'completed');
+            if (i === n) s.classList.add('active');
+        });
+        prevBtn.style.display = n === 0 ? 'none' : '';
+        if (n === TOTAL_STEPS - 1) {
+            nextBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>{{ save }}';
+            nextBtn.classList.add('btn-success');
+            nextBtn.classList.remove('btn-primary');
+        } else {
+            nextBtn.innerHTML = 'Next <i class="bi bi-arrow-right ms-1"></i>';
+            nextBtn.classList.add('btn-primary');
+            nextBtn.classList.remove('btn-success');
+        }
+        stepCounter.textContent = `Step ${n+1} of ${TOTAL_STEPS}`;
+        currentStep = n;
+        // Scroll to top of card
+        document.querySelector('.wizard-header')?.scrollIntoView({behavior:'smooth', block:'nearest'});
+    }
+
+    // Clickable step headers (only allow going back or to completed)
+    stepEls.forEach((s, i) => {
+        s.addEventListener('click', () => {
+            if (i < currentStep || stepValidity[i] !== false) goToStep(i);
+        });
+    });
+
+    /* ── Per-step validation ── */
+    function validateStep(n) {
+        const errors = [];
+        const mark = (el, ok) => {
+            if (!el) return;
+            el.classList.toggle('is-invalid', !ok);
+            el.classList.toggle('is-valid',   ok && (el.value||'').trim().length > 0);
+        };
+        if (n === 0) {
+            const titleEl = document.getElementById('id_title');
+            const catEl   = document.getElementById('id_category');
+            const condEl  = document.getElementById('id_condition');
+            if (!titleEl?.value.trim())  { errors.push('Product title is required.'); mark(titleEl, false); } else mark(titleEl, true);
+            if (!catEl?.value)           { errors.push('Please select a category.'); mark(catEl, false); } else mark(catEl, true);
+            if (!condEl?.value)          { errors.push('Please select a condition.'); mark(condEl, false); } else mark(condEl, true);
+        }
+        if (n === 1) {
+            const priceEl = document.getElementById('id_formatted_price');
+            const listEl  = document.getElementById('id_listing_type');
+            const rawPrice = priceEl?.value.replace(/[^\d]/g,'');
+            if (!rawPrice || parseInt(rawPrice,10) < 1) { errors.push('A valid price is required.'); mark(priceEl, false); } else mark(priceEl, true);
+            if (!listEl?.value) { errors.push('Please select a listing type.'); mark(listEl, false); } else mark(listEl, true);
+        }
+        if (n === 2) {
+            const descEl = document.getElementById('id_description');
+            if (!descEl?.value.trim()) { errors.push('Product description is required.'); mark(descEl, false); } else mark(descEl, true);
+        }
+        // Tab 3 (images) — optional, always passes
+        return errors;
+    }
+
+    prevBtn.addEventListener('click', () => { if (currentStep > 0) goToStep(currentStep - 1); });
+
+    nextBtn.addEventListener('click', () => {
+        const errors = validateStep(currentStep);
+        if (errors.length) {
+            clientErrorList.innerHTML = errors.map(e=>`<li>${e}</li>`).join('');
+            clientErrorBanner.classList.add('visible');
+            stepValidity[currentStep] = false;
+            goToStep(currentStep); // refresh step icon
+            showErrorToast('Please fix the highlighted errors.');
+            return;
+        }
+        clientErrorBanner.classList.remove('visible');
+        stepValidity[currentStep] = true;
+
+        if (currentStep === TOTAL_STEPS - 1) {
+            // Final submit
+            submitForm();
+        } else {
+            goToStep(currentStep + 1);
+        }
+    });
+
+    // Init
+    goToStep(currentStep);
+
+    /* ══════════════════════════════════════
+       Listing type: hide quantity for permanent
+    ══════════════════════════════════════ */
     function syncListingType() {
         if (!listingTypeSelect || !quantityContainer) return;
         const isPerm = listingTypeSelect.value === 'permanent';
@@ -680,12 +845,9 @@ document.addEventListener('DOMContentLoaded', function () {
     /* ── Price formatter ── */
     const priceInput = document.getElementById('id_formatted_price');
     if (priceInput) {
-        const fmt = v => {
-            v = v.replace(/[^\d]/g, '');
-            return v ? '₦ ' + parseInt(v, 10).toLocaleString('en-NG') : '';
-        };
-        priceInput.addEventListener('input',  e => e.target.value = fmt(e.target.value));
-        priceInput.addEventListener('blur',   e => e.target.value = fmt(e.target.value));
+        const fmt = v => { v = v.replace(/[^\d]/g,''); return v ? '₦ ' + parseInt(v,10).toLocaleString('en-NG') : ''; };
+        priceInput.addEventListener('input', e => e.target.value = fmt(e.target.value));
+        priceInput.addEventListener('blur',  e => e.target.value = fmt(e.target.value));
     }
 
     /* ── AI Description ── */
@@ -704,7 +866,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const updateBtn = n => {
             if (n <= 0) {
                 generateBtn.disabled = true;
-                generateBtn.classList.replace('btn-outline-primary', 'btn-outline-secondary');
+                generateBtn.classList.replace('btn-outline-primary','btn-outline-secondary');
                 generateBtn.innerHTML = '<i class="bi bi-clock me-1"></i>Daily limit reached';
             } else {
                 generateBtn.innerHTML = `<i class="bi bi-magic me-1"></i>Generate with AI (${n} left today)`;
@@ -714,22 +876,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
         generateBtn.addEventListener('click', () => {
             const title = titleInput?.value.trim();
-            if (!title) { showErrorToast('Please enter a product title first.'); titleInput?.focus(); return; }
-            if (title.length < 3) { showErrorToast('Title should be at least 3 characters.'); titleInput?.focus(); return; }
-
+            if (!title) { showErrorToast('Please enter a product title first (Step 1).'); return; }
+            if (title.length < 3) { showErrorToast('Title should be at least 3 characters.'); return; }
             generateBtn.disabled = true;
             generateBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating…';
             aiStatus.classList.remove('d-none');
             aiMessage.classList.add('d-none');
-
             fetch('/ajax/generate-ai-description/', {
-                method: 'POST',
-                headers: {'Content-Type':'application/json','X-CSRFToken':document.querySelector('[name=csrfmiddlewaretoken]').value,'X-Requested-With':'XMLHttpRequest'},
+                method:'POST',
+                headers:{'Content-Type':'application/json','X-CSRFToken':document.querySelector('[name=csrfmiddlewaretoken]').value,'X-Requested-With':'XMLHttpRequest'},
                 body: JSON.stringify({
-                    title, category: categorySelect?.options[categorySelect.selectedIndex]?.text||'',
+                    title,
+                    category:    categorySelect?.options[categorySelect.selectedIndex]?.text||'',
                     subcategory: subcategorySelect?.options[subcategorySelect.selectedIndex]?.text||'',
-                    brand: brandSelect?.options[brandSelect.selectedIndex]?.text||'',
-                    condition: conditionSelect?.value||'', generate_comprehensive: true
+                    brand:       brandSelect?.options[brandSelect.selectedIndex]?.text||'',
+                    condition:   conditionSelect?.value||'',
+                    generate_comprehensive: true
                 })
             })
             .then(r => r.json())
@@ -749,7 +911,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(err => {
                 aiMessage.classList.remove('d-none'); aiSuccess.style.display='none'; aiError.style.display='block';
                 aiErrorText.textContent = err.message || 'Failed. Please write one manually.';
-                showErrorToast('Failed to generate description. Please write one manually.');
+                showErrorToast('Failed to generate description.');
                 setTimeout(() => aiMessage.classList.add('d-none'), 12000);
             })
             .finally(() => {
@@ -777,7 +939,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let compressedFiles = [];
     let isProcessingImages = false;
 
-    const MAX_FILES = 5, MAX_PER_FILE = 5 * 1024 * 1024, MAX_TOTAL = 25 * 1024 * 1024;
+    const MAX_FILES = 5, MAX_PER_FILE = 5*1024*1024, MAX_TOTAL = 25*1024*1024;
     const VALID_TYPES = ['image/jpeg','image/jpg','image/png'];
 
     /* drag & drop */
@@ -801,19 +963,18 @@ document.addEventListener('DOMContentLoaded', function () {
             const raw = Array.from(this.files);
             if (!raw.length) { clearPreviews(); return; }
 
-            /* basic validation before compression */
             if (raw.length > MAX_FILES) { showErrorToast(`Maximum ${MAX_FILES} images allowed.`); this.value=''; clearPreviews(); return; }
             for (const f of raw) {
                 if (!VALID_TYPES.includes(f.type)) { showErrorToast(`"${f.name}" is not a supported format. Use JPG or PNG.`); this.value=''; clearPreviews(); return; }
-                if (f.size > MAX_PER_FILE) { showErrorToast(`"${f.name}" exceeds 5MB. Please resize it first.`); this.value=''; clearPreviews(); return; }
+                if (f.size > MAX_PER_FILE) { showErrorToast(`"${f.name}" exceeds 5MB.`); this.value=''; clearPreviews(); return; }
             }
-            const rawTotal = raw.reduce((s,f)=>s+f.size,0);
+            const rawTotal = raw.reduce((s,f)=>s+f.size, 0);
             if (rawTotal > MAX_TOTAL) { showErrorToast('Total size exceeds 25MB.'); this.value=''; clearPreviews(); return; }
 
             isProcessingImages = true;
             clearPreviews();
-            compressStatus.classList.remove('d-none','compress-status');
             compressStatus.className = 'compress-status running';
+            compressStatus.classList.remove('d-none');
             compressStatus.innerHTML = '<div class="spinner-border spinner-border-sm flex-shrink-0"></div><span>Optimizing images for faster upload…</span>';
 
             try {
@@ -822,7 +983,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 compressedFiles.forEach(f => dt.items.add(f));
                 this.files = dt.files;
 
-                const compTotal = compressedFiles.reduce((s,f)=>s+f.size,0);
+                const compTotal = compressedFiles.reduce((s,f)=>s+f.size, 0);
                 const pct = ((rawTotal - compTotal) / rawTotal * 100);
 
                 compressStatus.className = 'compress-status done';
@@ -830,14 +991,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     <span>Images optimized! ${pct>5?`Saved ${pct.toFixed(0)}%`:' Ready to upload'} &mdash; ${FastImageCompressor.fmtSize(rawTotal)} → ${FastImageCompressor.fmtSize(compTotal)}</span>`;
                 setTimeout(() => compressStatus.classList.add('d-none'), 5000);
 
-                /* update stats */
                 statsBar.classList.remove('d-none');
                 numFilesEl.textContent  = compressedFiles.length;
                 totalSizeEl.textContent = FastImageCompressor.fmtSize(compTotal);
                 if (pct > 5) { savedStat.classList.remove('d-none'); savedPercentEl.textContent = pct.toFixed(0)+'%'; }
 
-                /* build previews */
                 compressedFiles.forEach((f,i) => buildPreview(f, i, raw[i], pct > 5));
+
+                // ── Start background upload right after compression ──
+                startBackgroundUpload(compressedFiles);
+
             } catch(err) {
                 compressStatus.className = 'compress-status warn';
                 compressStatus.innerHTML = '<i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i><span>Could not optimise. Using original files.</span>';
@@ -846,6 +1009,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 statsBar.classList.remove('d-none');
                 numFilesEl.textContent  = raw.length;
                 totalSizeEl.textContent = FastImageCompressor.fmtSize(rawTotal);
+                // Still attempt background upload with originals
+                startBackgroundUpload(raw);
             } finally {
                 isProcessingImages = false;
             }
@@ -857,6 +1022,8 @@ document.addEventListener('DOMContentLoaded', function () {
         statsBar.classList.add('d-none');
         savedStat.classList.add('d-none');
         compressStatus.classList.add('d-none');
+        bgUploadStatus.classList.add('d-none');
+        bgUploadToken = null;
     }
 
     function buildPreview(file, index, original, wasCompressed) {
@@ -864,104 +1031,169 @@ document.addEventListener('DOMContentLoaded', function () {
         reader.onload = e => {
             const card = document.createElement('div');
             card.className = 'preview-card' + (index===0?' primary':'');
-
             const img = document.createElement('img');
-            img.src   = e.target.result;
-            img.title = file.name;
+            img.src = e.target.result; img.title = file.name;
             card.appendChild(img);
-
             if (index === 0) {
-                const badge = document.createElement('span');
-                badge.className = 'primary-badge';
-                badge.textContent = 'Primary';
-                card.appendChild(badge);
+                const badge = document.createElement('span'); badge.className='primary-badge'; badge.textContent='Primary'; card.appendChild(badge);
             }
             if (wasCompressed && file.size < original.size) {
-                const cb = document.createElement('span');
-                cb.className = 'compress-badge';
-                cb.textContent = '✓';
-                card.appendChild(cb);
+                const cb = document.createElement('span'); cb.className='compress-badge'; cb.textContent='✓'; card.appendChild(cb);
             }
-
-            const info = document.createElement('div');
-            info.className = 'preview-info';
-            info.title = file.name;
+            const info = document.createElement('div'); info.className='preview-info'; info.title=file.name;
             info.textContent = `${file.name.length>14?file.name.slice(0,13)+'…':file.name} · ${FastImageCompressor.fmtSize(file.size)}`;
             card.appendChild(info);
-
             imagePreview.appendChild(card);
         };
         reader.readAsDataURL(file);
     }
 
     /* ══════════════════════════════════════
-       Client-side validation helper
+       Background Image Upload
+       Strategy: POST images to a dedicated
+       /ajax/upload-images-temp/ endpoint.
+       The server stores them temporarily and
+       returns a token. On final submit we pass
+       the token so the server reuses the files
+       instead of uploading again.
+       If your backend doesn't support this yet,
+       the form falls back to normal upload.
     ══════════════════════════════════════ */
-    function validateForm() {
-        const errors = [];
-        const titleEl = document.getElementById('id_title');
-        const priceEl = document.getElementById('id_formatted_price');
-        const catEl   = document.getElementById('id_category');
-        const condEl  = document.getElementById('id_condition');
+    let bgUploadToken    = null;  // temporary upload token from server
+    let bgUploadXHR      = null;  // so we can abort if user re-selects
+    let bgUploadDone     = false;
 
-        const mark = (el, ok) => {
-            el?.classList.toggle('is-invalid', !ok);
-            el?.classList.toggle('is-valid',   ok && el.value.trim().length > 0);
-        };
+    function startBackgroundUpload(files) {
+        // Abort any in-progress upload
+        if (bgUploadXHR) { bgUploadXHR.abort(); bgUploadXHR = null; }
+        bgUploadToken = null;
+        bgUploadDone  = false;
 
-        if (!titleEl?.value.trim())           { errors.push('Product title is required.'); mark(titleEl, false); } else mark(titleEl, true);
-        if (!catEl?.value)                    { errors.push('Please select a category.'); mark(catEl, false); } else mark(catEl, true);
-        if (!condEl?.value)                   { errors.push('Please select a condition.'); mark(condEl, false); } else mark(condEl, true);
-        const rawPrice = priceEl?.value.replace(/[^\d]/g,'');
-        if (!rawPrice || parseInt(rawPrice,10) < 1) { errors.push('A valid price is required.'); mark(priceEl, false); } else mark(priceEl, true);
+        bgUploadStatus.className = 'bg-upload-status uploading';
+        bgUploadStatus.classList.remove('d-none');
+        bgUploadSpinner.style.display = '';
+        bgUploadFill.style.width = '0%';
+        bgUploadText.textContent = `Uploading ${files.length} image${files.length!==1?'s':''} in the background…`;
 
-        return errors;
+        const fd = new FormData();
+        files.forEach(f => fd.append('images', f));
+        fd.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+        const xhr = new XMLHttpRequest();
+        bgUploadXHR = xhr;
+
+        xhr.upload.addEventListener('progress', e => {
+            if (e.lengthComputable) {
+                const pct = Math.round(e.loaded / e.total * 100);
+                bgUploadFill.style.width = pct + '%';
+            }
+        });
+
+        xhr.addEventListener('load', () => {
+            bgUploadXHR = null;
+            bgUploadDone = true;
+            try {
+                const data = JSON.parse(xhr.responseText);
+                if (xhr.status >= 200 && xhr.status < 300 && data.token) {
+                    bgUploadToken = data.token;
+                    bgUploadFill.style.width = '100%';
+                    bgUploadStatus.className = 'bg-upload-status done';
+                    bgUploadSpinner.style.display = 'none';
+                    bgUploadText.textContent = `${files.length} image${files.length!==1?'s':''} uploaded & ready — submit will be instant!`;
+                    showSuccessToast('Images pre-uploaded! Submitting will be instant.');
+                } else {
+                    // Endpoint may not exist yet — fail silently, form submits normally
+                    bgUploadStatus.classList.add('d-none');
+                }
+            } catch(_) {
+                // Endpoint doesn't exist or non-JSON — silent fallback
+                bgUploadStatus.classList.add('d-none');
+            }
+        });
+
+        xhr.addEventListener('error', () => {
+            bgUploadXHR = null;
+            bgUploadStatus.classList.add('d-none'); // silent fallback
+        });
+
+        xhr.addEventListener('abort', () => { bgUploadXHR = null; bgUploadStatus.classList.add('d-none'); });
+
+        xhr.open('POST', '/ajax/upload-images-temp/');
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.send(fd);
     }
 
     /* ══════════════════════════════════════
-       Form submission
+       Form Submission
     ══════════════════════════════════════ */
     let isSubmitting = false;
 
-    form?.addEventListener('submit', function(e) {
-        e.preventDefault();
+    function submitForm() {
         if (isSubmitting) return;
 
-        /* client-side checks */
-        const errors = validateForm();
-        if (errors.length) {
-            clientErrorList.innerHTML = errors.map(er=>`<li>${er}</li>`).join('');
+        // Run all step validations
+        const allErrors = [];
+        for (let i = 0; i < TOTAL_STEPS - 1; i++) {
+            const e = validateStep(i);
+            if (e.length) { stepValidity[i] = false; allErrors.push(...e); } else stepValidity[i] = true;
+        }
+
+        if (allErrors.length) {
+            clientErrorList.innerHTML = allErrors.map(e=>`<li>${e}</li>`).join('');
             clientErrorBanner.classList.add('visible');
-            clientErrorBanner.scrollIntoView({behavior:'smooth', block:'nearest'});
+            // Jump to first broken step
+            for (let i = 0; i < TOTAL_STEPS; i++) { if (stepValidity[i] === false) { goToStep(i); break; } }
             showErrorToast('Please fix the highlighted errors before submitting.');
             return;
         }
         clientErrorBanner.classList.remove('visible');
 
         isSubmitting = true;
-        submitButton.disabled = true;
+        nextBtn.disabled = true;
         showOverlay();
 
-        const hasImages = imageField?.files.length > 0;
-        const totalBytes = hasImages ? Array.from(imageField.files).reduce((s,f)=>s+f.size,0) : 0;
-        const formData = new FormData(form);
+        const hasImages   = imageField?.files.length > 0;
+        const totalBytes  = hasImages ? Array.from(imageField.files).reduce((s,f)=>s+f.size,0) : 0;
+        const formData    = new FormData(form);
 
-        let progress = 0;
-        const duration = hasImages ? Math.max(2000, totalBytes/(500*1024)*1000) : 1500;
-        progressBar.style.width = '0%';
-        progressText.textContent = hasImages ? 'Uploading images…' : 'Processing your listing…';
-        statusText.textContent   = hasImages ? `Uploading ${imageField.files.length} image${imageField.files.length!==1?'s':''}…` : 'Creating product listing…';
+        // If background upload is complete, pass the token to skip re-uploading
+        if (bgUploadToken) {
+            // Remove the actual image files from FormData and pass the token instead
+            formData.delete('images');
+            formData.append('bg_upload_token', bgUploadToken);
+        }
 
-        const interval = setInterval(() => {
-            progress = Math.min(progress + 2, 95);
-            progressBar.style.width = progress + '%';
-            if (progress >= 90) {
-                clearInterval(interval);
-                progressText.textContent = 'Finalizing…';
-                submitFormData(formData);
-            }
-        }, duration / 50);
-    });
+        // Wait for in-flight background upload to finish before submitting
+        // (max wait: 10 s — then just submit with files)
+        const doSubmit = () => {
+            let progress = 0;
+            const duration = hasImages && !bgUploadToken ? Math.max(2000, totalBytes/(500*1024)*1000) : 1200;
+            progressBar.style.width = '0%';
+            progressText.textContent = bgUploadToken ? 'Finalizing your listing…' : (hasImages ? 'Uploading images…' : 'Processing your listing…');
+            statusText.textContent   = bgUploadToken ? 'Images already uploaded — finishing up…' : (hasImages ? `Uploading ${imageField.files.length} image${imageField.files.length!==1?'s':''}…` : 'Creating product listing…');
+
+            const interval = setInterval(() => {
+                progress = Math.min(progress + 2, 95);
+                progressBar.style.width = progress + '%';
+                if (progress >= 90) { clearInterval(interval); progressText.textContent = 'Finalizing…'; submitFormData(formData); }
+            }, duration / 50);
+        };
+
+        if (bgUploadXHR && !bgUploadDone) {
+            // Wait up to 10 s for the background upload
+            let waited = 0;
+            statusText.textContent = 'Waiting for background upload to complete…';
+            const poll = setInterval(() => {
+                waited += 200;
+                if (bgUploadDone || waited >= 10000) {
+                    clearInterval(poll);
+                    doSubmit();
+                }
+            }, 200);
+        } else {
+            doSubmit();
+        }
+    }
 
     function submitFormData(formData) {
         const url = form.getAttribute('action') || window.location.href;
@@ -987,7 +1219,7 @@ document.addEventListener('DOMContentLoaded', function () {
             setTimeout(() => {
                 hideOverlay();
                 isSubmitting = false;
-                submitButton.disabled = false;
+                nextBtn.disabled = false;
                 progressBar.classList.remove('bg-danger');
                 progressBar.style.width = '0%';
             }, 3000);
