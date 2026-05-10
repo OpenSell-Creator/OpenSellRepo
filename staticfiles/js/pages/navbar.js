@@ -40,27 +40,74 @@ document.addEventListener('DOMContentLoaded', function() {
       document.body.classList.remove('sidebar-open');
     });
   
-    // Enhanced scroll behavior for navbar hiding - Mobile Only
+    // ── Swipe-to-hide nav (works on scrollable AND non-scrollable pages) ──
     if (window.innerWidth < 992) {
+      let sidebarIsOpen = false;
       let lastScroll = 0;
-      
+      let touchStartY = 0;
+      let touchStartX = 0;
+      const SWIPE_THRESHOLD = 30; // px of vertical movement to trigger
+
+      function showNav() {
+        mainNavbar.style.transform = 'translateY(0)';
+        mainNavbar.style.opacity = '1';
+        if (bottomNav) {
+          bottomNav.style.transform = 'translateY(0)';
+          bottomNav.style.opacity = '1';
+        }
+      }
+
+      function hideNav() {
+        if (sidebarIsOpen) return;
+        mainNavbar.style.transform = 'translateY(-100%)';
+        mainNavbar.style.opacity = '0';
+        if (bottomNav) {
+          bottomNav.style.transform = 'translateY(100%)';
+          bottomNav.style.opacity = '0';
+        }
+      }
+
+      // ── Touch swipe gesture (works on non-scrollable pages) ──
+      window.addEventListener('touchstart', (e) => {
+        touchStartY = e.touches[0].clientY;
+        touchStartX = e.touches[0].clientX;
+      }, { passive: true });
+
+      window.addEventListener('touchend', (e) => {
+        const deltaY = touchStartY - e.changedTouches[0].clientY; // positive = swiped up
+        const deltaX = Math.abs(touchStartX - e.changedTouches[0].clientX);
+
+        // Ignore mostly-horizontal swipes (e.g. carousels)
+        if (deltaX > Math.abs(deltaY)) return;
+
+        if (deltaY > SWIPE_THRESHOLD) {
+          hideNav(); // swiped up → hide
+        } else if (deltaY < -SWIPE_THRESHOLD) {
+          showNav(); // swiped down → show
+        }
+      }, { passive: true });
+
+      // ── Regular scroll (for scrollable pages) ──
       window.addEventListener('scroll', () => {
         const currentScroll = window.scrollY;
-        
-        // Hide navbar when scrolling down
-        if (currentScroll > lastScroll && currentScroll > 100) {
-          mainNavbar.style.transform = 'translateY(-100%)';
-          bottomNav.style.transform = 'translateY(100%)';
-        } 
-        // Show navbar when scrolling up
-        else {
-          mainNavbar.style.transform = 'translateY(0)';
-          bottomNav.style.transform = 'translateY(0)';
+        if (currentScroll > lastScroll + 4) {
+          hideNav();
+        } else if (currentScroll < lastScroll || currentScroll <= 0) {
+          showNav();
         }
-        
         lastScroll = currentScroll;
+      }, { passive: true });
+
+      // ── Keep nav visible while sidebar is open ──
+      mainSidebar.addEventListener('show.bs.offcanvas', () => {
+        sidebarIsOpen = true;
+        showNav();
+      });
+      mainSidebar.addEventListener('hidden.bs.offcanvas', () => {
+        sidebarIsOpen = false;
       });
     }
+
     
     // Handle search form submissions
     const searchForms = document.querySelectorAll('.search-form, .sidebar-search-form');
