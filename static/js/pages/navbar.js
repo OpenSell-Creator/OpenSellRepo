@@ -73,8 +73,19 @@ document.addEventListener('DOMContentLoaded', function() {
         touchStartX = e.touches[0].clientX;
       }, { passive: true });
 
+      window.addEventListener('touchmove', (e) => {
+        const deltaY = touchStartY - e.touches[0].clientY;
+        const deltaX = Math.abs(touchStartX - e.touches[0].clientX);
+
+        // If swiping downward and nav is hidden, block pull-to-refresh
+        const navHidden = mainNavbar.style.transform === 'translateY(-100%)';
+        if (deltaX < Math.abs(deltaY) && deltaY < -10 && navHidden) {
+          e.preventDefault(); // stop browser pull-to-refresh
+        }
+      }, { passive: false }); // must be non-passive to call preventDefault
+
       window.addEventListener('touchend', (e) => {
-        const deltaY = touchStartY - e.changedTouches[0].clientY; // positive = swiped up
+        const deltaY = touchStartY - e.changedTouches[0].clientY;
         const deltaX = Math.abs(touchStartX - e.changedTouches[0].clientX);
 
         // Ignore mostly-horizontal swipes (e.g. carousels)
