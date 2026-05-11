@@ -6,9 +6,22 @@ class PWAManager {
         this.init();
     }
 
+    /**
+     * Detects whether the current device is running iOS (iPhone/iPad/iPod).
+     * iOS Safari does not support `beforeinstallprompt` and cannot trigger
+     * programmatic installs, so any code path that calls updateInstallButton()
+     * must skip iOS to avoid the "updateInstallButton called for iOS - button
+     * should be hidden" warning.
+     */
+    isIOS() {
+        return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+            // iPadOS 13+ reports itself as MacOS with touch support
+            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    }
+
     async init() {
         // Don't initialize if running in PWA mode
-        if (window.matchMedia('(display-mode: standalone)').matches || 
+        if (window.matchMedia('(display-mode: standalone)').matches ||
             window.navigator.standalone === true) {
             this.isInstalled = true;
             return;
@@ -26,7 +39,7 @@ class PWAManager {
             try {
                 const registration = await navigator.serviceWorker.register('/sw.js');
                 console.log('Service Worker registered successfully:', registration.scope);
-                
+
                 registration.addEventListener('updatefound', () => {
                     const newWorker = registration.installing;
                     newWorker.addEventListener('statechange', () => {
@@ -42,16 +55,20 @@ class PWAManager {
     }
 
     setupInstallPrompt() {
+        // `beforeinstallprompt` never fires on iOS — this block is safe as-is,
+        // but the updateInstallButton() call inside is guarded anyway for clarity.
         window.addEventListener('beforeinstallprompt', (e) => {
             console.log('Install prompt available');
             e.preventDefault();
             this.deferredPrompt = e;
             this.showInstallButton();
-            
-            // Share the prompt with install instructions modal
-            if (window.pwaInstallInstructions) {
+
+            // Share the prompt with the install instructions modal.
+            // Guard against iOS even though this event won't fire there —
+            // belt-and-suspenders in case of future UA spoofing or emulation.
+            if (window.pwaInstallInstructions && !this.isIOS()) {
                 window.pwaInstallInstructions.deferredPrompt = e;
-                window.pwaInstallInstructions.updateInstallButton();
+                this.safeUpdateInstallButton(window.pwaInstallInstructions);
             }
         });
 
@@ -61,10 +78,10 @@ class PWAManager {
             this.isInstalled = true;
             this.hideInstallButton();
             this.showInstallSuccess();
-            
+
             // Mark installation time in localStorage
             localStorage.setItem('pwa_install_time', Date.now().toString());
-            
+
             // Notify install instructions modal
             if (window.pwaInstallInstructions) {
                 window.pwaInstallInstructions.isInstalled = true;
@@ -75,7 +92,7 @@ class PWAManager {
     }
 
     checkInstallStatus() {
-        if (window.matchMedia('(display-mode: standalone)').matches || 
+        if (window.matchMedia('(display-mode: standalone)').matches ||
             window.navigator.standalone === true) {
             this.isInstalled = true;
             this.hideInstallButton();
@@ -92,12 +109,11 @@ class PWAManager {
     }
 
     setupInstallInstructionsIntegration() {
-        // Wait for install instructions to be loaded
         if (window.pwaInstallInstructions) {
             this.installInstructions = window.pwaInstallInstructions;
             this.sharePromptWithInstructions();
         } else {
-            // Wait for it to load
+            // Wait for pwaInstallInstructions to load
             setTimeout(() => {
                 if (window.pwaInstallInstructions) {
                     this.installInstructions = window.pwaInstallInstructions;
@@ -108,15 +124,33 @@ class PWAManager {
     }
 
     sharePromptWithInstructions() {
-        if (this.installInstructions && this.deferredPrompt) {
+        // Only share the deferred prompt (and trigger a button update) when:
+        //   1. The instructions object exists
+        //   2. A real deferred prompt is available (non-null = Chromium-based browser)
+        //   3. The platform is NOT iOS (iOS never receives a deferredPrompt anyway,
+        //      but calling updateInstallButton() on it triggers the console warning)
+        if (this.installInstructions && this.deferredPrompt && !this.isIOS()) {
             this.installInstructions.deferredPrompt = this.deferredPrompt;
-            this.installInstructions.updateInstallButton();
+            this.safeUpdateInstallButton(this.installInstructions);
         }
+    }
+
+    /**
+     * Calls updateInstallButton() on the given instructions instance only when
+     * the platform is not iOS. Centralising the guard here means every future
+     * call site just uses this helper instead of repeating the check inline.
+     *
+     * @param {object} instructions - A pwaInstallInstructions instance
+     */
+    safeUpdateInstallButton(instructions) {
+        if (!instructions || typeof instructions.updateInstallButton !== 'function') return;
+        if (this.isIOS()) return; // iOS install button must stay hidden — skip silently
+        instructions.updateInstallButton();
     }
 
     async promptInstall() {
         if (!this.deferredPrompt) {
-            // Show install instructions modal instead
+            // No browser prompt available — show the guided instructions modal instead
             if (this.installInstructions) {
                 this.installInstructions.show();
             } else {
@@ -128,16 +162,15 @@ class PWAManager {
         this.deferredPrompt.prompt();
         const { outcome } = await this.deferredPrompt.userChoice;
         console.log(`User response to install prompt: ${outcome}`);
-        
+
         if (outcome === 'accepted') {
             this.isInstalled = true;
-            // Mark installation time
             localStorage.setItem('pwa_install_time', Date.now().toString());
         }
-        
+
         this.deferredPrompt = null;
         this.hideInstallButton();
-        
+
         // Track analytics
         if (typeof gtag !== 'undefined') {
             gtag('event', 'pwa_install_attempted', {
@@ -150,12 +183,12 @@ class PWAManager {
     showInstallButton() {
         const installBtn = document.getElementById('pwa-install-btn');
         const footerInstallBtn = document.getElementById('footer-install-btn');
-        
+
         if (installBtn) {
             installBtn.style.display = 'block';
             installBtn.addEventListener('click', () => this.promptInstall());
         }
-        
+
         if (footerInstallBtn) {
             footerInstallBtn.style.display = 'flex';
             footerInstallBtn.addEventListener('click', (e) => {
@@ -169,7 +202,7 @@ class PWAManager {
         const installBtn = document.getElementById('pwa-install-btn');
         const footerInstallBtn = document.getElementById('footer-install-btn');
         const pwaInstallSection = document.getElementById('pwaInstallSection');
-        
+
         if (installBtn) installBtn.style.display = 'none';
         if (footerInstallBtn) footerInstallBtn.style.display = 'none';
         if (pwaInstallSection) pwaInstallSection.style.display = 'none';
@@ -206,7 +239,7 @@ class PWAManager {
             showSystemAlert(message, type, duration);
             return;
         }
-        
+
         // Fallback to custom toast
         const toast = document.createElement('div');
         toast.className = `pwa-toast pwa-toast-${type}`;
@@ -268,7 +301,7 @@ class PWAManager {
 
 document.addEventListener('DOMContentLoaded', () => {
     // Don't initialize PWA manager if running in PWA mode
-    if (!window.matchMedia('(display-mode: standalone)').matches && 
+    if (!window.matchMedia('(display-mode: standalone)').matches &&
         !window.navigator.standalone) {
         window.pwaManager = new PWAManager();
     }
