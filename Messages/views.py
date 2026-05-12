@@ -5,7 +5,6 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages as django_messages
 from django.http import JsonResponse
 from .models import Conversation, Message
-from django.core.paginator import Paginator
 from Home.models import Product_Listing
 from .forms import MessageForm
 from django.db.models import F
@@ -201,71 +200,41 @@ def send_request_message(request, request_id):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# INBOX  (with filter support)
+# INBOX  (client-side tab filtering — no reload on tab switch)
 # ─────────────────────────────────────────────────────────────────────────────
 
 @login_required
 def inbox(request):
-    from django.contrib.contenttypes.models import ContentType
-
     user_profile = request.user.profile
+
+    # Fetch every conversation for this user in one query.
+    # Filtering by type is now handled client-side by the ml-tab panels in the
+    # template, so we always return the full set here.
+    all_conversations = list(
+        Conversation.objects.filter(
+            participants=user_profile
+        ).select_related(
+            'content_type'
+        ).prefetch_related(
+            'participants__user',
+            'service_inquiry',
+            'seller_response',
+        ).order_by('-updated_at')
+    )
+
+    # ── Annotate unread count and last message on each conversation ───────────
+    for conv in all_conversations:
+        conv.unread_count = conv.get_unread_messages_count_for_profile(user_profile)
+        conv.last_message = conv.get_last_message()
+
+    # current_filter is kept so that the active tab is pre-selected correctly
+    # when arriving via a direct URL (e.g. ?filter=products).
     current_filter = request.GET.get('filter', '').strip().lower()
 
-    conversations = Conversation.objects.filter(
-        participants=user_profile
-    ).select_related(
-        'content_type'
-    ).prefetch_related(
-        'participants__user',
-        'service_inquiry',
-        'seller_response',
-    ).order_by('-updated_at')
-
-    # ── Apply filter ──────────────────────────────────────────────────────────
-    if current_filter == 'products':
-        try:
-            from Home.models import Product_Listing
-            ct = ContentType.objects.get_for_model(Product_Listing)
-            conversations = conversations.filter(content_type=ct)
-        except Exception:
-            pass
-
-    elif current_filter == 'services':
-        try:
-            from Services.models import ServiceListing
-            ct = ContentType.objects.get_for_model(ServiceListing)
-            conversations = conversations.filter(content_type=ct)
-        except Exception:
-            pass
-
-    elif current_filter == 'requests':
-        try:
-            from BuyerRequest.models import BuyerRequest
-            ct = ContentType.objects.get_for_model(BuyerRequest)
-            conversations = conversations.filter(content_type=ct)
-        except Exception:
-            pass
-
-    elif current_filter == 'unread':
-        # Keep only conversations with at least one unread message not from me
-        unread_ids = []
-        for conv in conversations:
-            if conv.messages.filter(is_read=False).exclude(sender=user_profile).exists():
-                unread_ids.append(conv.pk)
-        conversations = conversations.filter(pk__in=unread_ids)
-
-    # ── Annotate unread count and last message ────────────────────────────────
-    for conversation in conversations:
-        conversation.unread_count = conversation.get_unread_messages_count_for_profile(user_profile)
-        conversation.last_message = conversation.get_last_message()
-
-    paginator = Paginator(conversations, 15)
-    page_obj = paginator.get_page(request.GET.get('page'))
-
     return render(request, 'messages/inbox.html', {
-        'page_obj':       page_obj,
-        'current_filter': current_filter,
-        'now':            timezone.now(),
+        'all_conversations': all_conversations,
+        'current_filter':    current_filter,
+        'now':               timezone.now(),
     })
 
 

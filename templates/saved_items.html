@@ -2,172 +2,501 @@
 {% load static %}
 
 {% block 'Body' %}
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="fw-bold">
-            <i class="bi bi-bookmark-fill text-primary"></i>
-            Saved Items
-        </h2>
-        
-        {# Filter tabs #}
-        <div class="btn-group" role="group">
-            <button type="button" class="btn btn-outline-primary active" data-filter="all">
-                All ({{ total_count }})
-            </button>
-            <button type="button" class="btn btn-outline-primary" data-filter="product">
-                Products ({{ type_counts.products }})
-            </button>
-            <button type="button" class="btn btn-outline-primary" data-filter="service">
-                Services ({{ type_counts.services }})
-            </button>
-            <button type="button" class="btn btn-outline-primary" data-filter="request">
-                Requests ({{ type_counts.requests }})
-            </button>
-        </div>
-    </div>
-    
-    {% if saved_items %}
-    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-3" id="savedItemsGrid">
-        {% for saved_item in saved_items %}
-        <div class="col saved-item-wrapper" data-item-type="{{ saved_item.item_type }}">
-            {# Badge showing item type #}
-            <div class="item-type-badge badge-{{ saved_item.item_type }}">
-                <i class="{{ saved_item.item_icon }}"></i>
-                {{ saved_item.item_type|title }}
-            </div>
-            
-            {# Render appropriate card based on type #}
-            {% if saved_item.item_type == 'product' %}
-                {% include 'product_card.html' with product=saved_item.item_object %}
-            {% elif saved_item.item_type == 'service' %}
-                {% include 'services/service_card.html' with service=saved_item.item_object %}
-            {% elif saved_item.item_type == 'request' %}
-                {% include 'buyer_requests/request_card.html' with request=saved_item.item_object %}
-            {% endif %}
-        </div>
-        {% endfor %}
-    </div>
-    
-    {# Pagination #}
-    {% if saved_items.has_other_pages %}
-    <nav aria-label="Saved items pagination" class="mt-4">
-        <ul class="pagination justify-content-center">
-            {% if saved_items.has_previous %}
-            <li class="page-item">
-                <a class="page-link" href="?page=1">First</a>
-            </li>
-            <li class="page-item">
-                <a class="page-link" href="?page={{ saved_items.previous_page_number }}">Previous</a>
-            </li>
-            {% endif %}
-            
-            <li class="page-item active">
-                <span class="page-link">
-                    Page {{ saved_items.number }} of {{ saved_items.paginator.num_pages }}
-                </span>
-            </li>
-            
-            {% if saved_items.has_next %}
-            <li class="page-item">
-                <a class="page-link" href="?page={{ saved_items.next_page_number }}">Next</a>
-            </li>
-            <li class="page-item">
-                <a class="page-link" href="?page={{ saved_items.paginator.num_pages }}">Last</a>
-            </li>
-            {% endif %}
-        </ul>
-    </nav>
-    {% endif %}
-    
-    {% else %}
-    {# Empty state #}
-    <div class="col-12">
-        <div class="card py-5 text-center">
-            <div class="card-body">
-                <i class="bi bi-bookmark fs-1 text-muted mb-3 d-block"></i>
-                <h5>No saved items yet</h5>
-                <p class="text-muted">Start saving products, services, and requests you're interested in!</p>
-                <div class="mt-3">
-                    <a href="{% url 'product_list' %}" class="btn btn-primary me-2">
-                        <i class="bi bi-box-seam"></i> Browse Products
-                    </a>
-                    <a href="{% url 'services:list' %}" class="btn btn-outline-primary me-2">
-                        <i class="bi bi-tools"></i> Browse Services
-                    </a>
-                    <a href="{% url 'buyer_requests:list' %}" class="btn btn-outline-primary">
-                        <i class="bi bi-search"></i> Browse Requests
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-</div>
-
 <style>
-.item-type-badge {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    z-index: 10;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    backdrop-filter: blur(10px);
+/* ═══════════════════════════════════════════════════════════════
+   SAVED ITEMS — Design System (consistent with manage/inbox)
+═══════════════════════════════════════════════════════════════ */
+
+.si-wrap {
+  padding: 1.75rem 0 3rem;
+  min-height: 60vh;
 }
 
-.badge-product {
-    background: rgba(40, 167, 69, 0.9);
-    color: white;
+/* ── Page header ─────────────────────────────────────────────── */
+.si-header {
+  margin-bottom: 1.5rem;
+}
+.si-header-title {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  margin-bottom: .25rem;
+}
+.si-header-title h1 {
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+.si-header-title i {
+  color: var(--accent-color);
+  font-size: 1.3rem;
+}
+.si-header-sub {
+  font-size: .875rem;
+  color: var(--text-secondary);
+  margin: 0;
 }
 
-.badge-service {
-    background: rgba(23, 162, 184, 0.9);
-    color: white;
+/* ── Tab navigation (identical to manage listings) ───────────── */
+.ml-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border-color);
+  margin-bottom: 1.75rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.ml-tabs::-webkit-scrollbar { display: none; }
+
+.ml-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .65rem 1.25rem;
+  border: none;
+  font-size: .875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  white-space: nowrap;
+  transition: color .18s, background .18s;
+  font-family: inherit;
+  background: transparent;
+  border-radius: var(--radius-sm, .375rem) var(--radius-sm, .375rem) 0 0;
+}
+.ml-tab:hover { color: var(--primary-color); }
+
+.ml-tab.active {
+  background: var(--primary-color) !important;
+  color: #fff !important;
+  border-bottom-color: var(--primary-color);
+  font-weight: 700;
+}
+.ml-tab.active .ml-tab-badge {
+  background: rgba(255,255,255,.25);
+  color: #fff;
+}
+.ml-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.3rem;
+  height: 1.3rem;
+  padding: 0 .3rem;
+  border-radius: 999px;
+  background: var(--border-color);
+  font-size: .68rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: background .18s, color .18s;
 }
 
-.badge-request {
-    background: rgba(255, 193, 7, 0.9);
-    color: black;
+/* ── Tab panels ──────────────────────────────────────────────── */
+.ml-panel { display: none; }
+.ml-panel.active { display: block; }
+
+/* ── Item grid ───────────────────────────────────────────────── */
+.si-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
 }
 
-.saved-item-wrapper {
-    position: relative;
-    transition: all 0.3s ease;
+/* ── Item wrapper — holds the badge overlay ─────────────────── */
+.si-item-wrap {
+  position: relative;
 }
 
-.saved-item-wrapper.hidden {
-    display: none;
+/* ── Type badge (overlaid on card top-left) ─────────────────── */
+.si-type-badge {
+  position: absolute;
+  top: .6rem;
+  left: .6rem;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .22rem .65rem;
+  border-radius: 999px;
+  font-size: .7rem;
+  font-weight: 700;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.si-badge-product {
+  background: rgba(22,163,74,.88);
+  color: #fff;
+}
+.si-badge-service {
+  background: rgba(8,145,178,.88);
+  color: #fff;
+}
+.si-badge-request {
+  background: rgba(217,119,6,.9);
+  color: #fff;
+}
+
+/* ── Empty state ─────────────────────────────────────────────── */
+.si-empty {
+  background: var(--card-background);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-lg, .75rem);
+  padding: 3.5rem 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+}
+.si-empty-icon {
+  font-size: 2.75rem;
+  color: var(--accent-color);
+  opacity: .45;
+  margin-bottom: 1rem;
+  display: block;
+}
+.si-empty h5 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: .4rem;
+}
+.si-empty p {
+  font-size: .875rem;
+  color: var(--text-secondary);
+  max-width: 360px;
+  margin: 0 auto 1.5rem;
+  line-height: 1.6;
+}
+.si-empty-actions {
+  display: flex;
+  gap: .6rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ── Buttons (consistent with manage listings) ───────────────── */
+.ml-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .45rem 1.1rem;
+  border-radius: var(--radius-lg, .5rem);
+  font-size: .825rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  text-decoration: none;
+  transition: all .18s;
+  white-space: nowrap;
+  font-family: inherit;
+  line-height: 1.4;
+}
+.ml-btn-primary {
+  background: var(--primary-color);
+  color: #fff;
+  border-color: var(--primary-color);
+}
+.ml-btn-primary:hover { filter: brightness(1.1); color: #fff; }
+
+.ml-btn-outline {
+  background: transparent;
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+.ml-btn-outline:hover { background: var(--primary-color); color: #fff; }
+
+.ml-btn-ghost {
+  background: var(--card-background);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+.ml-btn-ghost:hover { border-color: var(--accent-color); color: var(--accent-color); }
+
+/* ── Pagination ──────────────────────────────────────────────── */
+.si-pagination {
+  display: flex;
+  justify-content: center;
+  gap: .3rem;
+  margin-top: 1.75rem;
+  flex-wrap: wrap;
+}
+.si-page-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.1rem;
+  height: 2.1rem;
+  padding: 0 .5rem;
+  border-radius: var(--radius-sm, .375rem);
+  border: 1.5px solid var(--border-color);
+  background: var(--card-background);
+  font-size: .82rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: all .15s;
+}
+.si-page-btn:hover { border-color: var(--primary-color); color: var(--primary-color); }
+.si-page-btn.active { background: var(--primary-color); border-color: var(--primary-color); color: #fff; }
+.si-page-btn:disabled,
+.si-page-btn[aria-disabled="true"] { opacity: .45; pointer-events: none; }
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 767.98px) {
+  .si-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  .si-empty { padding: 2.5rem 1.25rem; }
+}
+@media (max-width: 480px) {
+  .si-grid { grid-template-columns: 1fr; }
+  .si-empty-actions { flex-direction: column; align-items: center; }
+  .ml-btn { width: 100%; justify-content: center; }
 }
 </style>
 
-<script>
-// Filter functionality
-document.addEventListener('DOMContentLoaded', function() {
-    const filterButtons = document.querySelectorAll('[data-filter]');
-    const savedItems = document.querySelectorAll('.saved-item-wrapper');
-    
-    filterButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            // Update active button
-            filterButtons.forEach(btn => btn.classList.remove('active'));
-            this.classList.add('active');
-            
-            const filter = this.dataset.filter;
-            
-            // Filter items
-            savedItems.forEach(item => {
-                if (filter === 'all' || item.dataset.itemType === filter) {
-                    item.classList.remove('hidden');
-                } else {
-                    item.classList.add('hidden');
-                }
-            });
-        });
-    });
-});
-</script>
-{% endblock %}
+<div class="si-wrap">
+  <div class="container-xl">
 
+    {# ── Page Header ─────────────────────────────────────────── #}
+    <div class="si-header">
+      <div class="si-header-title">
+        <i class="bi bi-bookmark-fill"></i>
+        <h1>Saved Items</h1>
+      </div>
+      <p class="si-header-sub">
+        {{ total_count }} saved item{{ total_count|pluralize }} across products, services, and requests
+      </p>
+    </div>
+
+    {# ── Tab Navigation ──────────────────────────────────────── #}
+    <div class="ml-tabs" id="siTabs" role="tablist">
+      <button class="ml-tab" data-panel="si-all-panel" role="tab">
+        <i class="bi bi-grid-3x3-gap"></i> All
+        <span class="ml-tab-badge">{{ total_count }}</span>
+      </button>
+      <button class="ml-tab" data-panel="si-products-panel" role="tab">
+        <i class="bi bi-box-seam"></i> Products
+        <span class="ml-tab-badge">{{ type_counts.products }}</span>
+      </button>
+      <button class="ml-tab" data-panel="si-services-panel" role="tab">
+        <i class="bi bi-briefcase"></i> Services
+        <span class="ml-tab-badge">{{ type_counts.services }}</span>
+      </button>
+      <button class="ml-tab" data-panel="si-requests-panel" role="tab">
+        <i class="bi bi-search"></i> Requests
+        <span class="ml-tab-badge">{{ type_counts.requests }}</span>
+      </button>
+    </div>
+
+
+    {# ════════════════════════════════════════════════════════════ #}
+    {# ALL panel                                                    #}
+    {# ════════════════════════════════════════════════════════════ #}
+    <div class="ml-panel" id="si-all-panel" role="tabpanel">
+      {% if saved_items %}
+        <div class="si-grid">
+          {% for saved_item in saved_items %}
+          <div class="si-item-wrap">
+            <div class="si-type-badge si-badge-{{ saved_item.item_type }}">
+              <i class="{{ saved_item.item_icon }}"></i>
+              {{ saved_item.item_type|title }}
+            </div>
+            {% if saved_item.item_type == 'product' %}
+              {% include 'product_card.html' with product=saved_item.item_object %}
+            {% elif saved_item.item_type == 'service' %}
+              {% include 'services/service_card.html' with service=saved_item.item_object %}
+            {% elif saved_item.item_type == 'request' %}
+              {% include 'buyer_requests/request_card.html' with request=saved_item.item_object %}
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+
+        {# Pagination #}
+        {% if saved_items.has_other_pages %}
+        <div class="si-pagination">
+          {% if saved_items.has_previous %}
+            <a class="si-page-btn" href="?page=1"><i class="bi bi-chevron-double-left"></i></a>
+            <a class="si-page-btn" href="?page={{ saved_items.previous_page_number }}"><i class="bi bi-chevron-left"></i></a>
+          {% endif %}
+          {% for num in saved_items.paginator.page_range %}
+            {% if saved_items.number == num %}
+              <span class="si-page-btn active">{{ num }}</span>
+            {% elif num > saved_items.number|add:'-3' and num < saved_items.number|add:'3' %}
+              <a class="si-page-btn" href="?page={{ num }}">{{ num }}</a>
+            {% endif %}
+          {% endfor %}
+          {% if saved_items.has_next %}
+            <a class="si-page-btn" href="?page={{ saved_items.next_page_number }}"><i class="bi bi-chevron-right"></i></a>
+            <a class="si-page-btn" href="?page={{ saved_items.paginator.num_pages }}"><i class="bi bi-chevron-double-right"></i></a>
+          {% endif %}
+        </div>
+        {% endif %}
+
+      {% else %}
+        {# Empty — no saved items at all #}
+        <div class="si-empty">
+          <i class="bi bi-bookmark si-empty-icon"></i>
+          <h5>Nothing saved yet</h5>
+          <p>Start saving products, services, and requests you're interested in — they'll all appear here.</p>
+          <div class="si-empty-actions">
+            <a href="{% url 'product_list' %}" class="ml-btn ml-btn-primary">
+              <i class="bi bi-box-seam"></i> Browse Products
+            </a>
+            <a href="{% url 'services:list' %}" class="ml-btn ml-btn-outline">
+              <i class="bi bi-briefcase"></i> Browse Services
+            </a>
+            <a href="{% url 'buyer_requests:list' %}" class="ml-btn ml-btn-ghost">
+              <i class="bi bi-search"></i> Browse Requests
+            </a>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+
+    {# ════════════════════════════════════════════════════════════ #}
+    {# PRODUCTS panel                                               #}
+    {# ════════════════════════════════════════════════════════════ #}
+    <div class="ml-panel" id="si-products-panel" role="tabpanel">
+      {% with product_items=saved_items|dictsort:"item_type" %}
+      <div class="si-grid">
+        {% for saved_item in saved_items %}
+          {% if saved_item.item_type == 'product' %}
+          <div class="si-item-wrap">
+            <div class="si-type-badge si-badge-product">
+              <i class="{{ saved_item.item_icon }}"></i> Product
+            </div>
+            {% include 'product_card.html' with product=saved_item.item_object %}
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% endwith %}
+      <div class="si-empty si-panel-empty" style="display:none;">
+        <i class="bi bi-box-seam si-empty-icon"></i>
+        <h5>No saved products</h5>
+        <p>You haven't saved any products yet.</p>
+        <div class="si-empty-actions">
+          <a href="{% url 'product_list' %}" class="ml-btn ml-btn-primary">
+            <i class="bi bi-box-seam"></i> Browse Products
+          </a>
+        </div>
+      </div>
+    </div>
+
+
+    {# ════════════════════════════════════════════════════════════ #}
+    {# SERVICES panel                                               #}
+    {# ════════════════════════════════════════════════════════════ #}
+    <div class="ml-panel" id="si-services-panel" role="tabpanel">
+      <div class="si-grid">
+        {% for saved_item in saved_items %}
+          {% if saved_item.item_type == 'service' %}
+          <div class="si-item-wrap">
+            <div class="si-type-badge si-badge-service">
+              <i class="{{ saved_item.item_icon }}"></i> Service
+            </div>
+            {% include 'services/service_card.html' with service=saved_item.item_object %}
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <div class="si-empty si-panel-empty" style="display:none;">
+        <i class="bi bi-briefcase si-empty-icon"></i>
+        <h5>No saved services</h5>
+        <p>You haven't saved any services yet.</p>
+        <div class="si-empty-actions">
+          <a href="{% url 'services:list' %}" class="ml-btn ml-btn-primary">
+            <i class="bi bi-briefcase"></i> Browse Services
+          </a>
+        </div>
+      </div>
+    </div>
+
+
+    {# ════════════════════════════════════════════════════════════ #}
+    {# REQUESTS panel                                               #}
+    {# ════════════════════════════════════════════════════════════ #}
+    <div class="ml-panel" id="si-requests-panel" role="tabpanel">
+      <div class="si-grid">
+        {% for saved_item in saved_items %}
+          {% if saved_item.item_type == 'request' %}
+          <div class="si-item-wrap">
+            <div class="si-type-badge si-badge-request">
+              <i class="{{ saved_item.item_icon }}"></i> Request
+            </div>
+            {% include 'buyer_requests/request_card.html' with request=saved_item.item_object %}
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <div class="si-empty si-panel-empty" style="display:none;">
+        <i class="bi bi-search si-empty-icon"></i>
+        <h5>No saved requests</h5>
+        <p>You haven't saved any buyer requests yet.</p>
+        <div class="si-empty-actions">
+          <a href="{% url 'buyer_requests:list' %}" class="ml-btn ml-btn-primary">
+            <i class="bi bi-search"></i> Browse Requests
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>{# /container-xl #}
+</div>{# /si-wrap #}
+
+
+<script>
+(function () {
+  var tabs   = document.querySelectorAll('#siTabs .ml-tab');
+  var panels = document.querySelectorAll('.ml-panel');
+
+  function activateTab(btn) {
+    tabs.forEach(function (b) { b.classList.remove('active'); });
+    panels.forEach(function (p) { p.classList.remove('active'); });
+    btn.classList.add('active');
+    var panel = document.getElementById(btn.dataset.panel);
+    if (panel) {
+      panel.classList.add('active');
+      /* show per-panel empty state if no item wrappers exist */
+      var items = panel.querySelectorAll('.si-item-wrap');
+      var empty = panel.querySelector('.si-panel-empty');
+      if (empty) empty.style.display = items.length === 0 ? '' : 'none';
+    }
+    /* sync URL without reload */
+    var url = new URL(window.location);
+    var filterMap = {
+      'si-all-panel':      '',
+      'si-products-panel': 'products',
+      'si-services-panel': 'services',
+      'si-requests-panel': 'requests'
+    };
+    var val = filterMap[btn.dataset.panel];
+    if (val) { url.searchParams.set('filter', val); }
+    else     { url.searchParams.delete('filter'); }
+    window.history.replaceState({}, '', url);
+  }
+
+  tabs.forEach(function (btn) {
+    btn.addEventListener('click', function () { activateTab(btn); });
+  });
+
+  /* restore from URL on load */
+  (function () {
+    var filter = new URLSearchParams(window.location.search).get('filter') || '';
+    var panelMap = {
+      '':         'si-all-panel',
+      'products': 'si-products-panel',
+      'services': 'si-services-panel',
+      'requests': 'si-requests-panel'
+    };
+    var target = document.querySelector('[data-panel="' + (panelMap[filter] || 'si-all-panel') + '"]');
+    if (target) activateTab(target);
+  })();
+})();
+</script>
+
+{% endblock %}
 {% block 'Footer' %}{% endblock %}

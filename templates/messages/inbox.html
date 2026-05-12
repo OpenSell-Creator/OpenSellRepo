@@ -1,261 +1,68 @@
 {% extends 'messages/base.html' %}
 {% block messages_content %}
 
-{# ── Filter Nav — inbox only ──────────────────────────────────────────────── #}
-
-
 <style>
-/* ── Pill-group nav ───────────────────────────────────────────────────────── */
-.inbox-filter-nav {
-    display: inline-flex;
-    border: 1.5px solid var(--border-color);
-    border-radius: 0.55rem;
-    overflow: hidden;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    background: var(--card-background);
+/* ── Shared ml-tab system (mirrors manage listings exactly) ──── */
+.ml-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border-color);
+  margin-bottom: 1.75rem;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
-.inbox-filter-nav::-webkit-scrollbar { display: none; }
+.ml-tabs::-webkit-scrollbar { display: none; }
 
-.filter-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    padding: 0.45rem 1.05rem;
-    font-size: 0.83rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-    text-decoration: none;
-    background: transparent;
-    border-right: 1.5px solid var(--border-color);
-    white-space: nowrap;
-    transition: background 0.15s, color 0.15s;
-    line-height: 1.4;
+.ml-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .65rem 1.25rem;
+  border: none;
+  font-size: .875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  white-space: nowrap;
+  transition: color .18s, background .18s;
+  font-family: inherit;
+  background: transparent;
+  border-radius: var(--radius-sm, .375rem) var(--radius-sm, .375rem) 0 0;
 }
-.filter-btn:last-child {
-    border-right: none;
-}
-.filter-btn:hover:not(.active) {
-    color: var(--primary-color);
-    background: rgba(var(--primary-rgb), 0.05);
-}
-.filter-btn.active {
-    background: var(--primary-color);
-    color: #fff;
-    font-weight: 600;
-}
+.ml-tab:hover { color: var(--primary-color); }
 
-.filter-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 17px;
-    height: 17px;
-    padding: 0 4px;
-    font-size: 0.68rem;
-    font-weight: 700;
-    border-radius: 9px;
-    /* white when inside active (primary bg), accent when inactive */
-    background: rgba(255,255,255,0.3);
-    color: #fff;
-    line-height: 1;
+.ml-tab.active {
+  background: var(--primary-color) !important;
+  color: #fff !important;
+  border-bottom-color: var(--primary-color);
+  font-weight: 700;
 }
-.filter-btn:not(.active) .filter-badge {
-    background: var(--accent-color, #c9aa71);
-    color: #fff;
+.ml-tab.active .ml-tab-badge {
+  background: rgba(255,255,255,.25);
+  color: #fff;
+}
+.ml-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.3rem;
+  height: 1.3rem;
+  padding: 0 .3rem;
+  border-radius: 999px;
+  background: var(--border-color);
+  font-size: .68rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: background .18s, color .18s;
 }
 
-@media (max-width: 576px) {
-    .inbox-filter-nav { width: 100%; }
-    .filter-btn { padding: 0.42rem 0.75rem; font-size: 0.78rem; flex: 1; justify-content: center; }
-}
-</style>
+/* ── Tab panels ─────────────────────────────────────────────── */
+.ml-panel { display: none; }
+.ml-panel.active { display: block; }
 
-{# ── Page Header ──────────────────────────────────────────────────────────── #}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h4 class="inbox-title mb-0">
-            {% if current_filter == 'products' %}Product Messages
-            {% elif current_filter == 'services' %}Service Messages
-            {% elif current_filter == 'requests' %}Request Messages
-            {% elif current_filter == 'unread' %}Unread Messages
-            {% else %}Your Inbox
-            {% endif %}
-        </h4>
-        {% if page_obj.paginator.count > 0 %}
-            <small class="text-muted">{{ page_obj.paginator.count }} conversation{{ page_obj.paginator.count|pluralize }}</small>
-        {% endif %}
-    </div>
-    <div class="encryption-badge">
-        <i class="fas fa-lock fa-sm"></i> End-to-end encrypted
-    </div>
-</div>
-
-<div class="inbox-filter-nav mb-4">
-    <a href="{% url 'inbox' %}"
-       class="filter-btn {% if not current_filter %}active{% endif %}">
-        <i class="fas fa-inbox fa-sm me-1"></i>All
-        {% if unread_messages_count > 0 %}<span class="filter-badge">{{ unread_messages_count }}</span>{% endif %}
-    </a>
-    <a href="{% url 'inbox' %}?filter=products"
-       class="filter-btn {% if current_filter == 'products' %}active{% endif %}">
-        <i class="fas fa-box fa-sm me-1"></i>Products
-    </a>
-    <a href="{% url 'inbox' %}?filter=services"
-       class="filter-btn {% if current_filter == 'services' %}active{% endif %}">
-        <i class="fas fa-briefcase fa-sm me-1"></i>Services
-    </a>
-    <a href="{% url 'inbox' %}?filter=requests"
-       class="filter-btn {% if current_filter == 'requests' %}active{% endif %}">
-        <i class="fas fa-search fa-sm me-1"></i>Requests
-    </a>
-    <a href="{% url 'inbox' %}?filter=unread"
-       class="filter-btn {% if current_filter == 'unread' %}active{% endif %}">
-        <i class="fas fa-circle fa-sm me-1"></i>Unread
-    </a>
-</div>
-
-{# ── Conversation List ─────────────────────────────────────────────────────── #}
-{% for conversation in page_obj %}
-    {% with last_message=conversation.last_message %}
-    <div class="conversation-card card mb-2">
-        <a href="{% url 'conversation_detail' conversation.uuid %}" class="text-decoration-none conversation-link">
-            <div class="card-body py-3 px-3">
-                <div class="d-flex justify-content-between align-items-start gap-3">
-
-                    {# Left: icon column #}
-                    <div class="conv-type-icon
-                        {% if conversation.content_type.model == 'product_listing' %}conv-icon-product
-                        {% elif conversation.content_type.model == 'servicelisting' %}conv-icon-service
-                        {% elif conversation.content_type.model == 'buyerrequest' %}conv-icon-request
-                        {% endif %}">
-                        <i class="fas
-                            {% if conversation.content_type.model == 'product_listing' %}fa-box
-                            {% elif conversation.content_type.model == 'servicelisting' %}fa-briefcase
-                            {% elif conversation.content_type.model == 'buyerrequest' %}fa-search
-                            {% endif %}"></i>
-                    </div>
-
-                    {# Centre: main info #}
-                    <div class="flex-grow-1 min-w-0">
-
-                        {# Badges row #}
-                        <div class="d-flex flex-wrap gap-1 align-items-center mb-1">
-                            <span class="badge content-type-badge
-                                {% if conversation.content_type.model == 'product_listing' %}badge-product
-                                {% elif conversation.content_type.model == 'servicelisting' %}badge-service
-                                {% elif conversation.content_type.model == 'buyerrequest' %}badge-request
-                                {% endif %}">
-                                {{ conversation.get_content_type_display }}
-                            </span>
-
-                            {% if conversation.service_inquiry %}
-                                <span class="badge inbox-status-badge inbox-status-{{ conversation.service_inquiry.status }}">
-                                    Inquiry &bull; {{ conversation.service_inquiry.get_status_display }}
-                                </span>
-                            {% elif conversation.seller_response %}
-                                <span class="badge inbox-status-badge inbox-status-{{ conversation.seller_response.status }}">
-                                    Response &bull; {{ conversation.seller_response.get_status_display }}
-                                </span>
-                            {% endif %}
-                        </div>
-
-                        {# Title #}
-                        <h6 class="conv-title mb-1 {% if conversation.unread_count > 0 %}fw-bold{% endif %}">
-                            {{ conversation.get_content_title }}
-                        </h6>
-
-                        {# Participant & last message #}
-                        <p class="conv-participant mb-0 small">
-                            {% for participant in conversation.participants.all %}
-                                {% if participant != request.user.profile %}
-                                    <span>{{ participant.user.username }}</span>
-                                    {% if participant.business_verification_status == 'verified' %}
-                                        <i class="fas fa-check-circle text-primary ms-1" title="Verified Business"></i>
-                                    {% endif %}
-                                {% endif %}
-                            {% endfor %}
-                            {% if last_message %}
-                                <span class="text-muted mx-1">&bull;</span>
-                                <span class="conv-preview">
-                                    <i class="fas fa-lock encryption-icon me-1"></i>{{ last_message.content|truncatewords:10 }}
-                                </span>
-                            {% endif %}
-                        </p>
-
-                    </div>
-
-                    {# Right: date + unread #}
-                    <div class="text-end flex-shrink-0">
-                        <small class="conv-date d-block">{{ conversation.updated_at|date:"M d" }}</small>
-                        {% if conversation.unread_count > 0 %}
-                            <span class="badge unread-badge rounded-pill mt-1">{{ conversation.unread_count }}</span>
-                        {% endif %}
-                    </div>
-
-                </div>
-            </div>
-        </a>
-    </div>
-    {% endwith %}
-{% empty %}
-    <div class="empty-state text-center py-5">
-        <div class="empty-icon mb-3">
-            {% if current_filter == 'unread' %}
-                <i class="fas fa-check-circle fa-3x text-success"></i>
-            {% else %}
-                <i class="fas fa-inbox fa-3x text-muted"></i>
-            {% endif %}
-        </div>
-        {% if current_filter == 'unread' %}
-            <p class="mb-1 fw-semibold">You're all caught up!</p>
-            <small class="text-muted">No unread messages at the moment.</small>
-        {% elif current_filter %}
-            <p class="mb-1 fw-semibold">No {{ current_filter }} conversations yet.</p>
-            <small class="text-muted">Messages about {{ current_filter }} will appear here.</small>
-        {% else %}
-            <p class="mb-1 fw-semibold">No conversations yet.</p>
-            <small class="text-muted">Start a conversation by messaging a seller, provider, or buyer.</small>
-        {% endif %}
-    </div>
-{% endfor %}
-
-{# ── Pagination ───────────────────────────────────────────────────────────── #}
-{% if page_obj.has_other_pages %}
-<nav aria-label="Conversations pagination" class="mt-4">
-    <ul class="pagination justify-content-center">
-        {% if page_obj.has_previous %}
-            <li class="page-item">
-                <a class="page-link" href="?{% if current_filter %}filter={{ current_filter }}&{% endif %}page=1">&laquo;</a>
-            </li>
-            <li class="page-item">
-                <a class="page-link" href="?{% if current_filter %}filter={{ current_filter }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
-            </li>
-        {% endif %}
-        <li class="page-item disabled">
-            <span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
-        </li>
-        {% if page_obj.has_next %}
-            <li class="page-item">
-                <a class="page-link" href="?{% if current_filter %}filter={{ current_filter }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
-            </li>
-            <li class="page-item">
-                <a class="page-link" href="?{% if current_filter %}filter={{ current_filter }}&{% endif %}page={{ page_obj.paginator.num_pages }}">&raquo;</a>
-            </li>
-        {% endif %}
-    </ul>
-</nav>
-{% endif %}
-
-{# ── Privacy footer ───────────────────────────────────────────────────────── #}
-<div class="privacy-card mt-4">
-    <i class="fas fa-shield-alt me-2"></i>
-    <span>All messages are end-to-end encrypted. Only you and your conversation partner can read them.</span>
-</div>
-
-<style>
-/* ── Inbox-specific styles ───────────────────────────────────────────────── */
+/* ── Inbox styles (unchanged from original) ─────────────────── */
 .inbox-title { color: var(--text-primary); font-weight: 700; letter-spacing: -0.02em; }
 
 .encryption-badge {
@@ -272,7 +79,6 @@
 }
 [data-bs-theme="dark"] .encryption-badge { background: rgba(var(--primary-rgb), 0.2); }
 
-/* Type icon pill */
 .conv-type-icon {
     width: 38px;
     height: 38px;
@@ -290,11 +96,10 @@
 [data-bs-theme="dark"] .conv-icon-service  { background: rgba(25,135,84,0.2);  }
 [data-bs-theme="dark"] .conv-icon-request  { background: rgba(255,193,7,0.2);  }
 
-/* Conversation card */
 .conversation-card {
     border: 1px solid var(--border-color);
     background-color: var(--card-background);
-    border-radius: 0.65rem;
+    border-radius: var(--radius-lg);
     box-shadow: 0 1px 4px var(--shadow-color);
     transition: all 0.18s ease;
 }
@@ -305,21 +110,19 @@
 }
 .conversation-link { color: var(--text-primary) !important; }
 
-.conv-title     { color: var(--text-primary); font-size: 0.92rem; }
+.conv-title      { color: var(--text-primary); font-size: 0.92rem; }
 .conv-participant { color: var(--text-secondary); font-size: 0.82rem; }
-.conv-preview   { font-style: italic; }
-.conv-date      { color: var(--text-secondary); font-size: 0.75rem; white-space: nowrap; }
+.conv-preview    { font-style: italic; }
+.conv-date       { color: var(--text-secondary); font-size: 0.75rem; white-space: nowrap; }
 
-/* Empty state */
 .empty-state {
     background: var(--card-background);
     border: 1px dashed var(--border-color);
-    border-radius: 0.75rem;
+    border-radius: var(--radius-lg);
     color: var(--text-secondary);
 }
 .empty-icon { opacity: 0.6; }
 
-/* Privacy footer card */
 .privacy-card {
     border: 1px solid var(--border-color);
     border-left: 3px solid var(--primary-color);
@@ -334,7 +137,6 @@
 }
 .privacy-card i { color: var(--primary-color); margin-top: 0.1rem; flex-shrink: 0; }
 
-/* Pagination */
 .pagination .page-link {
     color: var(--primary-color);
     border-color: var(--border-color);
@@ -345,8 +147,440 @@
 .pagination .page-item.disabled .page-link { background-color: var(--card-background); color: var(--text-secondary); border-color: var(--border-color); }
 .pagination .page-item.active .page-link   { background-color: var(--primary-color); border-color: var(--primary-color); color: #fff; }
 
-/* min-width 0 fix for flex truncation */
 .min-w-0 { min-width: 0; }
 </style>
+
+{# ── Page Header ──────────────────────────────────────────────────────────── #}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="inbox-title mb-0">Your Inbox</h4>
+        {% if all_conversations %}
+            <small class="text-muted">{{ all_conversations|length }} conversation{{ all_conversations|length|pluralize }}</small>
+        {% endif %}
+    </div>
+    <div class="encryption-badge">
+        <i class="fas fa-lock fa-sm"></i> End-to-end encrypted
+    </div>
+</div>
+
+{# ── Tab Navigation ───────────────────────────────────────────────────────── #}
+<div class="ml-tabs" id="inboxTabs" role="tablist">
+    <button class="ml-tab" data-panel="inbox-all-panel" role="tab">
+        <i class="fas fa-inbox fa-sm"></i> All
+        {% if unread_messages_count > 0 %}<span class="ml-tab-badge">{{ unread_messages_count }}</span>{% endif %}
+    </button>
+    <button class="ml-tab" data-panel="inbox-products-panel" role="tab">
+        <i class="fas fa-box fa-sm"></i> Products
+    </button>
+    <button class="ml-tab" data-panel="inbox-services-panel" role="tab">
+        <i class="fas fa-briefcase fa-sm"></i> Services
+    </button>
+    <button class="ml-tab" data-panel="inbox-requests-panel" role="tab">
+        <i class="fas fa-search fa-sm"></i> Requests
+    </button>
+    <button class="ml-tab" data-panel="inbox-unread-panel" role="tab">
+        <i class="fas fa-circle fa-sm"></i> Unread
+        {% if unread_messages_count > 0 %}<span class="ml-tab-badge">{{ unread_messages_count }}</span>{% endif %}
+    </button>
+</div>
+
+
+{# ════════════════════════════════════════════════════════════════════════════ #}
+{# ALL panel                                                                    #}
+{# ════════════════════════════════════════════════════════════════════════════ #}
+<div class="ml-panel" id="inbox-all-panel" role="tabpanel">
+    {% for conversation in all_conversations %}
+        {% with last_message=conversation.last_message %}
+        <div class="conversation-card card mb-2">
+            <a href="{% url 'conversation_detail' conversation.uuid %}" class="text-decoration-none conversation-link">
+                <div class="card-body py-3 px-3">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div class="conv-type-icon
+                            {% if conversation.content_type.model == 'product_listing' %}conv-icon-product
+                            {% elif conversation.content_type.model == 'servicelisting' %}conv-icon-service
+                            {% elif conversation.content_type.model == 'buyerrequest' %}conv-icon-request
+                            {% endif %}">
+                            <i class="fas
+                                {% if conversation.content_type.model == 'product_listing' %}fa-box
+                                {% elif conversation.content_type.model == 'servicelisting' %}fa-briefcase
+                                {% elif conversation.content_type.model == 'buyerrequest' %}fa-search
+                                {% endif %}"></i>
+                        </div>
+                        <div class="flex-grow-1 min-w-0">
+                            <div class="d-flex flex-wrap gap-1 align-items-center mb-1">
+                                <span class="badge content-type-badge
+                                    {% if conversation.content_type.model == 'product_listing' %}badge-product
+                                    {% elif conversation.content_type.model == 'servicelisting' %}badge-service
+                                    {% elif conversation.content_type.model == 'buyerrequest' %}badge-request
+                                    {% endif %}">
+                                    {{ conversation.get_content_type_display }}
+                                </span>
+                                {% if conversation.service_inquiry %}
+                                    <span class="badge inbox-status-badge inbox-status-{{ conversation.service_inquiry.status }}">
+                                        Inquiry &bull; {{ conversation.service_inquiry.get_status_display }}
+                                    </span>
+                                {% elif conversation.seller_response %}
+                                    <span class="badge inbox-status-badge inbox-status-{{ conversation.seller_response.status }}">
+                                        Response &bull; {{ conversation.seller_response.get_status_display }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <h6 class="conv-title mb-1 {% if conversation.unread_count > 0 %}fw-bold{% endif %}">
+                                {{ conversation.get_content_title }}
+                            </h6>
+                            <p class="conv-participant mb-0 small">
+                                {% for participant in conversation.participants.all %}
+                                    {% if participant != request.user.profile %}
+                                        <span>{{ participant.user.username }}</span>
+                                        {% if participant.business_verification_status == 'verified' %}
+                                            <i class="fas fa-check-circle text-primary ms-1" title="Verified Business"></i>
+                                        {% endif %}
+                                    {% endif %}
+                                {% endfor %}
+                                {% if last_message %}
+                                    <span class="text-muted mx-1">&bull;</span>
+                                    <span class="conv-preview">
+                                        <i class="fas fa-lock encryption-icon me-1"></i>{{ last_message.content|truncatewords:10 }}
+                                    </span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="text-end flex-shrink-0">
+                            <small class="conv-date d-block">{{ conversation.updated_at|date:"M d" }}</small>
+                            {% if conversation.unread_count > 0 %}
+                                <span class="badge unread-badge rounded-pill mt-1">{{ conversation.unread_count }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% endwith %}
+    {% empty %}
+        <div class="empty-state text-center py-5">
+            <div class="empty-icon mb-3"><i class="fas fa-inbox fa-3x text-muted"></i></div>
+            <p class="mb-1 fw-semibold">No conversations yet.</p>
+            <small class="text-muted">Start a conversation by messaging a seller, provider, or buyer.</small>
+        </div>
+    {% endfor %}
+</div>
+
+
+{# ════════════════════════════════════════════════════════════════════════════ #}
+{# PRODUCTS panel                                                               #}
+{# ════════════════════════════════════════════════════════════════════════════ #}
+<div class="ml-panel" id="inbox-products-panel" role="tabpanel">
+    {% for conversation in all_conversations %}
+        {% if conversation.content_type.model == 'product_listing' %}
+        {% with last_message=conversation.last_message %}
+        <div class="conversation-card card mb-2">
+            <a href="{% url 'conversation_detail' conversation.uuid %}" class="text-decoration-none conversation-link">
+                <div class="card-body py-3 px-3">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div class="conv-type-icon conv-icon-product"><i class="fas fa-box"></i></div>
+                        <div class="flex-grow-1 min-w-0">
+                            <div class="d-flex flex-wrap gap-1 align-items-center mb-1">
+                                <span class="badge content-type-badge badge-product">{{ conversation.get_content_type_display }}</span>
+                                {% if conversation.service_inquiry %}
+                                    <span class="badge inbox-status-badge inbox-status-{{ conversation.service_inquiry.status }}">
+                                        Inquiry &bull; {{ conversation.service_inquiry.get_status_display }}
+                                    </span>
+                                {% elif conversation.seller_response %}
+                                    <span class="badge inbox-status-badge inbox-status-{{ conversation.seller_response.status }}">
+                                        Response &bull; {{ conversation.seller_response.get_status_display }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <h6 class="conv-title mb-1 {% if conversation.unread_count > 0 %}fw-bold{% endif %}">{{ conversation.get_content_title }}</h6>
+                            <p class="conv-participant mb-0 small">
+                                {% for participant in conversation.participants.all %}
+                                    {% if participant != request.user.profile %}
+                                        <span>{{ participant.user.username }}</span>
+                                        {% if participant.business_verification_status == 'verified' %}
+                                            <i class="fas fa-check-circle text-primary ms-1" title="Verified Business"></i>
+                                        {% endif %}
+                                    {% endif %}
+                                {% endfor %}
+                                {% if last_message %}
+                                    <span class="text-muted mx-1">&bull;</span>
+                                    <span class="conv-preview"><i class="fas fa-lock encryption-icon me-1"></i>{{ last_message.content|truncatewords:10 }}</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="text-end flex-shrink-0">
+                            <small class="conv-date d-block">{{ conversation.updated_at|date:"M d" }}</small>
+                            {% if conversation.unread_count > 0 %}<span class="badge unread-badge rounded-pill mt-1">{{ conversation.unread_count }}</span>{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% endwith %}
+        {% endif %}
+    {% endfor %}
+    <div class="empty-state text-center py-5 inbox-panel-empty" style="display:none;">
+        <div class="empty-icon mb-3"><i class="fas fa-box fa-3x text-muted"></i></div>
+        <p class="mb-1 fw-semibold">No product conversations yet.</p>
+        <small class="text-muted">Messages about products will appear here.</small>
+    </div>
+</div>
+
+
+{# ════════════════════════════════════════════════════════════════════════════ #}
+{# SERVICES panel                                                               #}
+{# ════════════════════════════════════════════════════════════════════════════ #}
+<div class="ml-panel" id="inbox-services-panel" role="tabpanel">
+    {% for conversation in all_conversations %}
+        {% if conversation.content_type.model == 'servicelisting' %}
+        {% with last_message=conversation.last_message %}
+        <div class="conversation-card card mb-2">
+            <a href="{% url 'conversation_detail' conversation.uuid %}" class="text-decoration-none conversation-link">
+                <div class="card-body py-3 px-3">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div class="conv-type-icon conv-icon-service"><i class="fas fa-briefcase"></i></div>
+                        <div class="flex-grow-1 min-w-0">
+                            <div class="d-flex flex-wrap gap-1 align-items-center mb-1">
+                                <span class="badge content-type-badge badge-service">{{ conversation.get_content_type_display }}</span>
+                                {% if conversation.service_inquiry %}
+                                    <span class="badge inbox-status-badge inbox-status-{{ conversation.service_inquiry.status }}">
+                                        Inquiry &bull; {{ conversation.service_inquiry.get_status_display }}
+                                    </span>
+                                {% elif conversation.seller_response %}
+                                    <span class="badge inbox-status-badge inbox-status-{{ conversation.seller_response.status }}">
+                                        Response &bull; {{ conversation.seller_response.get_status_display }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <h6 class="conv-title mb-1 {% if conversation.unread_count > 0 %}fw-bold{% endif %}">{{ conversation.get_content_title }}</h6>
+                            <p class="conv-participant mb-0 small">
+                                {% for participant in conversation.participants.all %}
+                                    {% if participant != request.user.profile %}
+                                        <span>{{ participant.user.username }}</span>
+                                        {% if participant.business_verification_status == 'verified' %}
+                                            <i class="fas fa-check-circle text-primary ms-1" title="Verified Business"></i>
+                                        {% endif %}
+                                    {% endif %}
+                                {% endfor %}
+                                {% if last_message %}
+                                    <span class="text-muted mx-1">&bull;</span>
+                                    <span class="conv-preview"><i class="fas fa-lock encryption-icon me-1"></i>{{ last_message.content|truncatewords:10 }}</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="text-end flex-shrink-0">
+                            <small class="conv-date d-block">{{ conversation.updated_at|date:"M d" }}</small>
+                            {% if conversation.unread_count > 0 %}<span class="badge unread-badge rounded-pill mt-1">{{ conversation.unread_count }}</span>{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% endwith %}
+        {% endif %}
+    {% endfor %}
+    <div class="empty-state text-center py-5 inbox-panel-empty" style="display:none;">
+        <div class="empty-icon mb-3"><i class="fas fa-briefcase fa-3x text-muted"></i></div>
+        <p class="mb-1 fw-semibold">No service conversations yet.</p>
+        <small class="text-muted">Messages about services will appear here.</small>
+    </div>
+</div>
+
+
+{# ════════════════════════════════════════════════════════════════════════════ #}
+{# REQUESTS panel                                                               #}
+{# ════════════════════════════════════════════════════════════════════════════ #}
+<div class="ml-panel" id="inbox-requests-panel" role="tabpanel">
+    {% for conversation in all_conversations %}
+        {% if conversation.content_type.model == 'buyerrequest' %}
+        {% with last_message=conversation.last_message %}
+        <div class="conversation-card card mb-2">
+            <a href="{% url 'conversation_detail' conversation.uuid %}" class="text-decoration-none conversation-link">
+                <div class="card-body py-3 px-3">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div class="conv-type-icon conv-icon-request"><i class="fas fa-search"></i></div>
+                        <div class="flex-grow-1 min-w-0">
+                            <div class="d-flex flex-wrap gap-1 align-items-center mb-1">
+                                <span class="badge content-type-badge badge-request">{{ conversation.get_content_type_display }}</span>
+                                {% if conversation.service_inquiry %}
+                                    <span class="badge inbox-status-badge inbox-status-{{ conversation.service_inquiry.status }}">
+                                        Inquiry &bull; {{ conversation.service_inquiry.get_status_display }}
+                                    </span>
+                                {% elif conversation.seller_response %}
+                                    <span class="badge inbox-status-badge inbox-status-{{ conversation.seller_response.status }}">
+                                        Response &bull; {{ conversation.seller_response.get_status_display }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <h6 class="conv-title mb-1 {% if conversation.unread_count > 0 %}fw-bold{% endif %}">{{ conversation.get_content_title }}</h6>
+                            <p class="conv-participant mb-0 small">
+                                {% for participant in conversation.participants.all %}
+                                    {% if participant != request.user.profile %}
+                                        <span>{{ participant.user.username }}</span>
+                                        {% if participant.business_verification_status == 'verified' %}
+                                            <i class="fas fa-check-circle text-primary ms-1" title="Verified Business"></i>
+                                        {% endif %}
+                                    {% endif %}
+                                {% endfor %}
+                                {% if last_message %}
+                                    <span class="text-muted mx-1">&bull;</span>
+                                    <span class="conv-preview"><i class="fas fa-lock encryption-icon me-1"></i>{{ last_message.content|truncatewords:10 }}</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="text-end flex-shrink-0">
+                            <small class="conv-date d-block">{{ conversation.updated_at|date:"M d" }}</small>
+                            {% if conversation.unread_count > 0 %}<span class="badge unread-badge rounded-pill mt-1">{{ conversation.unread_count }}</span>{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% endwith %}
+        {% endif %}
+    {% endfor %}
+    <div class="empty-state text-center py-5 inbox-panel-empty" style="display:none;">
+        <div class="empty-icon mb-3"><i class="fas fa-search fa-3x text-muted"></i></div>
+        <p class="mb-1 fw-semibold">No request conversations yet.</p>
+        <small class="text-muted">Messages about buyer requests will appear here.</small>
+    </div>
+</div>
+
+
+{# ════════════════════════════════════════════════════════════════════════════ #}
+{# UNREAD panel                                                                 #}
+{# ════════════════════════════════════════════════════════════════════════════ #}
+<div class="ml-panel" id="inbox-unread-panel" role="tabpanel">
+    {% for conversation in all_conversations %}
+        {% if conversation.unread_count > 0 %}
+        {% with last_message=conversation.last_message %}
+        <div class="conversation-card card mb-2">
+            <a href="{% url 'conversation_detail' conversation.uuid %}" class="text-decoration-none conversation-link">
+                <div class="card-body py-3 px-3">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div class="conv-type-icon
+                            {% if conversation.content_type.model == 'product_listing' %}conv-icon-product
+                            {% elif conversation.content_type.model == 'servicelisting' %}conv-icon-service
+                            {% elif conversation.content_type.model == 'buyerrequest' %}conv-icon-request
+                            {% endif %}">
+                            <i class="fas
+                                {% if conversation.content_type.model == 'product_listing' %}fa-box
+                                {% elif conversation.content_type.model == 'servicelisting' %}fa-briefcase
+                                {% elif conversation.content_type.model == 'buyerrequest' %}fa-search
+                                {% endif %}"></i>
+                        </div>
+                        <div class="flex-grow-1 min-w-0">
+                            <div class="d-flex flex-wrap gap-1 align-items-center mb-1">
+                                <span class="badge content-type-badge
+                                    {% if conversation.content_type.model == 'product_listing' %}badge-product
+                                    {% elif conversation.content_type.model == 'servicelisting' %}badge-service
+                                    {% elif conversation.content_type.model == 'buyerrequest' %}badge-request
+                                    {% endif %}">
+                                    {{ conversation.get_content_type_display }}
+                                </span>
+                                {% if conversation.service_inquiry %}
+                                    <span class="badge inbox-status-badge inbox-status-{{ conversation.service_inquiry.status }}">
+                                        Inquiry &bull; {{ conversation.service_inquiry.get_status_display }}
+                                    </span>
+                                {% elif conversation.seller_response %}
+                                    <span class="badge inbox-status-badge inbox-status-{{ conversation.seller_response.status }}">
+                                        Response &bull; {{ conversation.seller_response.get_status_display }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <h6 class="conv-title mb-1 fw-bold">{{ conversation.get_content_title }}</h6>
+                            <p class="conv-participant mb-0 small">
+                                {% for participant in conversation.participants.all %}
+                                    {% if participant != request.user.profile %}
+                                        <span>{{ participant.user.username }}</span>
+                                        {% if participant.business_verification_status == 'verified' %}
+                                            <i class="fas fa-check-circle text-primary ms-1" title="Verified Business"></i>
+                                        {% endif %}
+                                    {% endif %}
+                                {% endfor %}
+                                {% if last_message %}
+                                    <span class="text-muted mx-1">&bull;</span>
+                                    <span class="conv-preview">
+                                        <i class="fas fa-lock encryption-icon me-1"></i>{{ last_message.content|truncatewords:10 }}
+                                    </span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="text-end flex-shrink-0">
+                            <small class="conv-date d-block">{{ conversation.updated_at|date:"M d" }}</small>
+                            <span class="badge unread-badge rounded-pill mt-1">{{ conversation.unread_count }}</span>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% endwith %}
+        {% endif %}
+    {% endfor %}
+    <div class="empty-state text-center py-5 inbox-panel-empty" style="display:none;">
+        <div class="empty-icon mb-3"><i class="fas fa-check-circle fa-3x text-success"></i></div>
+        <p class="mb-1 fw-semibold">You're all caught up!</p>
+        <small class="text-muted">No unread messages at the moment.</small>
+    </div>
+</div>
+
+
+{# ── Privacy footer ───────────────────────────────────────────────────────── #}
+<div class="privacy-card mt-4">
+    <i class="fas fa-shield-alt me-2"></i>
+    <span>All messages are end-to-end encrypted. Only you and your conversation partner can read them.</span>
+</div>
+
+
+<script>
+(function () {
+    var tabs   = document.querySelectorAll('#inboxTabs .ml-tab');
+    var panels = document.querySelectorAll('.ml-panel');
+
+    function activateTab(btn) {
+        tabs.forEach(function (b) { b.classList.remove('active'); });
+        panels.forEach(function (p) { p.classList.remove('active'); });
+        btn.classList.add('active');
+        var panel = document.getElementById(btn.dataset.panel);
+        if (panel) {
+            panel.classList.add('active');
+            /* show empty placeholder only when the panel has no conversation cards */
+            var cards = panel.querySelectorAll('.conversation-card');
+            var empty = panel.querySelector('.inbox-panel-empty');
+            if (empty) empty.style.display = cards.length === 0 ? '' : 'none';
+        }
+        /* keep URL in sync without reloading */
+        var url = new URL(window.location);
+        var filterMap = {
+            'inbox-all-panel':      '',
+            'inbox-products-panel': 'products',
+            'inbox-services-panel': 'services',
+            'inbox-requests-panel': 'requests',
+            'inbox-unread-panel':   'unread'
+        };
+        var val = filterMap[btn.dataset.panel];
+        if (val) { url.searchParams.set('filter', val); }
+        else     { url.searchParams.delete('filter'); }
+        window.history.replaceState({}, '', url);
+    }
+
+    tabs.forEach(function (btn) {
+        btn.addEventListener('click', function () { activateTab(btn); });
+    });
+
+    /* restore tab from URL on initial load (e.g. ?filter=services bookmark) */
+    (function () {
+        var filter = new URLSearchParams(window.location.search).get('filter') || '';
+        var panelMap = {
+            '':         'inbox-all-panel',
+            'products': 'inbox-products-panel',
+            'services': 'inbox-services-panel',
+            'requests': 'inbox-requests-panel',
+            'unread':   'inbox-unread-panel'
+        };
+        var target = document.querySelector('[data-panel="' + (panelMap[filter] || 'inbox-all-panel') + '"]');
+        if (target) activateTab(target);
+    })();
+})();
+</script>
 
 {% endblock %}
