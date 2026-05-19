@@ -91,7 +91,7 @@ class Profile(models.Model):
             ('ngo', 'Non-Governmental Organization'),
             ('other', 'Other'),
         ],
-        blank=True, null=True
+        blank=True, null=True, default='sole_proprietorship'
     )
     business_verification_status = models.CharField(
         max_length=20,
@@ -504,7 +504,8 @@ class BusinessVerificationDocument(models.Model):
             ('bank_statement', 'Bank Statement'),
             ('utility_bill', 'Utility Bill'),
             ('other', 'Other Document'),
-        ]
+        ],
+        default='business_registration'
     )
     document = models.FileField(upload_to='business_verification_docs/')
     description = models.CharField(max_length=255, blank=True)

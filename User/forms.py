@@ -262,13 +262,31 @@ class BusinessVerificationForm(forms.ModelForm):
                 'class': 'form-check-input'
             }),
         }
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['business_name'].required = True
         self.fields['business_email'].required = True
         self.fields['business_phone'].required = True
         self.fields['business_description'].required = True
+        self.fields['business_type'].required = True
+
+        # Replace Django's default "----------" with a clear prompt.
+        # The empty option only shows when no value has been saved yet;
+        # existing instances with a saved business_type pre-select it normally.
+        self.fields['business_type'].choices = [
+            ('', 'Select Business Type'),
+            ('sole_proprietorship', 'Sole Proprietorship'),
+            ('partnership', 'Partnership'),
+            ('limited_liability', 'Limited Liability Company'),
+            ('corporation', 'Corporation'),
+            ('cooperative', 'Cooperative Society'),
+            ('ngo', 'Non-Governmental Organization'),
+            ('other', 'Other'),
+        ]
+        instance = kwargs.get('instance')
+        if not (instance and instance.pk and instance.business_type):
+            self.initial['business_type'] = ''
 
 class BusinessDocumentForm(forms.ModelForm):
     class Meta:
@@ -278,13 +296,48 @@ class BusinessDocumentForm(forms.ModelForm):
             'document_type': forms.Select(attrs={'class': 'form-select'}),
             'document': forms.FileInput(attrs={
                 'class': 'form-control',
-                'accept': '.pdf,.jpg,.jpeg,.png,.doc,.docx'
+                'accept': '.pdf,.jpg,.jpeg,.png,.webp,.doc,.docx'
             }),
-            'description': forms.TextInput(attrs={
+            'description': forms.Textarea(attrs={
                 'class': 'form-control',
-                'placeholder': 'Brief description of this document'
+                'rows': 3,
+                'placeholder': 'Briefly describe what this document is or what it proves'
             }),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Replace Django's default "----------" with a clear prompt.
+        # document_type is only required when a file is actually being uploaded;
+        # the whole document section is optional on the verification form.
+        self.fields['document_type'].required = False
+        self.fields['document'].required = False
+        self.fields['description'].required = False
+
+        self.fields['document_type'].choices = [
+            ('', 'Select Document Type'),
+            ('business_registration', 'Business Registration Certificate'),
+            ('tax_certificate', 'Tax Identification Certificate'),
+            ('business_license', 'Business License'),
+            ('bank_statement', 'Bank Statement'),
+            ('utility_bill', 'Utility Bill'),
+            ('other', 'Other Document'),
+        ]
+        self.initial['document_type'] = ''
+
+    def clean(self):
+        cleaned_data = super().clean()
+        document = cleaned_data.get('document')
+        document_type = cleaned_data.get('document_type')
+
+        # If a file is uploaded, document_type becomes required
+        if document and not document_type:
+            self.add_error(
+                'document_type',
+                'Please select a document type for the uploaded file.'
+            )
+        return cleaned_data
 
 class ItemReportForm(forms.ModelForm):
     """

@@ -1,542 +1,566 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}Business Verification{% endblock %}
+
 {% block page_css %}
 <style>
-/* Verification Form Card */
+/* ════════════════════════════════════════════════════════════════
+   BUSINESS VERIFICATION — Complete Design System
+   Matches profile / product / service / request form pages exactly:
+   • Floating labels  →  all text / email / tel / url inputs + selects
+   • Standard labels  →  textareas, checkboxes
+   • Shared border, focus ring, font, colour tokens
+   • Light + dark theme  ·  all screen sizes
+════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Base controls ── */
+.form-control, .form-select {
+    border-width: 2px;
+    border-style: solid;
+    border-color: var(--border-color);
+    border-radius: var(--radius-md, 0.45rem);
+    font-size: 0.9375rem;
+    color: var(--text-primary);
+    background-color: var(--card-background);
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.form-control:focus, .form-select:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.18);
+    outline: none;
+    background-color: var(--card-background);
+}
+.form-control.is-invalid, .form-select.is-invalid { border-color: #dc3545 !important; box-shadow: none !important; }
+.form-control.is-valid,   .form-select.is-valid   { border-color: #198754 !important; box-shadow: none !important; }
+[data-bs-theme="dark"] .form-control,
+[data-bs-theme="dark"] .form-select {
+    background-color: var(--dark-card-background, #1e2330);
+    border-color: var(--dark-border-color, #3a3f52);
+    color: var(--dark-text-primary, #e9ecef);
+}
+[data-bs-theme="dark"] .form-control:focus,
+[data-bs-theme="dark"] .form-select:focus {
+    background-color: var(--dark-card-background, #1e2330);
+}
+
+/* ── 2. Standard label (textareas, checkboxes) ── */
+.form-label {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.01em;
+}
+.form-label .req { color: #dc3545; margin-left: 2px; font-size: 0.75rem; font-weight: 700; }
+.form-label .opt {
+    display: inline-block;
+    font-size: 0.68rem; font-weight: 500;
+    color: var(--text-secondary); background: var(--border-color);
+    border-radius: 4px; padding: 1px 6px; margin-left: 5px;
+}
+[data-bs-theme="dark"] .form-label { color: var(--dark-text-secondary, #9ca3af); }
+[data-bs-theme="dark"] .form-label .opt { background: var(--dark-border-color, #3a3f52); }
+
+/* ── 3. Floating labels ── */
+.form-floating { position: relative; }
+.form-floating > .form-control,
+.form-floating > .form-select {
+    height: calc(3.5rem + 4px);
+    padding: 1.2rem 0.875rem 0.4rem;
+    line-height: 1.25;
+}
+.form-floating > textarea.form-control {
+    height: auto;
+    min-height: 7rem;
+    padding-top: 1.75rem;
+    resize: vertical;
+    line-height: 1.55;
+}
+.form-floating > label {
+    position: absolute; top: 0; left: 0;
+    height: 100%; padding: 1rem 0.875rem;
+    pointer-events: none; border: 1px solid transparent;
+    transform-origin: 0 0;
+    transition: transform 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+    font-size: 0.9375rem; font-weight: 400;
+    color: var(--text-secondary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+}
+/* Text/email/tel/url: float when focused or filled */
+.form-floating > .form-control:focus ~ label,
+.form-floating > .form-control:not(:placeholder-shown) ~ label {
+    transform: scale(0.78) translateY(-0.6rem) translateX(0.08rem);
+    color: var(--accent-color); opacity: 1; font-weight: 600;
+}
+/* Selects: always floated */
+.form-floating > .form-select { padding-top: 1.625rem; padding-bottom: 0.5rem; }
+.form-floating > .form-select ~ label {
+    transform: scale(0.78) translateY(-0.6rem) translateX(0.08rem);
+    color: var(--accent-color); opacity: 1; font-weight: 600;
+}
+.form-floating > label .req { color: #dc3545; margin-left: 2px; font-size: inherit; }
+.form-floating > label .opt {
+    display: inline-block; font-size: 0.7rem; font-weight: 400;
+    color: var(--text-secondary); background: var(--border-color);
+    border-radius: 3px; padding: 1px 4px; margin-left: 3px;
+}
+[data-bs-theme="dark"] .form-floating > label { color: var(--dark-text-secondary, #9ca3af); }
+[data-bs-theme="dark"] .form-floating > .form-control:focus ~ label,
+[data-bs-theme="dark"] .form-floating > .form-control:not(:placeholder-shown) ~ label,
+[data-bs-theme="dark"] .form-floating > .form-select ~ label { color: var(--accent-color); }
+
+/* ── 4. Textarea (standard label-above) ── */
+textarea.form-control {
+    min-height: 6.5rem; resize: vertical;
+    padding: 0.75rem 0.875rem; line-height: 1.55;
+}
+.form-floating textarea.form-control { padding-top: 1.75rem; }
+.form-control::placeholder {
+    color: var(--text-secondary); opacity: 0.6;
+    font-size: 0.875rem; font-style: italic;
+}
+[data-bs-theme="dark"] .form-control::placeholder { opacity: 0.38; }
+
+/* ── 5. Helper text ── */
+.form-text {
+    display: block; font-size: 0.75rem; line-height: 1.45;
+    margin-top: 0.3rem; color: var(--text-secondary) !important;
+    padding-left: 0.1rem;
+}
+[data-bs-theme="dark"] .form-text { color: var(--dark-text-secondary, #9ca3af) !important; }
+
+/* ── 6. Error messages ── */
+.field-error-msg {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 0.78rem; color: #dc3545; margin-top: 0.3rem;
+    animation: errorSlide 0.2s ease;
+}
+@keyframes errorSlide {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── 7. Form checks / switches ── */
+.form-check-input {
+    width: 1.1em; height: 1.1em;
+    border-width: 2px; border-color: var(--border-color);
+    background-color: var(--card-background);
+    cursor: pointer;
+}
+.form-check-input:checked {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+.form-check-input:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.18);
+}
+.form-check-label {
+    font-size: 0.875rem; font-weight: 500;
+    color: var(--text-primary); cursor: pointer;
+}
+[data-bs-theme="dark"] .form-check-input { background-color: var(--dark-card-background, #1e2330); border-color: var(--dark-border-color, #3a3f52); }
+[data-bs-theme="dark"] .form-check-label { color: var(--dark-text-primary, #e9ecef); }
+
+/* ── 8. Page / card shell ── */
 .verification-form-card {
     background: var(--card-background);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-xl);
-    box-shadow: 0 8px 32px var(--shadow-color);
+    border-radius: var(--radius-xl, 0.75rem);
+    box-shadow: 0 6px 24px var(--shadow-color, rgba(0,0,0,0.08));
     overflow: hidden;
     margin-bottom: 2rem;
 }
+[data-bs-theme="dark"] .verification-form-card {
+    background: var(--dark-card-background, #1e2330);
+    border-color: var(--dark-border-color, #3a3f52);
+}
 
-/* Header Section */
+/* ── 9. Coloured header ── */
 .verification-header {
     background: var(--primary-color);
     color: white;
     padding: 2rem 1.5rem;
     position: relative;
+    overflow: hidden;
 }
-
-.verification-header::before {
+.verification-header::after {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: var(--primary-color) 
+    inset: 0;
+   
     pointer-events: none;
 }
-
 .verification-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 60px;
-    height: 60px;
-    background: rgba(255, 255, 255, 0.2);
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 60px; height: 60px;
+    background: rgba(255,255,255,0.2);
     border-radius: 50%;
-    backdrop-filter: blur(10px);
-    position: relative;
-    z-index: 1;
+    backdrop-filter: blur(8px);
+    position: relative; z-index: 1;
 }
-
-.verification-icon i {
-    font-size: 1.8rem;
-    color: white;
-}
-
+.verification-icon i { font-size: 1.75rem; color: white; }
 .header-title {
-    font-size: 1.75rem;
-    font-weight: 600;
-    color: white;
-    margin: 0;
-    position: relative;
-    z-index: 1;
+    font-size: 1.75rem; font-weight: 700;
+    color: white; margin: 0; position: relative; z-index: 1;
 }
-
 .header-subtitle {
-    font-size: 1rem;
-    color: rgba(255, 255, 255, 0.9);
-    position: relative;
-    z-index: 1;
+    font-size: 0.9375rem; color: rgba(255,255,255,0.88);
+    position: relative; z-index: 1;
+}
+[data-bs-theme="dark"] .verification-header {
+    background: var(--dark-primary-color, #1a4a7a);
 }
 
-/* Verification Body */
-.verification-body {
-    padding: 2rem 1.5rem;
+/* ── 10. Inline save status bar (under header) ── */
+.verif-inline-progress {
+    height: 4px;
+    background: rgba(255,255,255,0.25);
+    overflow: hidden;
+}
+.verif-inline-bar {
+    height: 100%;
+    width: 0%;
+    background: rgba(255,255,255,0.9);
+    border-radius: 2px;
+    transition: width 0.35s ease;
 }
 
-/* Benefits Section */
-.benefits-section {
-    background: linear-gradient(135deg, var(--hover-bg) 0%, rgba(var(--accent-color), 0.05) 100%);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-    margin-bottom: 2rem;
+/* ── 11. Save chip (in header) ── */
+.save-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 0.3rem 0.75rem;
+    border-radius: 20px; font-size: 0.78rem; font-weight: 600;
+    background: rgba(255,255,255,0.18); color: white;
+    border: 1px solid rgba(255,255,255,0.3);
+    white-space: nowrap; flex-shrink: 0;
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
-
-.benefits-title {
-    color: var(--text-primary);
-    font-weight: 600;
-    font-size: 1.1rem;
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
+.save-chip.done  { background: rgba(25,135,84,0.35); border-color: rgba(25,135,84,0.6); }
+.save-chip.error { background: rgba(220,53,69,0.35); border-color: rgba(220,53,69,0.6); }
+.save-chip-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: currentColor;
+    animation: chipPulse 1.1s ease infinite; flex-shrink: 0;
 }
+.save-chip.done .save-chip-dot,
+.save-chip.error .save-chip-dot { animation: none; }
+@keyframes chipPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.45;transform:scale(.75)} }
 
-.benefits-title i {
-    color: var(--accent-color);
-    font-size: 1.2rem;
+/* ── 12. Full-screen loading overlay ── */
+.verif-loading-overlay {
+    position: fixed; inset: 0;
+    background: rgba(255,255,255,0.94);
+    backdrop-filter: blur(3px);
+    z-index: 1050;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
 }
-
-.benefits-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 0.75rem;
+.verif-loading-overlay.show { opacity: 1; pointer-events: all; }
+.verif-loading-content {
+    text-align: center; padding: 2.25rem 2rem;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.12);
+    width: min(88vw, 380px);
+    border: 1px solid rgba(0,0,0,0.07);
 }
-
-.benefit-item {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: var(--text-primary);
-    padding: 0.5rem 0;
+.verif-loading-content .progress { height: 7px; border-radius: 4px; }
+.verif-loading-label { font-size: 1rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem; }
+.verif-loading-sub   { font-size: 0.82rem; color: var(--text-secondary); }
+[data-bs-theme="dark"] .verif-loading-overlay { background: rgba(18,22,30,0.93); }
+[data-bs-theme="dark"] .verif-loading-content {
+    background: var(--dark-card-background, #1e2330);
+    border-color: var(--dark-border-color, #3a3f52);
 }
+[data-bs-theme="dark"] .verif-loading-label { color: var(--dark-text-primary, #e9ecef); }
+[data-bs-theme="dark"] .verif-loading-sub   { color: var(--dark-text-secondary, #9ca3af); }
 
-.benefit-item i {
-    color: var(--accent-color);
-    font-size: 1rem;
-    width: 16px;
-    text-align: center;
-    flex-shrink: 0;
-}
+/* ── 13. Body / section cards ── */
+.verification-body { padding: 2rem 1.5rem; }
 
-/* Form Sections */
 .form-section {
-    background: var(--hover-bg);
+    background: var(--card-background);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-md, 0.5rem);
     padding: 1.5rem;
-    transition: all 0.3s ease;
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
-
 .form-section:hover {
     border-color: var(--accent-color);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: 0 3px 12px rgba(0,0,0,0.06);
 }
-
 .section-title {
     color: var(--text-primary);
-    font-weight: 600;
-    font-size: 1.1rem;
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    padding-bottom: 0.5rem;
-    border-bottom: 2px solid var(--border-color);
+    font-weight: 700; font-size: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.65rem; letter-spacing: 0.01em;
+    display: flex; align-items: center; margin-bottom: 0;
 }
-
-.section-title i {
-    color: var(--accent-color);
-    font-size: 1.2rem;
-}
-
+.section-title i { color: var(--accent-color); }
 .section-description {
     color: var(--text-secondary);
-    font-size: 0.9rem;
-    margin-bottom: 1rem;
+    font-size: 0.8125rem;
+    margin-bottom: 1.125rem;
+    margin-top: 0.5rem;
+    line-height: 1.5;
 }
+[data-bs-theme="dark"] .form-section { background: var(--dark-card-background, #1e2330); border-color: var(--dark-border-color, #3a3f52); }
+[data-bs-theme="dark"] .form-section:hover { border-color: var(--accent-color); }
+[data-bs-theme="dark"] .section-title { color: var(--dark-text-primary, #e9ecef); border-color: var(--dark-border-color, #3a3f52); }
+[data-bs-theme="dark"] .section-description { color: var(--dark-text-secondary, #9ca3af); }
 
-/* Form Controls */
-.form-floating > .form-control,
-.form-floating > .form-select {
-    background-color: var(--card-background);
-    border: 2px solid var(--border-color);
-    color: var(--text-primary);
-    border-radius: var(--radius-md);
-    font-size: 0.9rem;
-    transition: all 0.3s ease;
-}
-
-.form-floating > .form-control:focus,
-.form-floating > .form-select:focus {
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.15);
-    background-color: var(--card-background);
-}
-
-.form-floating > label {
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-}
-
-.form-floating > .form-control:focus ~ label,
-.form-floating > .form-control:not(:placeholder-shown) ~ label,
-.form-floating > .form-select:focus ~ label,
-.form-floating > .form-select:not([value=""]) ~ label {
-    color: var(--accent-color);
-}
-
-/* File Input */
-.file-input-wrapper {
-    position: relative;
-    overflow: hidden;
-    display: inline-block;
-    width: 100%;
-}
-
-.file-input-wrapper input[type="file"] {
-    position: absolute;
-    left: -9999px;
-    opacity: 0;
-}
-
-.file-input-label {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--card-background);
-    border: 2px dashed var(--border-color);
-    border-radius: var(--radius-md);
-    padding: 1rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    font-weight: 500;
-    height: 58px;
-}
-
-.file-input-label:hover {
-    border-color: var(--accent-color);
+/* ── 14. Benefits section ── */
+.benefits-section {
     background: var(--hover-bg);
-    color: var(--text-primary);
-}
-
-.file-input-label i {
-    color: var(--accent-color);
-}
-
-/* Form Check */
-.form-check {
-    padding-left: 0;
-    margin-top: 0.5rem;
-}
-
-.form-check-input {
-    width: 1.1rem;
-    height: 1.1rem;
-    border: 2px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    background-color: var(--card-background);
-    margin-right: 0.75rem;
-}
-
-.form-check-input:checked {
-    background-color: var(--accent-color);
-    border-color: var(--accent-color);
-}
-
-.form-check-input:focus {
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 2px rgba(184, 115, 51, 0.15);
-}
-
-.form-check-label {
-    color: var(--text-primary);
-    font-size: 0.9rem;
-    font-weight: 500;
-    cursor: pointer;
-}
-
-/* Form Text */
-.form-text {
-    color: var(--text-secondary);
-    font-size: 0.8rem;
-    margin-top: 0.25rem;
-}
-
-/* Submit Button */
-.submit-btn {
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-    border: none;
-    color: white;
-    font-weight: 600;
-    font-size: 1rem;
-    padding: 0.875rem 2rem;
-    border-radius: var(--radius-lg);
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.submit-btn::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-    transition: left 0.5s;
-}
-
-.submit-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-}
-
-.submit-btn:hover::before {
-    left: 100%;
-}
-
-.submit-btn:active {
-    transform: translateY(0);
-}
-
-/* Dark Theme Adaptations */
-[data-bs-theme="dark"] .verification-header {
-    background: linear-gradient(135deg, var(--dark-primary-color) 0%, var(--dark-secondary-color) 100%);
-}
-
-[data-bs-theme="dark"] .benefits-section {
-    background: linear-gradient(135deg, var(--dark-hover-bg) 0%, rgba(255, 102, 0, 0.05) 100%);
-    border-color: var(--dark-border-color);
-}
-
-[data-bs-theme="dark"] .form-section {
-    background: var(--dark-hover-bg);
-    border-color: var(--dark-border-color);
-}
-
-[data-bs-theme="dark"] .form-section:hover {
-    border-color: var(--dark-accent-color);
-}
-
-[data-bs-theme="dark"] .section-title {
-    border-bottom-color: var(--dark-border-color);
-}
-
-[data-bs-theme="dark"] .file-input-label {
-    background: var(--dark-card-background);
-    border-color: var(--dark-border-color);
-}
-
-[data-bs-theme="dark"] .file-input-label:hover {
-    border-color: var(--dark-accent-color);
-    background: var(--dark-hover-bg);
-}
-
-[data-bs-theme="dark"] .form-check-input {
-    background-color: var(--dark-card-background);
-    border-color: var(--dark-border-color);
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-    .verification-body {
-        padding: 1.5rem 1rem;
-    }
-    
-    .verification-header {
-        padding: 1.5rem 1rem;
-    }
-    
-    .header-title {
-        font-size: 1.5rem;
-    }
-    
-    .header-subtitle {
-        font-size: 0.9rem;
-    }
-    
-    .verification-icon {
-        width: 50px;
-        height: 50px;
-    }
-    
-    .verification-icon i {
-        font-size: 1.5rem;
-    }
-    
-    .benefits-grid {
-        grid-template-columns: 1fr;
-        gap: 0.5rem;
-    }
-    
-    .benefit-item {
-        font-size: 0.85rem;
-        padding: 0.4rem 0;
-    }
-    
-    .form-section {
-        padding: 1.25rem 1rem;
-        margin-bottom: 1rem;
-    }
-    
-    .section-title {
-        font-size: 1rem;
-    }
-    
-    .benefits-title {
-        font-size: 1rem;
-    }
-    
-    .benefits-section {
-        padding: 1.25rem 1rem;
-    }
-}
-
-@media (max-width: 576px) {
-    .verification-header {
-        padding: 1.25rem 0.75rem;
-    }
-    
-    .verification-body {
-        padding: 1.25rem 0.75rem;
-    }
-    
-    .header-title {
-        font-size: 1.3rem;
-    }
-    
-    .header-subtitle {
-        font-size: 0.85rem;
-    }
-    
-    .verification-icon {
-        width: 45px;
-        height: 45px;
-    }
-    
-    .verification-icon i {
-        font-size: 1.3rem;
-    }
-    
-    .form-section {
-        padding: 1rem 0.75rem;
-    }
-    
-    .benefits-section {
-        padding: 1rem 0.75rem;
-    }
-    
-    .benefit-item {
-        font-size: 0.8rem;
-    }
-    
-    .submit-btn {
-        font-size: 0.9rem;
-        padding: 0.75rem 1.5rem;
-    }
-    
-    .form-floating > .form-control,
-    .form-floating > .form-select {
-        font-size: 0.85rem;
-    }
-    
-    .form-floating > label {
-        font-size: 0.8rem;
-    }
-}
-
-/* Document Preview Styling */
-.document-preview-container {
-    margin-top: 1rem;
-    padding: 1rem;
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-md, 0.5rem);
+    padding: 1.375rem 1.5rem;
+}
+.benefits-title {
+    color: var(--text-primary); font-weight: 700;
+    font-size: 0.9375rem; margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 0.5rem;
+}
+.benefits-title i { color: var(--accent-color); font-size: 1rem; }
+.benefits-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 0.5rem 1rem;
+}
+.benefit-item {
+    display: flex; align-items: center; gap: 0.625rem;
+    font-size: 0.8375rem; font-weight: 500;
+    color: var(--text-primary); padding: 0.35rem 0;
+}
+.benefit-item i {
+    color: var(--accent-color); font-size: 0.9375rem;
+    width: 16px; text-align: center; flex-shrink: 0;
+}
+[data-bs-theme="dark"] .benefits-section { background: var(--dark-hover-bg, #252a38); border-color: var(--dark-border-color, #3a3f52); }
+[data-bs-theme="dark"] .benefits-title, [data-bs-theme="dark"] .benefit-item { color: var(--dark-text-primary, #e9ecef); }
+
+/* ── 15. Document upload drop zone ── */
+.doc-upload-zone {
+    display: flex; align-items: center; gap: 0.875rem;
+    padding: 0.875rem 1rem;
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-md, 0.45rem);
     background: var(--card-background);
-    display: none;
+    cursor: pointer;
+    position: relative;
+    transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+    min-height: 64px;
 }
-
-.document-preview-container.show {
-    display: block;
+.doc-upload-zone:hover,
+.doc-upload-zone.drag-over {
+    border-color: var(--accent-color);
+    background: rgba(184, 115, 51, 0.04);
+    box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.1);
 }
-
-.document-preview-img {
-    max-width: 200px;
-    max-height: 200px;
-    border-radius: var(--radius-sm);
-    border: 2px solid var(--border-color);
-    object-fit: cover;
+.doc-upload-zone .doc-zone-icon {
+    font-size: 1.6rem; color: var(--accent-color); opacity: 0.8; flex-shrink: 0; pointer-events: none;
 }
-
-.document-info {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-top: 0.5rem;
+.doc-zone-text { display: flex; flex-direction: column; gap: 2px; pointer-events: none; }
+.doc-zone-title { font-size: 0.8125rem; font-weight: 600; color: var(--text-primary); }
+.doc-zone-hint  { font-size: 0.72rem; color: var(--text-secondary); }
+.doc-file-hidden {
+    position: absolute; inset: 0;
+    opacity: 0; width: 100%; height: 100%; cursor: pointer;
 }
-
-.document-details {
-    flex: 1;
+[data-bs-theme="dark"] .doc-upload-zone {
+    background: var(--dark-card-background, #1e2330);
+    border-color: var(--dark-border-color, #3a3f52);
 }
+[data-bs-theme="dark"] .doc-zone-title { color: var(--dark-text-primary, #e9ecef); }
 
-.document-name {
-    font-weight: 600;
-    color: var(--text-primary);
-    font-size: 0.9rem;
-    margin-bottom: 0.25rem;
+/* ── 16. Document preview ── */
+.doc-preview-row {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.65rem 1rem;
+    background: rgba(25,135,84,0.06);
+    border: 1px solid rgba(25,135,84,0.18);
+    border-radius: var(--radius-md, 0.45rem);
 }
-
-.document-size {
-    color: var(--text-secondary);
-    font-size: 0.8rem;
+.doc-preview-thumb {
+    width: 52px; height: 52px;
+    border-radius: 6px; object-fit: cover; flex-shrink: 0;
+    border: 2px solid rgba(25,135,84,0.3);
 }
-
-.remove-document-btn {
-    padding: 0.25rem 0.75rem;
-    font-size: 0.8rem;
-    border-radius: var(--radius-sm);
+.doc-preview-icon-wrap {
+    width: 52px; height: 52px;
+    border-radius: 6px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(13,110,253,0.1); border: 2px solid rgba(13,110,253,0.25);
+    font-size: 1.5rem; color: #0d6efd;
 }
+.doc-preview-meta { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.doc-preview-name { font-size: 0.8rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.doc-preview-size { font-size: 0.72rem; color: var(--text-secondary); }
+.doc-optimised-badge { font-size: 0.7rem; font-weight: 600; color: #198754; }
+.doc-clear-btn { flex-shrink: 0; padding: 0.2rem 0.5rem; font-size: 0.75rem; }
+[data-bs-theme="dark"] .doc-preview-row { background: rgba(25,135,84,0.1); border-color: rgba(25,135,84,0.25); }
+[data-bs-theme="dark"] .doc-preview-name { color: var(--dark-text-primary, #e9ecef); }
+[data-bs-theme="dark"] .doc-preview-size { color: var(--dark-text-secondary, #9ca3af); }
 
-/* Dark theme support */
-[data-bs-theme="dark"] .document-preview-container {
-    background: var(--dark-card-background);
-    border-color: var(--dark-border-color);
+/* ── 17. Compress status pill ── */
+.compress-status {
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.5rem 0.875rem;
+    border-radius: var(--radius-md, 0.45rem);
+    font-size: 0.79rem; font-weight: 500;
 }
+.compress-status.running { background: #e7f3ff; color: #0d6efd; border: 1px solid #b8d4ff; }
+.compress-status.done    { background: #d1f2e4; color: #198754; border: 1px solid #a3dcc0; }
+.compress-status.warn    { background: #fff3cd; color: #856404; border: 1px solid #ffe08a; }
+[data-bs-theme="dark"] .compress-status.running { background: rgba(13,110,253,0.15); border-color: rgba(13,110,253,0.3); color: #74b9ff; }
+[data-bs-theme="dark"] .compress-status.done    { background: rgba(25,135,84,0.15); border-color: rgba(25,135,84,0.3); color: #55efc4; }
+[data-bs-theme="dark"] .compress-status.warn    { background: rgba(255,193,7,0.12); border-color: rgba(255,193,7,0.3); color: #ffd32a; }
 
-[data-bs-theme="dark"] .document-preview-img {
-    border-color: var(--dark-border-color);
+/* ── 18. Submit button ── */
+.submit-btn {
+    font-size: 0.9375rem; font-weight: 600;
+    padding: 0.8rem 2rem;
+    border-radius: var(--radius-md, 0.45rem);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    max-width: 400px; margin: 0 auto;
 }
+.submit-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(13,110,253,0.25);
+}
+.submit-btn:disabled { opacity: 0.65; cursor: not-allowed; }
 
+/* ── 19. Responsive ── */
+@media (max-width: 768px) {
+    .verification-body { padding: 1.375rem 1rem; }
+    .verification-header { padding: 1.5rem 1rem; }
+    .header-title { font-size: 1.4rem; }
+    .form-section { padding: 1.25rem 1rem; }
+    .benefits-section { padding: 1.125rem 1rem; }
+    .benefits-grid { grid-template-columns: 1fr; gap: 0.4rem; }
+    .verif-loading-content { padding: 1.75rem 1.25rem; }
+}
+@media (max-width: 576px) {
+    .verification-header { padding: 1.25rem 0.875rem; }
+    .verification-body { padding: 1.125rem 0.875rem; }
+    .header-title { font-size: 1.2rem; }
+    .header-subtitle { font-size: 0.85rem; }
+    .verification-icon { width: 48px; height: 48px; }
+    .verification-icon i { font-size: 1.4rem; }
+    .form-section { padding: 1rem 0.875rem; }
+    .benefits-section { padding: 1rem 0.875rem; }
+    .form-floating > .form-control, .form-floating > .form-select { height: calc(3.25rem + 4px); }
+    .form-label { font-size: 0.78rem; }
+    .form-text  { font-size: 0.72rem; }
+    .submit-btn { font-size: 0.875rem; max-width: 100%; }
+    .benefit-item { font-size: 0.8rem; }
+}
+@media (max-width: 360px) {
+    .verification-body { padding: 1rem 0.75rem; }
+    .form-section { padding: 0.875rem 0.75rem; }
+}
 </style>
 {% endblock %}
 
-{% block title %}Business Verification{% endblock %}
-
 {% block 'Body' %}
+
+<!-- ══ Loading overlay ══ -->
+<div id="verifLoadingOverlay" class="verif-loading-overlay" role="dialog" aria-label="Submitting">
+    <div class="verif-loading-content">
+        <div class="spinner-border text-primary mb-3" role="status">
+            <span class="visually-hidden">Submitting…</span>
+        </div>
+        <div id="verifProgressLabel" class="verif-loading-label">Submitting verification…</div>
+        <div class="progress mb-2">
+            <div id="verifProgressBar"
+                 class="progress-bar progress-bar-striped progress-bar-animated"
+                 role="progressbar" style="width:0%"></div>
+        </div>
+        <div id="verifProgressSub" class="verif-loading-sub">Please wait a moment</div>
+    </div>
+</div>
+
+<!-- ══ Toast notifications ══ -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:1200;">
+    <div id="verifInfoToast"
+         class="toast align-items-center text-white border-0"
+         style="background:#0d6efd;"
+         role="alert" aria-live="polite" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="bi bi-info-circle-fill me-2"></i>
+                <span id="verifInfoMsg">Document optimised.</span>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto"
+                    data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+
 <div class="container my-3 my-lg-4">
     <div class="row justify-content-center">
         <div class="col-12 col-lg-10 col-xl-8">
             <div class="verification-form-card">
-                <!-- Header Section -->
+
+                <!-- ── Coloured Header ── -->
                 <div class="verification-header text-center">
-                    <div class="verification-icon mb-3">
-                        <i class="bi bi-patch-check-fill"></i>
+                    <div class="d-flex align-items-start justify-content-between mb-3 position-relative" style="z-index:1;">
+                        <!-- spacer -->
+                        <div style="width:90px;"></div>
+                        <!-- centre icon -->
+                        <div class="verification-icon">
+                            <i class="bi bi-patch-check-fill"></i>
+                        </div>
+                        <!-- save chip (right) -->
+                        <div style="width:90px; display:flex; justify-content:flex-end;">
+                            <div id="verifSaveChip" class="save-chip d-none">
+                                <span class="save-chip-dot"></span>
+                                <span id="verifSaveChipText">Submitting…</span>
+                            </div>
+                        </div>
                     </div>
-                    <h2 class="header-title mb-2">Business Verification</h2>
-                    <p class="header-subtitle mb-0">Get verified to unlock premium features and build customer trust</p>
+
+                    <h2 class="header-title mb-2" style="position:relative;z-index:1;">
+                        Business Verification
+                    </h2>
+                    <p class="header-subtitle mb-0" style="position:relative;z-index:1;">
+                        Get verified to unlock premium features and build customer trust
+                    </p>
                 </div>
-                
+
+                <!-- slim progress bar sits between header and body -->
+                <div id="verifInlineProgress" class="verif-inline-progress d-none">
+                    <div id="verifInlineBar" class="verif-inline-bar"></div>
+                </div>
+
                 <div class="verification-body">
-                    <!-- Benefits Section -->
+
+                    <!-- ── Django messages ── -->
+                    {% if messages %}
+                    <div class="mb-4">
+                        {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show py-2 small" role="alert">
+                            <i class="bi bi-{% if message.tags == 'success' %}check-circle{% else %}exclamation-triangle{% endif %}-fill me-2"></i>
+                            {{ message }}
+                            <button type="button" class="btn-close btn-sm" data-bs-dismiss="alert"></button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- ── Benefits ── -->
                     <div class="benefits-section mb-4">
                         <h5 class="benefits-title">
-                            <i class="bi bi-star-fill me-2"></i>Benefits of Business Verification
+                            <i class="bi bi-star-fill"></i>Benefits of Business Verification
                         </h5>
                         <div class="benefits-grid">
                             <div class="benefit-item">
                                 <i class="bi bi-patch-check-fill"></i>
-                                <span>Verified business badge on all your products</span>
+                                <span>Verified badge on all your products &amp; services</span>
                             </div>
                             <div class="benefit-item">
                                 <i class="bi bi-infinity"></i>
@@ -552,7 +576,7 @@
                             </div>
                             <div class="benefit-item">
                                 <i class="bi bi-graph-up-arrow"></i>
-                                <span>Priority in search results</span>
+                                <span>Priority placement in search results</span>
                             </div>
                             <div class="benefit-item">
                                 <i class="bi bi-filter-circle"></i>
@@ -560,361 +584,547 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <form method="post" enctype="multipart/form-data" class="verification-form">
+
+                    <form method="post" enctype="multipart/form-data"
+                          class="needs-validation" id="verifForm" novalidate>
                         {% csrf_token %}
-                        
-                        <!-- Business Information Section -->
+
+                        <!-- ── Business Information ── -->
                         <div class="form-section mb-4">
-                            <h5 class="section-title">
+                            <h5 class="section-title mb-4">
                                 <i class="bi bi-building me-2"></i>Business Information
                             </h5>
-                            
+
                             <div class="row g-3">
                                 <div class="col-12 col-md-6">
                                     <div class="form-floating">
                                         {{ form.business_name }}
-                                        <label for="id_business_name">Business Name *</label>
+                                        <label for="id_business_name">
+                                            Business Name <span class="req">*</span>
+                                        </label>
                                     </div>
+                                    {% for e in form.business_name.errors %}
+                                    <div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>
+                                    {% endfor %}
                                 </div>
                                 <div class="col-12 col-md-6">
                                     <div class="form-floating">
                                         {{ form.business_registration_number }}
-                                        <label for="id_business_registration_number">Registration Number</label>
+                                        <label for="id_business_registration_number">
+                                            Registration Number <span class="opt">Optional</span>
+                                        </label>
                                     </div>
-                                    <small class="form-text">Optional but recommended</small>
+                                    {% for e in form.business_registration_number.errors %}
+                                    <div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>
+                                    {% endfor %}
+                                    <div class="form-text">Optional but strongly recommended for faster approval.</div>
                                 </div>
                             </div>
-                            
-                            <div class="row g-3 mt-2">
+
+                            <div class="row g-3 mt-1">
                                 <div class="col-12 col-md-6">
                                     <div class="form-floating">
                                         {{ form.business_type }}
-                                        <label for="id_business_type">Business Type</label>
+                                        <label for="id_business_type">
+                                            Business Type <span class="req">*</span>
+                                        </label>
                                     </div>
+                                    {% for e in form.business_type.errors %}
+                                    <div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>
+                                    {% endfor %}
                                 </div>
                                 <div class="col-12 col-md-6">
                                     <div class="form-floating">
                                         {{ form.business_phone }}
-                                        <label for="id_business_phone">Business Phone *</label>
+                                        <label for="id_business_phone">
+                                            Business Phone <span class="req">*</span>
+                                        </label>
                                     </div>
+                                    {% for e in form.business_phone.errors %}
+                                    <div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>
+                                    {% endfor %}
                                 </div>
                             </div>
-                            
+
                             <div class="mt-3">
-                                <div class="form-floating">
-                                    {{ form.business_description }}
-                                    <label for="id_business_description">Business Description *</label>
+                                <label class="form-label" for="id_business_description">
+                                    Business Description <span class="req">*</span>
+                                </label>
+                                {{ form.business_description }}
+                                {% for e in form.business_description.errors %}
+                                <div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>
+                                {% endfor %}
+                                <div class="form-text">
+                                    Describe what your business does, your products or services, and your target customers.
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- Contact Information Section -->
+
+                        <!-- ── Contact Information ── -->
                         <div class="form-section mb-4">
-                            <h5 class="section-title">
+                            <h5 class="section-title mb-4">
                                 <i class="bi bi-envelope me-2"></i>Contact Information
                             </h5>
-                            
+
                             <div class="row g-3">
                                 <div class="col-12 col-md-6">
                                     <div class="form-floating">
                                         {{ form.business_email }}
-                                        <label for="id_business_email">Business Email *</label>
+                                        <label for="id_business_email">
+                                            Business Email <span class="req">*</span>
+                                        </label>
                                     </div>
+                                    {% for e in form.business_email.errors %}
+                                    <div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>
+                                    {% endfor %}
                                 </div>
                                 <div class="col-12 col-md-6">
                                     <div class="form-floating">
                                         {{ form.business_website }}
-                                        <label for="id_business_website">Website</label>
+                                        <label for="id_business_website">
+                                            Website <span class="opt">Optional</span>
+                                        </label>
                                     </div>
+                                    {% for e in form.business_website.errors %}
+                                    <div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>
+                                    {% endfor %}
+                                    <div class="form-text">E.g. https://yourbusiness.com</div>
                                 </div>
                             </div>
-                            
+
                             <div class="mt-3">
                                 <div class="form-check">
                                     {{ form.business_address_visible }}
                                     <label class="form-check-label" for="id_business_address_visible">
-                                        Display my business address publicly
+                                        Display my business address publicly on my profile
                                     </label>
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- Document Upload Section -->
+
+                        <!-- ── Supporting Documents ── -->
                         <div class="form-section mb-4">
-                            <h5 class="section-title">
+                            <h5 class="section-title mb-2">
                                 <i class="bi bi-file-earmark-check me-2"></i>Supporting Documents
                             </h5>
-                            <p class="section-description">Upload documents to verify your business (optional but recommended)</p>
-                            
-                            <div class="row g-3">
+                            <p class="section-description">
+                                Upload a document to verify your business (optional but speeds up approval).
+                                Accepted: JPG, PNG, WebP, PDF — max 10 MB.
+                            </p>
+
+                            <div class="row g-3 align-items-start">
+                                <!-- Document type select -->
                                 <div class="col-12 col-md-6">
                                     <div class="form-floating">
                                         {{ document_form.document_type }}
-                                        <label for="id_document_type">Document Type</label>
-                                    </div>
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <div class="file-input-wrapper">
-                                        {{ document_form.document }}
-                                        <label for="id_document" class="file-input-label">
-                                            <i class="bi bi-cloud-upload me-2"></i>Choose Document
+                                        <label for="id_document_type">
+                                            Document Type <span class="opt">Optional</span>
                                         </label>
                                     </div>
+                                    {% for e in document_form.document_type.errors %}
+                                    <div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>
+                                    {% endfor %}
+                                </div>
+
+                                <!-- File upload drop zone -->
+                                <div class="col-12 col-md-6">
+                                    <div class="doc-upload-zone" id="docUploadZone">
+                                        <i class="bi bi-cloud-arrow-up doc-zone-icon"></i>
+                                        <div class="doc-zone-text">
+                                            <span class="doc-zone-title">Click to upload or drag &amp; drop</span>
+                                            <span class="doc-zone-hint">JPG, PNG, WebP or PDF · max 10 MB · auto-optimised</span>
+                                        </div>
+                                        {{ document_form.document }}
+                                    </div>
+                                    {% for e in document_form.document.errors %}
+                                    <div class="field-error-msg mt-1"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>
+                                    {% endfor %}
                                 </div>
                             </div>
-                            
+
+                            <!-- Compress status (shown during / after processing) -->
+                            <div id="docCompressStatus" class="compress-status d-none mt-3"></div>
+
+                            <!-- Preview row (shown after file selection) -->
+                            <div id="docPreviewRow" class="doc-preview-row mt-3 d-none">
+                                <img id="docPreviewThumb" src="" alt="Document preview"
+                                     class="doc-preview-thumb d-none">
+                                <div id="docPreviewIconWrap" class="doc-preview-icon-wrap d-none">
+                                    <i class="bi bi-file-earmark-text"></i>
+                                </div>
+                                <div class="doc-preview-meta">
+                                    <span id="docPreviewName" class="doc-preview-name"></span>
+                                    <span id="docPreviewSize" class="doc-preview-size"></span>
+                                    <span id="docOptimisedBadge" class="doc-optimised-badge d-none">
+                                        <i class="bi bi-check-circle-fill me-1"></i>Optimised
+                                    </span>
+                                </div>
+                                <button type="button" id="docClearBtn"
+                                        class="btn btn-sm btn-outline-secondary doc-clear-btn"
+                                        title="Remove selection">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+
+                            <!-- Description textarea -->
                             <div class="mt-3">
-                                <div class="form-floating">
-                                    {{ document_form.description }}
-                                    <label for="id_description">Document Description</label>
+                                <label class="form-label" for="id_description">
+                                    Document Description <span class="opt">Optional</span>
+                                </label>
+                                {{ document_form.description }}
+                                {% for e in document_form.description.errors %}
+                                <div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>
+                                {% endfor %}
+                                <div class="form-text">
+                                    Briefly describe what this document is or what it proves.
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- Submit Button -->
+
+                        <!-- ── Submit ── -->
                         <div class="d-grid">
-                            <button type="submit" class="btn btn-primary btn-lg submit-btn">
+                            <button type="submit" class="btn btn-primary btn-lg submit-btn"
+                                    id="verifSubmitBtn">
                                 <i class="bi bi-send-fill me-2"></i>Submit for Verification
                             </button>
                         </div>
+
                     </form>
-                </div>
-            </div>
+                </div><!-- /verification-body -->
+            </div><!-- /verification-form-card -->
         </div>
     </div>
 </div>
 
-
-
+<!-- ══════════════════════════════════════════════════════════════
+     SCRIPTS
+══════════════════════════════════════════════════════════════ -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    
-    // Lightweight Image Compressor
-    class FastImageCompressor {
-        constructor() {
-            this.maxUploadSize = 500 * 1024; // 500KB for documents
-            this.quality = 0.9; // Higher quality for documents
-            this.maxDimension = 1200;
+/* ════════════════════════════════════════════════════════════════
+   Document / Image Compressor
+   Images (JPG, PNG, WebP)  → canvas JPEG, 0.88 quality, max 1200 px, target ≤ 600 KB
+   PDFs / other non-images  → passed through untouched
+   Matches the pattern used in profile_update, product_form, service_form
+════════════════════════════════════════════════════════════════ */
+const DocCompressor = {
+    MAX_BYTES: 600 * 1024,
+    MAX_DIM:   1200,
+    QUALITY:   0.88,
+
+    isImage(file) {
+        return ['image/jpeg','image/jpg','image/png','image/webp'].includes(file.type);
+    },
+
+    fmtSize(bytes) {
+        if (bytes < 1024)    return bytes + ' B';
+        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / 1048576).toFixed(2) + ' MB';
+    },
+
+    compress(file) {
+        if (!this.isImage(file) || file.size <= this.MAX_BYTES) {
+            return Promise.resolve({ file, saved: false });
         }
-
-        async compress(file) {
-            if (file.size <= this.maxUploadSize) {
-                return file;
-            }
-
-            try {
-                return await this.createCompressedFile(file);
-            } catch (error) {
-                console.warn('Compression failed, using original:', error);
-                return file;
-            }
-        }
-
-        createCompressedFile(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                
-                reader.onload = (e) => {
-                    const img = new Image();
-                    
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        let { width, height } = this.calculateSize(img);
-                        
-                        canvas.width = width;
-                        canvas.height = height;
-                        
-                        const ctx = canvas.getContext('2d');
-                        ctx.fillStyle = '#FFFFFF';
-                        ctx.fillRect(0, 0, width, height);
-                        ctx.drawImage(img, 0, 0, width, height);
-                        
-                        canvas.toBlob(
-                            (blob) => {
-                                const compressed = new File(
-                                    [blob],
-                                    file.name.replace(/\.\w+$/, '.jpg'),
-                                    { type: 'image/jpeg' }
-                                );
-                                resolve(compressed);
-                            },
-                            'image/jpeg',
-                            this.quality
-                        );
-                    };
-                    
-                    img.onerror = () => reject(new Error('Image load failed'));
-                    img.src = e.target.result;
-                };
-                
-                reader.onerror = () => reject(new Error('File read failed'));
-                reader.readAsDataURL(file);
-            });
-        }
-
-        calculateSize(img) {
-            let width = img.width;
-            let height = img.height;
-            
-            if (width > this.maxDimension || height > this.maxDimension) {
-                const ratio = Math.min(
-                    this.maxDimension / width,
-                    this.maxDimension / height
-                );
-                width = Math.round(width * ratio);
-                height = Math.round(height * ratio);
-            }
-            
-            return { width, height };
-        }
-
-        formatSize(bytes) {
-            if (bytes < 1024) return bytes + ' B';
-            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-            return (bytes / 1048576).toFixed(1) + ' MB';
-        }
-    }
-    
-    // Initialize compressor
-    const docField = document.querySelector('input[name="document"]');
-    if (!docField) return;
-
-    const compressor = new FastImageCompressor();
-
-    // Create preview container (insert after file input wrapper)
-    const previewContainer = document.createElement('div');
-    previewContainer.className = 'document-preview-container';
-    previewContainer.id = 'documentPreview';
-    previewContainer.innerHTML = `
-        <div class="document-info">
-            <img id="docPreviewImg" class="document-preview-img" alt="Document preview">
-            <div class="document-details">
-                <div class="document-name" id="docName"></div>
-                <div class="document-size" id="docSize"></div>
-            </div>
-            <button type="button" class="btn btn-sm btn-outline-danger remove-document-btn" id="removeDocBtn">
-                <i class="bi bi-x-circle me-1"></i>Remove
-            </button>
-        </div>
-    `;
-    
-    // Insert preview container after the file input wrapper
-    const fileInputWrapper = docField.closest('.file-input-wrapper');
-    fileInputWrapper.parentNode.insertBefore(previewContainer, fileInputWrapper.nextSibling);
-
-    // Handle file selection
-    docField.addEventListener('change', async function(e) {
-        const file = e.target.files[0];
-        
-        if (!file) {
-            hidePreview();
-            return;
-        }
-
-        // Show preview for any file type
-        showPreview(file);
-
-        // Only compress images
-        if (!file.type.startsWith('image/')) {
-            return;
-        }
-
-        // Show compression status
-        const status = document.createElement('div');
-        status.className = 'alert alert-info mt-2';
-        status.id = 'compressionStatus';
-        status.style.fontSize = '0.85rem';
-        status.innerHTML = '<small>📦 Optimizing document...</small>';
-        previewContainer.appendChild(status);
-
-        try {
-            const originalSize = file.size;
-            const compressed = await compressor.compress(file);
-            
-            // Update file input with compressed version
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(compressed);
-            docField.files = dataTransfer.files;
-
-            // Update preview with compressed file
-            showPreview(compressed);
-
-            const savings = ((originalSize - compressed.size) / originalSize * 100).toFixed(0);
-
-            status.className = 'alert alert-success mt-2';
-            status.style.fontSize = '0.85rem';
-            status.innerHTML = `<small>✅ Document optimized ${savings > 10 ? `(${savings}% smaller)` : ''}</small>`;
-            
-            setTimeout(() => status.remove(), 4000);
-        } catch (error) {
-            console.error('Compression error:', error);
-            if (status && status.parentNode) {
-                status.remove();
-            }
-        }
-    });
-
-    // Show preview function
-    function showPreview(file) {
-        const preview = document.getElementById('documentPreview');
-        const img = document.getElementById('docPreviewImg');
-        const name = document.getElementById('docName');
-        const size = document.getElementById('docSize');
-
-        // Show preview container
-        preview.classList.add('show');
-
-        // Set file details
-        name.textContent = file.name;
-        size.textContent = compressor.formatSize(file.size);
-
-        // Show image preview if it's an image
-        if (file.type.startsWith('image/')) {
+        return new Promise(resolve => {
             const reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = e => {
+                const img = new Image();
+                img.onload = () => {
+                    let w = img.width, h = img.height;
+                    if (w > this.MAX_DIM || h > this.MAX_DIM) {
+                        const r = Math.min(this.MAX_DIM / w, this.MAX_DIM / h);
+                        w = Math.round(w * r); h = Math.round(h * r);
+                    }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w; canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(0, 0, w, h);
+                    ctx.drawImage(img, 0, 0, w, h);
+                    canvas.toBlob(blob => {
+                        const out = new File(
+                            [blob],
+                            file.name.replace(/\.\w+$/, '.jpg'),
+                            { type: 'image/jpeg' }
+                        );
+                        resolve({ file: out, saved: file.size > out.size });
+                    }, 'image/jpeg', this.QUALITY);
+                };
+                img.onerror = () => resolve({ file, saved: false });
                 img.src = e.target.result;
-                img.style.display = 'block';
             };
+            reader.onerror = () => resolve({ file, saved: false });
             reader.readAsDataURL(file);
-        } else {
-            // Show generic document icon
-            img.style.display = 'none';
+        });
+    }
+};
+
+/* ════════════════════════════════════════════════════════
+   DOM Ready
+════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', function () {
+
+    /* ── Refs ── */
+    const form          = document.getElementById('verifForm');
+    const submitBtn     = document.getElementById('verifSubmitBtn');
+    const docInput      = document.querySelector('input[name="document"]');
+    const docZone       = document.getElementById('docUploadZone');
+    const compressStatus= document.getElementById('docCompressStatus');
+    const previewRow    = document.getElementById('docPreviewRow');
+    const previewThumb  = document.getElementById('docPreviewThumb');
+    const previewIcon   = document.getElementById('docPreviewIconWrap');
+    const previewName   = document.getElementById('docPreviewName');
+    const previewSize   = document.getElementById('docPreviewSize');
+    const optimisedBadge= document.getElementById('docOptimisedBadge');
+    const clearBtn      = document.getElementById('docClearBtn');
+
+    // Status bar
+    const overlay       = document.getElementById('verifLoadingOverlay');
+    const progressBar   = document.getElementById('verifProgressBar');
+    const progressLabel = document.getElementById('verifProgressLabel');
+    const progressSub   = document.getElementById('verifProgressSub');
+    const inlineProgress= document.getElementById('verifInlineProgress');
+    const inlineBar     = document.getElementById('verifInlineBar');
+    const saveChip      = document.getElementById('verifSaveChip');
+    const saveChipText  = document.getElementById('verifSaveChipText');
+
+    // Toast
+    const infoToastEl   = document.getElementById('verifInfoToast');
+    const infoMsg       = document.getElementById('verifInfoMsg');
+    const infoToast     = infoToastEl ? new bootstrap.Toast(infoToastEl, { delay: 5000 }) : null;
+
+    function showInfoToast(msg) {
+        if (!infoToast) return;
+        infoMsg.textContent = msg;
+        infoToast.show();
+    }
+
+    /* ── Add file-input class to Django-rendered doc input ── */
+    if (docInput) {
+        docInput.classList.add('doc-file-hidden');
+        // Ensure it sits over the drop zone
+        docInput.style.cssText = 'position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;';
+    }
+
+    /* ── Drag-over highlight ── */
+    if (docZone) {
+        docZone.addEventListener('dragover', e => {
+            e.preventDefault();
+            docZone.classList.add('drag-over');
+        });
+        docZone.addEventListener('dragleave', () => docZone.classList.remove('drag-over'));
+        docZone.addEventListener('drop', e => {
+            e.preventDefault();
+            docZone.classList.remove('drag-over');
+            const file = e.dataTransfer.files?.[0];
+            if (file) handleDocFile(file);
+        });
+    }
+
+    /* ── File selected ── */
+    if (docInput) {
+        docInput.addEventListener('change', function () {
+            const file = this.files?.[0];
+            if (file) handleDocFile(file);
+        });
+    }
+
+    /* ── Clear selection ── */
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            if (docInput) docInput.value = '';
+            previewRow.classList.add('d-none');
+            previewThumb.classList.add('d-none');
+            previewIcon.classList.add('d-none');
+            compressStatus.className = 'compress-status d-none';
+            compressStatus.textContent = '';
+        });
+    }
+
+    /* ── Core handler: validate → compress → preview ── */
+    async function handleDocFile(file) {
+        const ALLOWED = [
+            'image/jpeg','image/jpg','image/png','image/webp','application/pdf'
+        ];
+        if (!ALLOWED.includes(file.type)) {
+            showInfoToast('Please select a JPG, PNG, WebP, or PDF file.');
+            return;
         }
+        if (file.size > 10 * 1024 * 1024) {
+            showInfoToast('File is too large. Please use a file under 10 MB.');
+            return;
+        }
+
+        const isImg = DocCompressor.isImage(file);
+
+        // Show compress status
+        compressStatus.className = 'compress-status running mt-3';
+        compressStatus.innerHTML = `
+            <div class="spinner-border spinner-border-sm flex-shrink-0" role="status">
+                <span class="visually-hidden">Processing…</span>
+            </div>
+            <span>${isImg ? 'Optimising image…' : 'Preparing document…'}</span>`;
+        compressStatus.classList.remove('d-none');
+
+        let result;
+        try {
+            result = await DocCompressor.compress(file);
+        } catch {
+            result = { file, saved: false };
+        }
+
+        // Inject back into input
+        const dt = new DataTransfer();
+        dt.items.add(result.file);
+        if (docInput) docInput.files = dt.files;
+
+        // Update status pill
+        if (isImg && result.saved) {
+            const pct = Math.round((1 - result.file.size / file.size) * 100);
+            compressStatus.className = 'compress-status done mt-3';
+            compressStatus.innerHTML =
+                `<i class="bi bi-check-circle-fill flex-shrink-0"></i>
+                 <span>Optimised — ${DocCompressor.fmtSize(file.size)} → ${DocCompressor.fmtSize(result.file.size)} (${pct}% smaller)</span>`;
+            showInfoToast(`Document optimised · saved ${pct}% · ${DocCompressor.fmtSize(result.file.size)}`);
+        } else {
+            compressStatus.className = 'compress-status done mt-3';
+            compressStatus.innerHTML =
+                `<i class="bi bi-check-circle-fill flex-shrink-0"></i>
+                 <span>Ready · ${DocCompressor.fmtSize(result.file.size)}</span>`;
+        }
+
+        // Build preview
+        const fname = result.file.name;
+        previewName.textContent = fname.length > 36 ? fname.slice(0, 35) + '…' : fname;
+        previewSize.textContent = DocCompressor.fmtSize(result.file.size);
+        optimisedBadge.classList.toggle('d-none', !(isImg && result.saved));
+
+        if (isImg) {
+            const reader = new FileReader();
+            reader.onload = ev => {
+                previewThumb.src = ev.target.result;
+                previewThumb.classList.remove('d-none');
+                previewIcon.classList.add('d-none');
+            };
+            reader.readAsDataURL(result.file);
+        } else {
+            previewThumb.classList.add('d-none');
+            previewIcon.classList.remove('d-none');
+            // Adjust icon for PDF
+            previewIcon.innerHTML = file.type === 'application/pdf'
+                ? '<i class="bi bi-file-earmark-pdf" style="color:#dc3545;"></i>'
+                : '<i class="bi bi-file-earmark-text"></i>';
+        }
+
+        previewRow.classList.remove('d-none');
     }
 
-    // Hide preview function
-    function hidePreview() {
-        const preview = document.getElementById('documentPreview');
-        preview.classList.remove('show');
+    /* ════════════════════════════════════════════════════════
+       Submit — status bar + overlay
+    ════════════════════════════════════════════════════════ */
+    let isSubmitting = false;
+
+    function setProgress(pct) {
+        progressBar.style.width = pct + '%';
+        inlineBar.style.width   = pct + '%';
     }
 
-    // Handle remove button
-    document.getElementById('removeDocBtn').addEventListener('click', function() {
-        docField.value = '';
-        hidePreview();
-        
-        // Remove any compression status messages
-        const status = document.getElementById('compressionStatus');
-        if (status) status.remove();
-    });
+    function setChip(state, text) {
+        saveChip.classList.remove('d-none', 'done', 'error');
+        if (state) saveChip.classList.add(state);
+        saveChipText.textContent = text;
+    }
 
-    // Update file input label when file is selected
-    const fileLabel = document.querySelector('.file-input-label');
-    if (fileLabel) {
-        const updateLabel = () => {
-            const file = docField.files[0];
-            if (file) {
-                fileLabel.innerHTML = `<i class="bi bi-file-earmark-check me-2"></i>${file.name.length > 30 ? file.name.substring(0, 30) + '...' : file.name}`;
-            } else {
-                fileLabel.innerHTML = '<i class="bi bi-cloud-upload me-2"></i>Choose Document';
+    function showOverlay(hasDoc) {
+        overlay.classList.add('show');
+        setProgress(0);
+        inlineProgress.classList.remove('d-none');
+        saveChip.classList.remove('d-none', 'done', 'error');
+        saveChipText.textContent = 'Submitting…';
+        progressLabel.textContent = hasDoc ? 'Uploading document…' : 'Submitting verification…';
+        progressSub.textContent   = 'Please wait — do not close this page';
+        submitBtn.disabled = true;
+    }
+
+    function hideOverlay() {
+        overlay.classList.remove('show');
+        submitBtn.disabled = false;
+    }
+
+    if (form) {
+        form.addEventListener('submit', function (e) {
+
+            // HTML5 validity
+            if (!form.checkValidity()) {
+                e.preventDefault();
+                form.classList.add('was-validated');
+                return;
             }
-        };
+            form.classList.add('was-validated');
 
-        docField.addEventListener('change', updateLabel);
-        document.getElementById('removeDocBtn').addEventListener('click', updateLabel);
+            if (isSubmitting) { e.preventDefault(); return; }
+
+            const hasDoc = (docInput?.files?.length ?? 0) > 0;
+            e.preventDefault();
+
+            isSubmitting = true;
+            showOverlay(hasDoc);
+
+            const formData = new FormData(form);
+            const url = form.getAttribute('action') || window.location.href;
+
+            // Animate progress
+            let pct = 0;
+            const duration = hasDoc ? 3200 : 1100;
+            const interval = setInterval(() => {
+                pct = Math.min(pct + (hasDoc ? 1.5 : 4.5), 88);
+                setProgress(pct);
+            }, duration / 55);
+
+            fetch(url, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => {
+                clearInterval(interval);
+                setProgress(100);
+
+                if (res.redirected || res.ok) {
+                    setChip('done', 'Submitted!');
+                    progressLabel.textContent = 'Verification submitted!';
+                    progressSub.textContent   = 'Redirecting…';
+                    inlineBar.style.background = '#198754';
+                    setTimeout(() => {
+                        hideOverlay();
+                        inlineProgress.classList.add('d-none');
+                        window.location.href = res.url || window.location.href;
+                    }, 900);
+                } else {
+                    throw new Error('Server returned an error. Please try again.');
+                }
+            })
+            .catch(err => {
+                clearInterval(interval);
+                setProgress(100);
+                inlineBar.style.background = '#dc3545';
+                setChip('error', 'Error');
+                progressLabel.textContent = 'Submission failed';
+                progressSub.textContent   = err.message || 'Check your connection and try again.';
+                setTimeout(() => {
+                    hideOverlay();
+                    isSubmitting = false;
+                    inlineBar.style.background = '';
+                    inlineBar.style.width = '0%';
+                    inlineProgress.classList.add('d-none');
+                    saveChip.classList.add('d-none');
+                }, 3500);
+            });
+        });
     }
+
 });
 </script>
+
 {% endblock %}
-{% block 'Footer'%}{% endblock %}
+{% block 'Footer' %}{% endblock %}

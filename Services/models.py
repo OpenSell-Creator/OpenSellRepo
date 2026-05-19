@@ -89,7 +89,7 @@ class ServiceListing(models.Model):
     
     # SIMPLIFIED CATEGORIZATION - Just 6 choices, no complex models
     category = models.CharField(max_length=20, choices=SERVICE_CATEGORIES, help_text="Main service category")
-    service_type = models.CharField(max_length=20, choices=SERVICE_TYPES, default='skill')
+    service_type = models.CharField(max_length=20, choices=SERVICE_TYPES)
     
     # Skills and Tools (simple text fields)
     skills_offered = models.TextField(blank=True, help_text="Main skills/services you offer (comma-separated)")

@@ -140,7 +140,9 @@ class BuyerRequestForm(forms.ModelForm):
         self.fields['category'].empty_label = "Select Category"
         self.fields['subcategory'].empty_label = "Select Subcategory"
         self.fields['brand'].empty_label = "Select Brand (Optional)"
-        self.fields['service_category'].empty_label = "Select Service Category"
+        self.fields['service_category'].choices = [
+            ('', 'Select Service Category or Business')
+        ] + list(self.fields['service_category'].choices[1:])
         self.fields['preferred_condition'].empty_label = "Any Condition"
         
         # Set initial querysets

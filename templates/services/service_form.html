@@ -144,25 +144,138 @@
     /* ══════════════════════════════════════
        Keep all original styles below
     ══════════════════════════════════════ */
-    .section-card { background:var(--card-background); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.5rem; transition:border-color 0.3s ease; }
-    .section-card:hover { border-color:var(--accent-color); }
-    .section-title { color:var(--text-primary); font-weight:600; font-size:1.05rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; }
-    .section-title i { color:var(--accent-color); }
+    /* ════════════════════════════════════════════════════════════════
+       SHARED HYBRID FIELD SYSTEM
+       • text / email / tel / number inputs  →  floating label
+       • <select>                            →  floating label (always floated)
+       • textarea / date                     →  standard label-above
+       • Image / upload zones                →  UNTOUCHED
+    ════════════════════════════════════════════════════════════════ */
 
-    .form-control,.form-select { border-width:2px; border-color:var(--border-color); transition:border-color 0.3s ease,box-shadow 0.3s ease; font-size:0.9375rem; }
-    .form-control:focus,.form-select:focus { border-color:var(--accent-color); box-shadow:0 0 0 3px rgba(184,115,51,0.18); }
-    .form-control.is-invalid,.form-select.is-invalid { border-color:#dc3545; box-shadow:none; }
-    .form-control.is-valid,.form-select.is-valid { border-color:#198754; box-shadow:none; }
-    .form-check-input { border-width:2px; border-color:var(--border-color); }
-    .form-check-input:checked { background-color:var(--primary-color); border-color:var(--primary-color); }
+    /* 1. Base controls */
+    .form-control, .form-select {
+        border-width: 2px;
+        border-style: solid;
+        border-color: var(--border-color);
+        border-radius: var(--radius-md, 0.45rem);
+        font-size: 0.9375rem;
+        color: var(--text-primary);
+        background-color: var(--card-background);
+        transition: border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.18);
+        outline: none;
+        background-color: var(--card-background);
+    }
+    .form-control.is-invalid, .form-select.is-invalid { border-color: #dc3545 !important; box-shadow: none !important; }
+    .form-control.is-valid,   .form-select.is-valid   { border-color: #198754 !important; box-shadow: none !important; }
+    [data-bs-theme="dark"] .form-control, [data-bs-theme="dark"] .form-select {
+        background-color: var(--dark-card-background, #1e2330);
+        border-color: var(--dark-border-color, #3a3f52);
+        color: var(--dark-text-primary, #e9ecef);
+    }
+    [data-bs-theme="dark"] .form-control:focus,
+    [data-bs-theme="dark"] .form-select:focus { background-color: var(--dark-card-background, #1e2330); }
 
-    .form-label { font-size:0.875rem; font-weight:500; color:var(--text-primary); margin-bottom:0.35rem; }
-    .form-label .req { color:#dc3545; margin-left:2px; font-size:0.8rem; }
-    .form-label .opt { font-size:0.72rem; font-weight:400; color:var(--text-secondary); background:var(--border-color); border-radius:3px; padding:1px 5px; margin-left:4px; }
-    .form-text { font-size:0.78rem; margin-top:0.25rem; color:var(--text-secondary)!important; padding-left:0.25rem; }
+    /* 2. Standard label */
+    .form-label {
+        display: block;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 0.4rem;
+        letter-spacing: 0.01em;
+    }
+    .form-label .req { color: #dc3545; margin-left: 2px; font-size: 0.75rem; font-weight: 700; }
+    .form-label .opt {
+        display: inline-block;
+        font-size: 0.68rem; font-weight: 500;
+        color: var(--text-secondary); background: var(--border-color);
+        border-radius: 4px; padding: 1px 6px; margin-left: 5px;
+    }
+    [data-bs-theme="dark"] .form-label { color: var(--dark-text-secondary, #9ca3af); }
+    [data-bs-theme="dark"] .form-label .opt { background: var(--dark-border-color, #3a3f52); }
 
-    .field-error-msg { font-size:0.8rem; color:#dc3545; margin-top:0.3rem; display:flex; align-items:center; gap:4px; animation:errorSlide 0.2s ease; }
-    @keyframes errorSlide{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+    /* 3. Floating labels */
+    .form-floating { position: relative; }
+    .form-floating > .form-control,
+    .form-floating > .form-select {
+        height: calc(3.5rem + 4px);
+        padding: 1.2rem 0.875rem 0.4rem;
+        line-height: 1.25;
+    }
+    .form-floating > textarea.form-control {
+        height: auto; min-height: 7rem;
+        padding-top: 1.75rem; resize: vertical; line-height: 1.55;
+    }
+    .form-floating > label {
+        position: absolute; top: 0; left: 0;
+        height: 100%; padding: 1rem 0.875rem;
+        pointer-events: none; border: 1px solid transparent;
+        transform-origin: 0 0;
+        transition: transform 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+        font-size: 0.9375rem; font-weight: 400;
+        color: var(--text-secondary);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+    }
+    /* Text inputs: float when focused or filled */
+    .form-floating > .form-control:focus ~ label,
+    .form-floating > .form-control:not(:placeholder-shown) ~ label {
+        transform: scale(0.78) translateY(-0.6rem) translateX(0.08rem);
+        color: var(--accent-color); opacity: 1; font-weight: 600;
+    }
+    /* Selects: always floated */
+    .form-floating > .form-select { padding-top: 1.625rem; padding-bottom: 0.5rem; }
+    .form-floating > .form-select ~ label {
+        transform: scale(0.78) translateY(-0.6rem) translateX(0.08rem);
+        color: var(--accent-color); opacity: 1; font-weight: 600;
+    }
+    .form-floating > label .req { color: #dc3545; margin-left: 2px; font-size: inherit; }
+    .form-floating > label .opt {
+        display: inline-block; font-size: 0.7rem; font-weight: 400;
+        color: var(--text-secondary); background: var(--border-color);
+        border-radius: 3px; padding: 1px 4px; margin-left: 3px;
+    }
+    [data-bs-theme="dark"] .form-floating > label { color: var(--dark-text-secondary, #9ca3af); }
+    [data-bs-theme="dark"] .form-floating > .form-control:focus ~ label,
+    [data-bs-theme="dark"] .form-floating > .form-control:not(:placeholder-shown) ~ label,
+    [data-bs-theme="dark"] .form-floating > .form-select ~ label { color: var(--accent-color); }
+
+    /* 4. Textarea */
+    textarea.form-control { min-height: 6.5rem; resize: vertical; padding: 0.75rem 0.875rem; line-height: 1.55; }
+    .form-floating textarea.form-control { padding-top: 1.75rem; }
+
+    /* 5. Placeholder */
+    .form-control::placeholder { color: var(--text-secondary); opacity: 0.6; font-size: 0.875rem; font-style: italic; }
+    [data-bs-theme="dark"] .form-control::placeholder { opacity: 0.38; }
+
+    /* 6. Date input */
+    input[type="date"].form-control { height: calc(2.75rem + 4px); padding: 0.55rem 0.875rem; cursor: pointer; }
+
+    /* 7. Helper text */
+    .form-text { display: block; font-size: 0.75rem; line-height: 1.45; margin-top: 0.3rem; color: var(--text-secondary) !important; padding-left: 0.1rem; }
+    [data-bs-theme="dark"] .form-text { color: var(--dark-text-secondary, #9ca3af) !important; }
+
+    /* 8. Error messages */
+    .field-error-msg { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; color: #dc3545; margin-top: 0.3rem; animation: errorSlide 0.2s ease; }
+    @keyframes errorSlide { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* 9. Form checks */
+    .form-check-input { border-width: 2px; border-color: var(--border-color); cursor: pointer; }
+    .form-check-input:checked { background-color: var(--accent-color, var(--primary-color)); border-color: var(--accent-color, var(--primary-color)); }
+    .form-check-label { font-size: 0.875rem; color: var(--text-primary); cursor: pointer; }
+    [data-bs-theme="dark"] .form-check-label { color: var(--dark-text-primary, #e9ecef); }
+
+    /* 10. Section cards & titles */
+    .section-card { background: var(--card-background); border: 1px solid var(--border-color); border-radius: var(--radius-md, 0.5rem); padding: 1.5rem; transition: border-color 0.25s ease; }
+    .section-card:hover { border-color: var(--accent-color); }
+    .section-title { color: var(--text-primary); font-weight: 700; font-size: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.6rem; letter-spacing: 0.01em; }
+    .section-title i { color: var(--accent-color); }
+    [data-bs-theme="dark"] .section-card { background: var(--dark-card-background, #1e2330); border-color: var(--dark-border-color, #3a3f52); }
+    [data-bs-theme="dark"] .section-card:hover { border-color: var(--accent-color); }
+    [data-bs-theme="dark"] .section-title { color: var(--dark-text-primary, #e9ecef); border-color: var(--dark-border-color, #3a3f52); }
 
     .upload-zone { border:2px dashed var(--border-color); border-radius:var(--radius-md); padding:1.1rem; background:var(--card-background); transition:border-color 0.25s,background 0.25s; cursor:pointer; }
     .upload-zone:hover,.upload-zone.drag-over { border-color:var(--accent-color); background:rgba(184,115,51,0.04); }
@@ -222,6 +335,14 @@
     [data-bs-theme="dark"] .upload-stats { background:rgba(255,255,255,0.05); }
 
     @media (max-width:768px) { .section-card { padding:1rem; } .card-body { padding:1rem!important; } }
+
+    @media (max-width: 480px) {
+        .section-card { padding: 1rem; }
+        .form-floating > .form-control,
+        .form-floating > .form-select { height: calc(3.25rem + 4px); }
+        .form-label { font-size: 0.78rem; }
+        .form-text  { font-size: 0.72rem; }
+    }
 </style>
 {% endblock %}
 
@@ -307,45 +428,59 @@
                                 <h4 class="section-title mb-4"><i class="bi bi-info-circle-fill me-2"></i>Basic Service Setup</h4>
 
                                 <div class="mb-3">
-                                    <label class="form-label" for="id_title">Service Title <span class="req">*</span></label>
-                                    {{ form.title }}
+                                    <div class="form-floating">
+                                        {{ form.title }}
+                                        <label for="id_title">Service Title <span class="req">*</span></label>
+                                    </div>
                                     {% for e in form.title.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                     <div class="form-text">Max 255 characters. E.g. "Professional Logo Design"</div>
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label" for="id_service_type">Service Type <span class="req">*</span></label>
-                                    {{ form.service_type }}
+                                    <div class="form-floating">
+                                        {{ form.service_type }}
+                                        <label for="id_service_type">Service Type <span class="req">*</span></label>
+                                    </div>
                                     {% for e in form.service_type.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label" for="id_category">Category <span class="req">*</span></label>
-                                    {{ form.category }}
+                                    <div class="form-floating">
+                                        {{ form.category }}
+                                        <label for="id_category">Category <span class="req">*</span></label>
+                                    </div>
                                     {% for e in form.category.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label" for="id_experience_level">Experience Level <span class="req">*</span></label>
-                                    {{ form.experience_level }}
+                                    <div class="form-floating">
+                                        {{ form.experience_level }}
+                                        <label for="id_experience_level">Experience Level <span class="req">*</span></label>
+                                    </div>
                                     {% for e in form.experience_level.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label" for="id_availability">Availability <span class="req">*</span></label>
-                                    {{ form.availability }}
+                                    <div class="form-floating">
+                                        {{ form.availability }}
+                                        <label for="id_availability">Availability <span class="req">*</span></label>
+                                    </div>
                                     {% for e in form.availability.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label" for="id_delivery_method">Delivery Method <span class="req">*</span></label>
-                                    {{ form.delivery_method }}
+                                    <div class="form-floating">
+                                        {{ form.delivery_method }}
+                                        <label for="id_delivery_method">Delivery Method <span class="req">*</span></label>
+                                    </div>
                                     {% for e in form.delivery_method.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                 </div>
 
                                 <div class="mb-0">
-                                    <label class="form-label" for="id_delivery_time">Delivery Time <span class="opt">Optional</span></label>
-                                    {{ form.delivery_time }}
+                                    <div class="form-floating">
+                                        {{ form.delivery_time }}
+                                        <label for="id_delivery_time">Delivery Time <span class="opt">Optional</span></label>
+                                    </div>
                                     {% for e in form.delivery_time.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                     <div class="form-text">E.g. "3–5 days", "1 week", "Same day"</div>
                                 </div>
@@ -358,15 +493,19 @@
                                 <h4 class="section-title mb-4"><i class="bi bi-currency-exchange me-2"></i>Pricing &amp; Terms</h4>
 
                                 <div class="mb-3">
-                                    <label class="form-label" for="id_pricing_type">Pricing Type <span class="req">*</span></label>
-                                    {{ form.pricing_type }}
+                                    <div class="form-floating">
+                                        {{ form.pricing_type }}
+                                        <label for="id_pricing_type">Pricing Type <span class="req">*</span></label>
+                                    </div>
                                     {% for e in form.pricing_type.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                 </div>
 
                                 <!-- Base price (fixed/hourly/project/package) -->
                                 <div id="basePriceField" class="mb-3">
-                                    <label class="form-label" for="id_base_price">Price (₦) <span class="req">*</span></label>
-                                    {{ form.base_price }}
+                                    <div class="form-floating">
+                                        {{ form.base_price }}
+                                        <label for="id_base_price">Price (₦) <span class="req">*</span></label>
+                                    </div>
                                     {% for e in form.base_price.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                     <div class="form-text">Enter your price in Naira. Numbers only.</div>
                                 </div>
@@ -374,28 +513,36 @@
                                 <!-- Negotiable price range -->
                                 <div id="negotiablePriceFields" class="row g-3 mb-3" style="{% if form.pricing_type.value == 'negotiable' %}display:flex;{% else %}display:none;{% endif %}">
                                     <div class="col-6">
-                                        <label class="form-label" for="id_min_price">Minimum Price (₦) <span class="req">*</span></label>
-                                        {{ form.min_price }}
+                                        <div class="form-floating">
+                                            {{ form.min_price }}
+                                            <label for="id_min_price">Minimum (₦) <span class="req">*</span></label>
+                                        </div>
                                         {% for e in form.min_price.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                     </div>
                                     <div class="col-6">
-                                        <label class="form-label" for="id_max_price">Maximum Price (₦) <span class="req">*</span></label>
-                                        {{ form.max_price }}
+                                        <div class="form-floating">
+                                            {{ form.max_price }}
+                                            <label for="id_max_price">Maximum (₦) <span class="req">*</span></label>
+                                        </div>
                                         {% for e in form.max_price.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                     </div>
                                     <div class="col-12"><div class="form-text">Max must be greater than min.</div></div>
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label" for="id_revision_limit">Revisions Included <span class="opt">Default: 2</span></label>
-                                    {{ form.revision_limit }}
+                                    <div class="form-floating">
+                                        {{ form.revision_limit }}
+                                        <label for="id_revision_limit">Revisions Included <span class="opt">Default: 2</span></label>
+                                    </div>
                                     {% for e in form.revision_limit.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                     <div class="form-text">Number of free revisions (0–10).</div>
                                 </div>
 
                                 <div class="mb-0">
-                                    <label class="form-label" for="id_delivery_days">Delivery Time (Days) <span class="opt">Default: 7</span></label>
-                                    {{ form.delivery_days }}
+                                    <div class="form-floating">
+                                        {{ form.delivery_days }}
+                                        <label for="id_delivery_days">Delivery Days <span class="opt">Default: 7</span></label>
+                                    </div>
                                     {% for e in form.delivery_days.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                     <div class="form-text">Expected days to complete (1–365).</div>
                                 </div>
@@ -457,8 +604,10 @@
                                 <h4 class="section-title mb-4"><i class="bi bi-geo-alt me-2"></i>Location &amp; Contact</h4>
 
                                 <div class="mb-3">
-                                    <label class="form-label" for="id_languages">Languages <span class="opt">Optional</span></label>
-                                    {{ form.languages }}
+                                    <div class="form-floating">
+                                        {{ form.languages }}
+                                        <label for="id_languages">Languages <span class="opt">Optional</span></label>
+                                    </div>
                                     {% for e in form.languages.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                     <div class="form-text">E.g. English, Yoruba, Hausa, Igbo</div>
                                 </div>
@@ -475,8 +624,10 @@
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label" for="id_portfolio_url">Portfolio URL <span class="opt">Optional</span></label>
-                                    {{ form.portfolio_url }}
+                                    <div class="form-floating">
+                                        {{ form.portfolio_url }}
+                                        <label for="id_portfolio_url">Portfolio URL <span class="opt">Optional</span></label>
+                                    </div>
                                     {% for e in form.portfolio_url.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                     <div class="form-text">Link to your portfolio website or showcase.</div>
                                 </div>
@@ -980,30 +1131,56 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if(docField){
-        docField.addEventListener('change', function(){
-            const files=Array.from(this.files);
+        docField.addEventListener('change', async function(){
+            const raw=Array.from(this.files);
             docPreview.innerHTML='';
-            if(!files.length){docStatsBar.classList.add('d-none');return;}
-            if(files.length>DOC_MAX_FILES){showErrorToast(`Maximum ${DOC_MAX_FILES} documents allowed.`);this.value='';return;}
-            for(const f of files){
+            if(!raw.length){docStatsBar.classList.add('d-none');return;}
+            if(raw.length>DOC_MAX_FILES){showErrorToast(`Maximum ${DOC_MAX_FILES} documents allowed.`);this.value='';return;}
+            for(const f of raw){
                 if(!DOC_TYPES.includes(f.type)){showErrorToast(`"${f.name}" is not supported. Allowed: PDF, DOC, DOCX, JPG, PNG.`);this.value='';docPreview.innerHTML='';return;}
                 if(f.size>DOC_MAX_EACH){showErrorToast(`"${f.name}" exceeds the 10 MB per file limit.`);this.value='';docPreview.innerHTML='';return;}
             }
-            const total=files.reduce((s,f)=>s+f.size,0);
-            if(total>DOC_MAX_TOTAL){showErrorToast('Total document size exceeds 50 MB.');this.value='';docPreview.innerHTML='';return;}
+            const rawTotal=raw.reduce((s,f)=>s+f.size,0);
+            if(rawTotal>DOC_MAX_TOTAL){showErrorToast('Total document size exceeds 50 MB.');this.value='';docPreview.innerHTML='';return;}
 
+            // Compress image files (JPG, PNG, WebP) — pass PDFs/DOCs through untouched
+            const DOC_IMG_TYPES=['image/jpeg','image/jpg','image/png','image/webp'];
+            let files=raw;
+            const hasImages=raw.some(f=>DOC_IMG_TYPES.includes(f.type));
+            if(hasImages){
+                const docCompressStatus=document.getElementById('imageCompressStatus');
+                if(docCompressStatus){docCompressStatus.classList.remove('d-none');docCompressStatus.className='compress-status running';docCompressStatus.innerHTML='<div class="spinner-border spinner-border-sm flex-shrink-0"></div><span>Optimising images…</span>';}
+                try{
+                    const processed=await Promise.all(raw.map(f=>DOC_IMG_TYPES.includes(f.type)?compressor.compress(f):Promise.resolve(f)));
+                    const dt=new DataTransfer();processed.forEach(f=>dt.items.add(f));this.files=dt.files;
+                    files=processed;
+                    const savedBytes=rawTotal-files.reduce((s,f)=>s+f.size,0);
+                    if(docCompressStatus){
+                        docCompressStatus.className='compress-status done';
+                        docCompressStatus.innerHTML=savedBytes>1024
+                            ?`<i class="bi bi-check-circle-fill flex-shrink-0"></i><span>Images optimised · saved ${FastImageCompressor.fmtSize(savedBytes)}</span>`
+                            :`<i class="bi bi-check-circle-fill flex-shrink-0"></i><span>Ready</span>`;
+                    }
+                }catch(e){
+                    if(docCompressStatus){docCompressStatus.className='compress-status warn';docCompressStatus.innerHTML='<i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i><span>Could not optimise images. Using originals.</span>';}
+                }
+            }
+
+            const total=files.reduce((s,f)=>s+f.size,0);
             docStatsBar.classList.remove('d-none');
             document.getElementById('numDocuments').textContent=files.length;
             document.getElementById('totalDocSize').textContent=FastImageCompressor.fmtSize(total);
 
-            files.forEach(f=>{
+            files.forEach((f,i)=>{
+                const orig=raw[i];
+                const wasCompressed=DOC_IMG_TYPES.includes(orig?.type)&&orig&&f.size<orig.size;
                 const meta=docTypeLabels[f.type]||{icon:'bi-file-earmark',cls:'def',label:'FILE'};
                 const card=document.createElement('div');card.className='doc-card';
                 card.innerHTML=`
                     <i class="bi ${meta.icon} doc-icon ${meta.cls}" title="${meta.label}"></i>
                     <div class="doc-meta">
                         <div class="doc-name" title="${f.name}">${f.name.length>38?f.name.slice(0,37)+'…':f.name}</div>
-                        <div class="doc-size">${meta.label} · ${FastImageCompressor.fmtSize(f.size)}</div>
+                        <div class="doc-size">${meta.label} · ${FastImageCompressor.fmtSize(f.size)}${wasCompressed?` <span style="color:#198754;font-weight:600;">✓ optimised</span>`:''}</div>
                     </div>`;
                 docPreview.appendChild(card);
             });

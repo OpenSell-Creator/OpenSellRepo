@@ -190,39 +190,175 @@
     }
     .section-title i { color: var(--accent-color); }
 
+    /* ════════════════════════════════════════════════════════════════
+       SHARED HYBRID FIELD SYSTEM
+       • text/email/tel/number inputs  →  floating label
+       • <select>                      →  floating label (always floated)
+       • textarea / date               →  standard label-above
+       • Image / upload zones          →  UNTOUCHED
+    ════════════════════════════════════════════════════════════════ */
+
+    /* 1. Base controls */
     .form-control, .form-select {
         border-width: 2px;
+        border-style: solid;
         border-color: var(--border-color);
-        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        border-radius: var(--radius-md, 0.45rem);
         font-size: 0.9375rem;
+        color: var(--text-primary);
+        background-color: var(--card-background);
+        transition: border-color 0.25s ease, box-shadow 0.25s ease;
     }
     .form-control:focus, .form-select:focus {
         border-color: var(--accent-color);
-        box-shadow: 0 0 0 3px rgba(184,115,51,0.18);
+        box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.18);
+        outline: none;
+        background-color: var(--card-background);
     }
-    .form-control.is-invalid, .form-select.is-invalid { border-color: #dc3545; box-shadow: none; }
-    .form-control.is-valid,   .form-select.is-valid   { border-color: #198754; box-shadow: none; }
+    .form-control.is-invalid, .form-select.is-invalid { border-color: #dc3545 !important; box-shadow: none !important; }
+    .form-control.is-valid,   .form-select.is-valid   { border-color: #198754 !important; box-shadow: none !important; }
+    [data-bs-theme="dark"] .form-control,
+    [data-bs-theme="dark"] .form-select {
+        background-color: var(--dark-card-background, #1e2330);
+        border-color: var(--dark-border-color, #3a3f52);
+        color: var(--dark-text-primary, #e9ecef);
+    }
+    [data-bs-theme="dark"] .form-control:focus,
+    [data-bs-theme="dark"] .form-select:focus { background-color: var(--dark-card-background, #1e2330); }
 
+    /* 2. Standard label */
     .form-label {
-        font-size: 0.875rem; font-weight: 500;
-        color: var(--text-primary); margin-bottom: 0.35rem;
+        display: block;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 0.4rem;
+        letter-spacing: 0.01em;
     }
-    .form-label .req { color: #dc3545; margin-left: 2px; font-size: 0.8rem; }
+    .form-label .req { color: #dc3545; margin-left: 2px; font-size: 0.75rem; font-weight: 700; }
     .form-label .opt {
-        font-size: 0.72rem; font-weight: 400;
+        display: inline-block;
+        font-size: 0.68rem; font-weight: 500;
         color: var(--text-secondary); background: var(--border-color);
-        border-radius: 3px; padding: 1px 5px; margin-left: 4px;
+        border-radius: 4px; padding: 1px 6px; margin-left: 5px;
     }
-    .form-text { font-size: 0.78rem; margin-top: 0.25rem; color: var(--text-secondary) !important; padding-left: 0.25rem; }
+    [data-bs-theme="dark"] .form-label { color: var(--dark-text-secondary, #9ca3af); }
+    [data-bs-theme="dark"] .form-label .opt { background: var(--dark-border-color, #3a3f52); }
 
+    /* 3. Floating labels */
+    .form-floating { position: relative; }
+    .form-floating > .form-control,
+    .form-floating > .form-select {
+        height: calc(3.5rem + 4px);
+        padding: 1.2rem 0.875rem 0.4rem;
+        line-height: 1.25;
+    }
+    .form-floating > textarea.form-control {
+        height: auto; min-height: 7rem;
+        padding-top: 1.75rem; resize: vertical; line-height: 1.55;
+    }
+    .form-floating > label {
+        position: absolute; top: 0; left: 0;
+        height: 100%; padding: 1rem 0.875rem;
+        pointer-events: none; border: 1px solid transparent;
+        transform-origin: 0 0;
+        transition: transform 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+        font-size: 0.9375rem; font-weight: 400;
+        color: var(--text-secondary);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+    }
+    .form-floating > .form-control:focus ~ label,
+    .form-floating > .form-control:not(:placeholder-shown) ~ label {
+        transform: scale(0.78) translateY(-0.6rem) translateX(0.08rem);
+        color: var(--accent-color); opacity: 1; font-weight: 600;
+    }
+    .form-floating > .form-select { padding-top: 1.625rem; padding-bottom: 0.5rem; }
+    .form-floating > .form-select ~ label {
+        transform: scale(0.78) translateY(-0.6rem) translateX(0.08rem);
+        color: var(--accent-color); opacity: 1; font-weight: 600;
+    }
+    .form-floating > label .req { color: #dc3545; margin-left: 2px; font-size: inherit; }
+    .form-floating > label .opt {
+        display: inline-block; font-size: 0.7rem; font-weight: 400;
+        color: var(--text-secondary); background: var(--border-color);
+        border-radius: 3px; padding: 1px 4px; margin-left: 3px;
+    }
+    [data-bs-theme="dark"] .form-floating > label { color: var(--dark-text-secondary, #9ca3af); }
+    [data-bs-theme="dark"] .form-floating > .form-control:focus ~ label,
+    [data-bs-theme="dark"] .form-floating > .form-control:not(:placeholder-shown) ~ label,
+    [data-bs-theme="dark"] .form-floating > .form-select ~ label { color: var(--accent-color); }
+
+    /* 4. Textarea */
+    textarea.form-control {
+        min-height: 6.5rem; resize: vertical;
+        padding: 0.75rem 0.875rem; line-height: 1.55;
+    }
+    .form-floating textarea.form-control { padding-top: 1.75rem; }
+
+    /* 5. Placeholder */
+    .form-control::placeholder {
+        color: var(--text-secondary); opacity: 0.6;
+        font-size: 0.875rem; font-style: italic;
+    }
+    [data-bs-theme="dark"] .form-control::placeholder { opacity: 0.38; }
+
+    /* 6. Date input */
+    input[type="date"].form-control {
+        height: calc(2.75rem + 4px); padding: 0.55rem 0.875rem; cursor: pointer;
+    }
+
+    /* 7. Helper text */
+    .form-text {
+        display: block; font-size: 0.75rem; line-height: 1.45;
+        margin-top: 0.3rem; color: var(--text-secondary) !important;
+        padding-left: 0.1rem;
+    }
+    [data-bs-theme="dark"] .form-text { color: var(--dark-text-secondary, #9ca3af) !important; }
+
+    /* 8. Error messages */
     .field-error-msg {
-        font-size: 0.8rem; color: #dc3545; margin-top: 0.3rem;
-        display: flex; align-items: center; gap: 4px;
+        display: flex; align-items: center; gap: 5px;
+        font-size: 0.78rem; color: #dc3545; margin-top: 0.3rem;
         animation: errorSlide 0.2s ease;
     }
     @keyframes errorSlide {
-        from { opacity:0; transform:translateY(-4px); }
-        to   { opacity:1; transform:translateY(0); }
+        from { opacity: 0; transform: translateY(-4px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 9. Form checks */
+    .form-check-input { border-width: 2px; border-color: var(--border-color); cursor: pointer; }
+    .form-check-input:checked { background-color: var(--accent-color, var(--primary-color)); border-color: var(--accent-color, var(--primary-color)); }
+    .form-check-label { font-size: 0.875rem; color: var(--text-primary); cursor: pointer; }
+    [data-bs-theme="dark"] .form-check-label { color: var(--dark-text-primary, #e9ecef); }
+
+    /* 10. Section cards */
+    .section-card {
+        background: var(--card-background);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md, 0.5rem);
+        padding: 1.5rem;
+        transition: border-color 0.25s ease;
+    }
+    .section-card:hover { border-color: var(--accent-color); }
+    .section-title {
+        color: var(--text-primary);
+        font-weight: 700; font-size: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 0.6rem; letter-spacing: 0.01em;
+    }
+    .section-title i { color: var(--accent-color); }
+    [data-bs-theme="dark"] .section-card { background: var(--dark-card-background, #1e2330); border-color: var(--dark-border-color, #3a3f52); }
+    [data-bs-theme="dark"] .section-card:hover { border-color: var(--accent-color); }
+    [data-bs-theme="dark"] .section-title { color: var(--dark-text-primary, #e9ecef); border-color: var(--dark-border-color, #3a3f52); }
+
+    /* 11. Responsive */
+    @media (max-width: 768px) { .section-card { padding: 1.125rem; } .card-body { padding: 1rem !important; } }
+    @media (max-width: 480px) {
+        .section-card { padding: 1rem; }
+        .form-floating > .form-control, .form-floating > .form-select { height: calc(3.25rem + 4px); }
+        .form-label { font-size: 0.78rem; }
+        .form-text  { font-size: 0.72rem; }
     }
 
     .upload-zone {
@@ -289,8 +425,6 @@
     #generateDescriptionBtn { font-size:0.75rem; padding:0.25rem 0.6rem; border-radius:0.375rem; transition:all 0.2s ease; }
     #generateDescriptionBtn:hover { transform:translateY(-1px); box-shadow:0 2px 6px rgba(0,0,0,0.1); }
 
-    .form-check-input { border-width:2px; border-color:var(--border-color); }
-    .form-check-input:checked { background-color:var(--primary-color); border-color:var(--primary-color); }
 
     [data-bs-theme="dark"] .section-card  { background:var(--dark-card-background); border-color:var(--dark-border-color); }
     [data-bs-theme="dark"] .section-card:hover { border-color:var(--dark-accent-color); }
@@ -380,34 +514,44 @@
                                 <h4 class="section-title mb-4"><i class="bi bi-info-circle-fill me-2"></i>Basic Product Setup</h4>
 
                                 <div class="mb-3">
-                                    <label class="form-label" for="id_title">Product Title <span class="req">*</span></label>
-                                    {{ form.title }}
+                                    <div class="form-floating">
+                                        {{ form.title }}
+                                        <label for="id_title">Product Title <span class="req">*</span></label>
+                                    </div>
                                     {% if form.title.errors %}{% for e in form.title.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}{% endif %}
                                     <div class="form-text">Max 255 characters. E.g. "Samsung 55" QLED TV 4K"</div>
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label" for="id_category">Category <span class="req">*</span></label>
-                                    {{ form.category }}
+                                    <div class="form-floating">
+                                        {{ form.category }}
+                                        <label for="id_category">Category <span class="req">*</span></label>
+                                    </div>
                                     {% for e in form.category.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label" for="id_subcategory">Subcategory <span class="req">*</span></label>
-                                    {{ form.subcategory }}
+                                    <div class="form-floating">
+                                        {{ form.subcategory }}
+                                        <label for="id_subcategory">Subcategory <span class="req">*</span></label>
+                                    </div>
                                     {% for e in form.subcategory.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                     <div class="form-text">Select a category first to load subcategories.</div>
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label" for="id_brand">Brand <span class="opt">Optional</span></label>
-                                    {{ form.brand }}
+                                    <div class="form-floating">
+                                        {{ form.brand }}
+                                        <label for="id_brand">Brand <span class="opt">Optional</span></label>
+                                    </div>
                                     {% for e in form.brand.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                 </div>
 
                                 <div class="mb-0">
-                                    <label class="form-label" for="id_condition">Condition <span class="req">*</span></label>
-                                    {{ form.condition }}
+                                    <div class="form-floating">
+                                        {{ form.condition }}
+                                        <label for="id_condition">Condition <span class="req">*</span></label>
+                                    </div>
                                     {% for e in form.condition.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                 </div>
                             </div>
@@ -419,20 +563,24 @@
                                 <h4 class="section-title mb-4"><i class="bi bi-currency-exchange me-2"></i>Pricing &amp; Availability</h4>
 
                                 <div class="mb-3">
-                                    <label class="form-label" for="id_formatted_price">Price <span class="req">*</span></label>
+                                    <div class="form-floating">
                                     <input type="text" name="formatted_price"
                                         class="form-control {% if form.formatted_price.errors %}is-invalid{% endif %}"
                                         id="id_formatted_price"
-                                        placeholder="₦ 0"
+                                        placeholder="e.g. ₦ 50,000"
                                         value="{{ form.formatted_price.value|default:'' }}"
                                         autocomplete="off">
+                                        <label for="id_formatted_price">Price (₦) <span class="req">*</span></label>
+                                    </div>
                                     {% for e in form.formatted_price.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                     <div class="form-text">Enter in Naira (₦). Numbers only, e.g. ₦ 50,000</div>
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label" for="id_listing_type">Listing Type <span class="req">*</span></label>
-                                    {{ form.listing_type }}
+                                    <div class="form-floating">
+                                        {{ form.listing_type }}
+                                        <label for="id_listing_type">Listing Type <span class="req">*</span></label>
+                                    </div>
                                     {% for e in form.listing_type.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                     {% if is_verified_business %}
                                         <div class="form-text text-success"><i class="bi bi-check-circle me-1"></i>As a verified business you have access to all listing types including permanent.</div>
@@ -442,8 +590,10 @@
                                 </div>
 
                                 <div class="mb-3" id="quantityContainer">
-                                    <label class="form-label" for="id_quantity">Quantity <span class="req">*</span></label>
-                                    {{ form.quantity }}
+                                    <div class="form-floating">
+                                        {{ form.quantity }}
+                                        <label for="id_quantity">Quantity Available <span class="req">*</span></label>
+                                    </div>
                                     {% for e in form.quantity.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                     <div class="form-text">Number of units available. Minimum: 1</div>
                                 </div>

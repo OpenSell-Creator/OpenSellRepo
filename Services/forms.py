@@ -160,12 +160,27 @@ class ServiceListingForm(forms.ModelForm):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        self.fields['category'].empty_label = "Select Service Category"
+        CHAR_SELECT_FIELDS = [
+            ('category',         'Select Service Category'),
+            ('service_type',     'Select Service Type'),
+        ]
 
+        for field_name, placeholder in CHAR_SELECT_FIELDS:
+            field = self.fields[field_name]
+            # Strip any pre-existing blank entry Django may have already added
+            existing = [c for c in field.choices if c[0] != '']
+            field.choices = [('', placeholder)] + existing
+            field.required = True
+
+        # On a NEW form (no saved instance) force every CharField select to
+        # show the placeholder by clearing the default-driven initial value.
         if not self.instance.pk:
+            for field_name, _ in CHAR_SELECT_FIELDS:
+                self.initial[field_name] = ''
             self.fields['revision_limit'].initial = 2
             self.fields['delivery_days'].initial = 7
 
+        # ── EDIT form ──────────────────────────────────────────────────────
         if self.instance and self.instance.pk:
             if hasattr(self.instance, 'base_price') and self.instance.base_price:
                 self.fields['base_price'].initial = f'₦ {self.instance.base_price:,.0f}'
@@ -415,6 +430,15 @@ class ServiceInquiryForm(forms.ModelForm):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
+        # preferred_contact has default='platform' on the model.
+        # Prepend placeholder and clear initial on new instances.
+        pc_field = self.fields['preferred_contact']
+        pc_field.choices = [('', 'Select Preferred Contact')] + [
+            c for c in pc_field.choices if c[0] != ''
+        ]
+        if not self.instance.pk:
+            self.initial['preferred_contact'] = ''
+
         if self.user and hasattr(self.user, 'profile'):
             profile = self.user.profile
             if not self.instance.pk:
@@ -540,6 +564,17 @@ class InquiryResponseForm(forms.ModelForm):
             }),
             'status': forms.Select(attrs={'class': 'form-select'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # status pre-selects 'pending' (first choice) by default.
+        # Add a placeholder so providers must make a conscious selection.
+        status_field = self.fields['status']
+        status_field.choices = [('', 'Select Status')] + [
+            c for c in status_field.choices if c[0] != ''
+        ]
+        if not self.instance.pk:
+            self.initial['status'] = ''
 
     def clean_provider_quote(self):
         quote = self.cleaned_data.get('provider_quote')
