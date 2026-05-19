@@ -38,32 +38,25 @@ document.addEventListener('DOMContentLoaded', function () {
     document.body.classList.remove('sidebar-open');
   });
 
-  // ── Viewport width helper ─────────────────────────────────────────────────
+  // ── Viewport width helper (iOS split-view / orientation safe) ─────────────
   const getViewportWidth = () =>
     window.visualViewport ? window.visualViewport.width : window.innerWidth;
 
   // ── Mobile nav hide/show block ────────────────────────────────────────────
   if (getViewportWidth() < 992) {
 
-    let sidebarIsOpen = false;
-    let lastScroll    = 0;
-    let touchStartY   = 0;
-    let touchStartX   = 0;
-    let navVisible    = true;
-    let touchActive   = false;
-
-    // intentToHide is set ONLY by touch gestures on non-scrollable pages.
-    // It prevents the iOS elastic bounce-return scroll from calling showNav()
-    // after a swipe-up hides the nav.
-    // It is cleared the moment a real scroll-up is detected (see scroll listener).
-    let intentToHide  = false;
-
+    let sidebarIsOpen   = false;
+    let lastScroll      = 0;
+    let touchStartY     = 0;
+    let touchStartX     = 0;
+    let navVisible      = true;
+    let intentToHide    = false;
+    let touchActive     = false;
     const SWIPE_THRESHOLD = 30;
 
     // ── Show / hide ──────────────────────────────────────────────────────────
     function showNav() {
-      navVisible    = true;
-      intentToHide  = false; // always clear when showing
+      navVisible = true;
       mainNavbar.style.transform = 'translateY(0)';
       mainNavbar.style.opacity   = '1';
       if (bottomNav) {
@@ -89,7 +82,7 @@ document.addEventListener('DOMContentLoaded', function () {
       touchStartY  = e.touches[0].clientY;
       touchStartX  = e.touches[0].clientX;
       touchActive  = true;
-      intentToHide = false; // reset on every new touch session
+      intentToHide = false; // reset intent on every new touch
     }, { passive: true });
 
     // ── touchmove ────────────────────────────────────────────────────────────
@@ -117,12 +110,12 @@ document.addEventListener('DOMContentLoaded', function () {
       if (deltaX > Math.abs(deltaY)) return; // horizontal — ignore
 
       if (deltaY > SWIPE_THRESHOLD) {
-        // Deliberate swipe up → hide and arm intentToHide so the elastic
-        // bounce-back scroll event doesn't immediately show the nav again
+        // Deliberate swipe up → hide and lock so elastic bounce
+        // return scroll doesn't immediately show the nav again
         intentToHide = true;
         hideNav();
       } else if (deltaY < -SWIPE_THRESHOLD) {
-        // Deliberate swipe down → show and clear intentToHide
+        // Deliberate swipe down → show and clear lock
         intentToHide = false;
         showNav();
       }
@@ -132,27 +125,20 @@ document.addEventListener('DOMContentLoaded', function () {
     // ── scroll ───────────────────────────────────────────────────────────────
     window.addEventListener('scroll', () => {
       const currentScroll = window.scrollY;
-      const delta         = currentScroll - lastScroll;
 
-      if (delta > 4) {
-        // Real downward scroll — hide and reset intentToHide so next
-        // upward scroll (mid-momentum or deliberate) is not blocked
-        intentToHide = false;
+      if (currentScroll > lastScroll + 4) {
         hideNav();
-
-      } else if (delta < -4 && !touchActive) {
-        // Real upward scroll:
-        // - delta < -4  → enough movement to not be an elastic bounce (which
-        //                 returns in tiny increments like -1, -2 px)
-        // - !touchActive → finger is off screen, so this is true momentum
-        //                  scroll, not the bounce-back while finger is still down
-        // intentToHide is NOT checked here — a real scroll up always shows nav
+      } else if (
+        (currentScroll < lastScroll || currentScroll <= 0) &&
+        !intentToHide &&
+        !touchActive
+      ) {
+        // Only show if:
+        // - scrolling upward or at top
+        // - user did NOT swipe-up to deliberately hide (intentToHide)
+        // - finger is not on screen (touchActive) — guards iOS bounce return
         showNav();
-
       }
-
-      // Always show at the very top
-      if (currentScroll <= 0) showNav();
 
       lastScroll = currentScroll;
     }, { passive: true });
