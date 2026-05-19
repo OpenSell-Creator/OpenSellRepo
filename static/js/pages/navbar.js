@@ -45,27 +45,25 @@ document.addEventListener('DOMContentLoaded', function () {
   // ── Mobile nav hide/show block ────────────────────────────────────────────
   if (getViewportWidth() < 992) {
 
-    let sidebarIsOpen  = false;
-    let lastScroll     = 0;
-    let touchStartY    = 0;
-    let touchStartX    = 0;
-    let navVisible     = true;
-    let touchActive    = false;
+    let sidebarIsOpen = false;
+    let lastScroll    = 0;
+    let touchStartY   = 0;
+    let touchStartX   = 0;
+    let navVisible    = true;
+    let touchActive   = false;
 
-    // How many px the user must scroll upward continuously before
-    // the nav reappears during momentum. Low = very responsive,
-    // high = requires more deliberate upward scroll.
-    const SHOW_SCROLL_THRESHOLD = 8;
-    const SWIPE_THRESHOLD       = 30;
+    // intentToHide is set ONLY by touch gestures on non-scrollable pages.
+    // It prevents the iOS elastic bounce-return scroll from calling showNav()
+    // after a swipe-up hides the nav.
+    // It is cleared the moment a real scroll-up is detected (see scroll listener).
+    let intentToHide  = false;
 
-    // Tracks how far the user has scrolled upward since direction reversed.
-    // Resets to 0 every time scroll goes downward again.
-    let upwardScrollAccumulator = 0;
+    const SWIPE_THRESHOLD = 30;
 
     // ── Show / hide ──────────────────────────────────────────────────────────
     function showNav() {
-      navVisible = true;
-      upwardScrollAccumulator = 0;
+      navVisible    = true;
+      intentToHide  = false; // always clear when showing
       mainNavbar.style.transform = 'translateY(0)';
       mainNavbar.style.opacity   = '1';
       if (bottomNav) {
@@ -77,7 +75,6 @@ document.addEventListener('DOMContentLoaded', function () {
     function hideNav() {
       if (sidebarIsOpen) return;
       navVisible = false;
-      upwardScrollAccumulator = 0; // reset whenever we hide
       mainNavbar.style.transform = 'translateY(-100%)';
       mainNavbar.style.opacity   = '0';
       if (bottomNav) {
@@ -89,9 +86,10 @@ document.addEventListener('DOMContentLoaded', function () {
     // ── touchstart ───────────────────────────────────────────────────────────
     window.addEventListener('touchstart', (e) => {
       if (!e.touches || e.touches.length === 0) return;
-      touchStartY = e.touches[0].clientY;
-      touchStartX = e.touches[0].clientX;
-      touchActive = true;
+      touchStartY  = e.touches[0].clientY;
+      touchStartX  = e.touches[0].clientX;
+      touchActive  = true;
+      intentToHide = false; // reset on every new touch session
     }, { passive: true });
 
     // ── touchmove ────────────────────────────────────────────────────────────
@@ -119,9 +117,14 @@ document.addEventListener('DOMContentLoaded', function () {
       if (deltaX > Math.abs(deltaY)) return; // horizontal — ignore
 
       if (deltaY > SWIPE_THRESHOLD) {
-        hideNav();  // deliberate swipe up → hide
+        // Deliberate swipe up → hide and arm intentToHide so the elastic
+        // bounce-back scroll event doesn't immediately show the nav again
+        intentToHide = true;
+        hideNav();
       } else if (deltaY < -SWIPE_THRESHOLD) {
-        showNav();  // deliberate swipe down → show
+        // Deliberate swipe down → show and clear intentToHide
+        intentToHide = false;
+        showNav();
       }
       // Small delta (elastic bounce return) → do nothing, state unchanged
     }, { passive: true });
@@ -131,28 +134,24 @@ document.addEventListener('DOMContentLoaded', function () {
       const currentScroll = window.scrollY;
       const delta         = currentScroll - lastScroll;
 
-      if (delta > 0) {
-        // ── Scrolling down ──────────────────────────────────────────────────
-        // Always hide. Reset accumulator — direction changed.
-        upwardScrollAccumulator = 0;
-        if (currentScroll > 4) hideNav();
+      if (delta > 4) {
+        // Real downward scroll — hide and reset intentToHide so next
+        // upward scroll (mid-momentum or deliberate) is not blocked
+        intentToHide = false;
+        hideNav();
 
-      } else if (delta < 0) {
-        // ── Scrolling up ────────────────────────────────────────────────────
-        // Accumulate upward distance scrolled since direction reversed.
-        // Only show once the user has scrolled up enough to be intentional,
-        // AND the finger is not on screen (avoids iOS elastic bounce return).
-        upwardScrollAccumulator += Math.abs(delta);
+      } else if (delta < -4 && !touchActive) {
+        // Real upward scroll:
+        // - delta < -4  → enough movement to not be an elastic bounce (which
+        //                 returns in tiny increments like -1, -2 px)
+        // - !touchActive → finger is off screen, so this is true momentum
+        //                  scroll, not the bounce-back while finger is still down
+        // intentToHide is NOT checked here — a real scroll up always shows nav
+        showNav();
 
-        if (
-          upwardScrollAccumulator >= SHOW_SCROLL_THRESHOLD &&
-          !touchActive
-        ) {
-          showNav();
-        }
       }
 
-      // At the very top — always show
+      // Always show at the very top
       if (currentScroll <= 0) showNav();
 
       lastScroll = currentScroll;
