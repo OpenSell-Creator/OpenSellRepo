@@ -650,34 +650,36 @@ function initializeRequestCardInteractions() {
         // Add subtle pulsing animation for urgent requests
         card.style.animation = 'subtle-pulse 2s ease-in-out infinite';
     });
+
+    if (!document.getElementById('buyer-requests-animations')) {
+        const animStyle = document.createElement('style');
+        animStyle.id = 'buyer-requests-animations';
+        animStyle.textContent = `
+            @keyframes subtle-pulse {
+                0%, 100% { 
+                    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2); 
+                }
+                50% { 
+                    box-shadow: 0 4px 16px rgba(220, 53, 69, 0.4); 
+                }
+            }
+            
+            @keyframes request-card-hover {
+                from { transform: translateY(0); }
+                to { transform: translateY(-3px); }
+            }
+            
+            .loading-state {
+                opacity: 0.7;
+                pointer-events: none;
+                transition: opacity 0.3s ease;
+            }
+        `;
+        document.head.appendChild(animStyle);
+    }
 }
 
 // NOTE: initializeRequestCardInteractions() is called from the main DOMContentLoaded above.
-
-// Custom animations
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes subtle-pulse {
-        0%, 100% { 
-            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2); 
-        }
-        50% { 
-            box-shadow: 0 4px 16px rgba(220, 53, 69, 0.4); 
-        }
-    }
-    
-    @keyframes request-card-hover {
-        from { transform: translateY(0); }
-        to { transform: translateY(-3px); }
-    }
-    
-    .loading-state {
-        opacity: 0.7;
-        pointer-events: none;
-        transition: opacity 0.3s ease;
-    }
-`;
-document.head.appendChild(style);
 
 // Access Limit Handling
 function handleAccessLimitModal() {
