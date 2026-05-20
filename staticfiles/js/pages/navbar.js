@@ -45,16 +45,24 @@ document.addEventListener('DOMContentLoaded', function () {
   // ── Mobile nav hide/show block ────────────────────────────────────────────
   if (getViewportWidth() < 992) {
 
-    let sidebarIsOpen   = false;
-    let lastScroll      = 0;
-    let touchStartY     = 0;
-    let touchStartX     = 0;
-    let navVisible      = true;
-    let intentToHide    = false; // set by deliberate swipe-up; cleared only by swipe-down
-    let fingerDown      = false; // true only while finger is physically on screen
-    let bounceLock      = false; // true during iOS elastic bounce return window
-    let bounceLockTimer = null;
-    const SWIPE_THRESHOLD = 30;
+    let sidebarIsOpen     = false;
+    let lastScroll        = 0;
+    let touchStartY       = 0;
+    let touchStartX       = 0;
+    let navVisible        = true;
+    let intentToHide      = false; // cleared only by swipe-down or scroll accumulator
+    let fingerDown        = false; // true only while finger is on screen
+    let bounceLock        = false; // blocks scroll handler during iOS elastic bounce
+    let bounceLockTimer   = null;
+    let upwardScrollAccum = 0;     // accumulated upward px since last downward scroll
+    const SWIPE_THRESHOLD = 30;    // px of gesture needed to count as deliberate
+    const SHOW_THRESHOLD  = 40;    // px of sustained upward scroll needed to show nav
+
+    // ── Page scrollability helper ─────────────────────────────────────────────
+    // Re-checked on each gesture so it works after dynamic content loads.
+    function pageIsScrollable() {
+      return document.documentElement.scrollHeight > window.innerHeight + 4;
+    }
 
     // ── Show / hide ──────────────────────────────────────────────────────────
     function showNav() {
@@ -81,8 +89,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // ── touchstart ───────────────────────────────────────────────────────────
     window.addEventListener('touchstart', (e) => {
       if (!e.touches || e.touches.length === 0) return;
-      touchStartY = e.touches[0].clientY;
-      touchStartX = e.touches[0].clientX;
+      touchStartY       = e.touches[0].clientY;
+      touchStartX       = e.touches[0].clientX;
       fingerDown        = true;
       upwardScrollAccum = 0; // reset accumulator on each new touch
 
@@ -114,40 +122,42 @@ document.addEventListener('DOMContentLoaded', function () {
       const deltaY = touchStartY - touch.clientY;
       const deltaX = Math.abs(touchStartX - touch.clientX);
 
-      if (deltaX > Math.abs(deltaY)) return; // horizontal — ignore
+      if (deltaX > Math.abs(deltaY)) return; // horizontal swipe — ignore
+
+      const scrollable = pageIsScrollable();
 
       if (deltaY > SWIPE_THRESHOLD) {
-        // Deliberate swipe up → hide and set a bounce lock window so the
-        // elastic return scroll event can't immediately reveal the nav again.
+        // Deliberate swipe-up → hide
         intentToHide = true;
         hideNav();
 
-        // Hold the bounce lock for long enough to outlast iOS rubber-band
-        // physics (~400 ms is typically sufficient).
+        // On non-scrollable pages the bounce-return scroll events are the only
+        // thing that follows — lock them out permanently until a swipe-down.
+        // On scrollable pages use a short window; the accumulator takes over after.
         bounceLock = true;
         clearTimeout(bounceLockTimer);
-        bounceLockTimer = setTimeout(() => { bounceLock = false; }, 500);
+        bounceLockTimer = setTimeout(
+          () => { bounceLock = false; },
+          scrollable ? 500 : 9999999
+        );
 
       } else if (deltaY < -SWIPE_THRESHOLD) {
-        // Deliberate swipe down → show and clear all locks
+        // Deliberate swipe-down → always show and clear all locks
         intentToHide = false;
         bounceLock   = false;
         clearTimeout(bounceLockTimer);
         showNav();
       }
-      // Small delta (tap / elastic micro-bounce) → do nothing; state unchanged
+      // Small delta (tap / micro-bounce) → state unchanged
     }, { passive: true });
 
     // ── scroll ───────────────────────────────────────────────────────────────
-    let upwardScrollAccum = 0; // accumulated upward px since last downward scroll
-    const SHOW_THRESHOLD  = 40; // px of sustained upward scroll needed to show nav
-
     window.addEventListener('scroll', () => {
       const currentScroll = window.scrollY;
 
-      // iOS elastic overscroll on non-scrollable pages: bounceLock is active
-      // right after a swipe-up gesture. fingerDown alone doesn't block here —
-      // we still want to react to scroll while the finger is moving on real pages.
+      // While bounceLock is active, ignore all scroll events.
+      // Non-scrollable pages: indefinite lock (only swipe-down clears it).
+      // Scrollable pages: short 500ms window after swipe-up, then accumulator governs.
       if (bounceLock) {
         lastScroll = currentScroll;
         return;
@@ -156,16 +166,14 @@ document.addEventListener('DOMContentLoaded', function () {
       const delta = currentScroll - lastScroll;
 
       if (delta > 4) {
-        // Scrolling down → hide and reset upward accumulator
+        // Real downward scroll → hide
         upwardScrollAccum = 0;
-        intentToHide = true; // scroll-down also sets intent so swipe-up state stays consistent
+        intentToHide      = true;
         hideNav();
 
       } else if (delta < -2 && currentScroll > 0) {
-        // Scrolling up and not at the very top (avoids bounce artifacts near 0).
-        // Accumulate upward pixels — only show once enough momentum is detected.
-        // This makes it feel like Android: reversal of direction shows the nav
-        // without needing to swipe all the way to the top or make an explicit gesture.
+        // Upward scroll momentum on a scrollable page.
+        // Accumulate until threshold — Android-style direction-reversal reveal.
         upwardScrollAccum += Math.abs(delta);
         if (upwardScrollAccum >= SHOW_THRESHOLD) {
           intentToHide = false;
@@ -173,9 +181,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
       } else if (currentScroll <= 0) {
-        // Actually at the top — always show
+        // Reached the very top — always show
         upwardScrollAccum = 0;
-        intentToHide = false;
+        intentToHide      = false;
         showNav();
       }
 
