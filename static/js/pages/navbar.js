@@ -45,36 +45,20 @@ document.addEventListener('DOMContentLoaded', function () {
   // ── Mobile nav hide/show block ────────────────────────────────────────────
   if (getViewportWidth() < 992) {
 
-    let sidebarIsOpen = false;
-    let lastScroll    = 0;
-    let navVisible    = true;
+    let sidebarIsOpen   = false;
+    let lastScroll      = 0;
+    let touchStartY     = 0;
+    let touchStartX     = 0;
+    let navVisible      = true;
+    let intentToHide    = false; // set by deliberate swipe-up; cleared only by swipe-down
+    let fingerDown      = false; // true only while finger is physically on screen
+    let bounceLock      = false; // true during iOS elastic bounce return window
+    let bounceLockTimer = null;
+    const SWIPE_THRESHOLD = 30;
 
-    // ── Touch tracking ────────────────────────────────────────────────────
-    let touchStartY        = 0;
-    let touchStartX        = 0;
-    let touchCurrentY      = 0;
-    let fingerOnScreen     = false;   // true only while finger is physically down
-    let swipeIntent        = null;    // 'up' | 'down' | null — set on touchend
-    let swipeIntentTimer   = null;    // clears swipeIntent after momentum settles
-
-    // Momentum detection: track recent scroll velocity
-    let lastScrollTime     = 0;
-    let lastScrollY        = 0;
-    let scrollVelocity     = 0;       // px/ms (positive = scrolling down)
-
-    // How many px of upward scrolling must arrive before re-showing nav
-    // after a deliberate hide. Prevents a single bounce from showing it.
-    const MOMENTUM_SHOW_THRESHOLD = 40;
-    let upwardScrollAccum  = 0;       // accumulated upward px since last hide
-
-    const SWIPE_THRESHOLD  = 40;      // px — min vertical swipe to register intent
-    const HIDE_SCROLL_DELTA = 8;      // px — must scroll down this much to hide
-
-    // ── Show / hide ───────────────────────────────────────────────────────
+    // ── Show / hide ──────────────────────────────────────────────────────────
     function showNav() {
-      if (navVisible) return;
-      navVisible    = true;
-      upwardScrollAccum = 0;
+      navVisible = true;
       mainNavbar.style.transform = 'translateY(0)';
       mainNavbar.style.opacity   = '1';
       if (bottomNav) {
@@ -84,9 +68,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function hideNav() {
-      if (sidebarIsOpen || !navVisible) return;
-      navVisible        = false;
-      upwardScrollAccum = 0;
+      if (sidebarIsOpen) return;
+      navVisible = false;
       mainNavbar.style.transform = 'translateY(-100%)';
       mainNavbar.style.opacity   = '0';
       if (bottomNav) {
@@ -95,47 +78,32 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     }
 
-    // ── Clear swipe intent after momentum has had time to settle ─────────
-    function scheduleSwipeIntentReset() {
-      clearTimeout(swipeIntentTimer);
-      // 600 ms is enough for iOS momentum to settle on most devices
-      swipeIntentTimer = setTimeout(() => {
-        swipeIntent = null;
-      }, 600);
-    }
-
-    // ── touchstart ───────────────────────────────────────────────────────
+    // ── touchstart ───────────────────────────────────────────────────────────
     window.addEventListener('touchstart', (e) => {
       if (!e.touches || e.touches.length === 0) return;
-      touchStartY   = e.touches[0].clientY;
-      touchStartX   = e.touches[0].clientX;
-      touchCurrentY = touchStartY;
-      fingerOnScreen = true;
+      touchStartY = e.touches[0].clientY;
+      touchStartX = e.touches[0].clientX;
+      fingerDown  = true;
 
-      // Cancel any pending intent reset — finger is back down
-      clearTimeout(swipeIntentTimer);
-      // Do NOT reset swipeIntent here; let the new gesture override it
-      // only when the touchend delta is large enough.
+      // Cancel any pending bounce lock when a new deliberate touch begins
+      clearTimeout(bounceLockTimer);
+      bounceLock = false;
     }, { passive: true });
 
-    // ── touchmove ────────────────────────────────────────────────────────
+    // ── touchmove ────────────────────────────────────────────────────────────
     window.addEventListener('touchmove', (e) => {
       if (!e.touches || e.touches.length === 0) return;
-      touchCurrentY = e.touches[0].clientY;
-
-      const deltaY = touchStartY - touchCurrentY;
+      const deltaY = touchStartY - e.touches[0].clientY;
       const deltaX = Math.abs(touchStartX - e.touches[0].clientX);
-
-      // Block iOS elastic pull-to-refresh only when nav is hidden
-      // and the gesture is clearly vertical (not a side-scroll / swipe)
+      // Block iOS elastic pull-to-refresh when nav is hidden
       if (deltaX < Math.abs(deltaY) && deltaY < -10 && !navVisible) {
         try { e.preventDefault(); } catch (_) {}
       }
     }, { passive: false });
 
-    // ── touchend ─────────────────────────────────────────────────────────
+    // ── touchend ─────────────────────────────────────────────────────────────
     window.addEventListener('touchend', (e) => {
-      fingerOnScreen = false;
+      fingerDown = false;
 
       const touch =
         (e.changedTouches && e.changedTouches[0]) ||
@@ -145,74 +113,49 @@ document.addEventListener('DOMContentLoaded', function () {
       const deltaY = touchStartY - touch.clientY;
       const deltaX = Math.abs(touchStartX - touch.clientX);
 
-      // Ignore horizontal swipes (page-swipe on iPads / carousels)
-      if (deltaX > Math.abs(deltaY) * 1.2) {
-        scheduleSwipeIntentReset();
+      if (deltaX > Math.abs(deltaY)) return; // horizontal — ignore
+
+      if (deltaY > SWIPE_THRESHOLD) {
+        // Deliberate swipe up → hide and set a bounce lock window so the
+        // elastic return scroll event can't immediately reveal the nav again.
+        intentToHide = true;
+        hideNav();
+
+        // Hold the bounce lock for long enough to outlast iOS rubber-band
+        // physics (~400 ms is typically sufficient).
+        bounceLock = true;
+        clearTimeout(bounceLockTimer);
+        bounceLockTimer = setTimeout(() => { bounceLock = false; }, 500);
+
+      } else if (deltaY < -SWIPE_THRESHOLD) {
+        // Deliberate swipe down → show and clear all locks
+        intentToHide = false;
+        bounceLock   = false;
+        clearTimeout(bounceLockTimer);
+        showNav();
+      }
+      // Small delta (tap / elastic micro-bounce) → do nothing; state unchanged
+    }, { passive: true });
+
+    // ── scroll ───────────────────────────────────────────────────────────────
+    window.addEventListener('scroll', () => {
+      const currentScroll = window.scrollY;
+
+      // iOS elastic overscroll: scrollY can go negative or spike on non-scrollable
+      // pages. Treat any scroll event while bounceLock is active or finger is down
+      // as a bounce artifact — ignore it entirely.
+      if (bounceLock || fingerDown) {
+        lastScroll = currentScroll;
         return;
       }
 
-      if (deltaY > SWIPE_THRESHOLD) {
-        // Deliberate upward swipe — hide and remember intent
-        swipeIntent = 'up';
+      if (currentScroll > lastScroll + 4) {
+        // Scrolling down → hide
         hideNav();
-        scheduleSwipeIntentReset();
-      } else if (deltaY < -SWIPE_THRESHOLD) {
-        // Deliberate downward swipe — show and clear intent
-        swipeIntent = 'down';
-        upwardScrollAccum = MOMENTUM_SHOW_THRESHOLD; // allow show immediately
-        showNav();
-        scheduleSwipeIntentReset();
-      } else {
-        // Small / ambiguous delta — schedule reset without changing intent
-        scheduleSwipeIntentReset();
-      }
-    }, { passive: true });
-
-    // ── touchcancel ───────────────────────────────────────────────────────
-    window.addEventListener('touchcancel', () => {
-      fingerOnScreen = false;
-      scheduleSwipeIntentReset();
-    }, { passive: true });
-
-    // ── scroll ───────────────────────────────────────────────────────────
-    window.addEventListener('scroll', () => {
-      const currentScroll = window.scrollY;
-      const now           = Date.now();
-      const dt            = now - lastScrollTime || 16;
-
-      // Rolling velocity estimate (positive = moving down the page)
-      scrollVelocity = (currentScroll - lastScrollY) / dt;
-      lastScrollY    = currentScroll;
-      lastScrollTime = now;
-
-      const delta = currentScroll - lastScroll;
-
-      if (delta > HIDE_SCROLL_DELTA) {
-        // ── Scrolling DOWN ───────────────────────────────────────────────
-        // Reset upward accumulator whenever user scrolls down
-        upwardScrollAccum = 0;
-        hideNav();
-
-      } else if (delta < 0 || currentScroll <= 0) {
-        // ── Scrolling UP (or at top of page) ────────────────────────────
-
-        if (currentScroll <= 0) {
-          // Always show at top of page regardless of intent
-          swipeIntent = null;
-          showNav();
-        } else if (swipeIntent === 'up' && fingerOnScreen) {
-          // Finger still down after deliberate hide swipe — don't show yet
-          // (handles the case where iOS starts momentum before touchend)
-        } else if (swipeIntent === 'up' && !fingerOnScreen) {
-          // Momentum scroll upward after a hide-swipe:
-          // accumulate upward distance and only show after threshold met
-          upwardScrollAccum += Math.abs(delta);
-          if (upwardScrollAccum >= MOMENTUM_SHOW_THRESHOLD) {
-            swipeIntent = null;
-            showNav();
-          }
-        } else {
-          // Normal upward scroll or deliberate down-swipe intent — show
+      } else if (currentScroll < lastScroll - 2 || currentScroll <= 0) {
+        // Scrolling up (with small hysteresis) or back at top.
+        // Only show if the user hasn't locked the nav hidden with a swipe-up.
+        if (!intentToHide) {
           showNav();
         }
       }
@@ -220,7 +163,7 @@ document.addEventListener('DOMContentLoaded', function () {
       lastScroll = currentScroll;
     }, { passive: true });
 
-    // ── Sidebar locks nav visible ─────────────────────────────────────────
+    // ── Sidebar locks nav visible ─────────────────────────────────────────────
     mainSidebar.addEventListener('show.bs.offcanvas', () => {
       sidebarIsOpen = true;
       showNav();
@@ -229,7 +172,7 @@ document.addEventListener('DOMContentLoaded', function () {
       sidebarIsOpen = false;
     });
 
-    // ── Close sidebar on link tap ─────────────────────────────────────────
+    // ── Close sidebar on link tap ─────────────────────────────────────────────
     const sidebarLinks = document.querySelectorAll('#mainSidebar a:not([data-bs-toggle])');
     const sidebar      = document.getElementById('mainSidebar');
     sidebarLinks.forEach(link => {
