@@ -83,7 +83,8 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!e.touches || e.touches.length === 0) return;
       touchStartY = e.touches[0].clientY;
       touchStartX = e.touches[0].clientX;
-      fingerDown  = true;
+      fingerDown        = true;
+      upwardScrollAccum = 0; // reset accumulator on each new touch
 
       // Cancel any pending bounce lock when a new deliberate touch begins
       clearTimeout(bounceLockTimer);
@@ -138,26 +139,44 @@ document.addEventListener('DOMContentLoaded', function () {
     }, { passive: true });
 
     // ── scroll ───────────────────────────────────────────────────────────────
+    let upwardScrollAccum = 0; // accumulated upward px since last downward scroll
+    const SHOW_THRESHOLD  = 40; // px of sustained upward scroll needed to show nav
+
     window.addEventListener('scroll', () => {
       const currentScroll = window.scrollY;
 
-      // iOS elastic overscroll: scrollY can go negative or spike on non-scrollable
-      // pages. Treat any scroll event while bounceLock is active or finger is down
-      // as a bounce artifact — ignore it entirely.
-      if (bounceLock || fingerDown) {
+      // iOS elastic overscroll on non-scrollable pages: bounceLock is active
+      // right after a swipe-up gesture. fingerDown alone doesn't block here —
+      // we still want to react to scroll while the finger is moving on real pages.
+      if (bounceLock) {
         lastScroll = currentScroll;
         return;
       }
 
-      if (currentScroll > lastScroll + 4) {
-        // Scrolling down → hide
+      const delta = currentScroll - lastScroll;
+
+      if (delta > 4) {
+        // Scrolling down → hide and reset upward accumulator
+        upwardScrollAccum = 0;
+        intentToHide = true; // scroll-down also sets intent so swipe-up state stays consistent
         hideNav();
-      } else if (currentScroll < lastScroll - 2 || currentScroll <= 0) {
-        // Scrolling up (with small hysteresis) or back at top.
-        // Only show if the user hasn't locked the nav hidden with a swipe-up.
-        if (!intentToHide) {
+
+      } else if (delta < -2 && currentScroll > 0) {
+        // Scrolling up and not at the very top (avoids bounce artifacts near 0).
+        // Accumulate upward pixels — only show once enough momentum is detected.
+        // This makes it feel like Android: reversal of direction shows the nav
+        // without needing to swipe all the way to the top or make an explicit gesture.
+        upwardScrollAccum += Math.abs(delta);
+        if (upwardScrollAccum >= SHOW_THRESHOLD) {
+          intentToHide = false;
           showNav();
         }
+
+      } else if (currentScroll <= 0) {
+        // Actually at the top — always show
+        upwardScrollAccum = 0;
+        intentToHide = false;
+        showNav();
       }
 
       lastScroll = currentScroll;
