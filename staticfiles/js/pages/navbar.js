@@ -176,20 +176,24 @@ document.addEventListener('DOMContentLoaded', function () {
         intentToHide = true;
         hideNav();
 
-        // Engage a finite bounce-scroll lock (BOUNCE_WINDOW ms) so the elastic
-        // rebound scroll events that iOS fires don't immediately show the nav.
-        // This replaces the old 9999999ms hack which caused the freeze bug.
+        // Engage a finite bounce-scroll lock so the elastic rebound scroll
+        // events that iOS fires don't immediately show the nav.
         bounceLock = true;
         clearTimeout(bounceLockTimer);
         bounceLockTimer = setTimeout(() => { bounceLock = false; }, BOUNCE_WINDOW);
 
-        // On non-scrollable pages there are no real scroll events to detect
-        // intent reversal, so we gate show() calls with a short cooldown.
-        // This is what allows the back bar to be interactive immediately after
-        // appearing, while still preventing phantom bounce-triggered shows.
+        // swipeCooldown gates showNav() in the scroll handler.
+        // On scrollable pages it expires after SWIPE_COOLDOWN ms — real upward
+        // scroll momentum will take over via the accumulator after that.
+        // On non-scrollable pages it never expires via a timer: only a
+        // deliberate swipe-down clears it. This is what keeps the nav hidden
+        // on bouncy iOS pages where scrollY is permanently 0.
         swipeCooldown = true;
         clearTimeout(swipeCooldownTimer);
-        swipeCooldownTimer = setTimeout(() => { swipeCooldown = false; }, SWIPE_COOLDOWN);
+        if (pageIsScrollable()) {
+          swipeCooldownTimer = setTimeout(() => { swipeCooldown = false; }, SWIPE_COOLDOWN);
+        }
+        // Non-scrollable: swipeCooldown stays true until swipe-down below.
 
       } else if (deltaY < -SWIPE_THRESHOLD) {
         // Deliberate swipe-down → show nav, clear all locks.
@@ -223,19 +227,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
       } else if (delta < -2 && currentScroll > 0) {
         // Upward scroll — accumulate until threshold, then show.
-        // Respect swipeCooldown: don't show immediately on the elastic bounce
-        // that follows a swipe-up on non-scrollable pages.
+        // Only relevant on scrollable pages; non-scrollable pages never have
+        // currentScroll > 0 so this branch never fires for them.
         upwardScrollAccum += Math.abs(delta);
         if (upwardScrollAccum >= SHOW_THRESHOLD && !swipeCooldown) {
           intentToHide = false;
           showNav();
         }
 
-      } else if (currentScroll <= 0) {
-        // Reached the very top → always show.
+      } else if (currentScroll <= 0 && pageIsScrollable()) {
+        // Reached the very top on a SCROLLABLE page → show.
+        // Intentionally excluded from non-scrollable pages: scrollY is always
+        // 0 there, so this branch would fire on every iOS bounce event and
+        // immediately reverse the swipe-up hide. On non-scrollable pages only
+        // a deliberate swipe-down (handled in touchend) shows the nav.
         upwardScrollAccum = 0;
         intentToHide      = false;
-        if (!swipeCooldown) showNav();
+        showNav();
       }
 
       lastScroll = currentScroll;
