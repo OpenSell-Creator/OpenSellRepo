@@ -50,25 +50,26 @@ document.addEventListener('DOMContentLoaded', function () {
     let lastScroll        = 0;
     let touchStartY       = 0;
     let touchStartX       = 0;
-    let touchStartedInBackBar = false; // true when the gesture began inside #navBackBar
     let navVisible        = true;
-    let intentToHide      = false;
+    let intentToHide      = false; // cleared only by swipe-down or scroll accumulator
+    let fingerDown        = false; // true only while finger is on screen
     let bounceLock        = false; // blocks scroll handler during iOS elastic bounce
     let bounceLockTimer   = null;
-    let swipeCooldown     = false; // short gate after swipe-up on non-scrollable pages
-    let swipeCooldownTimer= null;  // replaces the old 9999999ms hack
-    let upwardScrollAccum = 0;
-    const SWIPE_THRESHOLD = 30;
-    const SHOW_THRESHOLD  = 40;
-    const BOUNCE_WINDOW   = 600;   // ms — enough for iOS elastic bounce to fully settle
-    const SWIPE_COOLDOWN  = 400;   // ms — ignore show-triggers right after a hide swipe
+    let upwardScrollAccum = 0;     // accumulated upward px since last downward scroll
+    const SWIPE_THRESHOLD = 30;    // px of gesture needed to count as deliberate
+    const SHOW_THRESHOLD  = 40;    // px of sustained upward scroll needed to show nav
 
     // ── Page scrollability helper ─────────────────────────────────────────────
+    // Re-checked on each gesture so it works after dynamic content loads.
     function pageIsScrollable() {
       return document.documentElement.scrollHeight > window.innerHeight + 4;
     }
 
-    // ── Back bar helper ───────────────────────────────────────────────────────
+    // ── Show / hide ──────────────────────────────────────────────────────────
+    // ── Back button helper ────────────────────────────────────────────────────
+    // Only show when there is a page to go back to (history.length > 1).
+    // Uses a sessionStorage flag so cross-origin navigations that reset
+    // history.length are still handled gracefully on iOS Safari.
     function updateBackBtn(navIsHidden) {
       if (!backBtn) return;
       const hasHistory = history.length > 1 ||
@@ -81,9 +82,9 @@ document.addEventListener('DOMContentLoaded', function () {
         backBtn.setAttribute('aria-hidden', 'true');
       }
     }
+    // Mark that the user has visited at least one page this session
     sessionStorage.setItem('os_visited_before', '1');
 
-    // ── Show / hide ───────────────────────────────────────────────────────────
     function showNav() {
       navVisible = true;
       mainNavbar.style.transform = 'translateY(0)';
@@ -110,43 +111,22 @@ document.addEventListener('DOMContentLoaded', function () {
     // ── touchstart ───────────────────────────────────────────────────────────
     window.addEventListener('touchstart', (e) => {
       if (!e.touches || e.touches.length === 0) return;
+      touchStartY       = e.touches[0].clientY;
+      touchStartX       = e.touches[0].clientX;
+      fingerDown        = true;
+      upwardScrollAccum = 0; // reset accumulator on each new touch
 
-      touchStartY = e.touches[0].clientY;
-      touchStartX = e.touches[0].clientX;
-      upwardScrollAccum = 0;
-
-      // Detect if this touch originated inside the back bar.
-      // If so, we must never preventDefault on its touchmove — doing so kills
-      // button taps and link navigations on iOS (the bug reported).
-      touchStartedInBackBar = backBtn
-        ? backBtn.contains(e.touches[0].target)
-        : false;
-
-      // A new deliberate touch always clears the bounce-scroll lock so the
-      // scroll handler can function normally again.
+      // Cancel any pending bounce lock when a new deliberate touch begins
       clearTimeout(bounceLockTimer);
       bounceLock = false;
-
-      // Do NOT clear swipeCooldown here — it must survive the touchstart that
-      // immediately follows a swipe on non-scrollable pages, which is exactly
-      // the iOS synthetic touch that was causing phantom show() calls.
     }, { passive: true });
 
     // ── touchmove ────────────────────────────────────────────────────────────
     window.addEventListener('touchmove', (e) => {
       if (!e.touches || e.touches.length === 0) return;
-
-      // CRITICAL FIX: never preventDefault on touches that began inside the
-      // back bar. Those touches need to reach their target (buttons, inputs,
-      // links) uninterrupted. The old code called preventDefault for any
-      // upward drag while !navVisible, which swallowed back-bar taps on iOS.
-      if (touchStartedInBackBar) return;
-
       const deltaY = touchStartY - e.touches[0].clientY;
       const deltaX = Math.abs(touchStartX - e.touches[0].clientX);
-
-      // Block iOS pull-to-refresh / elastic overscroll only when:
-      // nav is hidden AND drag is clearly vertical-upward AND not in back bar.
+      // Block iOS elastic pull-to-refresh when nav is hidden
       if (deltaX < Math.abs(deltaY) && deltaY < -10 && !navVisible) {
         try { e.preventDefault(); } catch (_) {}
       }
@@ -154,12 +134,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ── touchend ─────────────────────────────────────────────────────────────
     window.addEventListener('touchend', (e) => {
-      // Touches that started in the back bar are entirely hands-off —
-      // let the browser/iOS handle them as normal taps/navigations.
-      if (touchStartedInBackBar) {
-        touchStartedInBackBar = false;
-        return;
-      }
+      fingerDown = false;
 
       const touch =
         (e.changedTouches && e.changedTouches[0]) ||
@@ -171,47 +146,40 @@ document.addEventListener('DOMContentLoaded', function () {
 
       if (deltaX > Math.abs(deltaY)) return; // horizontal swipe — ignore
 
+      const scrollable = pageIsScrollable();
+
       if (deltaY > SWIPE_THRESHOLD) {
-        // Deliberate swipe-up → hide nav.
+        // Deliberate swipe-up → hide
         intentToHide = true;
         hideNav();
 
-        // Engage a finite bounce-scroll lock so the elastic rebound scroll
-        // events that iOS fires don't immediately show the nav.
+        // On non-scrollable pages the bounce-return scroll events are the only
+        // thing that follows — lock them out permanently until a swipe-down.
+        // On scrollable pages use a short window; the accumulator takes over after.
         bounceLock = true;
         clearTimeout(bounceLockTimer);
-        bounceLockTimer = setTimeout(() => { bounceLock = false; }, BOUNCE_WINDOW);
-
-        // swipeCooldown gates showNav() in the scroll handler.
-        // On scrollable pages it expires after SWIPE_COOLDOWN ms — real upward
-        // scroll momentum will take over via the accumulator after that.
-        // On non-scrollable pages it never expires via a timer: only a
-        // deliberate swipe-down clears it. This is what keeps the nav hidden
-        // on bouncy iOS pages where scrollY is permanently 0.
-        swipeCooldown = true;
-        clearTimeout(swipeCooldownTimer);
-        if (pageIsScrollable()) {
-          swipeCooldownTimer = setTimeout(() => { swipeCooldown = false; }, SWIPE_COOLDOWN);
-        }
-        // Non-scrollable: swipeCooldown stays true until swipe-down below.
+        bounceLockTimer = setTimeout(
+          () => { bounceLock = false; },
+          scrollable ? 500 : 9999999
+        );
 
       } else if (deltaY < -SWIPE_THRESHOLD) {
-        // Deliberate swipe-down → show nav, clear all locks.
-        intentToHide  = false;
-        bounceLock    = false;
-        swipeCooldown = false;
+        // Deliberate swipe-down → always show and clear all locks
+        intentToHide = false;
+        bounceLock   = false;
         clearTimeout(bounceLockTimer);
-        clearTimeout(swipeCooldownTimer);
         showNav();
       }
-      // Small delta (tap / micro-bounce) → state unchanged.
+      // Small delta (tap / micro-bounce) → state unchanged
     }, { passive: true });
 
     // ── scroll ───────────────────────────────────────────────────────────────
     window.addEventListener('scroll', () => {
       const currentScroll = window.scrollY;
 
-      // Ignore scroll events during the post-swipe bounce window.
+      // While bounceLock is active, ignore all scroll events.
+      // Non-scrollable pages: indefinite lock (only swipe-down clears it).
+      // Scrollable pages: short 500ms window after swipe-up, then accumulator governs.
       if (bounceLock) {
         lastScroll = currentScroll;
         return;
@@ -220,27 +188,22 @@ document.addEventListener('DOMContentLoaded', function () {
       const delta = currentScroll - lastScroll;
 
       if (delta > 4) {
-        // Real downward scroll → hide.
+        // Real downward scroll → hide
         upwardScrollAccum = 0;
         intentToHide      = true;
         hideNav();
 
       } else if (delta < -2 && currentScroll > 0) {
-        // Upward scroll — accumulate until threshold, then show.
-        // Only relevant on scrollable pages; non-scrollable pages never have
-        // currentScroll > 0 so this branch never fires for them.
+        // Upward scroll momentum on a scrollable page.
+        // Accumulate until threshold — Android-style direction-reversal reveal.
         upwardScrollAccum += Math.abs(delta);
-        if (upwardScrollAccum >= SHOW_THRESHOLD && !swipeCooldown) {
+        if (upwardScrollAccum >= SHOW_THRESHOLD) {
           intentToHide = false;
           showNav();
         }
 
-      } else if (currentScroll <= 0 && pageIsScrollable()) {
-        // Reached the very top on a SCROLLABLE page → show.
-        // Intentionally excluded from non-scrollable pages: scrollY is always
-        // 0 there, so this branch would fire on every iOS bounce event and
-        // immediately reverse the swipe-up hide. On non-scrollable pages only
-        // a deliberate swipe-down (handled in touchend) shows the nav.
+      } else if (currentScroll <= 0) {
+        // Reached the very top — always show
         upwardScrollAccum = 0;
         intentToHide      = false;
         showNav();
