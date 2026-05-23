@@ -36,7 +36,7 @@ class ProfileAdmin(admin.ModelAdmin):
         'business_verification_badge', 'business_name',
         'total_products_listed', 'total_services_listed', 'total_requests_posted'
     )
-    list_filter = ('business_verification_status', 'email_verified', 'available_for_services')
+    list_filter = ('business_verification_status', 'email_verified')
     search_fields = (
         'user__username', 'phone_number', 'business_name', 
         'user__email', 'business_email', 'professional_title'
@@ -56,7 +56,6 @@ class ProfileAdmin(admin.ModelAdmin):
         ('Professional Information', {
             'fields': (
                 'professional_title', 'skills', 'years_of_experience',
-                'available_for_services', 'service_availability_note'
             ),
             'classes': ('collapse',)
         }),

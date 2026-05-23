@@ -71,12 +71,37 @@ class ListingForm(forms.ModelForm):
             'title': 'Products marked as always available will not be removed from listings',
         })
     )
+    
+    receipt_images = MultipleFileField(required=False)
+    receipt_type = forms.ChoiceField(
+        choices=[
+            ('store_receipt', 'Store Receipt'),
+            ('bank_transfer', 'Bank Transfer / Payment Proof'),
+            ('warranty_card', 'Warranty Card'),
+            ('invoice', 'Invoice'),
+            ('packaging', 'Original Box / Packaging Photo'),
+            ('other', 'Other Proof'),
+        ],
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    receipt_notes = forms.CharField(
+        max_length=255,
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Optional note about this receipt'})
+    )
 
     class Meta:
         model = Product_Listing
-        fields = ['title', 'description', 'formatted_price', 'condition', 
-                'category', 'subcategory', 'brand', 'images', 'listing_type', 
-                'quantity', 'is_always_available']
+        fields = ['title', 'description', 'formatted_price', 'condition',
+            'category', 'subcategory', 'brand', 'images', 'listing_type',
+            'quantity', 'is_always_available',
+            'has_receipt', 'receipt_visibility',
+            'negotiable', 'reason_for_selling',
+            'inspection_allowed', 'inspection_location',
+            'swap_accepted', 'swap_preference',
+            'delivery_available', 'original_accessories_included',
+            'bundle_description']
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
@@ -84,6 +109,17 @@ class ListingForm(forms.ModelForm):
             'category': forms.Select(attrs={'class': 'form-select'}),
             'subcategory': forms.Select(attrs={'class': 'form-select'}),
             'brand': forms.Select(attrs={'class': 'form-select'}),
+            'has_receipt': forms.CheckboxInput(attrs={'class': 'form-check-input', 'id': 'id_has_receipt'}),
+            'receipt_visibility': forms.Select(attrs={'class': 'form-select'}),
+            'negotiable': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'reason_for_selling': forms.Select(attrs={'class': 'form-select'}),
+            'inspection_allowed': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'inspection_location': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Ikeja, Lagos'}),
+            'swap_accepted': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'swap_preference': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. iPhone 13, cash top-up welcome'}),
+            'delivery_available': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'original_accessories_included': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'bundle_description': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Describe what is included in the bundle'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -106,11 +142,15 @@ class ListingForm(forms.ModelForm):
         self.fields['subcategory'].empty_label = "Select Subcategory"
         self.fields['brand'].empty_label = "Select Brand"
         self.fields['condition'].empty_label = "Select Condition"
+
+        # Prepend a blank placeholder so the dropdown reads "Select your reason"
+        # instead of defaulting to the first choice
+        self.fields['reason_for_selling'].choices = [
+            ('', 'Select your reason'),
+        ] + list(self._meta.model.REASON_FOR_SELLING_CHOICES)
         
-        # Set initial querysets
         self.fields['category'].queryset = Category.objects.all()
         
-        # Handle POST data
         if 'category' in self.data:
             try:
                 category_id = int(self.data.get('category'))
@@ -142,9 +182,23 @@ class ListingForm(forms.ModelForm):
                 self.fields['formatted_price'].initial = f'₦ {self.instance.price:,.0f}'
             
             self.fields['quantity'].required = self.instance.listing_type != 'permanent'
-            
             self.fields['images'].required = False
             self.fields['images'].help_text = "Leave empty to keep existing images"
+            self.fields['receipt_images'].required = False
+            self.fields['receipt_images'].help_text = "Leave empty to keep existing receipts"
+
+            # Pre-populate new boolean fields from instance
+            self.fields['has_receipt'].initial = self.instance.has_receipt
+            self.fields['receipt_visibility'].initial = self.instance.receipt_visibility
+            self.fields['negotiable'].initial = self.instance.negotiable
+            self.fields['reason_for_selling'].initial = self.instance.reason_for_selling
+            self.fields['inspection_allowed'].initial = self.instance.inspection_allowed
+            self.fields['inspection_location'].initial = self.instance.inspection_location
+            self.fields['swap_accepted'].initial = self.instance.swap_accepted
+            self.fields['swap_preference'].initial = self.instance.swap_preference
+            self.fields['delivery_available'].initial = self.instance.delivery_available
+            self.fields['original_accessories_included'].initial = self.instance.original_accessories_included
+            self.fields['bundle_description'].initial = self.instance.bundle_description
 
     def clean_listing_type(self):
         """Validate that the selected listing type is allowed for this user"""
@@ -179,11 +233,67 @@ class ListingForm(forms.ModelForm):
 
         cleaned_data['price'] = cleaned_data.get('formatted_price')
 
+        # Condition-dependent field validation
+        # Condition-dependent field validation
+        condition = cleaned_data.get('condition')
+        if condition == 'new':
+            # These fields only make sense for used items; clear them silently
+            cleaned_data['reason_for_selling'] = None
+            cleaned_data['original_accessories_included'] = False
+            # Receipt fields are only valid for used items
+            cleaned_data['has_receipt'] = False
+            cleaned_data['receipt_visibility'] = 'public'
+
+        # Inspection location required if inspection is allowed
+        if cleaned_data.get('inspection_allowed') and not cleaned_data.get('inspection_location'):
+            self.add_error('inspection_location', 'Please provide an inspection location.')
+
+        # Swap preference required if swap is accepted
+        # Swap preference required if swap is accepted
+        if cleaned_data.get('swap_accepted') and not cleaned_data.get('swap_preference'):
+            self.add_error('swap_preference', 'Please describe what you would accept as a swap.')
+
+        # Clear dependent fields server-side when their toggle/condition is off
+        if not cleaned_data.get('inspection_allowed'):
+            cleaned_data['inspection_location'] = None
+        if not cleaned_data.get('swap_accepted'):
+            cleaned_data['swap_preference'] = None
+        if int(cleaned_data.get('quantity') or 1) <= 1:
+            cleaned_data['bundle_description'] = None
+
         return cleaned_data
+    
+    def clean_receipt_images(self):
+        files = self.files.getlist('receipt_images')
+        for f in files:
+            if f.size > 5 * 1024 * 1024:
+                raise forms.ValidationError(
+                    f'Receipt image "{f.name}" exceeds the 5MB limit. Please compress it before uploading.'
+                )
+            ext = f.name.rsplit('.', 1)[-1].lower()
+            if ext not in ('jpg', 'jpeg', 'png', 'webp'):
+                raise forms.ValidationError(
+                    f'"{f.name}" is not a supported image format. Use JPG, PNG, or WebP.'
+                )
+        return files
     
     def save(self, commit=True):
         instance = super().save(commit=False)
         instance.price = self.cleaned_data.get('price')
+
+        # Write all new fields explicitly so they are never left at stale values
+        instance.has_receipt = self.cleaned_data.get('has_receipt', False)
+        instance.receipt_visibility = self.cleaned_data.get('receipt_visibility', 'public')
+        instance.negotiable = self.cleaned_data.get('negotiable', False)
+        instance.reason_for_selling = self.cleaned_data.get('reason_for_selling') or None
+        instance.inspection_allowed = self.cleaned_data.get('inspection_allowed', False)
+        instance.inspection_location = self.cleaned_data.get('inspection_location') or None
+        instance.swap_accepted = self.cleaned_data.get('swap_accepted', False)
+        instance.swap_preference = self.cleaned_data.get('swap_preference') or None
+        instance.delivery_available = self.cleaned_data.get('delivery_available', False)
+        instance.original_accessories_included = self.cleaned_data.get('original_accessories_included', False)
+        instance.bundle_description = self.cleaned_data.get('bundle_description') or None
+
         if commit:
             instance.save()
         return instance

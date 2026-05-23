@@ -306,11 +306,6 @@ class ServiceListView(ListView):
             if not (form.is_valid() and form.cleaned_data.get('pricing_type')):
                 queryset = queryset.filter(pricing_type=raw_pricing_type)
 
-        # ── NEW from unified sidebar v2: available_only ───────────────────────
-        # ?available_only=true  →  provider.available_for_services = True
-        if self.request.GET.get('available_only') == 'true':
-            queryset = queryset.filter(provider__available_for_services=True)
-
         state_id_raw = self.request.GET.get('state', '').strip()
         lga_id_raw = self.request.GET.get('lga', '').strip()
 

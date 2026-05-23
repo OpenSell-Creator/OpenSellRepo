@@ -32,10 +32,14 @@
         {% if get_min_price or get_max_price %}<span class="ufs-chip">₦{{ get_min_price|default:"0" }}–{{ get_max_price|default:"∞" }}<button type="button" class="ufs-chip-x" data-clear="price" title="Remove">×</button></span>{% endif %}
         {% if get_state %}<span class="ufs-chip">Location<button type="button" class="ufs-chip-x" data-clear="state" title="Remove">×</button></span>{% endif %}
         {% if get_verified_business == 'true' or get_verified_only == 'true' %}<span class="ufs-chip ufs-chip--green">✓ Verified<button type="button" class="ufs-chip-x" data-clear="verified" title="Remove">×</button></span>{% endif %}
+        {% if request.GET.negotiable == 'true' %}<span class="ufs-chip">Negotiable<button type="button" class="ufs-chip-x" data-clear="negotiable" title="Remove">×</button></span>{% endif %}
+        {% if request.GET.delivery_available == 'true' %}<span class="ufs-chip">Delivery<button type="button" class="ufs-chip-x" data-clear="delivery_available" title="Remove">×</button></span>{% endif %}
+        {% if request.GET.swap_accepted == 'true' %}<span class="ufs-chip">Swap OK<button type="button" class="ufs-chip-x" data-clear="swap_accepted" title="Remove">×</button></span>{% endif %}
+        {% if request.GET.inspection_allowed == 'true' %}<span class="ufs-chip">Inspection<button type="button" class="ufs-chip-x" data-clear="inspection_allowed" title="Remove">×</button></span>{% endif %}
+        {% if request.GET.has_receipt == 'true' %}<span class="ufs-chip">Has Receipt<button type="button" class="ufs-chip-x" data-clear="has_receipt" title="Remove">×</button></span>{% endif %}
         {% if get_experience_level %}<span class="ufs-chip">{{ get_experience_level|title }}<button type="button" class="ufs-chip-x" data-clear="experience_level" title="Remove">×</button></span>{% endif %}
         {% if get_delivery_method and item_type != 'requests' %}<span class="ufs-chip">{{ get_delivery_method|title }}<button type="button" class="ufs-chip-x" data-clear="delivery_method" title="Remove">×</button></span>{% endif %}
         {% if get_status %}<span class="ufs-chip">{{ get_status|title }}<button type="button" class="ufs-chip-x" data-clear="status" title="Remove">×</button></span>{% endif %}
-        {% if get_availability_now == 'true' %}<span class="ufs-chip ufs-chip--green">Available Now<button type="button" class="ufs-chip-x" data-clear="available_only" title="Remove">×</button></span>{% endif %}
         {% if get_availability_schedule %}<span class="ufs-chip">{{ get_availability_schedule|title }}<button type="button" class="ufs-chip-x" data-clear="availability" title="Remove">×</button></span>{% endif %}
         {% if get_pricing_type %}<span class="ufs-chip">{{ get_pricing_type|title }}<button type="button" class="ufs-chip-x" data-clear="pricing_type" title="Remove">×</button></span>{% endif %}
     </div>
@@ -276,6 +280,57 @@
     </div>
     {% endif %}
 
+    {# ── 7b. PRODUCT FEATURES (products only) ─────────────────────────── #}
+    {% if item_type == 'products' %}
+    {% with get_negotiable=request.GET.negotiable|default:'' get_delivery=request.GET.delivery_available|default:'' get_swap=request.GET.swap_accepted|default:'' get_inspection=request.GET.inspection_allowed|default:'' get_has_receipt=request.GET.has_receipt|default:'' %}
+    <div class="ufs-section ufs-coll {% if get_negotiable or get_delivery or get_swap or get_inspection or get_has_receipt %}ufs-open{% endif %}">
+        <button type="button" class="ufs-head">
+            <span><i class="bi bi-sliders me-2"></i>Product Features</span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body">
+            <div class="ufs-feat-grid">
+                <label class="ufs-feat-pill">
+                    <input type="checkbox" name="negotiable" value="true" {% if get_negotiable == 'true' %}checked{% endif %}>
+                    <div class="ufs-feat-card">
+                        <i class="bi bi-chat-dots-fill ufs-feat-icon"></i>
+                        <span class="ufs-feat-label">Negotiable</span>
+                    </div>
+                </label>
+                <label class="ufs-feat-pill">
+                    <input type="checkbox" name="delivery_available" value="true" {% if get_delivery == 'true' %}checked{% endif %}>
+                    <div class="ufs-feat-card">
+                        <i class="bi bi-truck ufs-feat-icon"></i>
+                        <span class="ufs-feat-label">Delivery</span>
+                    </div>
+                </label>
+                <label class="ufs-feat-pill">
+                    <input type="checkbox" name="swap_accepted" value="true" {% if get_swap == 'true' %}checked{% endif %}>
+                    <div class="ufs-feat-card">
+                        <i class="bi bi-arrow-left-right ufs-feat-icon"></i>
+                        <span class="ufs-feat-label">Swap OK</span>
+                    </div>
+                </label>
+                <label class="ufs-feat-pill">
+                    <input type="checkbox" name="inspection_allowed" value="true" {% if get_inspection == 'true' %}checked{% endif %}>
+                    <div class="ufs-feat-card">
+                        <i class="bi bi-eye-fill ufs-feat-icon"></i>
+                        <span class="ufs-feat-label">Inspection</span>
+                    </div>
+                </label>
+                <label class="ufs-feat-pill" style="grid-column:1/-1">
+                    <input type="checkbox" name="has_receipt" value="true" {% if get_has_receipt == 'true' %}checked{% endif %}>
+                    <div class="ufs-feat-card" style="flex-direction:row;justify-content:center;gap:.5rem;min-height:48px">
+                        <i class="bi bi-receipt-cutoff ufs-feat-icon" style="font-size:1rem"></i>
+                        <span class="ufs-feat-label" style="font-size:.72rem">Has Proof of Purchase</span>
+                    </div>
+                </label>
+            </div>
+        </div>
+    </div>
+    {% endwith %}
+    {% endif %}
+
     {# ── 8. BUDGET / PRICE ────────────────────────────────────────────── #}
 
     {# Products: numeric price range #}
@@ -383,22 +438,6 @@
                 <label class="ufs-chk"><input type="radio" name="pricing_type" value="negotiable" {% if get_pricing_type == 'negotiable' %}checked{% endif %}><span><i class="bi bi-chat-dots me-1"></i>Negotiable</span></label>
             </div>
         </div>
-    </div>
-
-    {# ── AVAILABILITY TOGGLE (services only — maps to provider.available_for_services) ── #}
-    <div class="ufs-section">
-        <label class="ufs-verified-row" for="ufs_avail_{{ item_type }}">
-            <i class="bi bi-circle-fill ufs-avail-icon"></i>
-            <span class="ufs-verified-text">
-                <strong>Available Now</strong>
-                <small>Providers currently taking work</small>
-            </span>
-            <span class="ufs-switch">
-                <input class="ufs-sw-inp" type="checkbox" name="available_only" value="true"
-                       id="ufs_avail_{{ item_type }}" {% if get_availability_now == 'true' %}checked{% endif %}>
-                <span class="ufs-sw-track"></span>
-            </span>
-        </label>
     </div>
 
     {# ── AVAILABILITY SCHEDULE (services only — maps to ServiceListing.availability) ── #}
@@ -533,11 +572,11 @@
 {% endwith %}
 
 <style>
-/* ── Mobile offcanvas sheet — minimum half-screen ────────────────────────── */
+/* ── Mobile offcanvas sheet — exactly half screen ────────────────────────── */
 @media(max-width:991px){
   .offcanvas-bottom{
-    height: clamp(60dvh, 70dvh, 85dvh) !important;
-    max-height: clamp(60dvh, 70dvh, 85dvh) !important;
+    height: 50dvh !important;
+    max-height: 50dvh !important;
     border-radius: 20px 20px 0 0;
   }
 }
@@ -561,7 +600,7 @@
 .ufs-coll .ufs-body{display:none;margin-top:.55rem}
 .ufs-coll.ufs-open .ufs-body{display:block}
 .ufs-coll.ufs-open .ufs-chev{transform:rotate(-180deg)}
-.ufs-head{width:100%;display:flex;align-items:center;justify-content:space-between;background:none;border:none;padding:0;cursor:pointer;color:var(--text-primary);font-size:.78rem;font-weight:600;text-align:left}
+.ufs-head{width:100%;display:flex;align-items:center;justify-content:space-between;background:none;border:none;padding:.42rem .1rem;cursor:pointer;color:var(--text-primary);font-size:.82rem;font-weight:600;text-align:left;min-height:30px}
 .ufs-head span{display:flex;align-items:center}
 .ufs-head i{color:var(--accent-color)}
 .ufs-chev{font-size:.68rem;opacity:.5;transition:transform .2s;flex-shrink:0}
@@ -594,6 +633,21 @@
 .ufs-chk:hover{background:var(--hover-bg)}
 .ufs-chk input{width:.95rem;height:.95rem;accent-color:var(--primary-color);flex-shrink:0;cursor:pointer}
 
+/* ── Product-feature pill cards ─────────────────────────────────────── */
+.ufs-feat-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.ufs-feat-pill{position:relative;cursor:pointer}
+.ufs-feat-pill input[type="checkbox"]{position:absolute;opacity:0;width:0;height:0;pointer-events:none}
+.ufs-feat-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.3rem;padding:.6rem .4rem;border-radius:10px;border:1.5px solid var(--border-color);background:var(--background-color);transition:all .18s;text-align:center;min-height:68px}
+.ufs-feat-icon{font-size:1.2rem;color:var(--text-secondary);transition:color .18s,transform .18s;line-height:1}
+.ufs-feat-label{font-size:.68rem;font-weight:600;color:var(--text-secondary);transition:color .18s;line-height:1.2}
+.ufs-feat-pill:hover .ufs-feat-card{border-color:var(--accent-color);background:color-mix(in srgb,var(--accent-color) 6%,transparent)}
+.ufs-feat-pill:hover .ufs-feat-icon{color:var(--accent-color)}
+.ufs-feat-pill:hover .ufs-feat-label{color:var(--accent-color)}
+.ufs-feat-pill input:checked~.ufs-feat-card{border-color:var(--accent-color);background:color-mix(in srgb,var(--accent-color) 12%,transparent);box-shadow:0 0 0 1px var(--accent-color)}
+.ufs-feat-pill input:checked~.ufs-feat-card .ufs-feat-icon{color:var(--accent-color);transform:scale(1.12)}
+.ufs-feat-pill input:checked~.ufs-feat-card .ufs-feat-label{color:var(--accent-color)}
+.ufs-feat-pill input:checked~.ufs-feat-card::after{content:"✓";position:absolute;top:.3rem;right:.4rem;font-size:.6rem;font-weight:800;color:var(--accent-color)}
+
 /* Urgency dots */
 .ufs-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}
 .ufs-dot.red{background:#ef4444}.ufs-dot.orange{background:#f97316}
@@ -622,7 +676,9 @@
 
 /* ── Form overrides ──────────────────────────────────────────────────────── */
 .ufs-sidebar .form-floating label{font-size:.68rem}
-.ufs-sidebar .form-select,.ufs-sidebar .form-control{font-size:.76rem;border-radius:10px;border-color:var(--border-color);min-height:40px;background-color:var(--background-color);color:var(--text-primary)}
+.ufs-sidebar .form-select,.ufs-sidebar .form-control{font-size:.76rem;border-radius:10px;border-color:var(--border-color);min-height:52px;background-color:var(--background-color);color:var(--text-primary)}
+.ufs-sidebar .form-floating>.form-select{padding-top:1.4rem;padding-bottom:.4rem}
+.ufs-sidebar .form-floating>.form-control{padding-top:1.4rem;padding-bottom:.4rem}
 .ufs-sidebar .form-select:focus,.ufs-sidebar .form-control:focus{border-color:var(--primary-color);box-shadow:0 0 0 2px color-mix(in srgb,var(--primary-color) 15%,transparent)}
 
 /* ── Actions ─────────────────────────────────────────────────────────────── */
@@ -637,6 +693,7 @@
 [data-bs-theme="dark"] .ufs-sidebar{background:var(--dark-card-background)}
 [data-bs-theme="dark"] .ufs-toggle,[data-bs-theme="dark"] .ufs-pill{background:var(--dark-background-color)}
 [data-bs-theme="dark"] .ufs-search-input{background:var(--dark-background-color)}
+[data-bs-theme="dark"] .ufs-feat-card{background:var(--dark-background-color)}
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media(max-width:991px){

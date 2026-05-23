@@ -164,17 +164,6 @@ class Profile(models.Model):
         help_text="Years of professional experience"
     )
     
-    # Service availability
-    available_for_services = models.BooleanField(
-        default=False,
-        help_text="Available to provide services"
-    )
-    service_availability_note = models.CharField(
-        max_length=255,
-        blank=True,
-        help_text="Brief note about your availability"
-    )
-    
     
     def __str__(self):
         return f"{self.user.username}'s Profile"

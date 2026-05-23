@@ -18,7 +18,7 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import View
 from django.urls import reverse_lazy, reverse
-from .models import Subcategory,Category,Product_Listing,Brand,Product_Image,Banner
+from .models import Subcategory,Category,Product_Listing,Brand,Product_Image,Banner,Product_Receipt
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import User
 from .forms import ProductSearchForm, ReviewForm,ReviewReplyForm, Review, ProductReportForm, ListingForm
@@ -625,6 +625,22 @@ class ProductListView(ListView):
         if self.request.GET.get('verified_business') == 'true':
             queryset = queryset.filter(seller__business_verification_status='verified')
         
+        # FIX 10b: Handle new product feature filters
+        if self.request.GET.get('negotiable') == 'true':
+            queryset = queryset.filter(negotiable=True)
+        
+        if self.request.GET.get('delivery_available') == 'true':
+            queryset = queryset.filter(delivery_available=True)
+        
+        if self.request.GET.get('swap_accepted') == 'true':
+            queryset = queryset.filter(swap_accepted=True)
+        
+        if self.request.GET.get('inspection_allowed') == 'true':
+            queryset = queryset.filter(inspection_allowed=True)
+        
+        if self.request.GET.get('has_receipt') == 'true':
+            queryset = queryset.filter(has_receipt=True)
+        
         # FIX 10: Apply sorting
         sort_by = self.request.GET.get('sort', 'smart')
         
@@ -769,6 +785,12 @@ class ProductListView(ListView):
         # ── Misc context ─────────────────────────────────────────────────────────
         context['verified_only']  = self.request.GET.get('verified_business')
         context['current_sort']   = self.request.GET.get('sort', 'smart')
+        # New feature filter context (for sidebar restoration)
+        context['filter_negotiable']         = self.request.GET.get('negotiable', '')
+        context['filter_delivery_available'] = self.request.GET.get('delivery_available', '')
+        context['filter_swap_accepted']      = self.request.GET.get('swap_accepted', '')
+        context['filter_inspection_allowed'] = self.request.GET.get('inspection_allowed', '')
+        context['filter_has_receipt']        = self.request.GET.get('has_receipt', '')
 
         # ── Add saved status and format prices ───────────────────────────────────
         if self.request.user.is_authenticated:
@@ -992,6 +1014,9 @@ class ProductDetailView(DetailView):
                 context['existing_conversation'] = existing_conversation
                 context['can_message_seller'] = True
                 context['message_form'] = MessageForm()
+        # Receipt context
+        context['receipts'] = self.object.receipts.all()
+        context['receipt_visibility'] = self.object.receipt_visibility
         
         return context
 
@@ -1101,13 +1126,9 @@ class ProductCreateView(LoginRequiredMixin, CreateView):
     
     def form_valid(self, form):
         try:
-            # Set the seller
             form.instance.seller = self.request.user.profile
-            
-            # Save the form manually
             self.object = form.save()
             
-            # Set expiration date explicitly before saving images
             if self.object.listing_type != 'permanent':
                 duration = {
                     'standard': 45,
@@ -1121,23 +1142,19 @@ class ProductCreateView(LoginRequiredMixin, CreateView):
                 if not profile.is_verified_business:
                     messages.error(self.request, 'Permanent listings are only available for verified businesses.')
                     return self.form_invalid(form)
-                # Set expiration to None for permanent listings
                 self.object.expiration_date = None
                 self.object.save()
                 
-            # Handle images with improved error handling for large files
+            # Handle product images
             images = self.request.FILES.getlist('images')
-            for i, image in enumerate(images[:5]):  # Limit to 5 images
+            for i, image in enumerate(images[:5]):
                 try:
-                    # Check file size before processing
-                    if image.size > 5 * 1024 * 1024:  # 5MB
+                    if image.size > 5 * 1024 * 1024:
                         messages.warning(
-                            self.request, 
+                            self.request,
                             f'Image "{image.name}" was too large and was skipped. Please upload images under 5MB.'
                         )
                         continue
-                    
-                    # Create the product image
                     Product_Image.objects.create(
                         product=self.object,
                         image=image,
@@ -1145,13 +1162,31 @@ class ProductCreateView(LoginRequiredMixin, CreateView):
                     )
                 except Exception as img_error:
                     messages.warning(
-                        self.request, 
+                        self.request,
                         f'Failed to process image "{image.name}": {str(img_error)}'
                     )
-            
+
+            # Handle receipt images
+            if form.cleaned_data.get('has_receipt'):
+                receipt_files = self.request.FILES.getlist('receipt_images')
+                receipt_type = form.cleaned_data.get('receipt_type', 'store_receipt')
+                receipt_notes = form.cleaned_data.get('receipt_notes', '')
+                for receipt_file in receipt_files[:3]:
+                    try:
+                        Product_Receipt.objects.create(
+                            product=self.object,
+                            image=receipt_file,
+                            receipt_type=receipt_type,
+                            notes=receipt_notes,
+                        )
+                    except Exception as rec_error:
+                        messages.warning(
+                            self.request,
+                            f'Failed to save receipt "{receipt_file.name}": {str(rec_error)}'
+                        )
+
             messages.success(self.request, 'Product created successfully.')
             
-            # Handle AJAX requests
             if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({
                     'status': 'success',
@@ -1163,14 +1198,11 @@ class ProductCreateView(LoginRequiredMixin, CreateView):
             
         except Exception as e:
             messages.error(self.request, f'Error creating product: {str(e)}')
-            
-            # Handle AJAX requests with error
             if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({
                     'status': 'error',
                     'message': f'Error creating product: {str(e)}'
                 }, status=400)
-            
             return self.form_invalid(form)
     
     def get_context_data(self, **kwargs):
@@ -1226,7 +1258,7 @@ class ProductUpdateView(LoginRequiredMixin, UpdateView):
                 self.object.expiration_date = None
             
             self.object.save()
-            
+
             # Handle images - ONLY delete and replace if new images are uploaded
             if form.cleaned_data.get('images'):
                 # Delete existing images individually
@@ -1234,6 +1266,32 @@ class ProductUpdateView(LoginRequiredMixin, UpdateView):
                     image.delete()
                 # Save new images
                 self.save_images(form.cleaned_data['images'])
+
+            # Handle receipts
+            # Case 1: condition changed to 'new', or seller unchecked has_receipt → wipe all receipts
+            if not form.cleaned_data.get('has_receipt') or self.object.condition != 'used':
+                for receipt in self.object.receipts.all():
+                    receipt.delete()  # calls Product_Receipt.delete() → cleans up image file
+            # Case 2: has_receipt is still True and new receipt images were uploaded → replace
+            elif self.request.FILES.getlist('receipt_images'):
+                for receipt in self.object.receipts.all():
+                    receipt.delete()
+                receipt_type  = form.cleaned_data.get('receipt_type', 'store_receipt')
+                receipt_notes = form.cleaned_data.get('receipt_notes', '')
+                for receipt_file in self.request.FILES.getlist('receipt_images')[:3]:
+                    try:
+                        Product_Receipt.objects.create(
+                            product=self.object,
+                            image=receipt_file,
+                            receipt_type=receipt_type,
+                            notes=receipt_notes,
+                        )
+                    except Exception as rec_error:
+                        messages.warning(
+                            self.request,
+                            f'Failed to save receipt "{receipt_file.name}": {str(rec_error)}'
+                        )
+            # Case 3: has_receipt=True, no new files uploaded → keep existing receipts untouched
             
             messages.success(self.request, 'Product updated successfully.')
             
@@ -3014,4 +3072,3 @@ def generate_ai_description(request):
             'success': False,
             'error': 'An error occurred while generating the description. Please try again.'
         })
-        

@@ -554,6 +554,97 @@
                                     </div>
                                     {% for e in form.condition.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                                 </div>
+                                <!-- ══ Condition Details (used items only) ══ -->
+                                <div id="condition-details-section" style="display:none;">
+                                    <hr class="my-3">
+                                    <h6 class="fw-semibold mb-3" style="color:var(--text-primary);"><i class="bi bi-info-square me-2" style="color:var(--accent-color);"></i>Used Item Details</h6>
+
+                                    <div class="mb-3">
+                                        <div class="form-floating">
+                                            {{ form.reason_for_selling }}
+                                            <label for="id_reason_for_selling">Reason for Selling <span class="opt">Optional</span></label>
+                                        </div>
+                                        {% for e in form.reason_for_selling.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                    </div>
+
+                                    <div class="form-check form-switch mb-2">
+                                        {{ form.original_accessories_included }}
+                                        <label class="form-check-label" for="id_original_accessories_included">Original accessories included</label>
+                                    </div>
+                                </div>
+
+                                <!-- ══ Receipt / Proof of Purchase (used items only) ══ -->
+                                <div id="receipt-section" style="display:none;">
+                                    <hr class="my-3">
+                                    <h6 class="fw-semibold mb-3" style="color:var(--text-primary);"><i class="bi bi-receipt me-2" style="color:var(--accent-color);"></i>Proof of Purchase</h6>
+
+                                    <div class="form-check form-switch mb-2">
+                                        {{ form.has_receipt }}
+                                        <label class="form-check-label" for="id_has_receipt">I have a receipt or proof of ownership</label>
+                                    </div>
+
+                                    <div id="receipt-details" style="display:none;" class="mt-3">
+                                        <div class="mb-3">
+                                            <div class="form-floating">
+                                                {{ form.receipt_visibility }}
+                                                <label for="id_receipt_visibility">Who can see the receipt?</label>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <div class="form-floating">
+                                                {{ form.receipt_type }}
+                                                <label for="id_receipt_type">Type of Proof</label>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <div class="form-floating">
+                                                {{ form.receipt_notes }}
+                                                <label for="id_receipt_notes">Notes <span class="opt">Optional</span></label>
+                                            </div>
+                                        </div>
+                                        {% if form.instance.pk and form.instance.receipts.all %}
+                                        <div class="mb-3">
+                                            <p class="form-text fw-semibold mb-2" style="color:var(--text-primary);">Current Receipt Images:</p>
+                                            <div class="image-preview-grid">
+                                                {% for r in form.instance.receipts.all %}
+                                                <div class="preview-card">
+                                                    <img src="{{ r.image.url }}" alt="Receipt">
+                                                    <div class="preview-info">{{ r.get_receipt_type_display }}</div>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                            <p class="form-text mt-2">Upload new receipt images to replace existing ones.</p>
+                                        </div>
+                                        {% endif %}
+
+                                        <!-- Receipt upload zone -->
+                                        <div class="mb-3">
+                                            <label class="form-label">Upload Receipt Images <span class="opt">Optional · Max 3</span></label>
+                                            <div class="upload-zone" id="receiptDropZone">
+                                                <label class="upload-label" for="id_receipt_images">
+                                                    <i class="bi bi-cloud-arrow-up upload-icon"></i>
+                                                    <span class="upload-title">Click to select or drag &amp; drop</span>
+                                                    <span class="upload-hint">Receipt photos, invoices, or warranty cards</span>
+                                                    <div class="upload-meta">
+                                                        <span class="upload-badge"><i class="bi bi-filetype-jpg me-1"></i>JPG</span>
+                                                        <span class="upload-badge"><i class="bi bi-filetype-png me-1"></i>PNG</span>
+                                                        <span class="upload-badge">Max 3 images</span>
+                                                        <span class="upload-badge">5MB each</span>
+                                                    </div>
+                                                </label>
+                                                {{ form.receipt_images }}
+                                            </div>
+                                            <!-- Receipt preview grid (populated by JS, no visual status shown) -->
+                                            <div class="image-preview-grid" id="receiptPreviewContainer"></div>
+                                            <div id="receiptUploadStats" class="upload-stats d-none">
+                                                <div class="stat-item"><i class="bi bi-images"></i><span id="receiptNumFiles">0</span>/3 files</div>
+                                                <div class="stat-item"><i class="bi bi-hdd"></i><span id="receiptTotalSize">0 KB</span> total</div>
+                                            </div>
+                                            <div class="form-text"><i class="bi bi-shield-exclamation me-1"></i>Tip: Cover your personal name and address on the receipt before uploading.</div>
+                                            {% for e in form.receipt_images.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -598,11 +689,59 @@
                                     <div class="form-text">Number of units available. Minimum: 1</div>
                                 </div>
 
+                                <!-- ══ Bundle Info (quantity > 1) ══ -->
+                                <div id="bundle-info-section" style="display:none;" class="mb-3">
+                                    <div class="form-floating">
+                                        {{ form.bundle_description }}
+                                        <label for="id_bundle_description">Bundle Description <span class="opt">Optional</span></label>
+                                    </div>
+                                    <div class="form-text">Describe what items are included in this bundle.</div>
+                                    {% for e in form.bundle_description.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                </div>
+
                                 <div class="form-check form-switch mb-2">
                                     {{ form.is_always_available }}
                                     <label class="form-check-label" for="id_is_always_available">Always Available</label>
                                 </div>
                                 <div class="form-text">Products marked always available won't be removed automatically.</div>
+
+                                <!-- ══ Listing Preferences ══ -->
+                                <hr class="my-3">
+                                <h6 class="fw-semibold mb-3" style="color:var(--text-primary);"><i class="bi bi-sliders me-2" style="color:var(--accent-color);"></i>Listing Preferences</h6>
+
+                                <div class="form-check form-switch mb-2">
+                                    {{ form.negotiable }}
+                                    <label class="form-check-label" for="id_negotiable">Price is negotiable</label>
+                                </div>
+
+                                <div class="form-check form-switch mb-2">
+                                    {{ form.delivery_available }}
+                                    <label class="form-check-label" for="id_delivery_available">Delivery available</label>
+                                </div>
+
+                                <div class="form-check form-switch mb-2">
+                                    {{ form.inspection_allowed }}
+                                    <label class="form-check-label" for="id_inspection_allowed">Inspection allowed before purchase</label>
+                                </div>
+                                <div id="inspection-location-wrapper" style="display:none;" class="mb-3 mt-2">
+                                    <div class="form-floating">
+                                        {{ form.inspection_location }}
+                                        <label for="id_inspection_location">Inspection Location</label>
+                                    </div>
+                                    {% for e in form.inspection_location.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                </div>
+
+                                <div class="form-check form-switch mb-2">
+                                    {{ form.swap_accepted }}
+                                    <label class="form-check-label" for="id_swap_accepted">Open to swapping</label>
+                                </div>
+                                <div id="swap-preference-wrapper" style="display:none;" class="mb-3 mt-2">
+                                    <div class="form-floating">
+                                        {{ form.swap_preference }}
+                                        <label for="id_swap_preference">What would you accept as a swap?</label>
+                                    </div>
+                                    {% for e in form.swap_preference.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                                </div>
                             </div>
                         </div>
 
@@ -672,20 +811,13 @@
                                     {{ form.images }}
                                 </div>
 
-                                <!-- Compression status -->
-                                <div id="compressionStatus" class="compress-status running d-none">
-                                    <div class="spinner-border spinner-border-sm flex-shrink-0"></div>
-                                    <span>Optimizing images for faster upload…</span>
-                                </div>
-
-                                <!-- Background upload status -->
-                                <div id="bgUploadStatus" class="bg-upload-status d-none">
-                                    <div class="spinner-border spinner-border-sm flex-shrink-0" id="bgUploadSpinner"></div>
-                                    <div class="flex-grow-1">
-                                        <span id="bgUploadText">Uploading images in the background…</span>
-                                        <div class="upload-progress-bar-wrap">
-                                            <div class="upload-progress-fill" id="bgUploadProgressFill"></div>
-                                        </div>
+                                <!-- Preview grid (silent compression/upload — no visible status shown) -->
+                                <!-- Hidden elements kept for JS compatibility -->
+                                <div id="compressionStatus" class="compress-status running d-none" aria-hidden="true" style="display:none!important;"></div>
+                                <div id="bgUploadStatus" class="bg-upload-status d-none" aria-hidden="true" style="display:none!important;">
+                                    <div id="bgUploadSpinner"></div>
+                                    <div><span id="bgUploadText"></span>
+                                        <div><div id="bgUploadProgressFill"></div></div>
                                     </div>
                                 </div>
 
@@ -714,6 +846,81 @@
                             </button>
                         </div>
 
+                        <script>
+                        /* ══════════════════════════════════════════════
+                        Condition / Receipt / Inspection / Swap / Bundle
+                        Show-hide logic — vanilla JS
+                        ══════════════════════════════════════════════ */
+                        (function () {
+                            var conditionSelect       = document.getElementById('id_condition');
+                            var conditionDetails      = document.getElementById('condition-details-section');
+                            var receiptSection        = document.getElementById('receipt-section');
+                            var hasReceiptCheck       = document.getElementById('id_has_receipt');
+                            var receiptDetails        = document.getElementById('receipt-details');
+                            var inspectionCheck       = document.getElementById('id_inspection_allowed');
+                            var inspectionWrapper     = document.getElementById('inspection-location-wrapper');
+                            var swapCheck             = document.getElementById('id_swap_accepted');
+                            var swapWrapper           = document.getElementById('swap-preference-wrapper');
+                            var quantityField         = document.getElementById('id_quantity');
+                            var bundleSection         = document.getElementById('bundle-info-section');
+
+                            function show(el) { if (el) el.style.display = ''; }
+                            function hide(el) { if (el) el.style.display = 'none'; }
+
+                            // ── Condition ──────────────────────────────────────────────────────────
+                            function onConditionChange() {
+                                var isUsed = conditionSelect && conditionSelect.value === 'used';
+                                if (isUsed) { show(conditionDetails); show(receiptSection); }
+                                else        { hide(conditionDetails); hide(receiptSection); }
+                            }
+                            if (conditionSelect) {
+                                conditionSelect.addEventListener('change', onConditionChange);
+                                onConditionChange(); // run on page load for edit forms
+                            }
+
+                            // ── Has Receipt ────────────────────────────────────────────────────────
+                            function onReceiptChange() {
+                                if (hasReceiptCheck && hasReceiptCheck.checked) show(receiptDetails);
+                                else hide(receiptDetails);
+                            }
+                            if (hasReceiptCheck) {
+                                hasReceiptCheck.addEventListener('change', onReceiptChange);
+                                onReceiptChange();
+                            }
+
+                            // ── Inspection ─────────────────────────────────────────────────────────
+                            function onInspectionChange() {
+                                if (inspectionCheck && inspectionCheck.checked) show(inspectionWrapper);
+                                else hide(inspectionWrapper);
+                            }
+                            if (inspectionCheck) {
+                                inspectionCheck.addEventListener('change', onInspectionChange);
+                                onInspectionChange();
+                            }
+
+                            // ── Swap ───────────────────────────────────────────────────────────────
+                            function onSwapChange() {
+                                if (swapCheck && swapCheck.checked) show(swapWrapper);
+                                else hide(swapWrapper);
+                            }
+                            if (swapCheck) {
+                                swapCheck.addEventListener('change', onSwapChange);
+                                onSwapChange();
+                            }
+
+                            // ── Bundle (quantity > 1) ──────────────────────────────────────────────
+                            function onQuantityChange() {
+                                var qty = quantityField ? parseInt(quantityField.value, 10) : 1;
+                                if (qty > 1) show(bundleSection);
+                                else         hide(bundleSection);
+                            }
+                            if (quantityField) {
+                                quantityField.addEventListener('input', onQuantityChange);
+                                quantityField.addEventListener('change', onQuantityChange);
+                                onQuantityChange();
+                            }
+                        })();
+                        </script>
                     </form>
                 </div>
             </div>
@@ -845,9 +1052,18 @@ document.addEventListener('DOMContentLoaded', function () {
     {% if form.errors %}
     (function detectErrorTab() {
         const fieldTabMap = {
+            // Tab 0 — Basic Info
             'id_title': 0, 'id_category': 0, 'id_subcategory': 0, 'id_brand': 0, 'id_condition': 0,
+            'id_reason_for_selling': 0, 'id_original_accessories_included': 0,
+            'id_has_receipt': 0, 'id_receipt_visibility': 0,
+            // Tab 1 — Pricing & Availability
             'id_formatted_price': 1, 'id_listing_type': 1, 'id_quantity': 1,
+            'id_bundle_description': 1, 'id_negotiable': 1, 'id_delivery_available': 1,
+            'id_inspection_allowed': 1, 'id_inspection_location': 1,
+            'id_swap_accepted': 1, 'id_swap_preference': 1,
+            // Tab 2 — Description
             'id_description': 2,
+            // Tab 3 — Images
             'id_images': 3,
         };
         const invalidEls = document.querySelectorAll('.is-invalid, .field-error-msg');
@@ -1123,9 +1339,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             isProcessingImages = true;
             clearPreviews();
-            compressStatus.className = 'compress-status running';
-            compressStatus.classList.remove('d-none');
-            compressStatus.innerHTML = '<div class="spinner-border spinner-border-sm flex-shrink-0"></div><span>Optimizing images for faster upload…</span>';
+            // Silent compression — no running indicator shown
+            // silent
+            // silent
 
             try {
                 compressedFiles = await Promise.all(raw.map(f => compressor.compress(f)));
@@ -1136,10 +1352,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const compTotal = compressedFiles.reduce((s,f)=>s+f.size, 0);
                 const pct = ((rawTotal - compTotal) / rawTotal * 100);
 
-                compressStatus.className = 'compress-status done';
-                compressStatus.innerHTML = `<i class="bi bi-check-circle-fill flex-shrink-0"></i>
-                    <span>Images optimized! ${pct>5?`Saved ${pct.toFixed(0)}%`:' Ready to upload'} &mdash; ${FastImageCompressor.fmtSize(rawTotal)} → ${FastImageCompressor.fmtSize(compTotal)}</span>`;
-                setTimeout(() => compressStatus.classList.add('d-none'), 5000);
+                // compressStatus silenced — no visual feedback shown
 
                 statsBar.classList.remove('d-none');
                 numFilesEl.textContent  = compressedFiles.length;
@@ -1152,9 +1365,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 startBackgroundUpload(compressedFiles);
 
             } catch(err) {
-                compressStatus.className = 'compress-status warn';
-                compressStatus.innerHTML = '<i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i><span>Could not optimise. Using original files.</span>';
-                setTimeout(() => compressStatus.classList.add('d-none'), 3500);
+                // compressStatus warn hidden
+                // silent warn
+            // silent timeout removed
                 raw.forEach((f,i) => buildPreview(f, i, f, false));
                 statsBar.classList.remove('d-none');
                 numFilesEl.textContent  = raw.length;
@@ -1167,11 +1380,102 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    /* ══════════════════════════════════════
+       Receipt Image Drag-and-Drop + Silent Compression + Preview
+    ══════════════════════════════════════ */
+    const receiptField        = document.querySelector('input[name="receipt_images"]');
+    const receiptDropZone     = document.getElementById('receiptDropZone');
+    const receiptPreview      = document.getElementById('receiptPreviewContainer');
+    const receiptStats        = document.getElementById('receiptUploadStats');
+    const receiptNumFilesEl   = document.getElementById('receiptNumFiles');
+    const receiptTotalSizeEl  = document.getElementById('receiptTotalSize');
+
+    const MAX_RECEIPT_FILES   = 3;
+    const MAX_RECEIPT_SIZE    = 5 * 1024 * 1024;
+
+    if (receiptDropZone) {
+        receiptDropZone.addEventListener('dragover',  e => { e.preventDefault(); receiptDropZone.classList.add('drag-over'); });
+        receiptDropZone.addEventListener('dragleave', ()  => receiptDropZone.classList.remove('drag-over'));
+        receiptDropZone.addEventListener('drop', e => {
+            e.preventDefault(); receiptDropZone.classList.remove('drag-over');
+            if (receiptField && e.dataTransfer.files.length) {
+                const dt = new DataTransfer();
+                Array.from(e.dataTransfer.files).slice(0, MAX_RECEIPT_FILES).forEach(f => dt.items.add(f));
+                receiptField.files = dt.files;
+                receiptField.dispatchEvent(new Event('change'));
+            }
+        });
+    }
+
+    if (receiptField) {
+        receiptField.addEventListener('change', async function () {
+            const raw = Array.from(this.files);
+            if (receiptPreview) receiptPreview.innerHTML = '';
+            if (receiptStats) receiptStats.classList.add('d-none');
+            if (!raw.length) return;
+
+            if (raw.length > MAX_RECEIPT_FILES) {
+                showErrorToast(`Maximum ${MAX_RECEIPT_FILES} receipt images allowed.`);
+                this.value = ''; return;
+            }
+            for (const f of raw) {
+                if (f.size > MAX_RECEIPT_SIZE) {
+                    showErrorToast(`"${f.name}" exceeds 5MB.`);
+                    this.value = ''; return;
+                }
+                if (!VALID_TYPES.includes(f.type)) {
+                    showErrorToast(`"${f.name}" is not supported. Use JPG or PNG.`);
+                    this.value = ''; return;
+                }
+            }
+
+            // Silent compression (no status shown)
+            let finalFiles = raw;
+            try {
+                const compressed = await Promise.all(raw.map(f => compressor.compress(f)));
+                const dt = new DataTransfer();
+                compressed.forEach(f => dt.items.add(f));
+                this.files = dt.files;
+                finalFiles = compressed;
+            } catch (_) { /* compression failed silently, use originals */ }
+
+            // Show preview cards
+            const totalSize = finalFiles.reduce((s, f) => s + f.size, 0);
+            finalFiles.forEach((f, i) => {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const card = document.createElement('div');
+                    card.className = 'preview-card' + (i === 0 ? ' primary' : '');
+                    const img = document.createElement('img');
+                    img.src = e.target.result; img.title = f.name;
+                    card.appendChild(img);
+                    if (i === 0) {
+                        const badge = document.createElement('span');
+                        badge.className = 'primary-badge'; badge.textContent = 'Main';
+                        card.appendChild(badge);
+                    }
+                    const info = document.createElement('div');
+                    info.className = 'preview-info'; info.title = f.name;
+                    info.textContent = `${f.name.length > 14 ? f.name.slice(0, 13) + '…' : f.name} · ${FastImageCompressor.fmtSize(f.size)}`;
+                    card.appendChild(info);
+                    if (receiptPreview) receiptPreview.appendChild(card);
+                };
+                reader.readAsDataURL(f);
+            });
+
+            if (receiptStats) {
+                receiptStats.classList.remove('d-none');
+                if (receiptNumFilesEl) receiptNumFilesEl.textContent = finalFiles.length;
+                if (receiptTotalSizeEl) receiptTotalSizeEl.textContent = FastImageCompressor.fmtSize(totalSize);
+            }
+        });
+    }
+
     function clearPreviews() {
         imagePreview.innerHTML = '';
         statsBar.classList.add('d-none');
         savedStat.classList.add('d-none');
-        compressStatus.classList.add('d-none');
+            // silent hide
         bgUploadStatus.classList.add('d-none');
         bgUploadToken = null;
     }
@@ -1219,11 +1523,8 @@ document.addEventListener('DOMContentLoaded', function () {
         bgUploadToken = null;
         bgUploadDone  = false;
 
-        bgUploadStatus.className = 'bg-upload-status uploading';
-        bgUploadStatus.classList.remove('d-none');
-        bgUploadSpinner.style.display = '';
+        // Silent background upload — no UI status shown
         bgUploadFill.style.width = '0%';
-        bgUploadText.textContent = `Uploading ${files.length} image${files.length!==1?'s':''} in the background…`;
 
         const fd = new FormData();
         files.forEach(f => fd.append('images', f));
@@ -1247,10 +1548,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (xhr.status >= 200 && xhr.status < 300 && data.token) {
                     bgUploadToken = data.token;
                     bgUploadFill.style.width = '100%';
-                    bgUploadStatus.className = 'bg-upload-status done';
-                    bgUploadSpinner.style.display = 'none';
-                    bgUploadText.textContent = `${files.length} image${files.length!==1?'s':''} uploaded & ready — submit will be instant!`;
-                    showSuccessToast('Images pre-uploaded! Submitting will be instant.');
+                    // Silent: background upload complete — no announcement
                 } else {
                     // Endpoint may not exist yet — fail silently, form submits normally
                     bgUploadStatus.classList.add('d-none');
@@ -1316,17 +1614,22 @@ document.addEventListener('DOMContentLoaded', function () {
         // Wait for in-flight background upload to finish before submitting
         // (max wait: 10 s — then just submit with files)
         const doSubmit = () => {
-            let progress = 0;
-            const duration = hasImages && !bgUploadToken ? Math.max(2000, totalBytes/(500*1024)*1000) : 1200;
             progressBar.style.width = '0%';
-            progressText.textContent = bgUploadToken ? 'Finalizing your listing…' : (hasImages ? 'Uploading images…' : 'Processing your listing…');
-            statusText.textContent   = bgUploadToken ? 'Images already uploaded — finishing up…' : (hasImages ? `Uploading ${imageField.files.length} image${imageField.files.length!==1?'s':''}…` : 'Creating product listing…');
+            progressText.textContent = hasImages ? 'Uploading images…' : 'Processing your listing…';
+            statusText.textContent   = hasImages
+                ? `Uploading ${imageField.files.length} image${imageField.files.length!==1?'s':''}…`
+                : 'Creating product listing…';
 
+            // Animate to 80% immediately, then let submitFormData complete it
+            let progress = 0;
             const interval = setInterval(() => {
-                progress = Math.min(progress + 2, 95);
+                progress = Math.min(progress + 4, 80);
                 progressBar.style.width = progress + '%';
-                if (progress >= 90) { clearInterval(interval); progressText.textContent = 'Finalizing…'; submitFormData(formData); }
-            }, duration / 50);
+                if (progress >= 80) clearInterval(interval);
+            }, 60);
+
+            // Submit straight away — don't wait for fake progress
+            submitFormData(formData);
         };
 
         if (bgUploadXHR && !bgUploadDone) {
@@ -1348,18 +1651,50 @@ document.addEventListener('DOMContentLoaded', function () {
     function submitFormData(formData) {
         const url = form.getAttribute('action') || window.location.href;
         fetch(url, {method:'POST', body:formData, headers:{'X-Requested-With':'XMLHttpRequest'}})
-        .then(r => r.text().then(text => {
-            let data;
-            try { data = JSON.parse(text); } catch(_) { throw new Error('Unexpected server response. Please try again.'); }
-            return {ok: r.ok, data};
-        }))
+        .then(r => {
+            const contentType = r.headers.get('Content-Type') || '';
+            // If server returned JSON, parse it
+            if (contentType.includes('application/json')) {
+                return r.json().then(data => ({ok: r.ok, isJson: true, data, status: r.status}));
+            }
+            // Server returned HTML (e.g. a redirect page or form re-render with errors)
+            return r.text().then(html => ({ok: r.ok, isJson: false, html, status: r.status}));
+        })
         .then(result => {
-            progressBar.style.width = '100%';
-            progressBar.classList.replace('bg-primary','bg-success');
-            progressText.textContent = 'Success!';
-            statusText.textContent = result.data.message || 'Product saved!';
-            showSuccessToast(result.data.message || 'Product created successfully!');
-            setTimeout(() => { window.location.href = result.data.redirect_url || '{% url "home" %}'; }, 1000);
+            if (result.isJson) {
+                // JSON response — standard success/error handling
+                if (result.ok && result.data.redirect_url) {
+                    progressBar.style.width = '100%';
+                    progressBar.classList.replace('bg-primary','bg-success');
+                    progressText.textContent = 'Success!';
+                    statusText.textContent = result.data.message || 'Product saved!';
+                    showSuccessToast(result.data.message || 'Product created successfully!');
+                    setTimeout(() => { window.location.href = result.data.redirect_url; }, 1000);
+                } else if (!result.ok) {
+                    throw new Error(result.data.message || 'Server returned an error. Please try again.');
+                } else {
+                    // JSON but no redirect_url — treat as success, go home
+                    progressBar.style.width = '100%';
+                    progressBar.classList.replace('bg-primary','bg-success');
+                    progressText.textContent = 'Success!';
+                    setTimeout(() => { window.location.href = '{% url "home" %}'; }, 1000);
+                }
+            } else {
+                // HTML response — server likely did a normal redirect or returned form errors
+                if (result.status === 200 || result.status === 302) {
+                    // Product was saved — server returned the redirect target page as HTML
+                    // This happens when the view does HttpResponseRedirect (not AJAX JSON)
+                    // Just navigate to the success URL directly
+                    progressBar.style.width = '100%';
+                    progressBar.classList.replace('bg-primary','bg-success');
+                    progressText.textContent = 'Success!';
+                    statusText.textContent = 'Product saved! Redirecting…';
+                    showSuccessToast('Product created successfully!');
+                    setTimeout(() => { window.location.href = '{% url "home" %}'; }, 1000);
+                } else {
+                    throw new Error('Server returned an unexpected response. Please try again.');
+                }
+            }
         })
         .catch(err => {
             progressBar.classList.add('bg-danger');

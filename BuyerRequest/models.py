@@ -13,7 +13,9 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.template.loader import render_to_string
 from User.models import Profile, Location, SavedItem, State, LGA, SavedItem
-from Home.models import Category, Subcategory, Brand 
+from Home.models import Category, Subcategory, Brand
+from Home.utils import apply_watermark
+from django.core.files.base import ContentFile
 from django.contrib.contenttypes.models import ContentType
 from Messages.models import Conversation
 
@@ -543,9 +545,24 @@ class BuyerRequestImage(models.Model):
     def save(self, *args, **kwargs):
         if self.is_primary:
             BuyerRequestImage.objects.filter(
-                buyer_request=self.buyer_request, 
+                buyer_request=self.buyer_request,
                 is_primary=True
             ).exclude(id=self.id).update(is_primary=False)
+
+        # Apply watermark on first save only
+        if not self.pk and self.image:
+            try:
+                profile = self.buyer_request.buyer  # Profile instance
+                watermarked = apply_watermark(self.image, profile)
+                original_name = os.path.splitext(self.image.name)[0]
+                self.image.save(
+                    f"{original_name}_wm.jpg",
+                    ContentFile(watermarked.read()),
+                    save=False
+                )
+            except Exception:
+                pass  # Fall back to saving image as-is
+
         super().save(*args, **kwargs)
     
     def delete(self, *args, **kwargs):

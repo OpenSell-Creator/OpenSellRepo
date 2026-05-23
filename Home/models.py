@@ -9,8 +9,9 @@ from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator, FileExtensionValidator
-from .utils import user_listing_path, category_image_path
-from django.db.models import Avg
+from .utils import user_listing_path, category_image_path, apply_watermark
+from django.core.files.base import ContentFile
+from django.db.models import Avg, F
 from django.db import models
 from imagekit.models import ProcessedImageField, ImageSpecField
 from imagekit.processors import ResizeToFit, ResizeToFill
@@ -97,6 +98,65 @@ class Product_Listing(models.Model):
         help_text="Combined score for sorting (boost + pro status)"
     )
     
+    # Receipt / proof of ownership
+    has_receipt = models.BooleanField(default=False, blank=True)
+    receipt_visibility = models.CharField(
+        max_length=15,
+        choices=[('public', 'Public'), ('on_request', 'On Request')],
+        default='public',
+        blank=True
+    )
+
+    # Negotiability
+    negotiable = models.BooleanField(default=False, blank=True)
+
+    # Reason for selling — used items only
+    REASON_FOR_SELLING_CHOICES = [
+        ('upgrading', 'Upgrading to a newer model'),
+        ('no_longer_needed', 'No longer needed'),
+        ('relocating', 'Relocating'),
+        ('decluttering', 'Decluttering'),
+        ('duplicate_gift', 'Received as duplicate/gift'),
+        ('other', 'Other'),
+    ]
+    reason_for_selling = models.CharField(
+        max_length=20,
+        choices=REASON_FOR_SELLING_CHOICES,
+        blank=True,
+        null=True
+    )
+
+    # Inspection
+    inspection_allowed = models.BooleanField(default=False, blank=True)
+    inspection_location = models.CharField(max_length=255, blank=True, null=True)
+
+    # Swapping
+    swap_accepted = models.BooleanField(default=False, blank=True)
+    swap_preference = models.CharField(max_length=255, blank=True, null=True)
+
+    # Delivery
+    delivery_available = models.BooleanField(default=False, blank=True)
+
+    # Accessories — used items only
+    original_accessories_included = models.BooleanField(default=False, blank=True)
+
+    # Bundle description — only relevant when quantity > 1
+    bundle_description = models.CharField(max_length=255, blank=True, null=True)
+
+    # Denormalized rating fields
+    rating_avg = models.DecimalField(max_digits=3, decimal_places=2, default=0)
+    rating_count = models.PositiveIntegerField(default=0)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['condition', 'created_at']),
+            models.Index(fields=['has_receipt']),
+            models.Index(fields=['negotiable']),
+            models.Index(fields=['delivery_available']),
+            models.Index(fields=['swap_accepted']),
+            models.Index(fields=['seller', 'created_at']),
+        ]
+    
     def suspend(self, admin_user, reason=None):
         self.is_suspended = True
         self.suspended_at = timezone.now()
@@ -161,8 +221,7 @@ class Product_Listing(models.Model):
             logging.error(f"Error sending unsuspension email: {e}")
 
     def increase_view_count(self):
-        self.view_count += 1
-        self.save()
+        Product_Listing.objects.filter(pk=self.pk).update(view_count=F('view_count') + 1)
     
     def primary_image(self):
         return self.images.filter(is_primary=True).first() or self.images.first()
@@ -448,13 +507,11 @@ class Product_Listing(models.Model):
             self.seller.refresh_from_db(fields=['total_products_listed'])
             
     def delete(self, *args, **kwargs):
-
         for image in self.images.all():
             image.delete()
-        product_path = f'product_images/{self.seller.user.username}/{self.title}/'
-        if default_storage.exists(product_path):
-            default_storage.delete(product_path)
-        
+        # Clean up receipt image files before the cascade removes the rows
+        for receipt in self.receipts.all():
+            receipt.delete()
         super().delete(*args, **kwargs)
 
     def send_deletion_warning(self):
@@ -563,9 +620,71 @@ class Product_Image(models.Model):
 
     def __str__(self):
         return f"Image for {self.product.title}"
-    
+
+    def save(self, *args, **kwargs):
+        if self._state.adding and self.image:
+            try:
+                watermarked = apply_watermark(self.image, self.product.seller)
+                self.image.save(
+                    self.image.name,
+                    ContentFile(watermarked.read()),
+                    save=False
+                )
+            except Exception:
+                pass  # watermark failure never blocks the upload
+        super().save(*args, **kwargs)
+
     def delete(self, *args, **kwargs):
-        # Delete files using storage-agnostic method
+        self.image.delete(save=False)
+        super().delete(*args, **kwargs)
+
+def user_receipt_path(instance, filename):
+    ext = filename.split('.')[-1]
+    filename = f'{uuid.uuid4()}.{ext}'
+    return f'product_receipts/{instance.product.seller.user.username}/{instance.product.id}/{filename}'
+
+class Product_Receipt(models.Model):
+    RECEIPT_TYPES = [
+        ('store_receipt', 'Store Receipt'),
+        ('bank_transfer', 'Bank Transfer / Payment Proof'),
+        ('warranty_card', 'Warranty Card'),
+        ('invoice', 'Invoice'),
+        ('packaging', 'Original Box / Packaging Photo'),
+        ('other', 'Other Proof'),
+    ]
+    product = models.ForeignKey(Product_Listing, related_name='receipts', on_delete=models.CASCADE)
+    image = ProcessedImageField(
+        upload_to=user_receipt_path,
+        processors=[ResizeToFit(1200, 900)],
+        format='JPEG',
+        options={'quality': 80}
+    )
+    thumbnail = ImageSpecField(
+        source='image',
+        processors=[ResizeToFill(200, 200)],
+        format='JPEG',
+        options={'quality': 75}
+    )
+    receipt_type = models.CharField(max_length=20, choices=RECEIPT_TYPES, default='store_receipt')
+    notes = models.CharField(max_length=255, blank=True)
+
+    def __str__(self):
+        return f"Receipt for {self.product.title}"
+
+    def save(self, *args, **kwargs):
+        if self._state.adding and self.image:
+            try:
+                watermarked = apply_watermark(self.image, self.product.seller)
+                self.image.save(
+                    self.image.name,
+                    ContentFile(watermarked.read()),
+                    save=False
+                )
+            except Exception:
+                pass
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
         self.image.delete(save=False)
         super().delete(*args, **kwargs)
         

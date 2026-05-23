@@ -23,23 +23,12 @@
         .service-detail-container { padding: 1rem; }
 
         /* ── Carousel ─────────────────────────────────────────── */
-        .main-carousel-wrapper {
-            border-radius: var(--radius-md); overflow: hidden; height: 520px;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .carousel-main-img { width: 100%; height: 100%; object-fit: contain; background-color: var(--card-background); }
-        .thumbnail-gallery { margin-top: 0.625rem; }
-        .thumbnail-gallery .img-thumbnail {
-            width: 100%; height: 70px; object-fit: cover;
-            border-radius: var(--radius-sm); cursor: pointer;
-            border: 1px solid var(--border-color); padding: 0;
-        }
-        .thumbnail-wrapper { position: relative; transition: transform 0.2s ease; }
-        .thumbnail-wrapper:hover { transform: translateY(-2px); }
-        .thumbnail-wrapper.active::after {
-            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-            border: 2px solid var(--primary-color); border-radius: var(--radius-sm); pointer-events: none;
-        }
+        .main-carousel-wrapper { border-radius: var(--radius-md); overflow: hidden; height: 520px; }
+        .main-carousel-wrapper .carousel,
+        .main-carousel-wrapper .carousel-inner,
+        .main-carousel-wrapper .carousel-item { height: 100%; }
+        .carousel-img-clickable { display: block; width: 100%; height: 100%; cursor: zoom-in; }
+        .carousel-main-img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; background: none; }
 
         /* ── No-image placeholder ─────────────────────────────── */
         .no-images-placeholder {
@@ -333,6 +322,27 @@
             .btn-back:hover { transform: none; }
         }
         .status-chip:focus, .contact-item:focus, .btn-back:focus { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+
+        /* ── Carousel dot indicators ─────────────────────────── */
+        .carousel-dots { display: flex; justify-content: center; gap: 6px; margin-top: 0.5rem; }
+        .carousel-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border-color); border: none; cursor: pointer; padding: 0; transition: background 0.2s, transform 0.2s; }
+        .carousel-dot.active { background: var(--primary-color); transform: scale(1.3); }
+
+        /* ── Image Lightbox ──────────────────────────────────── */
+        #imgLightbox { display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.93); align-items: center; justify-content: center; touch-action: pan-y pinch-zoom; }
+        #imgLightbox.lb-open { display: flex; }
+        #imgLightbox .lb-img { max-width: 94vw; max-height: 90vh; object-fit: contain; border-radius: 4px; user-select: none; -webkit-user-drag: none; transition: opacity 0.18s ease; }
+        #imgLightbox .lb-img.lb-fade { opacity: 0; }
+        #imgLightbox .lb-close { position: fixed; top: 1rem; right: 1rem; width: 2.2rem; height: 2.2rem; border-radius: 50%; background: rgba(255,255,255,0.15); border: none; color: #fff; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: background 0.2s; z-index: 10001; }
+        #imgLightbox .lb-close:hover { background: rgba(255,255,255,0.28); }
+        #imgLightbox .lb-nav { position: fixed; top: 50%; transform: translateY(-50%); width: 2.4rem; height: 2.4rem; border-radius: 50%; background: rgba(255,255,255,0.15); border: none; color: #fff; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: background 0.2s; z-index: 10001; }
+        #imgLightbox .lb-nav:hover { background: rgba(255,255,255,0.28); }
+        #imgLightbox .lb-prev { left: 0.75rem; } #imgLightbox .lb-next { right: 0.75rem; }
+        #imgLightbox .lb-dots { position: fixed; bottom: 1.25rem; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 10001; }
+        #imgLightbox .lb-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.35); border: none; cursor: pointer; padding: 0; transition: background 0.2s, transform 0.2s; }
+        #imgLightbox .lb-dot.active { background: #fff; transform: scale(1.3); }
+        #imgLightbox .lb-counter { position: fixed; top: 1rem; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.7); font-size: 0.8rem; background: rgba(0,0,0,0.4); padding: 0.2rem 0.6rem; border-radius: 999px; z-index: 10001; }
+        .carousel-img-clickable { cursor: zoom-in; }
     </style>
 {% endblock %}
 
@@ -341,14 +351,6 @@
 {% endblock %}
 
 {% block 'Body' %}
-
-<!-- Back Button -->
-<div class="back-button-container">
-    <button onclick="history.back()" class="btn-back">
-        <i class="fas fa-arrow-left"></i>
-        <span>Back</span>
-    </button>
-</div>
 
 <div class="card service-detail-card">
     <div class="service-detail-container">
@@ -364,10 +366,11 @@
                         <div id="serviceCarousel" class="carousel slide w-100 h-100">
                             <div class="carousel-inner h-100" style="border-radius: var(--radius-md);">
                                 {% for image in images %}
-                                <div class="carousel-item {% if image.is_primary %}active{% elif forloop.first %}active{% endif %} h-100">
-                                    <img src="{{ image.image.url }}" class="carousel-main-img"
-                                         alt="{{ image.caption|default:service.title }}"
-                                         style="background-color: var(--card-background);">
+                                <div class="carousel-item {% if image.is_primary %}active{% elif forloop.first %}active{% endif %}">
+                                    <div class="carousel-img-clickable" onclick="openLightbox({{ forloop.counter0 }})" title="Click to view full image">
+                                        <img src="{{ image.image.url }}" class="carousel-main-img"
+                                             alt="{{ image.caption|default:service.title }}">
+                                    </div>
                                 </div>
                                 {% endfor %}
                             </div>
@@ -394,26 +397,24 @@
                     {% endif %}
                 </div>
 
-                <!-- Thumbnail Navigation -->
+                <!-- Dot Indicators -->
                 {% if images|length > 1 %}
-                <div class="thumbnail-gallery">
-                    <div class="row g-2">
-                        {% for image in images %}
-                        <div class="col-2">
-                            <div class="thumbnail-wrapper {% if image.is_primary %}active{% elif forloop.first %}active{% endif %}">
-                                <img src="{{ image.image.url }}"
-                                     class="img-thumbnail"
-                                     alt="{{ image.caption|default:service.title }}"
-                                     data-bs-target="#serviceCarousel"
-                                     data-bs-slide-to="{{ forloop.counter0 }}"
-                                     role="button"
-                                     style="border-color: var(--border-color); background-color: var(--card-background);">
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
+                <div class="carousel-dots" id="carouselDots">
+                    {% for image in images %}
+                        <button class="carousel-dot {% if image.is_primary %}active{% elif forloop.first %}active{% endif %}"
+                                data-index="{{ forloop.counter0 }}"
+                                onclick="goToSlide('serviceCarousel', {{ forloop.counter0 }})"
+                                aria-label="Go to image {{ forloop.counter }}"></button>
+                    {% endfor %}
                 </div>
                 {% endif %}
+
+                <!-- Hidden image URLs for lightbox -->
+                <div id="lightboxImages" style="display:none;">
+                    {% for image in images %}
+                        <span data-url="{{ image.image.url }}"></span>
+                    {% endfor %}
+                </div>
             </div>
 
             <!-- ═══════════════════════════════════════════════════
@@ -1169,7 +1170,7 @@
     <h2 class="section-title text-center mb-4">Related Services</h2>
     <div class="row g-3">
         {% for related_service in related_services %}
-        <div class="col-6 col-md-2">
+        <div class="col-6 col-md-4 col-lg-3">
             {% include 'services/service_card.html' with service=related_service %}
         </div>
         {% empty %}
@@ -1298,6 +1299,69 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
+</script>
+
+<!-- ── Image Lightbox ───────────────────────────────────────── -->
+<div id="imgLightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
+    <button class="lb-close" onclick="closeLightbox()" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+    <button class="lb-nav lb-prev" onclick="lbNav(-1)" aria-label="Previous"><i class="bi bi-chevron-left"></i></button>
+    <img class="lb-img" id="lbImg" src="" alt="Image">
+    <button class="lb-nav lb-next" onclick="lbNav(1)" aria-label="Next"><i class="bi bi-chevron-right"></i></button>
+    <div class="lb-dots" id="lbDots"></div>
+    <div class="lb-counter" id="lbCounter"></div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    const lbUrls = Array.from(document.querySelectorAll('#lightboxImages span[data-url]')).map(s => s.dataset.url);
+    let lbIndex = 0, startX = 0;
+    const lb = document.getElementById('imgLightbox');
+    const lbImg = document.getElementById('lbImg');
+    const lbDots = document.getElementById('lbDots');
+    const lbCounter = document.getElementById('lbCounter');
+
+    function buildLbDots() {
+        lbDots.innerHTML = '';
+        if (lbUrls.length <= 1) return;
+        lbUrls.forEach((_, i) => {
+            const b = document.createElement('button');
+            b.className = 'lb-dot' + (i === 0 ? ' active' : '');
+            b.setAttribute('aria-label', 'Go to image ' + (i + 1));
+            b.onclick = () => lbShow(i);
+            lbDots.appendChild(b);
+        });
+    }
+    buildLbDots();
+
+    function lbShow(index) {
+        lbIndex = (index + lbUrls.length) % lbUrls.length;
+        lbImg.classList.add('lb-fade');
+        setTimeout(() => { lbImg.src = lbUrls[lbIndex]; lbImg.onload = () => lbImg.classList.remove('lb-fade'); }, 100);
+        document.querySelectorAll('#lbDots .lb-dot').forEach((d, i) => d.classList.toggle('active', i === lbIndex));
+        lbCounter.textContent = lbUrls.length > 1 ? (lbIndex + 1) + ' / ' + lbUrls.length : '';
+        lbCounter.style.display = lbUrls.length > 1 ? '' : 'none';
+        const bsCar = bootstrap.Carousel.getInstance(document.getElementById('serviceCarousel'));
+        if (bsCar) bsCar.to(lbIndex);
+    }
+
+    window.openLightbox = function (index) { lbShow(index); lb.classList.add('lb-open'); document.body.style.overflow = 'hidden'; };
+    window.closeLightbox = function () { lb.classList.remove('lb-open'); document.body.style.overflow = ''; lbImg.src = ''; };
+    window.lbNav = function (dir) { lbShow(lbIndex + dir); };
+    window.goToSlide = function (carouselId, index) { const bsCar = bootstrap.Carousel.getOrCreateInstance(document.getElementById(carouselId)); bsCar.to(index); };
+
+    document.addEventListener('keydown', function (e) { if (!lb.classList.contains('lb-open')) return; if (e.key === 'Escape') closeLightbox(); if (e.key === 'ArrowLeft') lbNav(-1); if (e.key === 'ArrowRight') lbNav(1); });
+    lb.addEventListener('click', function (e) { if (e.target === lb) closeLightbox(); });
+    lb.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
+    lb.addEventListener('touchend', e => { const diff = startX - e.changedTouches[0].clientX; if (Math.abs(diff) > 40) lbNav(diff > 0 ? 1 : -1); }, { passive: true });
+
+    const carouselEl = document.getElementById('serviceCarousel');
+    if (carouselEl) {
+        carouselEl.addEventListener('slide.bs.carousel', function (e) {
+            document.querySelectorAll('.carousel-dot').forEach((d, i) => d.classList.toggle('active', i === e.to));
+        });
+    }
+})();
 </script>
 
 {% endblock %}

@@ -170,11 +170,6 @@ class BuyerRequestListView(ListView):
 
         if status_filter == 'expired':
 
-            queryset = BuyerRequest.objects.filter(
-                status='expired',
-                is_suspended=False,
-                buyer=queryset.values('buyer')
-            )
             # Re-apply simpler queryset for expired — rebuild cleanly
             queryset = BuyerRequest.objects.filter(
                 is_suspended=False,

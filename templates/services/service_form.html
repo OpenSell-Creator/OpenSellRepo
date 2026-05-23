@@ -682,13 +682,13 @@
                                         {{ form.images }}
                                     </div>
 
-                                    <div id="imageCompressStatus" class="compress-status running d-none">
+                                    <div id="imageCompressStatus" class="compress-status running d-none" aria-hidden="true" style="display:none!important;">
                                         <div class="spinner-border spinner-border-sm flex-shrink-0"></div>
                                         <span>Optimizing images for faster upload…</span>
                                     </div>
 
                                     <!-- Background upload status -->
-                                    <div id="bgUploadStatus" class="bg-upload-status d-none">
+                                    <div id="bgUploadStatus" class="bg-upload-status d-none" aria-hidden="true" style="display:none!important;">
                                         <div class="spinner-border spinner-border-sm flex-shrink-0" id="bgUploadSpinner"></div>
                                         <div class="flex-grow-1">
                                             <span id="bgUploadText">Uploading images in the background…</span>
@@ -1002,17 +1002,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
             isProcessingImages=true;
             clearPreviews();
-            imgCompressStatus.className='compress-status running';
-            imgCompressStatus.classList.remove('d-none');
-            imgCompressStatus.innerHTML='<div class="spinner-border spinner-border-sm flex-shrink-0"></div><span>Optimizing images…</span>';
+            // silent — // silent remove
+            // silent innerHTML
 
             try{
                 const compressed=await Promise.all(raw.map(f=>compressor.compress(f)));
                 const dt=new DataTransfer();compressed.forEach(f=>dt.items.add(f));this.files=dt.files;
                 const compTotal=compressed.reduce((s,f)=>s+f.size,0);
                 const pct=((rawTotal-compTotal)/rawTotal*100);
-                imgCompressStatus.className='compress-status done';
-                imgCompressStatus.innerHTML=`<i class="bi bi-check-circle-fill flex-shrink-0"></i><span>Ready! ${pct>5?`Saved ${pct.toFixed(0)}% — `:''}${FastImageCompressor.fmtSize(rawTotal)} → ${FastImageCompressor.fmtSize(compTotal)}</span>`;
+                // silent done
+                // silent innerHTML
                 setTimeout(()=>imgCompressStatus.classList.add('d-none'),5000);
 
                 imageStatsBar.classList.remove('d-none');
@@ -1026,8 +1025,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Start background upload immediately after compression
                 startBackgroundUpload(compressed);
             }catch(err){
-                imgCompressStatus.className='compress-status warn';
-                imgCompressStatus.innerHTML='<i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i><span>Could not optimise. Using originals.</span>';
+                // silent warn
+                // silent innerHTML
                 setTimeout(()=>imgCompressStatus.classList.add('d-none'),3500);
                 raw.forEach((f,i)=>buildPreview(f,i,f,false));
                 imageStatsBar.classList.remove('d-none');
@@ -1096,7 +1095,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     bgUploadStatus.className='bg-upload-status done';
                     bgUploadSpinner.style.display='none';
                     bgUploadText.textContent=`${files.length} image${files.length!==1?'s':''} uploaded — submit will be instant!`;
-                    showSuccessToast('Images pre-uploaded! Submitting will be instant.');
+                    // Silent: images pre-uploaded (no announcement)
                 }else{bgUploadStatus.classList.add('d-none');}
             }catch(_){bgUploadStatus.classList.add('d-none');}
         });
@@ -1149,20 +1148,18 @@ document.addEventListener('DOMContentLoaded', function () {
             const hasImages=raw.some(f=>DOC_IMG_TYPES.includes(f.type));
             if(hasImages){
                 const docCompressStatus=document.getElementById('imageCompressStatus');
-                if(docCompressStatus){docCompressStatus.classList.remove('d-none');docCompressStatus.className='compress-status running';docCompressStatus.innerHTML='<div class="spinner-border spinner-border-sm flex-shrink-0"></div><span>Optimising images…</span>';}
+                // silent doc compress
                 try{
                     const processed=await Promise.all(raw.map(f=>DOC_IMG_TYPES.includes(f.type)?compressor.compress(f):Promise.resolve(f)));
                     const dt=new DataTransfer();processed.forEach(f=>dt.items.add(f));this.files=dt.files;
                     files=processed;
                     const savedBytes=rawTotal-files.reduce((s,f)=>s+f.size,0);
                     if(docCompressStatus){
-                        docCompressStatus.className='compress-status done';
-                        docCompressStatus.innerHTML=savedBytes>1024
-                            ?`<i class="bi bi-check-circle-fill flex-shrink-0"></i><span>Images optimised · saved ${FastImageCompressor.fmtSize(savedBytes)}</span>`
-                            :`<i class="bi bi-check-circle-fill flex-shrink-0"></i><span>Ready</span>`;
+                        // silent doc done
+                        // silent doc innerHTML
                     }
                 }catch(e){
-                    if(docCompressStatus){docCompressStatus.className='compress-status warn';docCompressStatus.innerHTML='<i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i><span>Could not optimise images. Using originals.</span>';}
+                    if(docCompressStatus){// silent doc className warn}
                 }
             }
 

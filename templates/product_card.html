@@ -41,24 +41,22 @@
             {% endwith %}
         </a>
 
-        {# FIXED: Use unified save system with correct function name #}
         {% if user.is_authenticated and user != product.seller.user %}
-                <button class="save-button {% if product.is_saved %}saved{% endif %}"
-                    data-item-id="{{ product.id }}"
-                    data-item-type="product"
-                    onclick="toggleSave(event, '{{ product.id }}', 'product')"
-                    title="{% if product.is_saved %}Remove from saved{% else %}Save this product{% endif %}">
-                    <i class="bi {% if product.is_saved %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
-                </button>
+            <button class="save-button {% if product.is_saved %}saved{% endif %}"
+                data-item-id="{{ product.id }}"
+                data-item-type="product"
+                onclick="toggleSave(event, '{{ product.id }}', 'product')"
+                title="{% if product.is_saved %}Remove from saved{% else %}Save this product{% endif %}">
+                <i class="bi {% if product.is_saved %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+            </button>
         {% endif %}
 
         {% if user.is_authenticated and user == product.seller.user %}
             <div class="owner-check-icon">
                 <i class="bi bi-person-check-fill" title="Your Product"></i>
             </div>
-
             <div class="seller-actions-overlay">
-                <button class="btn-seller-action" 
+                <button class="btn-seller-action"
                         onclick="window.location.href='{% url 'product_update' pk=product.id %}'"
                         title="Edit Product">
                     <i class="bi bi-pencil-square"></i>
@@ -66,28 +64,54 @@
             </div>
         {% endif %}
     </div>
-    
+
     <div class="card-body">
         <a href="{% url 'product_detail' pk=product.id %}" class="product-title-link">
             <h3 class="product-title-card">{{ product.title|truncatechars:50 }}</h3>
         </a>
-        
+
         <div class="product-info">
+            {# Price + Condition row #}
             <div class="price-condition-row">
                 <div class="product-price">{{ product.formatted_price }}</div>
                 <div class="product-condition condition-{{ product.condition|lower }}">{{ product.get_condition_display }}</div>
+                {% if product.has_receipt or product.delivery_available or product.swap_accepted %}
+                <div class="feature-icons-row">
+                    {% if product.has_receipt %}
+                        <span class="feature-icon receipt-icon"
+                              data-bs-toggle="tooltip" data-bs-placement="top"
+                              title="Receipt / Proof of purchase available">
+                            <i class="bi bi-receipt"></i>
+                        </span>
+                    {% endif %}
+                    {% if product.delivery_available %}
+                        <span class="feature-icon delivery-icon"
+                              data-bs-toggle="tooltip" data-bs-placement="top"
+                              title="Delivery available">
+                            <i class="bi bi-truck"></i>
+                        </span>
+                    {% endif %}
+                    {% if product.swap_accepted %}
+                        <span class="feature-icon swap-icon"
+                              data-bs-toggle="tooltip" data-bs-placement="top"
+                              title="Open to swap / exchange">
+                            <i class="bi bi-arrow-left-right"></i>
+                        </span>
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
 
+            {# Seller + Location row #}
             <div class="seller-location-row">
                 <div class="seller-info">
                     <a href="{% url 'user_store' product.seller.user.username %}" class="seller-link">
                         {% if product.seller_is_verified_business %}
-                            <i class="bi bi-building-fill verified-business-icon" 
-                                title="Verified Business" data-bs-toggle="tooltip"></i>
+                            <i class="bi bi-building-fill verified-business-icon"
+                               title="Verified Business" data-bs-toggle="tooltip"></i>
                         {% elif product.is_pro_seller %}
                             <i class="bi bi-patch-check-fill pro-icon"></i>
                         {% endif %}
-
                         <span class="seller-name">
                             {% if product.seller_is_verified_business and product.seller_business_name %}
                                 {{ product.seller_business_name|truncatechars:20 }}
@@ -97,7 +121,7 @@
                         </span>
                     </a>
                 </div>
-                
+
                 <div class="product-location">
                     <i class="bi bi-geo-alt-fill location-icon"></i>
                     <span class="location-text">
@@ -112,16 +136,17 @@
                                 {% elif location.state %}
                                     {{ location.state.name }}
                                 {% else %}
-                                    Location N/A
+                                    N/A
                                 {% endif %}
                             {% endwith %}
                         {% else %}
-                            Location N/A
+                            N/A
                         {% endif %}
                     </span>
                 </div>
             </div>
 
+            {# Verified business strip — only for verified business sellers #}
             {% if product.seller_is_verified_business %}
                 <div class="verified-business-info">
                     <div class="business-verification-tag">

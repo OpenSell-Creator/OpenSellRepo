@@ -39,6 +39,111 @@
         .btn-back:hover i {
             transform: translateX(-3px);
         }
+
+        /* ── Lightbox ──────────────────────────────────────────── */
+        #imgLightbox {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100vw; height: 100vh;
+            z-index: 99999;
+            background: rgba(0,0,0,0.95);
+            align-items: center;
+            justify-content: center;
+            touch-action: pan-y pinch-zoom;
+            /* Ensure it's never clipped by a parent */
+            transform: none !important;
+            overflow: hidden;
+        }
+        #imgLightbox.lb-open { display: flex; }
+        #imgLightbox .lb-img {
+            max-width: 94vw;
+            max-height: 90vh;
+            object-fit: contain;
+            border-radius: 4px;
+            user-select: none;
+            -webkit-user-drag: none;
+            display: block;
+        }
+        #imgLightbox .lb-close {
+            position: fixed;
+            top: 1rem; right: 1rem;
+            width: 2.4rem; height: 2.4rem;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.18);
+            border: none; color: #fff;
+            font-size: 1.2rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            transition: background 0.2s;
+            z-index: 100001;
+        }
+        #imgLightbox .lb-close:hover { background: rgba(255,255,255,0.32); }
+        #imgLightbox .lb-nav {
+            position: fixed;
+            top: 50%; transform: translateY(-50%);
+            width: 2.6rem; height: 2.6rem;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.18);
+            border: none; color: #fff;
+            font-size: 1.1rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            transition: background 0.2s;
+            z-index: 100001;
+        }
+        #imgLightbox .lb-nav:hover { background: rgba(255,255,255,0.32); }
+        #imgLightbox .lb-prev { left: 0.75rem; }
+        #imgLightbox .lb-next { right: 0.75rem; }
+        #imgLightbox .lb-dots {
+            position: fixed;
+            bottom: 1.25rem; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 7px; z-index: 100001;
+        }
+        #imgLightbox .lb-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: rgba(255,255,255,0.35);
+            border: none; cursor: pointer; padding: 0;
+            transition: background 0.2s, transform 0.2s;
+        }
+        #imgLightbox .lb-dot.active {
+            background: #fff;
+            transform: scale(1.35);
+        }
+        #imgLightbox .lb-counter {
+            position: fixed;
+            top: 1rem; left: 50%; transform: translateX(-50%);
+            color: rgba(255,255,255,0.75);
+            font-size: 0.8rem;
+            background: rgba(0,0,0,0.45);
+            padding: 0.2rem 0.65rem;
+            border-radius: 999px;
+            z-index: 100001;
+            white-space: nowrap;
+        }
+
+        /* ── Carousel dot indicators (below main carousel) ──── */
+        .carousel-dots {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 0.5rem;
+        }
+        .carousel-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--border-color);
+            border: none; cursor: pointer; padding: 0;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .carousel-dot.active {
+            background: var(--primary-color);
+            transform: scale(1.3);
+        }
+
+        /* ── Zoom cursor hint on carousel ─────────────────────── */
+        .carousel-img-clickable { cursor: zoom-in; }
     </style>
 {% endblock %}
 
@@ -47,28 +152,25 @@
 {% endblock %}
 {% block 'Body' %}
 
-<div class="back-button-container">
-    <button onclick="history.back()" class="btn-back">
-        <i class="fas fa-arrow-left"></i>
-        <span>Back</span>
-    </button>
-</div>
-
 <div class="card product-detail-card">
     <div class="product-detail-container">
         <div class="row g-4">
             <!-- Product Images Column -->
             <div class="col-md-6">
                 <!-- Main Carousel -->
-                <div class="main-carousel-wrapper">
-                    <div id="productCarousel" class="carousel slide">
-                        <div class="carousel-inner rounded-3" style="border: 1px solid var(--border-color);">
+                <div class="main-carousel-wrapper" style="border: 1px solid var(--border-color);">
+                    <div id="productCarousel" class="carousel slide h-100 w-100">
+                        <div class="carousel-inner rounded-3 h-100">
                             {% for image in images %}
                                 <div class="carousel-item {% if forloop.first %}active{% endif %}">
-                                    <img src="{{ image.image.url }}" 
-                                        class="d-block w-100 carousel-main-img" 
-                                        alt="{{ product.title }}"
-                                        style="background-color: var(--card-background);">
+                                    <div class="carousel-img-clickable"
+                                         onclick="openLightbox({{ forloop.counter0 }})"
+                                         title="Click to view full image">
+                                        <img src="{{ image.image.url }}"
+                                             data-full-url="{{ image.image.url }}"
+                                             class="carousel-main-img"
+                                             alt="{{ product.title }}">
+                                    </div>
                                 </div>
                             {% endfor %}
                         </div>
@@ -85,25 +187,58 @@
                     </div>
                 </div>
 
-                <!-- Thumbnail Navigation -->
-                <div class="thumbnail-gallery">
-                    <div class="row g-2">
-                        {% for image in images %}
-                            <div class="col-2"> <!-- Smaller thumbnails -->
-                                <div class="thumbnail-wrapper position-relative">
-                                    <img src="{{ image.image.url }}" 
-                                        class="img-thumbnail {% if forloop.first %}active{% endif %}"
-                                        alt="{{ product.title }}"
-                                        data-bs-target="#productCarousel" 
-                                        data-bs-slide-to="{{ forloop.counter0 }}"
-                                        role="button"
-                                        style="border-color: var(--border-color); background-color: var(--card-background);">
-                                    <div class="active-indicator" style="display: {% if forloop.first %}block{% else %}none{% endif %};"></div>
-                                </div>
-                            </div>
-                        {% endfor %}
-                    </div>
+                <!-- Dot Indicators -->
+                {% if images|length > 1 %}
+                <div class="carousel-dots" id="carouselDots">
+                    {% for image in images %}
+                        <button class="carousel-dot {% if forloop.first %}active{% endif %}"
+                                data-index="{{ forloop.counter0 }}"
+                                onclick="goToSlide({{ forloop.counter0 }})"
+                                aria-label="Go to image {{ forloop.counter }}"></button>
+                    {% endfor %}
                 </div>
+                {% endif %}
+
+                <!-- Hidden image URLs for lightbox -->
+                <div id="lightboxImages" style="display:none;">
+                    {% for image in images %}
+                        <span data-url="{{ image.image.url }}"></span>
+                    {% endfor %}
+                </div>
+                            <!-- ══ Proof of Purchase ══ -->
+            {% if product.has_receipt %}
+            <div class="mt-3">
+                {% if receipt_visibility == 'public' and receipts %}
+                    <div class="info-section p-3">
+                        <h6 class="fw-semibold mb-3"><i class="bi bi-receipt me-2"></i>Proof of Purchase</h6>
+                        <div class="row g-2">
+                            {% for receipt in receipts %}
+                            <div class="col-4">
+                                <a href="{{ receipt.image.url }}" target="_blank" rel="noopener">
+                                    <img src="{{ receipt.image.url }}"
+                                        class="img-thumbnail w-100"
+                                        style="height: 90px; object-fit: cover;"
+                                        alt="{{ receipt.get_receipt_type_display }}">
+                                </a>
+                                <div class="small text-muted text-center mt-1">{{ receipt.get_receipt_type_display }}</div>
+                                {% if receipt.notes %}
+                                <div class="small text-muted text-center">{{ receipt.notes }}</div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% elif receipt_visibility == 'on_request' %}
+                    <div class="info-section p-3 d-flex align-items-center gap-2">
+                        <i class="bi bi-shield-check text-success fs-5"></i>
+                        <div>
+                            <span class="fw-semibold">Proof of purchase available</span>
+                            <div class="small text-muted">Ask the seller to share it with you.</div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+            {% endif %}
             </div>
 
             <!-- Product Details Column -->
@@ -175,7 +310,100 @@
                                     </div>
                                 </div>
                             </div>
-                            
+
+                            <!-- ══ Listing Details ══ -->
+                            {% if product.negotiable or product.delivery_available or product.inspection_allowed or product.swap_accepted or product.original_accessories_included or product.bundle_description or product.reason_for_selling %}
+                            <div class="info-section mb-4 p-3">
+                                <h5 class="fw-semibold mb-3"><i class="bi bi-list-check me-2"></i>Listing Details</h5>
+                                <div class="row g-2">
+
+                                    {% if product.negotiable %}
+                                    <div class="col-6">
+                                        <div class="detail-item d-flex align-items-center p-2">
+                                            <i class="bi bi-chat-dots me-2"></i>
+                                            <div>
+                                                <div class="small">Price</div>
+                                                <div>Negotiable</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+
+                                    {% if product.delivery_available %}
+                                    <div class="col-6">
+                                        <div class="detail-item d-flex align-items-center p-2">
+                                            <i class="bi bi-truck me-2"></i>
+                                            <div>
+                                                <div class="small">Delivery</div>
+                                                <div>Available</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+
+                                    {% if product.inspection_allowed %}
+                                    <div class="col-{% if product.inspection_location %}12{% else %}6{% endif %}">
+                                        <div class="detail-item d-flex align-items-center p-2">
+                                            <i class="bi bi-eye me-2"></i>
+                                            <div>
+                                                <div class="small">Inspection</div>
+                                                <div>Allowed{% if product.inspection_location %} — {{ product.inspection_location }}{% endif %}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+
+                                    {% if product.swap_accepted %}
+                                    <div class="col-{% if product.swap_preference %}12{% else %}6{% endif %}">
+                                        <div class="detail-item d-flex align-items-center p-2">
+                                            <i class="bi bi-arrow-left-right me-2"></i>
+                                            <div>
+                                                <div class="small">Swap</div>
+                                                <div>Open to swap{% if product.swap_preference %} — {{ product.swap_preference }}{% endif %}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+
+                                    {% if product.original_accessories_included %}
+                                    <div class="col-6">
+                                        <div class="detail-item d-flex align-items-center p-2">
+                                            <i class="bi bi-box-seam me-2"></i>
+                                            <div>
+                                                <div class="small">Accessories</div>
+                                                <div>Included</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+
+                                    {% if product.bundle_description %}
+                                    <div class="col-12">
+                                        <div class="detail-item d-flex align-items-center p-2">
+                                            <i class="bi bi-collection me-2"></i>
+                                            <div>
+                                                <div class="small">Bundle</div>
+                                                <div>{{ product.bundle_description }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+
+                                    {% if product.reason_for_selling %}
+                                    <div class="col-12">
+                                        <div class="detail-item d-flex align-items-center p-2">
+                                            <i class="bi bi-question-circle me-2"></i>
+                                            <div>
+                                                <div class="small">Reason for Selling</div>
+                                                <div>{{ product.get_reason_for_selling_display }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+
+                                </div>
+                            </div>
+                            {% endif %}
                             
                             <!-- Description Section -->
                             <div class="product-description mb-4 p-3">
@@ -708,6 +936,145 @@
     {% endfor %}
     </div>
 </div>
+
+<!-- ── Image Lightbox ───────────────────────────────────────── -->
+<div id="imgLightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
+    <button class="lb-close" onclick="closeLightbox()" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+    <button class="lb-nav lb-prev" onclick="lbNav(-1)" aria-label="Previous"><i class="bi bi-chevron-left"></i></button>
+    <img class="lb-img" id="lbImg" src="" alt="Product image">
+    <button class="lb-nav lb-next" onclick="lbNav(1)" aria-label="Next"><i class="bi bi-chevron-right"></i></button>
+    <div class="lb-dots" id="lbDots"></div>
+    <div class="lb-counter" id="lbCounter"></div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    /* Move lightbox to <body> so it escapes any overflow:hidden ancestor */
+    const lb = document.getElementById('imgLightbox');
+    document.body.appendChild(lb);
+
+    /* ── Collect image URLs ── */
+    const lbUrls = Array.from(
+        document.querySelectorAll('#lightboxImages span[data-url]')
+    ).map(s => s.dataset.url);
+
+    let lbIndex = 0;
+    let startX = 0;
+
+    const lbImg     = document.getElementById('lbImg');
+    const lbDots    = document.getElementById('lbDots');
+    const lbCounter = document.getElementById('lbCounter');
+
+    /* Build lightbox dots */
+    function buildLbDots() {
+        lbDots.innerHTML = '';
+        if (lbUrls.length <= 1) return;
+        lbUrls.forEach((_, i) => {
+            const b = document.createElement('button');
+            b.className = 'lb-dot' + (i === 0 ? ' active' : '');
+            b.setAttribute('aria-label', 'Go to image ' + (i + 1));
+            b.onclick = () => lbShow(i);
+            lbDots.appendChild(b);
+        });
+    }
+    buildLbDots();
+
+    function lbShow(index) {
+        lbIndex = (index + lbUrls.length) % lbUrls.length;
+
+        /* Set src immediately — don't hide behind display:none timing */
+        lbImg.style.opacity = '0';
+        lbImg.src = lbUrls[lbIndex];
+        lbImg.onload = function () {
+            lbImg.style.transition = 'opacity 0.18s ease';
+            lbImg.style.opacity = '1';
+        };
+        /* In case image is already cached and onload doesn't fire */
+        if (lbImg.complete && lbImg.naturalWidth) lbImg.style.opacity = '1';
+
+        /* Update dots */
+        document.querySelectorAll('#lbDots .lb-dot').forEach((d, i) => {
+            d.classList.toggle('active', i === lbIndex);
+        });
+
+        /* Update counter */
+        if (lbUrls.length > 1) {
+            lbCounter.textContent = (lbIndex + 1) + ' / ' + lbUrls.length;
+            lbCounter.style.display = '';
+        } else {
+            lbCounter.style.display = 'none';
+        }
+
+        /* Sync main carousel */
+        const bsCar = bootstrap.Carousel.getInstance(document.getElementById('productCarousel'));
+        if (bsCar) bsCar.to(lbIndex);
+    }
+
+    window.openLightbox = function (index) {
+        lbShow(index);
+        lb.classList.add('lb-open');
+        /* Lock scroll on html AND body */
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
+        /* Push navbar behind lightbox */
+        const navbar = document.querySelector('.navbar, nav[class*="navbar"], header');
+        if (navbar) navbar.style.zIndex = '1';
+    };
+
+    window.closeLightbox = function () {
+        lb.classList.remove('lb-open');
+        document.documentElement.style.overflow = '';
+        document.body.style.overflow = '';
+        /* Restore navbar */
+        const navbar = document.querySelector('.navbar, nav[class*="navbar"], header');
+        if (navbar) navbar.style.zIndex = '';
+        lbImg.src = '';
+        lbImg.style.opacity = '0';
+    };
+
+    window.lbNav = function (dir) { lbShow(lbIndex + dir); };
+
+    /* Keyboard */
+    document.addEventListener('keydown', function (e) {
+        if (!lb.classList.contains('lb-open')) return;
+        if (e.key === 'Escape')      closeLightbox();
+        if (e.key === 'ArrowLeft')   lbNav(-1);
+        if (e.key === 'ArrowRight')  lbNav(1);
+    });
+
+    /* Click backdrop to close */
+    lb.addEventListener('click', function (e) {
+        if (e.target === lb) closeLightbox();
+    });
+
+    /* Touch swipe */
+    lb.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
+    lb.addEventListener('touchend', e => {
+        const diff = startX - e.changedTouches[0].clientX;
+        if (Math.abs(diff) > 40) lbNav(diff > 0 ? 1 : -1);
+    }, { passive: true });
+
+    /* Sync carousel dots with Bootstrap carousel slide events */
+    const carouselEl = document.getElementById('productCarousel');
+    if (carouselEl) {
+        carouselEl.addEventListener('slide.bs.carousel', function (e) {
+            document.querySelectorAll('.carousel-dot').forEach((d, i) => {
+                d.classList.toggle('active', i === e.to);
+            });
+        });
+    }
+
+    /* goToSlide helper for dot buttons */
+    window.goToSlide = function (index) {
+        const bsCar = bootstrap.Carousel.getOrCreateInstance(
+            document.getElementById('productCarousel')
+        );
+        bsCar.to(index);
+    };
+})();
+</script>
 
 {% endblock %}
 {% block 'Footer'%}{% endblock %}

@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const hamburgerBtn  = document.querySelector('.navbar-toggler');
   const hamburgerIcon = hamburgerBtn.querySelector('.hamburger-icon');
   const closeIcon     = hamburgerBtn.querySelector('.close-icon');
+  const backBtn       = document.getElementById('navBackBar');
 
   // ── Active nav links ──────────────────────────────────────────────────────
   const path = window.location.pathname;
@@ -65,6 +66,25 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ── Show / hide ──────────────────────────────────────────────────────────
+    // ── Back button helper ────────────────────────────────────────────────────
+    // Only show when there is a page to go back to (history.length > 1).
+    // Uses a sessionStorage flag so cross-origin navigations that reset
+    // history.length are still handled gracefully on iOS Safari.
+    function updateBackBtn(navIsHidden) {
+      if (!backBtn) return;
+      const hasHistory = history.length > 1 ||
+        sessionStorage.getItem('os_visited_before') === '1';
+      if (navIsHidden && hasHistory) {
+        backBtn.classList.add('nav-back-bar--visible');
+        backBtn.setAttribute('aria-hidden', 'false');
+      } else {
+        backBtn.classList.remove('nav-back-bar--visible');
+        backBtn.setAttribute('aria-hidden', 'true');
+      }
+    }
+    // Mark that the user has visited at least one page this session
+    sessionStorage.setItem('os_visited_before', '1');
+
     function showNav() {
       navVisible = true;
       mainNavbar.style.transform = 'translateY(0)';
@@ -73,6 +93,7 @@ document.addEventListener('DOMContentLoaded', function () {
         bottomNav.style.transform = 'translateY(0)';
         bottomNav.style.opacity   = '1';
       }
+      updateBackBtn(false);
     }
 
     function hideNav() {
@@ -84,6 +105,7 @@ document.addEventListener('DOMContentLoaded', function () {
         bottomNav.style.transform = 'translateY(100%)';
         bottomNav.style.opacity   = '0';
       }
+      updateBackBtn(true);
     }
 
     // ── touchstart ───────────────────────────────────────────────────────────
@@ -194,6 +216,7 @@ document.addEventListener('DOMContentLoaded', function () {
     mainSidebar.addEventListener('show.bs.offcanvas', () => {
       sidebarIsOpen = true;
       showNav();
+      if (backBtn) backBtn.classList.remove('nav-back-bar--visible');
     });
     mainSidebar.addEventListener('hidden.bs.offcanvas', () => {
       sidebarIsOpen = false;

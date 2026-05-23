@@ -14,6 +14,9 @@ from django.core.files.storage import default_storage
 from django.core.mail import send_mail
 from django.conf import settings
 from django.template.loader import render_to_string
+import os
+from Home.utils import apply_watermark
+from django.core.files.base import ContentFile
 from User.models import Profile, Location, SavedItem, State, LGA
 
 
@@ -507,9 +510,24 @@ class ServiceImage(models.Model):
     def save(self, *args, **kwargs):
         if self.is_primary:
             ServiceImage.objects.filter(
-                service=self.service, 
+                service=self.service,
                 is_primary=True
             ).exclude(id=self.id).update(is_primary=False)
+
+        # Apply watermark on first save (image has no pk yet)
+        if not self.pk and self.image:
+            try:
+                profile = self.service.provider  # Profile instance
+                watermarked = apply_watermark(self.image, profile)
+                original_name = os.path.splitext(self.image.name)[0]
+                self.image.save(
+                    f"{original_name}_wm.jpg",
+                    ContentFile(watermarked.read()),
+                    save=False
+                )
+            except Exception:
+                pass  # Fall back to saving image as-is if watermark fails
+
         super().save(*args, **kwargs)
     
     def delete(self, *args, **kwargs):
@@ -539,6 +557,30 @@ class ServiceDocument(models.Model):
     
     def __str__(self):
         return f"{self.title} - {self.service.title}"
+    
+    def save(self, *args, **kwargs):
+    # Apply watermark only on first save and only for image files
+        if not self.pk and self.document:
+            IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png'}
+            ext = os.path.splitext(self.document.name)[1].lower()
+
+            if ext in IMAGE_EXTENSIONS:
+                try:
+                    from Home.utils import apply_watermark
+                    from django.core.files.base import ContentFile
+
+                    profile = self.service.provider  # Profile instance
+                    watermarked = apply_watermark(self.document, profile)
+                    original_name = os.path.splitext(self.document.name)[0]
+                    self.document.save(
+                        f"{original_name}_wm.jpg",
+                        ContentFile(watermarked.read()),
+                        save=False
+                    )
+                except Exception:
+                    pass  # Fall back to saving file as-is
+
+        super().save(*args, **kwargs)
     
     def delete(self, *args, **kwargs):
         self.document.delete(save=False)
