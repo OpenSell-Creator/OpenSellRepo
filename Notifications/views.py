@@ -142,6 +142,7 @@ def notification_preferences(request):
         preferences.system_notifications = request.POST.get('system_notifications') == 'on'
         preferences.deletion_warnings = request.POST.get('deletion_warnings') == 'on'
         preferences.stock_alerts = request.POST.get('stock_alerts') == 'on'
+        preferences.transaction_notifications     = request.POST.get('transaction_notifications') == 'on'
         preferences.price_drop_alerts = request.POST.get('price_drop_alerts') == 'on'
         preferences.reply_notifications = request.POST.get('reply_notifications') == 'on'
         preferences.report_notifications = request.POST.get('report_notifications') == 'on'
@@ -280,35 +281,14 @@ def notification_stats(request):
 
 
 class NotificationAPIView(LoginRequiredMixin, View):
-    """API endpoint for notifications (for AJAX requests)"""
     
     def get(self, request):
-        """Get notifications for the user"""
-        notifications = Notification.objects.filter(
-            recipient=request.user
-        ).order_by('-created_at')[:10]  # Latest 10
-        
-        data = []
-        for notification in notifications:
-            data.append({
-                'id': notification.id,
-                'title': notification.title,
-                'message': notification.message,
-                'category': notification.category,
-                'priority': notification.priority,
-                'is_read': notification.is_read,
-                'created_at': notification.created_at.isoformat(),
-                'icon': notification.get_icon(),
-                'url': reverse('notifications:detail', args=[notification.id])
-            })
-        
-        return JsonResponse({
-            'notifications': data,
-            'unread_count': Notification.objects.filter(
-                recipient=request.user, 
-                is_read=False
-            ).count()
-        })
+        unread_count = Notification.objects.filter(
+            recipient=request.user,
+            is_read=False
+        ).count()
+
+        return JsonResponse({'unread_count': unread_count})
 
 
 # Utility function to call from product detail view
@@ -367,51 +347,84 @@ def send_bulk_notification(request):
     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
 
-# Push notification subscription (for PWA)
+# ---------------------------------------------------------------------------
+# Push notification subscription (Web Push / PWA)
+# ---------------------------------------------------------------------------
+
 @require_POST
 @login_required
 def subscribe_push(request):
-    """Handle push notification subscription"""
+    """
+    Register a new Web Push subscription for the current user.
+    The browser sends { subscription: { endpoint, keys: { p256dh, auth } } }.
+    We store it as a PushSubscription row and enable push in preferences.
+    """
     try:
+        from .models import PushSubscription
         data = json.loads(request.body)
-        subscription_info = data.get('subscription')
-        
-        # Store subscription info in user preferences or separate model
-        preferences, created = NotificationPreference.objects.get_or_create(
-            user=request.user
+        sub = data.get('subscription', {})
+        endpoint = sub.get('endpoint')
+        keys     = sub.get('keys', {})
+        p256dh   = keys.get('p256dh')
+        auth_key = keys.get('auth')
+
+        if not endpoint or not p256dh or not auth_key:
+            return JsonResponse({'status': 'error', 'message': 'Invalid subscription data'}, status=400)
+
+        # Upsert — reactivate if previously deactivated, create if new
+        PushSubscription.objects.update_or_create(
+            endpoint=endpoint,
+            defaults={
+                'user':   request.user,
+                'p256dh': p256dh,
+                'auth':   auth_key,
+                'active': True,
+            },
         )
-        
-        # You might want to create a separate PushSubscription model
-        # For now, we'll just enable push notifications
+
+        # Also enable the preference toggle so the user sees the right UI state
+        preferences, _ = NotificationPreference.objects.get_or_create(user=request.user)
         preferences.push_notifications = True
-        preferences.save()
-        
-        return JsonResponse({
-            'status': 'success',
-            'message': 'Push notifications enabled'
-        })
-    except Exception as e:
-        return JsonResponse({
-            'status': 'error',
-            'message': str(e)
-        }, status=500)
+        preferences.save(update_fields=['push_notifications'])
+
+        return JsonResponse({'status': 'success', 'message': 'Push notifications enabled'})
+
+    except Exception as exc:
+        return JsonResponse({'status': 'error', 'message': str(exc)}, status=500)
 
 
 @require_POST
 @login_required
 def unsubscribe_push(request):
-    """Handle push notification unsubscription"""
+    """
+    Deactivate the specific push subscription sent by the browser,
+    or deactivate all of the user's subscriptions if no endpoint provided.
+    """
     try:
-        preferences = NotificationPreference.objects.get(user=request.user)
-        preferences.push_notifications = False
-        preferences.save()
-        
-        return JsonResponse({
-            'status': 'success',
-            'message': 'Push notifications disabled'
-        })
-    except Exception as e:
-        return JsonResponse({
-            'status': 'error',
-            'message': str(e)
-        }, status=500)
+        from .models import PushSubscription
+        data     = json.loads(request.body) if request.body else {}
+        endpoint = data.get('endpoint')
+
+        if endpoint:
+            PushSubscription.objects.filter(
+                user=request.user, endpoint=endpoint
+            ).update(active=False)
+        else:
+            PushSubscription.objects.filter(user=request.user).update(active=False)
+
+        # Reflect in preferences only if ALL subscriptions are now inactive
+        if not PushSubscription.objects.filter(user=request.user, active=True).exists():
+            NotificationPreference.objects.filter(user=request.user).update(push_notifications=False)
+
+        return JsonResponse({'status': 'success', 'message': 'Push notifications disabled'})
+
+    except Exception as exc:
+        return JsonResponse({'status': 'error', 'message': str(exc)}, status=500)
+
+
+@login_required
+def vapid_public_key(request):
+    """Return the VAPID public key so the JS client can subscribe."""
+    from django.conf import settings
+    key = getattr(settings, 'VAPID_PUBLIC_KEY', '')
+    return JsonResponse({'publicKey': key})

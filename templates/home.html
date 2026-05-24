@@ -6,8 +6,15 @@
     <link rel="stylesheet" type="text/css" href="{% static 'css/pages/home.css' %}">
 {% endblock %}
 
+{% block additional_head %}
+    {# Preload the first hero image so the browser discovers it immediately — fixes LCP #}
+    <link rel="preload" as="image" href="{% static 'images/market1.webp' %}" type="image/webp">
+    {# Preconnect to S3 for product/category images #}
+    <link rel="preconnect" href="https://opensellstatic.s3.amazonaws.com" crossorigin>
+{% endblock %}
+
 {% block page_js %}
-    <script type="text/javascript" src="{% static 'js/pages/home.js' %}"></script>
+    <script type="text/javascript" src="{% static 'js/pages/home.js' %}" defer></script>
 {% endblock %}
 
 {% block 'Body' %}
@@ -17,7 +24,37 @@
     <div class="hero-container">
         <!-- Image Side -->
         <div class="hero-image-section">
-            <img src="{% static 'images/market4.jpg' %}" alt="Marketplace" class="hero-image">
+
+            <picture>
+                <source srcset="{% static 'images/market1.webp' %}" type="image/webp">
+                <img src="{% static 'images/market1.png' %}"
+                     alt="Marketplace"
+                     class="hero-image active"
+                     fetchpriority="high"
+                     width="800"
+                     height="534">
+            </picture>
+
+            <picture>
+                <source srcset="{% static 'images/market4.webp' %}" type="image/webp">
+                <img src="{% static 'images/market4.jpg' %}"
+                     alt="Marketplace"
+                     class="hero-image inactive"
+                     loading="lazy"
+                     width="800"
+                     height="534">
+            </picture>
+
+            <picture>
+                <source srcset="{% static 'images/cars.webp' %}" type="image/webp">
+                <img src="{% static 'images/cars.png' %}"
+                     alt="Marketplace"
+                     class="hero-image inactive"
+                     loading="lazy"
+                     width="800"
+                     height="534">
+            </picture>
+
             <div class="hero-image-overlay">
                 <div class="hero-cta-buttons">
                     {% if user.is_authenticated %}
@@ -46,10 +83,10 @@
             </div>
             <div class="hero-search">
                 <form action="{% url 'product_search' %}" method="get">
-                    <input 
-                        type="text" 
-                        name="query" 
-                        placeholder="Search for anything..." 
+                    <input
+                        type="text"
+                        name="query"
+                        placeholder="Search for anything..."
                         class="search-input"
                     >
                     <i class="bi bi-search hero-search-icon"></i>
@@ -59,11 +96,10 @@
     </div>
 </section>
 
-<!-- NEW: Quick Access Buttons Section - Modern Flexbox -->
+<!-- Quick Access Buttons Section -->
 <section class="quick-access-section">
     <div class="container">
         <div class="quick-access-row">
-            <!-- Services Button -->
             <div class="quick-access-col">
                 <a href="{% url 'services:list' %}" class="quick-access-card services-card">
                     <div class="quick-access-icon">
@@ -79,7 +115,6 @@
                 </a>
             </div>
 
-            <!-- Buyer Requests Button -->
             <div class="quick-access-col">
                 <a href="{% url 'buyer_requests:list' %}" class="quick-access-card requests-card">
                     <div class="quick-access-icon">
@@ -95,7 +130,6 @@
                 </a>
             </div>
 
-            <!-- Affiliate/Earn Button -->
             <div class="quick-access-col">
                 <a href="{% url 'affiliate_dashboard' %}" class="quick-access-card affiliate-card">
                     <div class="quick-access-icon">
@@ -123,16 +157,15 @@
                 View All <i class="bi bi-chevron-right"></i>
             </a>
         </div>
-        
+
         <div class="categories-wrapper">
-            <!-- Navigation Indicators -->
             <div class="category-nav-indicator category-nav-prev hidden">
                 <i class="bi bi-chevron-left"></i>
             </div>
             <div class="category-nav-indicator category-nav-next">
                 <i class="bi bi-chevron-right"></i>
             </div>
-            
+
             <div class="row g-3 categories-grid">
                 {% for category in categories %}
                 <div class="category-item col-6 col-md-4 col-lg-2">
@@ -141,7 +174,12 @@
                             <div class="card-body">
                                 <div class="category-icon mb-2">
                                     {% if category.image %}
-                                        <img src="{{ category.image.url }}" alt="{{ category.name }}" class="category-image">
+                                        <img src="{{ category.image.url }}"
+                                             alt="{{ category.name }}"
+                                             class="category-image"
+                                             loading="lazy"
+                                             width="67"
+                                             height="67">
                                     {% else %}
                                         <i class="bi bi-grid-fill fs-2 text-primary"></i>
                                     {% endif %}
@@ -163,7 +201,7 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h2 class="section-title">Featured Products</h2>
             <a href="{% url 'product_list' %}" class="text-primary text-decoration-none text-muted">
-                See More <i class="bi bi-arrow-up-right"></i>
+                See More Products <i class="bi bi-arrow-up-right"></i>
             </a>
         </div>
 
@@ -198,7 +236,7 @@
                 </h2>
                 <p class="text-muted small mb-0">Products from sellers in your area</p>
             </div>
-            <a href="{% url 'product_list' %}{% if location_name %}?location={{ location_name }}{% endif %}" 
+            <a href="{% url 'product_list' %}{% if location_name %}?location={{ location_name }}{% endif %}"
                 class="text-primary text-decoration-none text-muted">
                 View All <i class="bi bi-arrow-up-right"></i>
             </a>
@@ -220,14 +258,14 @@
     {% include 'banner.html' with banners=second_position_banners %}
 {% endif %}
 
-<!-- Trending/Recent Products (if available) -->
+<!-- Recently Added Products -->
 {% if trending_products %}
 <section class="trending-products py-4">
     <div class="container">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h2 class="section-title">Recently Added</h2>
             <a href="{% url 'product_list' %}" class="text-primary text-decoration-none text-muted">
-                See More <i class="bi bi-arrow-up-right"></i>
+                See More Products <i class="bi bi-arrow-up-right"></i>
             </a>
         </div>
 
@@ -249,11 +287,11 @@
 
 <!-- Create Listing Floating Button (Authenticated Users Only) -->
 {% if user.is_authenticated %}
-    <a href="{% url 'product_create' %}" 
-       id="create-listing-btn" 
-       class="btn btn-primary rounded-circle position-fixed" 
-       data-bs-toggle="tooltip" 
-       data-bs-placement="left" 
+    <a href="{% url 'product_create' %}"
+       id="create-listing-btn"
+       class="btn btn-primary rounded-circle position-fixed"
+       data-bs-toggle="tooltip"
+       data-bs-placement="left"
        title="Create New Listing">
         <i class="bi bi-plus fs-4"></i>
     </a>

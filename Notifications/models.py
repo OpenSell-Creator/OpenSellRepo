@@ -44,7 +44,7 @@ class Notification(models.Model):
     content_object = GenericForeignKey('content_type', 'object_id')
     
     # Action URL for quick actions
-    action_url = models.URLField(null=True, blank=True)
+    action_url = models.TextField(null=True, blank=True, help_text="Relative or absolute URL for the action button")
     action_text = models.CharField(max_length=50, null=True, blank=True)
 
     class Meta:
@@ -111,7 +111,13 @@ class NotificationPreference(models.Model):
     deletion_warnings = models.BooleanField(default=True, help_text="Get notified when listings are about to expire")
     stock_alerts = models.BooleanField(default=True, help_text="Get notified about low stock")
     
-    # New preferences
+    # ✅ NEW: Transaction / financial notifications
+    transaction_notifications = models.BooleanField(
+        default=True,
+        help_text="Get notified about wallet deposits, withdrawals, transfers, subscriptions, and payments"
+    )
+
+    # Other preferences
     price_drop_alerts = models.BooleanField(default=True, help_text="Get notified about price drops on saved items")
     reply_notifications = models.BooleanField(default=True, help_text="Get notified about replies to your reviews")
     report_notifications = models.BooleanField(default=True, help_text="Get notified if your listings are reported")
@@ -147,6 +153,7 @@ class NotificationPreference(models.Model):
                 'system_notifications': True,
                 'deletion_warnings': True,
                 'stock_alerts': True,
+                'transaction_notifications': True,  # ✅ NEW
                 'price_drop_alerts': True,
                 'reply_notifications': True,
                 'report_notifications': True,
@@ -159,8 +166,8 @@ def create_notification(user, title, message, category=NotificationCategory.ANNO
                         content_object=None, priority=NotificationPriority.NORMAL, 
                         action_url=None, action_text=None):
     """
-    Utility function to create notifications
-    
+    Utility function to create notifications.
+
     Args:
         user: User to send notification to
         title: Notification title
@@ -171,24 +178,24 @@ def create_notification(user, title, message, category=NotificationCategory.ANNO
         action_url: URL for quick action (optional)
         action_text: Text for action button (optional)
     """
-    # Check if user has preferences for this type of notification
     preferences = NotificationPreference.get_or_create_preferences(user)
-    
-    # Map categories to preference fields
+
     category_prefs = {
-        NotificationCategory.REVIEW: preferences.review_notifications,
-        NotificationCategory.SAVES: preferences.save_notifications,
-        NotificationCategory.MILESTONES: preferences.milestone_achievements,
-        NotificationCategory.SYSTEM: preferences.system_notifications,
-        NotificationCategory.ALERTS: preferences.deletion_warnings or preferences.stock_alerts,
-        NotificationCategory.NEWS: preferences.price_drop_alerts,
-        NotificationCategory.ANNOUNCEMENT: True,  # Always send announcements
+        NotificationCategory.REVIEW:       preferences.review_notifications,
+        NotificationCategory.SAVES:        preferences.save_notifications,
+        NotificationCategory.MILESTONES:   preferences.milestone_achievements,
+        NotificationCategory.SYSTEM:       preferences.system_notifications,
+        NotificationCategory.ALERTS:       (
+                                                preferences.deletion_warnings
+                                                or preferences.stock_alerts
+                                            ),
+        NotificationCategory.NEWS:         preferences.price_drop_alerts,
+        NotificationCategory.ANNOUNCEMENT: True,
     }
-    
-    # Check if user wants this type of notification
+
     if not category_prefs.get(category, True):
         return None
-    
+
     return Notification.objects.create(
         recipient=user,
         title=title,
@@ -224,3 +231,25 @@ def mark_all_read(user):
         is_read=True, 
         read_at=timezone.now()
     )
+
+class PushSubscription(models.Model):
+    """
+    Stores a browser's Web Push subscription for a user.
+    One user can have multiple active subscriptions (phone + laptop, etc.).
+    Created/deactivated via the subscribe_push / unsubscribe_push views.
+    """
+    user     = models.ForeignKey(User, on_delete=models.CASCADE, related_name='push_subscriptions')
+    endpoint = models.TextField(unique=True)
+    p256dh   = models.TextField(help_text="Public key for payload encryption")
+    auth     = models.TextField(help_text="Auth secret")
+    active   = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used  = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'active']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} – {self.endpoint[:60]}…"

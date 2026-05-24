@@ -32,6 +32,11 @@ class PWAManager {
         this.checkInstallStatus();
         this.setupUIUpdates();
         this.setupInstallInstructionsIntegration();
+
+        // Push notifications — only for authenticated users
+        if (document.body.dataset.userAuthenticated === 'true') {
+            this.initPushNotifications();
+        }
     }
 
     async registerServiceWorker() {
@@ -297,6 +302,126 @@ class PWAManager {
             this.installInstructions.hide();
         }
     }
+    // ── Push Notification Methods ──────────────────────────────────────────
+
+    _urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+        const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const raw     = atob(base64);
+        return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+    }
+
+    _getCsrfToken() {
+        // Already present in base.html as <meta name="csrf-token">
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta) return meta.getAttribute('content');
+        const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
+        return cookie ? cookie.split('=')[1].trim() : '';
+    }
+
+    async _postJSON(url, body) {
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': this._getCsrfToken(),
+            },
+            body: JSON.stringify(body),
+            credentials: 'same-origin',
+        });
+    }
+
+    async initPushNotifications() {
+        if (!('PushManager' in window) || !('Notification' in window)) return;
+
+        try {
+            // SW is already registered by registerServiceWorker() — just get the registration
+            const registration = await navigator.serviceWorker.ready;
+
+            if (Notification.permission === 'granted') {
+                // Already allowed — sync existing subscription with server
+                await this._syncPushSubscription(registration);
+            }
+
+            // Wire up enable/disable buttons that may exist on the preferences page
+            const enableBtn  = document.getElementById('enablePushBtn');
+            const disableBtn = document.getElementById('disablePushBtn');
+
+            if (enableBtn) {
+                enableBtn.addEventListener('click', async () => {
+                    const result = await Notification.requestPermission();
+                    if (result === 'granted') {
+                        const ok = await this._syncPushSubscription(registration);
+                        if (ok) {
+                            enableBtn.textContent = 'Push notifications enabled ✓';
+                            enableBtn.disabled = true;
+                            if (disableBtn) disableBtn.disabled = false;
+                            this.showToast('Push notifications enabled!', 'success');
+                        }
+                    } else {
+                        this.showToast('Permission denied — push notifications blocked.', 'warning');
+                    }
+                });
+            }
+
+            if (disableBtn) {
+                disableBtn.addEventListener('click', async () => {
+                    await this._unsubscribePush(registration);
+                    disableBtn.textContent = 'Push notifications disabled';
+                    disableBtn.disabled = true;
+                    if (enableBtn) enableBtn.disabled = false;
+                    this.showToast('Push notifications disabled.', 'info');
+                });
+            }
+
+        } catch (err) {
+            console.warn('[PWAManager] Push init failed:', err);
+        }
+    }
+
+    async _syncPushSubscription(registration) {
+        try {
+            // Fetch VAPID public key from the server
+            const res    = await fetch('/notifications/push/vapid-key/', { credentials: 'same-origin' });
+            const { publicKey } = await res.json();
+            if (!publicKey) { console.warn('[PWAManager] No VAPID key returned'); return false; }
+
+            const appServerKey = this._urlBase64ToUint8Array(publicKey);
+
+            let subscription = await registration.pushManager.getSubscription();
+            if (!subscription) {
+                subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: appServerKey,
+                });
+            }
+
+            // Always sync the current subscription to the server (handles rotations)
+            await this._postJSON('/notifications/push/subscribe/', {
+                subscription: subscription.toJSON(),
+            });
+            return true;
+        } catch (err) {
+            console.warn('[PWAManager] Push subscribe failed:', err);
+            return false;
+        }
+    }
+
+    async _unsubscribePush(registration) {
+        try {
+            const subscription = await registration.pushManager.getSubscription();
+            if (subscription) {
+                await this._postJSON('/notifications/push/unsubscribe/', {
+                    endpoint: subscription.endpoint,
+                });
+                await subscription.unsubscribe();
+            }
+        } catch (err) {
+            console.warn('[PWAManager] Push unsubscribe failed:', err);
+        }
+    }
+
+
 }
 
 document.addEventListener('DOMContentLoaded', () => {

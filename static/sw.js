@@ -1,5 +1,5 @@
 // sw.js - FIXED VERSION with Better Error Handling
-const CACHE_NAME = 'opensell-v1.0.2';  // Bumped: fix POST interception bug
+const CACHE_NAME = 'opensell-v1.0.2';
 const OFFLINE_URL = '/offline/';
 
 const STATIC_CACHE_URLS = [
@@ -132,22 +132,63 @@ self.addEventListener('fetch', event => {
 });
 
 self.addEventListener('push', event => {
-    if (event.data) {
-        try {
-            const data = event.data.json();
-            const options = {
-                body: data.body,
-                icon: '/static/images/logoicon.png',
-                badge: '/static/images/logoicon.png',
-                tag: 'opensell-notification',
-                requireInteraction: true
-            };
-
-            event.waitUntil(
-                self.registration.showNotification(data.title, options)
-            );
-        } catch (error) {
-            console.error('Error processing push notification:', error);
-        }
+    if (!event.data) return;
+    try {
+        const data = event.data.json();
+        const options = {
+            body:  data.body || data.message || '',
+            icon:  data.icon  || '/static/images/logoicon.png',
+            badge: data.badge || '/static/images/logoicon.png',
+            tag:   data.tag   || 'opensell-notification',
+            renotify: true,
+            requireInteraction: false,
+            // Passed to notificationclick so it knows where to navigate
+            data: { url: data.url || '/notifications/' },
+        };
+        event.waitUntil(
+            self.registration.showNotification(data.title || 'OpenSell', options)
+        );
+    } catch (error) {
+        console.error('Error processing push notification:', error);
     }
+});
+self.addEventListener('notificationclick', event => {
+    event.notification.close();
+
+    const targetUrl = (event.notification.data && event.notification.data.url)
+        ? event.notification.data.url
+        : '/notifications/';
+
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+            // If a tab with the site is already open, navigate it and focus
+            for (const client of windowClients) {
+                if (new URL(client.url).origin === self.location.origin) {
+                    client.navigate(targetUrl);
+                    return client.focus();
+                }
+            }
+            // No open tab — open a new one
+            return clients.openWindow(targetUrl);
+        })
+    );
+});
+
+self.addEventListener('pushsubscriptionchange', event => {
+    // Browser rotated the subscription keys — re-subscribe and sync with server
+    event.waitUntil(
+        self.registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: event.oldSubscription
+                ? event.oldSubscription.options.applicationServerKey
+                : null,
+        }).then(newSub => {
+            return fetch('/notifications/push/subscribe/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subscription: newSub.toJSON() }),
+                credentials: 'include',
+            });
+        })
+    );
 });

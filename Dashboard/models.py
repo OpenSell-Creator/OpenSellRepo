@@ -58,6 +58,8 @@ class UserAccount(models.Model):
         ('subscription', 'Subscription'),
         ('refund', 'Refund'),
         ('bonus', 'Bonus'),
+        ('transfer_in', 'Transfer Received'),
+        ('transfer_out', 'Transfer Sent'),
     ]
     
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='account')
@@ -318,6 +320,57 @@ class Transaction(models.Model):
         self.account.save(update_fields=['balance'])
         
         return refund_txn
+
+class WalletTransfer(models.Model):
+    """
+    Records a balance transfer between two users.
+    Both sides of the transfer are tracked here for audit purposes.
+    Linked Transaction records are created on each UserAccount.
+    """
+    STATUS_CHOICES = [
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+        ('reversed', 'Reversed'),
+    ]
+
+    sender        = models.ForeignKey(UserAccount, on_delete=models.PROTECT,
+                                    related_name='sent_transfers')
+    recipient     = models.ForeignKey(UserAccount, on_delete=models.PROTECT,
+                                    related_name='received_transfers')
+    amount        = models.DecimalField(max_digits=10, decimal_places=2)
+    note          = models.CharField(max_length=255, blank=True,
+                                    help_text="Optional message to recipient")
+
+    # The two Transaction rows created atomically with this record
+    sender_transaction    = models.OneToOneField(
+        'Transaction', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='transfer_sent')
+    recipient_transaction = models.OneToOneField(
+        'Transaction', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='transfer_received')
+
+    status     = models.CharField(max_length=20, choices=STATUS_CHOICES,
+                                default='completed')
+    reference  = models.CharField(max_length=60, unique=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes  = [
+            models.Index(fields=['sender',    '-created_at']),
+            models.Index(fields=['recipient', '-created_at']),
+        ]
+
+    def __str__(self):
+        return (f"Transfer ₦{self.amount} | "
+                f"{self.sender.user.username} → {self.recipient.user.username}")
+
+    def save(self, *args, **kwargs):
+        if not self.reference:
+            import uuid
+            self.reference = f"TRF-{uuid.uuid4().hex[:12].upper()}"
+        super().save(*args, **kwargs)
 
 @receiver(post_save, sender=Transaction)
 def track_affiliate_commission(sender, instance, created, **kwargs):

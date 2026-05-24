@@ -448,17 +448,18 @@ else:
     STATIC_ROOT = '/home/ubuntu/OpenSellRepo/staticfiles/'
     STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
     MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/media/"
+    
+    AWS_S3_OBJECT_PARAMETERS = {
+        'CacheControl': 'public, max-age=2592000',
+    }
 
     STORAGES = {
         "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
         "default": {
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
             "AWS_LOCATION": "media",
-            "AWS_S3_OBJECT_PARAMETERS": {
-                "CacheControl": "public, max-age=86400",
-            },
         },
     }
 
@@ -473,6 +474,10 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 15 * 1024 * 1024
 
 # Free API Keys (get from respective platforms)
 HUGGINGFACE_API_TOKEN = os.environ.get('HUGGINGFACE_API_TOKEN')
+
+VAPID_PUBLIC_KEY  = os.environ.get('VAPID_PUBLIC_KEY', '')
+VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
+VAPID_ADMIN_EMAIL = os.environ.get('VAPID_ADMIN_EMAIL', 'support@opensell.ng')
 
 # Django Q Configuration
 if DEBUG:
@@ -554,7 +559,6 @@ else:
     COMPRESS_REBUILD_TIMEOUT = 0
     COMPRESS_CSS_HASHING_METHOD = 'content'
     COMPRESS_JS_HASHING_METHOD = 'content'
-    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
 
 COMPRESS_PRECOMPILERS = ()
 COMPRESS_ROOT = STATIC_ROOT

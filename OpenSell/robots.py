@@ -7,9 +7,11 @@ def robots_txt(request):
         "User-Agent: *",
         "Allow: /",
         "Disallow: /admin/",
-        "Disallow: /accounts/login/",
-        "Disallow: /accounts/register/",
-        "Disallow: /accounts/password/",
+        "Disallow: /accounts/",
+        "Disallow: /manage/",
+        "Disallow: /messages/",
+        "Disallow: /notifications/",
+        "Disallow: /ajax/",
         f"Sitemap: https://{request.get_host()}/sitemap.xml",
     ]
     return HttpResponse("\n".join(lines), content_type="text/plain")

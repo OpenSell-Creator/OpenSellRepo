@@ -8,11 +8,10 @@ from decimal import Decimal, InvalidOperation
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.paginator import Paginator
 from django.http import JsonResponse, HttpResponse
-from django.views.decorators.http import require_http_methods
 from django.core.paginator import Paginator
 from django.urls import reverse
 from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 from .models import UserAccount, Transaction, ProductBoost, AccountStatus
 from Home.models import Product_Listing
 from Dashboard.models import AffiliateProfile, AffiliateCommission, Referral
@@ -26,6 +25,12 @@ from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.conf import settings
 from django.utils.html import strip_tags
+from .models import UserAccount, Transaction, WalletTransfer
+from .forms  import WalletTransferForm
+from django.db import transaction as db_transaction
+from django.contrib import messages
+from django.core import signing
+import uuid
 import csv
 import logging
 import json
@@ -410,6 +415,200 @@ def transaction_history(request):
     }
     
     return render(request, 'dashboard/transaction_history.html', context)
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def wallet_transfer(request):
+    account = get_object_or_404(UserAccount, user=request.user)
+ 
+    # ── Stage 1: show blank form ───────────────────────────────────
+    if request.method == "GET":
+        return render(request, "dashboard/wallet_transfer.html", {
+            "form":    WalletTransferForm(sender_account=account),
+            "account": account,
+            "recent_sent":     WalletTransfer.objects.filter(
+                sender=account).select_related("recipient__user")[:5],
+            "recent_received": WalletTransfer.objects.filter(
+                recipient=account).select_related("sender__user")[:5],
+        })
+ 
+    action = request.POST.get("action")
+ 
+    # ── Stage 2: validate → sign → show confirm card ───────────────
+    if action == "confirm":
+        form = WalletTransferForm(request.POST, sender_account=account)
+        if form.is_valid():
+            recipient = form.recipient_account
+            amount    = form.cleaned_data["amount"]
+            note      = form.cleaned_data.get("note", "")
+ 
+            # Sign the payload — tamper-proof, expires in 10 min, no storage needed
+            token = signing.dumps({
+                "sender_id":    account.id,
+                "recipient_id": recipient.id,
+                "amount":       str(amount),
+                "note":         note,
+                "idem_key":     uuid.uuid4().hex,   # double-submit guard
+            })
+ 
+            return render(request, "dashboard/wallet_transfer.html", {
+                "stage":     "confirm",
+                "balance_after": account.balance - amount,
+                "account":   account,
+                "recipient": recipient,
+                "amount":    amount,
+                "note":      note,
+                "token":     token,
+            })
+ 
+        # Form invalid — re-render stage 1 with errors
+        return render(request, "dashboard/wallet_transfer.html", {
+            "form":    form,
+            "account": account,
+            "recent_sent":     WalletTransfer.objects.filter(
+                sender=account).select_related("recipient__user")[:5],
+            "recent_received": WalletTransfer.objects.filter(
+                recipient=account).select_related("sender__user")[:5],
+        })
+ 
+    # ── Stage 3: decode token → execute atomically ─────────────────
+    if action == "execute":
+        raw_token = request.POST.get("token", "")
+ 
+        try:
+            payload = signing.loads(raw_token, max_age=600)  # 10-min expiry
+        except signing.SignatureExpired:
+            messages.error(request, "Transfer confirmation expired. Please try again.")
+            return redirect("wallet_transfer")
+        except signing.BadSignature:
+            messages.error(request, "Invalid transfer data. Please try again.")
+            return redirect("wallet_transfer")
+
+        try:
+            amount    = Decimal(payload["amount"])
+            idem_key  = payload["idem_key"]
+            sender_id    = payload["sender_id"]
+            recipient_id = payload["recipient_id"]
+        except (KeyError, InvalidOperation):
+            messages.error(request, "Corrupted transfer data. Please start over.")
+            return redirect("wallet_transfer")
+
+        # Ensure this exact transfer hasn't already been processed
+        if WalletTransfer.objects.filter(reference=idem_key).exists():
+            messages.info(request, "This transfer was already completed.")
+            return redirect("wallet_transfer")
+
+        # Guard: sender in token must match logged-in user
+        if sender_id != account.id:
+            messages.error(request, "Transfer mismatch. Please try again.")
+            return redirect("wallet_transfer")
+
+        try:
+            with db_transaction.atomic():
+                sender_acc    = UserAccount.objects.select_for_update().get(id=sender_id)
+                recipient_acc = UserAccount.objects.select_for_update().get(id=recipient_id)
+
+                if sender_acc.balance < amount:
+                    raise ValueError(
+                        f"Insufficient balance. You have ₦{sender_acc.balance:,.2f}."
+                    )
+
+                note = payload.get("note", "")
+
+                sender_acc.balance -= amount
+                sender_acc.save(update_fields=["balance", "updated_at"])
+
+                sender_txn = Transaction.objects.create(
+                    account=sender_acc,
+                    amount=-amount,
+                    transaction_type="transfer_out",
+                    description=(
+                        f"Transfer to @{recipient_acc.user.username}"
+                        + (f" — {note}" if note else "")
+                    ),
+                )
+
+                recipient_acc.balance += amount
+                recipient_acc.save(update_fields=["balance", "updated_at"])
+
+                recipient_txn = Transaction.objects.create(
+                    account=recipient_acc,
+                    amount=amount,
+                    transaction_type="transfer_in",
+                    description=(
+                        f"Transfer from @{sender_acc.user.username}"
+                        + (f" — {note}" if note else "")
+                    ),
+                )
+
+                transfer = WalletTransfer.objects.create(
+                    sender=sender_acc,
+                    recipient=recipient_acc,
+                    amount=amount,
+                    note=note,
+                    sender_transaction=sender_txn,
+                    recipient_transaction=recipient_txn,
+                    status="completed",
+                    reference=idem_key,
+                )
+
+            messages.success(
+                request,
+                f"✓ ₦{amount:,.2f} sent to @{recipient_acc.user.username} "
+                f"(Ref: {transfer.reference[:8].upper()})"
+            )
+
+        except ValueError as e:
+            messages.error(request, str(e))
+        except Exception as e:
+            logger.error(f"Wallet transfer error: {e}", exc_info=True)
+            messages.error(request, "Transfer failed. Please try again.")
+
+        return redirect("wallet_transfer")
+
+    # Unknown action
+    return redirect("wallet_transfer")
+
+
+@login_required
+@require_http_methods(["GET"])
+def lookup_transfer_user(request):
+    identifier = request.GET.get("q", "").strip()
+    if len(identifier) < 2:
+        return JsonResponse({"found": False})
+
+    from django.contrib.auth.models import User
+    try:
+        user = (
+            User.objects.get(email__iexact=identifier)
+            if "@" in identifier
+            else User.objects.get(username__iexact=identifier)
+        )
+    except (User.DoesNotExist, User.MultipleObjectsReturned):
+        return JsonResponse({"found": False, "message": "No account found"})
+
+    if user == request.user:
+        return JsonResponse({"found": False, "message": "That is your own account"})
+
+    try:
+        _ = user.account
+    except Exception:
+        return JsonResponse({"found": False, "message": "User has no wallet"})
+
+    email = user.email or ""
+    if email and "@" in email:
+        local, domain = email.split("@", 1)
+        masked = local[:2] + "**@" + domain
+    else:
+        masked = "—"
+
+    return JsonResponse({
+        "found":     True,
+        "username":  user.username,
+        "full_name": user.get_full_name() or user.username,
+        "email":     masked,
+    })
+
 
 @login_required
 def subscription_management(request):

@@ -3,6 +3,7 @@ from django_q.models import Schedule
 from django.db import transaction as db_transaction
 from django.utils import timezone
 from django.db.models import F
+from decimal import Decimal
 from django.core.mail import send_mail
 from .models import AffiliateCommission
 from django.template.loader import render_to_string
@@ -179,6 +180,40 @@ def send_subscription_expiry_warnings(user_id, days_remaining):
     except Exception as e:
         logger.error(f"Error sending subscription warning email: {str(e)}")
         raise
+
+def send_transfer_received_email(user_id, amount_str, sender_username, reference):
+    """Notify a user that they received a wallet transfer."""
+    from django.contrib.auth.models import User
+
+    try:
+        user   = User.objects.get(id=user_id)
+        amount = Decimal(amount_str)
+
+        context = {
+            'user':             user,
+            'amount':           amount,
+            'sender_username':  sender_username,
+            'reference':        reference,
+            'site_name':        getattr(settings, 'SITE_NAME', 'OpenSell'),
+            'dashboard_url':    getattr(settings, 'SITE_DOMAIN', '#') + '/dashboard/',
+        }
+
+        html_message  = render_to_string('emails/transfer_received.html', context)
+        plain_message = strip_tags(html_message)
+
+        send_mail(
+            subject      = f"You received ₦{amount:,.2f} from @{sender_username}",
+            message      = plain_message,
+            from_email   = settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            html_message = html_message,
+            fail_silently= False,
+        )
+
+        logger.info(f"Transfer notification sent to {user.email} (ref: {reference})")
+
+    except Exception as e:
+        logger.error(f"Error sending transfer notification: {e}")
 
 def send_boost_expired_notification(user_id, product_title, boost_type):
     """Notify user when their boost expires"""

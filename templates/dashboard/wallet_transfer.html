@@ -1,0 +1,570 @@
+{% extends "base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Send Money | Wallet{% endblock %}
+
+{% block page_css %}
+<style>
+/* ── Base ── */
+.dashboard-container {
+    background-color: var(--background-color);
+    min-height: 100vh;
+}
+
+/* ── Header ── */
+.dashboard-header {
+    background-color: var(--primary-color);
+    margin: -2rem -1rem 2rem -1rem;
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+    position: relative;
+    overflow: hidden;
+}
+
+.dashboard-title {
+    color: white;
+    font-weight: 700;
+    font-size: 2rem;
+    display: flex;
+    align-items: center;
+}
+
+.dashboard-subtitle {
+    color: rgba(255,255,255,0.85);
+    font-size: 1rem;
+    margin-bottom: 0;
+}
+
+.btn-back-header {
+    background-color: transparent;
+    color: white;
+    border: 2px solid rgba(255,255,255,0.3);
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+}
+.btn-back-header:hover {
+    background-color: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.5);
+    color: white;
+}
+
+/* ── Balance pill in header ── */
+.balance-display {
+    background-color: var(--background-color);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    text-align: center;
+}
+.balance-label  { color: var(--primary-text); font-size: .85rem; display: block; margin-bottom: .5rem; }
+.balance-amount { color: var(--primary-text); font-size: 2rem; font-weight: 700; margin-bottom: 0; }
+
+/* ── Cards ── */
+.dashboard-card {
+    background-color: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 2px 10px rgba(0,0,0,.05);
+}
+
+/* ── Inputs ── */
+.custom-input {
+    border: 1px solid var(--border-color);
+    border-radius: .375rem;
+    padding: .625rem .75rem;
+    font-size: .95rem;
+    transition: border-color .15s ease, box-shadow .15s ease;
+    background-color: var(--card-background);
+    color: var(--text-primary);
+    width: 100%;
+}
+.custom-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 .25rem rgba(0,51,102,.25);
+    outline: 0;
+}
+.custom-input::placeholder { color: var(--text-muted); font-size: .95rem; }
+
+.input-group .input-group-text {
+    border: 1px solid var(--border-color);
+    background-color: var(--hover-bg);
+    color: var(--text-primary);
+}
+.input-group .custom-input  { border-left: 0; }
+.input-group:focus-within .input-group-text { border-color: var(--primary-color); }
+
+/* ── Quick-amount chips ── */
+.quick-amount-btn {
+    font-size: .8rem;
+    padding: .45rem .9rem;
+    border-radius: .4rem;
+    transition: all .2s ease;
+    border: 1px solid var(--border-color);
+    background-color: var(--hover-bg);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+.quick-amount-btn:hover,
+.quick-amount-btn.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,.1);
+}
+
+/* ── Confirm table rows ── */
+.confirm-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .65rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.confirm-row:last-child { border-bottom: none; }
+
+/* ── Recipient lookup pill ── */
+.lookup-pill {
+    border-radius: .5rem;
+    padding: .5rem .9rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .87rem;
+}
+.lookup-pill.found    { background-color: rgba(25,135,84,.1);  border: 1px solid rgba(25,135,84,.3);  color: #198754; }
+.lookup-pill.missing  { background-color: rgba(220,53,69,.1);  border: 1px solid rgba(220,53,69,.3);  color: #dc3545; }
+
+/* ── Primary action button ── */
+.btn-primary-custom {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: .75rem 1.5rem;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    transition: all .3s ease;
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .4rem;
+    cursor: pointer;
+}
+.btn-primary-custom:hover {
+    background-color: var(--primary-hover, #002244);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,.2);
+    color: white;
+}
+
+.btn-success-custom {
+    background-color: #198754;
+    color: white;
+    border: none;
+    padding: .75rem 1.5rem;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    transition: all .3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .4rem;
+    cursor: pointer;
+}
+.btn-success-custom:hover {
+    background-color: #146c43;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,.2);
+    color: white;
+}
+
+.btn-outline-custom {
+    background-color: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: .75rem 1.5rem;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    transition: all .3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .4rem;
+    cursor: pointer;
+    text-decoration: none;
+}
+.btn-outline-custom:hover {
+    background-color: var(--hover-bg);
+    color: var(--text-primary);
+    border-color: var(--primary-color);
+}
+
+/* ── Recent transfers list ── */
+.transfer-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: .9rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    transition: background .15s;
+}
+.transfer-item:last-child { border-bottom: none; }
+.transfer-item:hover      { background-color: var(--hover-bg); }
+
+.transfer-icon {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.1rem;
+}
+.transfer-icon.out { background-color: rgba(220,53,69,.12); color: #dc3545; }
+.transfer-icon.in  { background-color: rgba(25,135,84,.12);  color: #198754; }
+
+/* ── Alerts ── */
+.deposit-alert {
+    padding: 1rem;
+    border-radius: .375rem;
+}
+.deposit-alert-light {
+    background-color: var(--hover-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .dashboard-header { margin: -1rem -.5rem 1.5rem -.5rem; }
+    .dashboard-title  { font-size: 1.25rem; }
+    .balance-amount   { font-size: 1.75rem; }
+    .btn-back-header span { display: none; }
+}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="dashboard-container px-2 px-md-3 py-4" style="max-width:680px;margin:auto;">
+
+  <!-- ════════════════════════════════════════
+       PAGE HEADER
+       ════════════════════════════════════════ -->
+  <div class="dashboard-header p-4">
+    <div class="d-flex align-items-center gap-3 mb-4">
+      <a href="{% url 'dashboard_home' %}" class="btn-back-header">
+        <i class="bi bi-arrow-left me-1"></i>
+        <span>Back</span>
+      </a>
+    </div>
+
+    <div class="row align-items-end g-3">
+      <div class="col-md-7">
+        <h1 class="dashboard-title mb-1">
+          <i class="bi bi-send-fill me-3"></i> Send Money
+        </h1>
+        <p class="dashboard-subtitle">Transfer funds instantly to any wallet user</p>
+      </div>
+      <div class="col-md-5">
+        <div class="balance-display">
+          <span class="balance-label">Your Balance</span>
+          <p class="balance-amount">₦{{ account.balance|floatformat:2|intcomma }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       FLASH MESSAGES
+       ════════════════════════════════════════ -->
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags }} alert-dismissible fade show rounded-3 py-2 mb-3" role="alert">
+    <i class="bi bi-info-circle me-1"></i> {{ message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+
+  <!-- ════════════════════════════════════════
+       MAIN CARD
+       ════════════════════════════════════════ -->
+  <div class="dashboard-card mb-4">
+    <div class="p-4">
+
+      {% if stage == "confirm" %}
+      <!-- ───────────────────────────────────
+           STAGE 2 — Confirm
+           ─────────────────────────────────── -->
+      <div class="text-center mb-4">
+        <div class="rounded-circle d-inline-flex p-3 mb-2"
+             style="background-color:rgba(255,193,7,.15);">
+          <i class="bi bi-send-fill fs-3" style="color:#ffc107;"></i>
+        </div>
+        <h5 class="fw-semibold mb-1">Confirm Transfer</h5>
+        <p class="text-muted small mb-0">Double-check the details before sending</p>
+      </div>
+
+      <!-- Recipient row -->
+      <div class="deposit-alert deposit-alert-light d-flex align-items-center gap-3 mb-3">
+        <div class="transfer-icon in">
+          <i class="bi bi-person-fill"></i>
+        </div>
+        <div class="flex-grow-1">
+          <div class="fw-semibold">
+            {{ recipient.user.get_full_name|default:recipient.user.username }}
+          </div>
+          <div class="text-muted small">@{{ recipient.user.username }}</div>
+        </div>
+        <span class="badge" style="background-color:rgba(25,135,84,.15);color:#198754;border:1px solid rgba(25,135,84,.3);">
+          <i class="bi bi-check-circle-fill me-1"></i>Verified
+        </span>
+      </div>
+
+      <!-- Details table -->
+      <div class="dashboard-card mb-4" style="overflow:hidden;">
+        <div class="confirm-row">
+          <span class="text-muted small">Sending</span>
+          <span class="fw-bold fs-5">₦{{ amount|floatformat:2|intcomma }}</span>
+        </div>
+        <div class="confirm-row">
+          <span class="text-muted small">Balance after transfer</span>
+          <span class="fw-semibold small text-muted">
+            ₦{{ account.balance|floatformat:2|intcomma }}
+            &rarr;
+            ₦{{ balance_after|floatformat:2|intcomma }}
+          </span>
+        </div>
+        {% if note %}
+        <div class="confirm-row">
+          <span class="text-muted small">Note</span>
+          <span class="text-end" style="max-width:65%;">{{ note }}</span>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Actions -->
+      <div class="d-flex gap-2">
+        <a href="{% url 'wallet_transfer' %}" class="btn-outline-custom flex-fill">
+          <i class="bi bi-x-lg"></i> Cancel
+        </a>
+        <form method="post" action="{% url 'wallet_transfer' %}"
+              class="flex-fill" id="executeForm">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="execute">
+          <input type="hidden" name="token"  value="{{ token }}">
+          <button type="submit" id="sendBtn" class="btn-success-custom w-100">
+            <i class="bi bi-send-fill"></i> Send Money
+          </button>
+        </form>
+      </div>
+
+      {% else %}
+      <!-- ───────────────────────────────────
+           STAGE 1 — Input form
+           ─────────────────────────────────── -->
+
+      <form method="post" action="{% url 'wallet_transfer' %}"
+            id="transferForm" autocomplete="off">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="confirm">
+
+        <!-- Recipient -->
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="id_identifier">
+            Send to <span class="text-danger">*</span>
+          </label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+            {{ form.identifier }}
+          </div>
+          {% if form.identifier.errors %}
+          <div class="text-danger small mt-1">
+            <i class="bi bi-exclamation-circle me-1"></i>{{ form.identifier.errors.0 }}
+          </div>
+          {% endif %}
+
+          <!-- Live lookup result -->
+          <div id="recipientFound" class="lookup-pill found mt-2 d-none">
+            <i class="bi bi-person-check-fill"></i>
+            <span id="foundName" class="fw-semibold"></span>
+            <span id="foundEmail" class="ms-1" style="opacity:.7;font-size:.8rem;"></span>
+          </div>
+          <div id="recipientNotFound" class="lookup-pill missing mt-2 d-none">
+            <i class="bi bi-exclamation-circle"></i>
+            <span id="notFoundMsg"></span>
+          </div>
+        </div>
+
+        <!-- Amount -->
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="id_transfer_amount">
+            Amount <span class="text-danger">*</span>
+          </label>
+          <div class="input-group">
+            <span class="input-group-text fw-bold">₦</span>
+            {{ form.amount }}
+          </div>
+          {% if form.amount.errors %}
+          <div class="text-danger small mt-1">
+            <i class="bi bi-exclamation-circle me-1"></i>{{ form.amount.errors.0 }}
+          </div>
+          {% endif %}
+
+          <!-- Quick-amount chips — hardcoded list, NO |split filter -->
+          <div class="d-flex gap-2 flex-wrap mt-2">
+            <button type="button" class="quick-amount-btn quick-chip" data-val="500">₦500</button>
+            <button type="button" class="quick-amount-btn quick-chip" data-val="1000">₦1,000</button>
+            <button type="button" class="quick-amount-btn quick-chip" data-val="2000">₦2,000</button>
+            <button type="button" class="quick-amount-btn quick-chip" data-val="5000">₦5,000</button>
+            <button type="button" class="quick-amount-btn quick-chip" data-val="10000">₦10,000</button>
+          </div>
+        </div>
+
+        <!-- Note -->
+        <div class="mb-4">
+          <label class="form-label fw-semibold">
+            Note <span class="text-muted fw-normal">(optional)</span>
+          </label>
+          {{ form.note }}
+        </div>
+
+        <button type="submit" id="confirmBtn" class="btn-primary-custom">
+          <i class="bi bi-arrow-right-circle"></i> Continue
+        </button>
+      </form>
+      {% endif %}
+
+    </div>
+  </div><!-- /main card -->
+
+  <!-- ════════════════════════════════════════
+       RECENT TRANSFERS
+       ════════════════════════════════════════ -->
+  {% if recent_sent or recent_received %}
+  <div class="dashboard-card">
+    <div class="p-4 pb-2">
+      <h6 class="fw-semibold mb-0">Recent Transfers</h6>
+    </div>
+
+    {% for t in recent_sent %}
+    <div class="transfer-item">
+      <div class="transfer-icon out">
+        <i class="bi bi-arrow-up-right"></i>
+      </div>
+      <div class="flex-grow-1 overflow-hidden">
+        <div class="fw-semibold small text-truncate">To @{{ t.recipient.user.username }}</div>
+        <div class="text-muted text-truncate" style="font-size:.72rem;">
+          {{ t.created_at|date:"M d · g:i A" }}
+          {% if t.note %}<span class="mx-1">·</span>{{ t.note }}{% endif %}
+        </div>
+      </div>
+      <div class="text-end flex-shrink-0">
+        <div class="fw-semibold small" style="color:#dc3545;">−₦{{ t.amount|floatformat:0|intcomma }}</div>
+        <div class="text-muted" style="font-size:.68rem;">{{ t.reference|slice:":8"|upper }}</div>
+      </div>
+    </div>
+    {% endfor %}
+
+    {% for t in recent_received %}
+    <div class="transfer-item">
+      <div class="transfer-icon in">
+        <i class="bi bi-arrow-down-left"></i>
+      </div>
+      <div class="flex-grow-1 overflow-hidden">
+        <div class="fw-semibold small text-truncate">From @{{ t.sender.user.username }}</div>
+        <div class="text-muted text-truncate" style="font-size:.72rem;">
+          {{ t.created_at|date:"M d · g:i A" }}
+          {% if t.note %}<span class="mx-1">·</span>{{ t.note }}{% endif %}
+        </div>
+      </div>
+      <div class="text-end flex-shrink-0">
+        <div class="fw-semibold small" style="color:#198754;">+₦{{ t.amount|floatformat:0|intcomma }}</div>
+        <div class="text-muted" style="font-size:.68rem;">{{ t.reference|slice:":8"|upper }}</div>
+      </div>
+    </div>
+    {% endfor %}
+
+  </div>
+  {% endif %}
+
+</div><!-- /container -->
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+(function () {
+  'use strict';
+
+  /* ── Live recipient lookup ── */
+  const input       = document.getElementById('id_identifier');
+  const found       = document.getElementById('recipientFound');
+  const notFound    = document.getElementById('recipientNotFound');
+  const foundName   = document.getElementById('foundName');
+  const foundEmail  = document.getElementById('foundEmail');
+  const notFoundMsg = document.getElementById('notFoundMsg');
+  let timer;
+
+  if (input) {
+    input.addEventListener('input', function () {
+      clearTimeout(timer);
+      found    && found.classList.add('d-none');
+      notFound && notFound.classList.add('d-none');
+      const q = this.value.trim();
+      if (q.length < 2) return;
+
+      timer = setTimeout(() => {
+        fetch(`{% url 'lookup_transfer_user' %}?q=${encodeURIComponent(q)}`)
+          .then(r => r.json())
+          .then(d => {
+            if (d.found) {
+              foundName.textContent  = d.full_name + ' (@' + d.username + ')';
+              foundEmail.textContent = d.email;
+              found.classList.remove('d-none');
+              notFound.classList.add('d-none');
+            } else {
+              notFoundMsg.textContent = d.message || 'No account found';
+              notFound.classList.remove('d-none');
+              found.classList.add('d-none');
+            }
+          })
+          .catch(() => {});
+      }, 380);
+    });
+  }
+
+  /* ── Quick-amount chips ── */
+  document.querySelectorAll('.quick-chip').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const el = document.getElementById('id_transfer_amount');
+      if (el) {
+        el.value = btn.dataset.val;
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.focus();
+      }
+      document.querySelectorAll('.quick-chip').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  /* ── Prevent double-submit on both forms ── */
+  ['transferForm', 'executeForm'].forEach(id => {
+    const form = document.getElementById(id);
+    if (!form) return;
+    form.addEventListener('submit', function () {
+      const btn = this.querySelector('[type="submit"]');
+      if (!btn || btn.disabled) return;
+      btn.disabled  = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Processing…';
+    });
+  });
+
+})();
+</script>
+{% endblock %}
+
+{% block 'Footer' %}{% endblock %}

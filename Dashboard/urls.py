@@ -11,6 +11,9 @@ urlpatterns = [
     path('account/status/', views.account_status, name='account_status'),
     path('boost/status/', views.product_boost_status, name='product_boost_status'),
     
+    path('wallet/transfer/',    views.wallet_transfer,      name='wallet_transfer'),
+    path('wallet/lookup-user/', views.lookup_transfer_user, name='lookup_transfer_user'),
+    
     path('api/transaction/<int:transaction_id>/', views.get_transaction_details, name='transaction_details_api'),
     path('api/stats/', views.dashboard_stats_api, name='dashboard_stats_api'),
     

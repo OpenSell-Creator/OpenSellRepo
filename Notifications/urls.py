@@ -1,22 +1,27 @@
 from django.urls import path, include
 from . import views
-from .views import NotificationListView, NotificationDetailView
+from .views import NotificationListView, NotificationDetailView, NotificationAPIView
 
 app_name = 'notifications'
 urlpatterns = [
     # Main notification views
-    path('notifications/', views.NotificationListView.as_view(), name='list'),
-    path('detail/<int:pk>/', views.NotificationDetailView.as_view(), name='detail'),
+    path('notifications/', NotificationListView.as_view(), name='list'),
+    path('detail/<int:pk>/', NotificationDetailView.as_view(), name='detail'),
     path('preferences/', views.notification_preferences, name='preferences'),
     
     # AJAX endpoints
     path('api/', views.NotificationAPIView.as_view(), name='api'),
+    path('api/', NotificationAPIView.as_view(), name='api'),
     path('mark-read/<int:notification_id>/', views.mark_notification_read, name='mark_read'),
     path('mark-all-read/', views.mark_all_read, name='mark_all_read'),
     path('clear-all/', views.clear_all_notifications, name='clear_all'),
     path('delete/<int:notification_id>/', views.delete_notification, name='delete'),
     path('stats/', views.notification_stats, name='stats'),
     
+    
+    path('push/subscribe/',   views.subscribe_push,   name='subscribe_push'),
+    path('push/unsubscribe/', views.unsubscribe_push,  name='unsubscribe_push'),
+    path('push/vapid-key/', views.vapid_public_key,  name='vapid_public_key'),
     # Push notification endpoints (optional)
     path('subscribe-push/', views.subscribe_push, name='subscribe_push'),
     path('unsubscribe-push/', views.unsubscribe_push, name='unsubscribe_push'),
