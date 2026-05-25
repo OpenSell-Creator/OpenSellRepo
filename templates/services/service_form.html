@@ -772,21 +772,7 @@
     </div>
 </div>
 
-<!-- Toasts -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index:1100">
-    <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-            <div class="toast-body"><i class="bi bi-check-circle-fill me-2"></i><span id="successToastMessage">Service listed!</span></div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-        </div>
-    </div>
-    <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-            <div class="toast-body"><i class="bi bi-exclamation-triangle-fill me-2"></i><span id="errorToastMessage">Error</span></div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-        </div>
-    </div>
-</div>
+
 
 <script>
 /* ═══════════════════════════════════════════
@@ -829,11 +815,28 @@ document.addEventListener('DOMContentLoaded', function () {
     const bgUploadSpinner = document.getElementById('bgUploadSpinner');
     const bgUploadFill    = document.getElementById('bgUploadFill');
 
-    /* ── Toasts ── */
-    const successToast = new bootstrap.Toast(document.getElementById('successToast'),{delay:5000});
-    const errorToast   = new bootstrap.Toast(document.getElementById('errorToast'),  {delay:6000});
-    function showSuccessToast(m){document.getElementById('successToastMessage').textContent=m;successToast.show();}
-    function showErrorToast(m)  {document.getElementById('errorToastMessage').textContent=m;errorToast.show();}
+    /* ── System Alert (matches base.html alert-system-container) ── */
+    function showSystemAlert(type, msg) {
+        const iconMap = { success: 'bi-check-circle-fill', error: 'bi-exclamation-circle-fill', warning: 'bi-exclamation-triangle-fill' };
+        const icon = iconMap[type] || 'bi-info-circle-fill';
+        let container = document.getElementById('alertSystemContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.className = 'alert-system-container';
+            container.id = 'alertSystemContainer';
+            document.body.prepend(container);
+        }
+        const el = document.createElement('div');
+        el.className = `system-alert alert-${type}`;
+        el.setAttribute('role', 'alert');
+        el.setAttribute('data-auto-dismiss', '3500');
+        el.innerHTML = `<div class="alert-content"><div class="alert-icon"><i class="bi ${icon}"></i></div><div class="alert-message">${msg}</div></div><button type="button" class="alert-close-btn" aria-label="Close"><i class="bi bi-x"></i></button>`;
+        container.appendChild(el);
+        el.querySelector('.alert-close-btn').addEventListener('click', () => el.remove());
+        setTimeout(() => el.remove(), 3500);
+    }
+    function showErrorToast(m)   { showSystemAlert('error',   m); }
+    function showSuccessToast(m) { showSystemAlert('success', m); }
     function showOverlay(){loadingOverlay.classList.add('show');}
     function hideOverlay(){loadingOverlay.classList.remove('show');}
 
@@ -1159,7 +1162,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         // silent doc innerHTML
                     }
                 }catch(e){
-                    if(docCompressStatus){// silent doc className warn}
+                    // silent doc compress error
                 }
             }
 
@@ -1253,7 +1256,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 progressBar.classList.replace('bg-primary','bg-success');
                 progressText.textContent='Success!';
                 statusText.textContent=result.data.message||'Service saved!';
-                showSuccessToast(result.data.message||'Service listed successfully!');
                 setTimeout(()=>{window.location.href=result.data.redirect_url||'{% url "manage_listings" %}';},1000);
             }else{throw new Error(result.data.message||result.data.error||'Failed to save service.');}
         })

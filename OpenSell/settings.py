@@ -449,17 +449,19 @@ else:
     STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
     MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/media/"
     
-    AWS_S3_OBJECT_PARAMETERS = {
-        'CacheControl': 'public, max-age=2592000',
-    }
-
+    # Two cache policies — see opensell/storages.py for the backend classes.
+    #
+    # UUID-named paths (product_images/, service_images/, buyer_requests/)
+    # → 1 year immutable: filenames never repeat so stale content is impossible.
+    #
+    # Admin-replaceable paths (categories/, banners/)
+    # → 1 day must-revalidate: updates show within 24 hours.
     STORAGES = {
         "staticfiles": {
             "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
         "default": {
-            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-            "AWS_LOCATION": "media",
+            "BACKEND": "OpenSell.storages.SmartMediaStorage",
         },
     }
 

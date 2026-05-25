@@ -20,6 +20,14 @@ from datetime import date
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
     image = models.ImageField(upload_to=category_image_path, null=True, blank=True)
+    # Serve a 134×134 WebP thumb instead of the full 512×512 original.
+    # ~95% smaller payload; generated on first access, cached by imagekit.
+    thumbnail = ImageSpecField(
+        source='image',
+        processors=[ResizeToFill(134, 134)],
+        format='WEBP',
+        options={'quality': 82},
+    )
     slug = models.SlugField(max_length=100, unique=True, null=True)
     
     def __str__(self):

@@ -928,21 +928,7 @@
     </div>
 </div>
 
-<!-- Toast System -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index:1100">
-    <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-            <div class="toast-body"><i class="bi bi-check-circle-fill me-2"></i><span id="successToastMessage">Done!</span></div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-        </div>
-    </div>
-    <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-            <div class="toast-body"><i class="bi bi-exclamation-triangle-fill me-2"></i><span id="errorToastMessage">Error</span></div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-        </div>
-    </div>
-</div>
+
 
 <script>
 /* ═══════════════════════════════════════════
@@ -1025,11 +1011,29 @@ document.addEventListener('DOMContentLoaded', function () {
     const bgUploadSpinner   = document.getElementById('bgUploadSpinner');
     const bgUploadFill      = document.getElementById('bgUploadProgressFill');
 
-    /* ── Toasts ── */
-    const successToast = new bootstrap.Toast(document.getElementById('successToast'), {delay:5000});
-    const errorToast   = new bootstrap.Toast(document.getElementById('errorToast'),   {delay:6000});
-    function showSuccessToast(msg) { document.getElementById('successToastMessage').textContent = msg; successToast.show(); }
-    function showErrorToast(msg)   { document.getElementById('errorToastMessage').textContent   = msg; errorToast.show(); }
+    /* ── System Alert (matches base.html alert-system-container) ── */
+    function showSystemAlert(type, msg) {
+        const iconMap = { success: 'bi-check-circle-fill', error: 'bi-exclamation-circle-fill', warning: 'bi-exclamation-triangle-fill' };
+        const icon = iconMap[type] || 'bi-info-circle-fill';
+        let container = document.getElementById('alertSystemContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.className = 'alert-system-container';
+            container.id = 'alertSystemContainer';
+            document.body.prepend(container);
+        }
+        const el = document.createElement('div');
+        el.className = `system-alert alert-${type}`;
+        el.setAttribute('role', 'alert');
+        el.setAttribute('data-auto-dismiss', '3500');
+        el.innerHTML = `<div class="alert-content"><div class="alert-icon"><i class="bi ${icon}"></i></div><div class="alert-message">${msg}</div></div><button type="button" class="alert-close-btn" aria-label="Close"><i class="bi bi-x"></i></button>`;
+        container.appendChild(el);
+        // Trigger base.html's alerts.js dismiss logic if available, else self-dismiss
+        el.querySelector('.alert-close-btn').addEventListener('click', () => el.remove());
+        setTimeout(() => el.remove(), 3500);
+    }
+    function showErrorToast(msg)   { showSystemAlert('error',   msg); }
+    function showSuccessToast(msg) { showSystemAlert('success', msg); }
 
     /* ── Overlay ── */
     function showOverlay() { loadingOverlay.classList.add('show'); }
