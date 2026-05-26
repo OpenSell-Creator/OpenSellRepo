@@ -130,6 +130,7 @@ SOCIALACCOUNT_ADAPTER = 'User.views.CustomSocialAccountAdapter'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -140,7 +141,6 @@ MIDDLEWARE = [
     'allauth.account.middleware.AccountMiddleware',
     'User.middleware.SecurityBypassMiddleware',
     'axes.middleware.AxesMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 SITE_ID = 1
