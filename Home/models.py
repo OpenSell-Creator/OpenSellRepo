@@ -781,7 +781,12 @@ class Banner(models.Model):
         ]
 
     def __str__(self):
-        return f"Banner #{self.id} - {self.get_display_location_display()}"
+        # e.g. "Homepage - First Position | opensell.ng/affiliate | active"
+        # e.g. "Global - Top of Pages | google.com | inactive"
+        from urllib.parse import urlparse
+        domain = urlparse(self.url).netloc or self.url
+        status = "active" if self.is_active else "inactive"
+        return f"{self.get_display_location_display()} | {domain} | {status}"
 
     @property
     def is_section_banner(self):
@@ -801,11 +806,10 @@ class Banner(models.Model):
     def _convert_to_webp(self, image_field, max_width, max_height):
         """
         Resize and convert an ImageField to WebP in-place.
-        max_width/max_height are the display dimensions for this banner type:
           - Desktop banners: 1200x200
           - Mobile banners:  800x200
-        Skips processing if the image is already the right size and format.
-        Never raises — a failed conversion just keeps the original file.
+        Skips processing if already the right size and format.
+        Never raises — a failed conversion keeps the original file.
         """
         if not image_field:
             return
@@ -824,7 +828,6 @@ class Banner(models.Model):
                 return
 
             if needs_resize:
-                # Maintain aspect ratio — fit within the max box
                 img.thumbnail((max_width, max_height), PilImage.LANCZOS)
 
             buffer = io.BytesIO()
@@ -834,7 +837,7 @@ class Banner(models.Model):
             name = image_field.name.rsplit('.', 1)[0] + '.webp'
             image_field.save(name, ContentFile(buffer.read()), save=False)
         except Exception:
-            pass  # Never block a banner save due to image processing failure
+            pass
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -853,7 +856,6 @@ class Banner(models.Model):
                 changed = True
 
         if changed:
-            # Use update() to avoid a recursive save() call
             Banner.objects.filter(pk=self.pk).update(
                 image=self.image.name if self.image else None,
                 mobile_image=self.mobile_image.name if self.mobile_image else None,

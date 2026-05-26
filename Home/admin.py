@@ -181,10 +181,12 @@ class ProductAdmin(admin.ModelAdmin):
 
 @admin.register(Banner)
 class BannerAdmin(admin.ModelAdmin):
-    list_display = ('id', 'get_display_name', 'display_location', 'is_active', 'priority', 'start_date', 'end_date')
+    # __str__ now returns "Homepage - First Position | opensell.ng/affiliate | active"
+    # so the first column is immediately meaningful without needing a raw id.
+    list_display = ('__str__', 'display_location', 'destination_url', 'is_active', 'priority', 'start_date', 'end_date')
     list_filter = ('is_active', 'display_location', 'created_at')
     list_editable = ('is_active', 'priority')
-    search_fields = ('url', 'id')
+    search_fields = ('url',)
     ordering = ('-priority', '-updated_at')
     
     fieldsets = (
@@ -201,19 +203,15 @@ class BannerAdmin(admin.ModelAdmin):
     )
     
     readonly_fields = ('created_at', 'updated_at')
-    
-    def get_display_name(self, obj):
-        """Show a more readable display name"""
-        return obj.get_display_location_display()
-    get_display_name.short_description = 'Location'
-    get_display_name.admin_order_field = 'display_location'
-    
-    def get_queryset(self, request):
-        """Optimize database queries"""
-        return super().get_queryset(request).select_related()
-    
 
-    # Optional: Add custom actions
+    def destination_url(self, obj):
+        """Show the full URL as a clickable link so you can verify it instantly."""
+        return format_html('<a href="{}" target="_blank">{}</a>', obj.url, obj.url)
+    destination_url.short_description = 'Destination URL'
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related()
+
     actions = ['make_active', 'make_inactive']
     
     def make_active(self, request, queryset):
