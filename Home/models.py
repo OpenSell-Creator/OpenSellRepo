@@ -798,6 +798,67 @@ class Banner(models.Model):
         location_display = self.get_display_location_display()
         return f"Advertisement - {location_display}"
 
+    def _convert_to_webp(self, image_field, max_width, max_height):
+        """
+        Resize and convert an ImageField to WebP in-place.
+        max_width/max_height are the display dimensions for this banner type:
+          - Desktop banners: 1200x200
+          - Mobile banners:  800x200
+        Skips processing if the image is already the right size and format.
+        Never raises — a failed conversion just keeps the original file.
+        """
+        if not image_field:
+            return
+        try:
+            from PIL import Image as PilImage
+            import io
+            from django.core.files.base import ContentFile
+
+            image_field.open()
+            img = PilImage.open(image_field)
+
+            needs_resize = img.width > max_width or img.height > max_height
+            needs_convert = not image_field.name.lower().endswith('.webp')
+
+            if not needs_resize and not needs_convert:
+                return
+
+            if needs_resize:
+                # Maintain aspect ratio — fit within the max box
+                img.thumbnail((max_width, max_height), PilImage.LANCZOS)
+
+            buffer = io.BytesIO()
+            img.save(buffer, format='WEBP', quality=85)
+            buffer.seek(0)
+
+            name = image_field.name.rsplit('.', 1)[0] + '.webp'
+            image_field.save(name, ContentFile(buffer.read()), save=False)
+        except Exception:
+            pass  # Never block a banner save due to image processing failure
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        changed = False
+
+        if self.image:
+            old_name = self.image.name
+            self._convert_to_webp(self.image, max_width=1200, max_height=200)
+            if self.image.name != old_name:
+                changed = True
+
+        if self.mobile_image:
+            old_name = self.mobile_image.name
+            self._convert_to_webp(self.mobile_image, max_width=800, max_height=200)
+            if self.mobile_image.name != old_name:
+                changed = True
+
+        if changed:
+            # Use update() to avoid a recursive save() call
+            Banner.objects.filter(pk=self.pk).update(
+                image=self.image.name if self.image else None,
+                mobile_image=self.mobile_image.name if self.mobile_image else None,
+            )
+
 class Review(models.Model):
     REVIEW_TYPES = (
         ('product', 'Product Review'),
