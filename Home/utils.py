@@ -53,40 +53,23 @@ def _draw_rounded_rect(draw, xy, radius, fill):
     draw.rounded_rectangle([x0, y0, x1, y1], radius=radius, fill=fill)
 
 
-def apply_watermark(image_file, profile):
-    """
-    Composite an advanced pill-badge watermark onto image_file.
-
-    Layout (single pill, bottom-center):
-      [ logo  |  opensell.ng  ·  <display name> ]
-
-    The display name shown on the watermark resolves as follows:
-      - Verified business  →  profile.business_name  (e.g. "Acme Ltd")
-      - Everyone else      →  profile.user.username
-
-    `profile` must be a User.models.Profile instance; the property
-    `business_display_name` already encapsulates this logic.
-
-    - No shadows anywhere
-    - Frosted semi-transparent pill background for legibility on any image
-    - Subtle vertical divider separates brand from display name
-    - Rounded pill shape for a modern, premium feel
-
-    Returns a BytesIO of the watermarked JPEG, ready to pass to ContentFile.
-    Called from Product_Image.save() and Product_Receipt.save() in models.py.
-    """
+def apply_watermark(image_file, profile, canvas_size=(800, 600)):
     # Verified businesses show their business name; everyone else shows username.
     display_name = profile.business_display_name
 
     img = Image.open(image_file).convert('RGBA')
+
+
+    img.thumbnail(canvas_size, Image.LANCZOS)
+
     img_w, img_h = img.size
 
     # --- logo -----------------------------------------------------------
     logo = _wm_load_logo(_WM_LOGO_MAX_WIDTH)
     logo_w, logo_h = logo.size
 
-    # --- fonts (scale with image so it looks right on any resolution) ---
-    base_size   = max(13, img_w // 55)
+    # --- fonts (fixed size — canvas is now always normalised) ------------
+    base_size   = 13                            
     brand_font  = _wm_load_font(base_size + 1)   # opensell.ng — slightly bolder
     uname_font  = _wm_load_font(base_size)        # username — one step smaller
 
@@ -163,6 +146,9 @@ def apply_watermark(image_file, profile):
     watermarked = Image.alpha_composite(img, overlay)
 
     output = BytesIO()
-    watermarked.convert('RGB').save(output, format='JPEG', quality=92, optimize=True)
+    # Save at quality=95 (nearly lossless). ProcessedImageField will re-encode
+    # this at its own quality setting (80), so we want to hand it the cleanest
+    # possible source — not a pre-degraded JPEG at 92.
+    watermarked.convert('RGB').save(output, format='JPEG', quality=95, optimize=True)
     output.seek(0)
     return output

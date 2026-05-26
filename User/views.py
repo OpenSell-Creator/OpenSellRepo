@@ -1356,7 +1356,18 @@ def toggle_save_item(request):
                     action_text=notification_data['action_text']
                 )
                 
-                logger.info(f"Created save notification: {item_type} #{item_id} saved by {request.user.username}")
+                # ✅ CHECK FOR SAVE MILESTONE
+                total_saves = SavedItem.objects.filter(
+                    content_type=content_type,
+                    object_id=str(item_id)
+                ).count()
+
+                create_save_milestone_notification(item, item_type, total_saves)
+
+                logger.info(
+                    f"Created save notification: {item_type} #{item_id} saved by {request.user.username} "
+                    f"(Total saves: {total_saves})"
+                )
             
             return JsonResponse({
                 'status': 'saved',
@@ -1488,30 +1499,32 @@ def saved_items(request):
     services = {str(s.id): s for s in ServiceListing.objects.filter(id__in=service_ids).select_related('provider__user')}
     requests = {str(r.id): r for r in BuyerRequest.objects.filter(id__in=request_ids).select_related('buyer__user', 'category')}
     
-    # Attach objects to saved items
+    # Attach objects to saved items; collect stale IDs for cleanup
     items_with_objects = []
+    stale_ids = []
+
     for saved_item in saved_items_qs:
         item_obj = None
-        
+
         if saved_item.content_type == product_ct:
             item_obj = products.get(saved_item.object_id)
         elif saved_item.content_type == service_ct:
             item_obj = services.get(saved_item.object_id)
         elif saved_item.content_type == request_ct:
             item_obj = requests.get(saved_item.object_id)
-        
-        if item_obj:  # Only include if object still exists
+
+        if item_obj:
             saved_item.item_object = item_obj
             saved_item.is_saved = True
             saved_item.item_object.is_saved = True
-            
+
             # Format display properties
             if hasattr(item_obj, 'price'):
                 saved_item.item_object.formatted_price = format_price(item_obj.price)
             elif hasattr(item_obj, 'base_price'):
                 from Services.views import format_service_price
                 saved_item.item_object.formatted_price = format_service_price(
-                    item_obj.pricing_type, item_obj.base_price, 
+                    item_obj.pricing_type, item_obj.base_price,
                     item_obj.min_price, item_obj.max_price
                 )
             elif hasattr(item_obj, 'budget_range'):
@@ -1519,26 +1532,33 @@ def saved_items(request):
                 saved_item.item_object.formatted_budget = format_budget(
                     item_obj.budget_range, item_obj.budget_min, item_obj.budget_max
                 )
-            
+
             items_with_objects.append(saved_item)
-    
+        else:
+            # Underlying item was deleted or expired -- mark for cleanup
+            stale_ids.append(saved_item.pk)
+
+    # Purge stale SavedItem rows so counts and badges stay accurate
+    if stale_ids:
+        SavedItem.objects.filter(pk__in=stale_ids).delete()
+        logger.info(f"Purged {len(stale_ids)} stale SavedItem rows for user {request.user.username}")
+
+    # Derive counts from resolved items only (excludes deleted/expired)
+    type_counts = {
+        'products': sum(1 for s in items_with_objects if s.content_type == product_ct),
+        'services': sum(1 for s in items_with_objects if s.content_type == service_ct),
+        'requests': sum(1 for s in items_with_objects if s.content_type == request_ct),
+    }
+
     # Pagination
     paginator = Paginator(items_with_objects, 12)
     page = request.GET.get('page', 1)
-    
+
     try:
         items = paginator.page(page)
     except:
         items = paginator.page(1)
-    
-    # Get counts for each type
-    from django.db.models import Count, Q
-    type_counts = {
-        'products': SavedItem.objects.filter(user=request.user, content_type=product_ct).count(),
-        'services': SavedItem.objects.filter(user=request.user, content_type=service_ct).count(),
-        'requests': SavedItem.objects.filter(user=request.user, content_type=request_ct).count(),
-    }
-    
+
     context = {
         'saved_items': items,
         'type_counts': type_counts,
@@ -1576,120 +1596,6 @@ def create_save_milestone_notification(item, item_type, save_count):
             )
             
             logger.info(f"Created milestone notification: {item_type} #{item.id} reached {save_count} saves")
-
-@login_required
-@require_POST
-def toggle_save_item_with_milestones(request):
-    """
-    Enhanced version with milestone notifications
-    Use this if you want to notify owners about save milestones
-    """
-    item_id = request.POST.get('item_id')
-    item_type = request.POST.get('item_type')
-    
-    if not item_id or not item_type:
-        return JsonResponse({
-            'status': 'error',
-            'message': 'Missing item_id or item_type'
-        }, status=400)
-    
-    # Map item_type to model
-    model_map = {
-        'product': ('Home', 'Product_Listing'),
-        'service': ('Services', 'ServiceListing'),
-        'request': ('BuyerRequest', 'BuyerRequest'),
-    }
-    
-    if item_type not in model_map:
-        return JsonResponse({
-            'status': 'error',
-            'message': f'Invalid item_type: {item_type}'
-        }, status=400)
-    
-    try:
-        # Convert to UUID if needed
-        try:
-            item_id = uuid.UUID(item_id)
-        except ValueError:
-            pass
-        
-        # Get the model and ContentType
-        app_label, model_name = model_map[item_type]
-        content_type = ContentType.objects.get(app_label=app_label, model=model_name.lower())
-        
-        # Get the actual item to verify it exists
-        Model = content_type.model_class()
-        item = Model.objects.get(id=item_id)
-        
-        # Check if already saved
-        saved_item = SavedItem.objects.filter(
-            user=request.user,
-            content_type=content_type,
-            object_id=str(item_id)
-        ).first()
-        
-        if saved_item:
-            # Already saved - unsave it
-            saved_item.delete()
-            return JsonResponse({
-                'status': 'removed',
-                'message': f'{item_type.title()} removed from saved items'
-            })
-        else:
-            # Not saved - save it
-            SavedItem.objects.create(
-                user=request.user,
-                content_type=content_type,
-                object_id=str(item_id)
-            )
-            
-            # ✅ CREATE NOTIFICATION FOR OWNER
-            owner_user = get_item_owner(item, item_type)
-            
-            if owner_user and owner_user != request.user:
-                # Create save notification
-                notification_data = get_save_notification_data(item, item_type, request.user)
-                
-                create_notification(
-                    user=owner_user,
-                    title=notification_data['title'],
-                    message=notification_data['message'],
-                    category=NotificationCategory.SAVES,
-                    priority=NotificationPriority.LOW,
-                    content_object=item,
-                    action_url=notification_data['action_url'],
-                    action_text=notification_data['action_text']
-                )
-                
-                # ✅ CHECK FOR MILESTONE
-                total_saves = SavedItem.objects.filter(
-                    content_type=content_type,
-                    object_id=str(item_id)
-                ).count()
-                
-                create_save_milestone_notification(item, item_type, total_saves)
-                
-                logger.info(
-                    f"Created save notification: {item_type} #{item_id} saved by {request.user.username} "
-                    f"(Total saves: {total_saves})"
-                )
-            
-            return JsonResponse({
-                'status': 'saved',
-                'message': f'{item_type.title()} saved successfully'
-            })
-            
-    except Model.DoesNotExist:
-        return JsonResponse({
-            'status': 'error',
-            'message': f'{item_type.title()} not found'
-        }, status=404)
-    except Exception as e:
-        logger.error(f"Error toggling save: {str(e)}", exc_info=True)
-        return JsonResponse({
-            'status': 'error',
-            'message': 'An error occurred while saving'
-        }, status=500)
 
 @login_required
 def my_save_stats(request):

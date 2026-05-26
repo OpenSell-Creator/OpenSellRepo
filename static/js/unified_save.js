@@ -60,7 +60,7 @@ function toggleSave(event, itemId, itemType) {
     
     if (!csrfToken) {
         console.error('CSRF token not found');
-        showToast('Authentication error. Please refresh the page.', 'error');
+        showSystemAlert('Authentication error. Please refresh the page.', 'error');
         return;
     }
 
@@ -163,10 +163,9 @@ function toggleSave(event, itemId, itemType) {
             });
         });
         
-        // Show toast notification
+        // Show alert notification
         if (data.message) {
-            const icon = data.status === 'saved' ? '❤️' : '🗑️';
-            showToast(`${icon} ${data.message}`, 'success');
+            showSystemAlert(data.message, 'success');
         }
     })
     .catch(error => {
@@ -179,7 +178,7 @@ function toggleSave(event, itemId, itemType) {
             button.disabled = false;
         });
         
-        showToast(`❌ Unable to save ${itemType}. Please try again.`, 'error');
+        showSystemAlert(`Unable to save ${itemType}. Please try again.`, 'error');
     })
     .finally(() => {
         setTimeout(() => {
@@ -188,122 +187,20 @@ function toggleSave(event, itemId, itemType) {
     });
 }
 
-// Toast notification system
-let toastContainer = null;
-let toastQueue = [];
-let isShowingToast = false;
-
-function createToastContainer() {
-    if (!toastContainer) {
-        toastContainer = document.createElement('div');
-        toastContainer.className = 'toast-container';
-        toastContainer.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 9999;
-            max-width: 350px;
-            pointer-events: none;
-        `;
-        document.body.appendChild(toastContainer);
-    }
-    return toastContainer;
-}
-
-function showToast(message, type = 'info') {
-    toastQueue.push({ message, type });
-    
-    if (!isShowingToast) {
-        processToastQueue();
-    }
-}
-
-function processToastQueue() {
-    if (toastQueue.length === 0) {
-        isShowingToast = false;
-        return;
-    }
-    
-    isShowingToast = true;
-    const { message, type } = toastQueue.shift();
-    
-    const container = createToastContainer();
-    const toast = document.createElement('div');
-    
-    const typeStyles = {
-        success: 'background: linear-gradient(135deg, #28a745, #20c997); color: white; border-left: 4px solid #1e7e34;',
-        error: 'background: linear-gradient(135deg, #dc3545, #c82333); color: white; border-left: 4px solid #bd2130;',
-        info: 'background: linear-gradient(135deg, #17a2b8, #138496); color: white; border-left: 4px solid #117a8b;'
-    };
-    
-    toast.className = 'save-toast';
-    toast.innerHTML = message;
-    toast.style.cssText = `
-        ${typeStyles[type] || typeStyles.info}
-        padding: 16px 20px;
-        border-radius: 12px;
-        margin-bottom: 12px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-        opacity: 0;
-        transform: translateX(100%);
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        font-size: 0.9rem;
-        font-weight: 500;
-        max-width: 100%;
-        word-wrap: break-word;
-        backdrop-filter: blur(10px);
-        pointer-events: auto;
-        cursor: pointer;
-    `;
-    
-    toast.addEventListener('click', () => dismissToast(toast));
-    container.appendChild(toast);
-    
-    requestAnimationFrame(() => {
-        toast.style.opacity = '1';
-        toast.style.transform = 'translateX(0)';
-    });
-    
-    const dismissTimeout = setTimeout(() => {
-        dismissToast(toast);
-    }, 4000);
-    
-    toast.dismissTimeout = dismissTimeout;
-}
-
-function dismissToast(toast) {
-    if (toast.dismissTimeout) {
-        clearTimeout(toast.dismissTimeout);
-    }
-    
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateX(100%)';
-    
-    setTimeout(() => {
-        if (toast.parentNode) {
-            toast.parentNode.removeChild(toast);
-        }
-        setTimeout(processToastQueue, 200);
-    }, 400);
-}
-
-// Add CSS for spin animation
+// Add CSS for spin animation (used on save button loading state)
 const style = document.createElement('style');
 style.textContent = `
     @keyframes spin {
         from { transform: rotate(0deg); }
         to { transform: rotate(360deg); }
     }
-    
-    @keyframes heartBeat {
-        0% { transform: scale(1); }
-        25% { transform: scale(1.3); }
-        50% { transform: scale(1); }
-        75% { transform: scale(1.1); }
-        100% { transform: scale(1); }
-    }
 `;
 document.head.appendChild(style);
+
+// Aliases for any callers using the old toast API — delegates to alerts.js showSystemAlert
+function showErrorToast(m)   { showSystemAlert(m, 'error'); }
+function showSuccessToast(m) { showSystemAlert(m, 'success'); }
+function showWarningToast(m) { showSystemAlert(m, 'warning'); }
 
 // Initialize on load
 document.addEventListener('DOMContentLoaded', function() {
@@ -318,6 +215,4 @@ document.addEventListener('DOMContentLoaded', function() {
 // Cleanup
 window.addEventListener('beforeunload', () => {
     saveDebouncer.clear();
-    toastQueue.length = 0;
-    isShowingToast = false;
 });

@@ -25,6 +25,36 @@ class Category(models.Model):
     def __str__(self):
         return self.name
     
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # Resize category images to 80x80 WebP on save.
+        # Lighthouse flagged 512x512 images displayed at 67x67 — that's 8x waste.
+        # 80x80 gives a little headroom for high-DPI screens (2x = 134px).
+        if self.image:
+            try:
+                from PIL import Image as PilImage
+                import io
+                from django.core.files.base import ContentFile
+                
+                self.image.open()
+                img = PilImage.open(self.image)
+                
+                # Only process if image is larger than target
+                if img.width > 80 or img.height > 80:
+                    img = img.resize((80, 80), PilImage.LANCZOS)
+                    
+                    buffer = io.BytesIO()
+                    img.save(buffer, format='WEBP', quality=85)
+                    buffer.seek(0)
+                    
+                    # Save back — change extension to .webp
+                    name = self.image.name.rsplit('.', 1)[0] + '.webp'
+                    self.image.save(name, ContentFile(buffer.read()), save=False)
+                    # Use update() to avoid recursive save() call
+                    Category.objects.filter(pk=self.pk).update(image=self.image.name)
+            except Exception:
+                pass  # Never block a save due to image processing failure
+    
     class Meta:
         verbose_name_plural = "Categories"
         
@@ -674,7 +704,8 @@ class Product_Receipt(models.Model):
     def save(self, *args, **kwargs):
         if self._state.adding and self.image:
             try:
-                watermarked = apply_watermark(self.image, self.product.seller)
+                # canvas_size matches ProcessedImageField(ResizeToFit(1200, 900))
+                watermarked = apply_watermark(self.image, self.product.seller, canvas_size=(1200, 900))
                 self.image.save(
                     self.image.name,
                     ContentFile(watermarked.read()),

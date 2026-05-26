@@ -12,10 +12,12 @@ from django.core.files.storage import default_storage
 from django.core.mail import send_mail
 from django.conf import settings
 from django.template.loader import render_to_string
-from User.models import Profile, Location, SavedItem, State, LGA, SavedItem
+from User.models import Profile, Location, SavedItem, State, LGA
 from Home.models import Category, Subcategory, Brand
 from Home.utils import apply_watermark
 from django.core.files.base import ContentFile
+from imagekit.models import ProcessedImageField, ImageSpecField
+from imagekit.processors import ResizeToFit, ResizeToFill
 from django.contrib.contenttypes.models import ContentType
 from Messages.models import Conversation
 
@@ -303,9 +305,8 @@ class BuyerRequest(models.Model):
             return 'both'
     
     def increase_view_count(self):
-        """Increase view count"""
-        self.view_count += 1
-        self.save(update_fields=['view_count'])
+        """Increase view count — use update() to avoid triggering full save() overhead"""
+        BuyerRequest.objects.filter(pk=self.pk).update(view_count=F('view_count') + 1)
     
     @property
     def primary_image(self):
@@ -531,7 +532,18 @@ class BuyerRequestImage(models.Model):
     """Request images (same pattern as Product_Image)"""
     
     buyer_request = models.ForeignKey(BuyerRequest, related_name='images', on_delete=models.CASCADE)
-    image = models.ImageField(upload_to=buyer_request_image_path)
+    image = ProcessedImageField(
+        upload_to=buyer_request_image_path,
+        processors=[ResizeToFit(800, 600)],
+        format='JPEG',
+        options={'quality': 80}
+    )
+    thumbnail = ImageSpecField(
+        source='image',
+        processors=[ResizeToFill(200, 200)],
+        format='JPEG',
+        options={'quality': 75}
+    )
     is_primary = models.BooleanField(default=False)
     caption = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -549,14 +561,13 @@ class BuyerRequestImage(models.Model):
                 is_primary=True
             ).exclude(id=self.id).update(is_primary=False)
 
-        # Apply watermark on first save only
-        if not self.pk and self.image:
+        # Apply watermark on first save — canvas_size matches ProcessedImageField(ResizeToFit(800, 600))
+        if self._state.adding and self.image:
             try:
-                profile = self.buyer_request.buyer  # Profile instance
-                watermarked = apply_watermark(self.image, profile)
-                original_name = os.path.splitext(self.image.name)[0]
+                profile = self.buyer_request.buyer
+                watermarked = apply_watermark(self.image, profile, canvas_size=(800, 600))
                 self.image.save(
-                    f"{original_name}_wm.jpg",
+                    self.image.name,
                     ContentFile(watermarked.read()),
                     save=False
                 )
@@ -888,7 +899,7 @@ def get_request_suggestions_for_user(user, limit=5):
         
         # Find requests in those categories
         product_requests = BuyerRequest.objects.filter(
-            product_category__in=user_product_categories,
+            category__in=user_product_categories,
             status='active',
             is_suspended=False
         )[:limit//2]

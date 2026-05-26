@@ -18,6 +18,8 @@ import os
 from Home.utils import apply_watermark
 from django.core.files.base import ContentFile
 from User.models import Profile, Location, SavedItem, State, LGA
+from imagekit.models import ProcessedImageField, ImageSpecField
+from imagekit.processors import ResizeToFit, ResizeToFill
 
 
 def service_image_path(instance, filename):
@@ -261,9 +263,8 @@ class ServiceListing(models.Model):
         return []
     
     def increase_view_count(self):
-        """Increase view count"""
-        self.view_count += 1
-        self.save(update_fields=['view_count'])
+        """Increase view count — use update() to avoid triggering full save() overhead"""
+        ServiceListing.objects.filter(pk=self.pk).update(view_count=F('view_count') + 1)
     
     @property
     def primary_image(self):
@@ -496,7 +497,18 @@ class ServiceListing(models.Model):
 class ServiceImage(models.Model):
     """Service images (same pattern as Product_Image)"""
     service = models.ForeignKey(ServiceListing, related_name='images', on_delete=models.CASCADE)
-    image = models.ImageField(upload_to=service_image_path)
+    image = ProcessedImageField(
+        upload_to=service_image_path,
+        processors=[ResizeToFit(800, 600)],
+        format='JPEG',
+        options={'quality': 80}
+    )
+    thumbnail = ImageSpecField(
+        source='image',
+        processors=[ResizeToFill(200, 200)],
+        format='JPEG',
+        options={'quality': 75}
+    )
     caption = models.CharField(max_length=255, blank=True)
     is_primary = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -514,14 +526,13 @@ class ServiceImage(models.Model):
                 is_primary=True
             ).exclude(id=self.id).update(is_primary=False)
 
-        # Apply watermark on first save (image has no pk yet)
-        if not self.pk and self.image:
+        # Apply watermark on first save — canvas_size matches ProcessedImageField(ResizeToFit(800, 600))
+        if self._state.adding and self.image:
             try:
-                profile = self.service.provider  # Profile instance
-                watermarked = apply_watermark(self.image, profile)
-                original_name = os.path.splitext(self.image.name)[0]
+                profile = self.service.provider
+                watermarked = apply_watermark(self.image, profile, canvas_size=(800, 600))
                 self.image.save(
-                    f"{original_name}_wm.jpg",
+                    self.image.name,
                     ContentFile(watermarked.read()),
                     save=False
                 )
@@ -559,21 +570,17 @@ class ServiceDocument(models.Model):
         return f"{self.title} - {self.service.title}"
     
     def save(self, *args, **kwargs):
-    # Apply watermark only on first save and only for image files
-        if not self.pk and self.document:
+        # Apply watermark only on first save and only for image files
+        if self._state.adding and self.document:
             IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png'}
             ext = os.path.splitext(self.document.name)[1].lower()
 
             if ext in IMAGE_EXTENSIONS:
                 try:
-                    from Home.utils import apply_watermark
-                    from django.core.files.base import ContentFile
-
-                    profile = self.service.provider  # Profile instance
-                    watermarked = apply_watermark(self.document, profile)
-                    original_name = os.path.splitext(self.document.name)[0]
+                    profile = self.service.provider
+                    watermarked = apply_watermark(self.document, profile, canvas_size=(800, 600))
                     self.document.save(
-                        f"{original_name}_wm.jpg",
+                        self.document.name,
                         ContentFile(watermarked.read()),
                         save=False
                     )
