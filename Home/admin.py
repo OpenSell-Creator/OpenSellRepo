@@ -212,10 +212,6 @@ class BannerAdmin(admin.ModelAdmin):
         """Optimize database queries"""
         return super().get_queryset(request).select_related()
     
-    class Media:
-        css = {
-            'all': ('admin/css/banner_admin.css',)  # Optional: if you want custom admin CSS
-        }
 
     # Optional: Add custom actions
     actions = ['make_active', 'make_inactive']
