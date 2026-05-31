@@ -1232,13 +1232,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const aiErrorText      = document.getElementById('aiErrorText');
 
     if (generateBtn) {
-        const remaining = {{ ai_descriptions_remaining|default:0 }};
+        const remaining = {{ ai_descriptions_remaining|default:"null" }};
+        let currentRemaining = remaining;
+
         const updateBtn = n => {
-            if (n <= 0) {
+            if (n !== null && n <= 0) {
                 generateBtn.disabled = true;
-                generateBtn.classList.replace('btn-outline-primary','btn-outline-secondary');
+                generateBtn.classList.replace('btn-outline-primary', 'btn-outline-secondary');
                 generateBtn.innerHTML = '<i class="bi bi-clock me-1"></i>Daily limit reached';
+            } else if (n === null) {
+                generateBtn.innerHTML = '<i class="bi bi-magic me-1"></i>Generate with AI';
             } else {
+                generateBtn.disabled = false;
+                generateBtn.classList.replace('btn-outline-secondary', 'btn-outline-primary');
                 generateBtn.innerHTML = `<i class="bi bi-magic me-1"></i>Generate with AI (${n} left today)`;
             }
         };
@@ -1253,14 +1259,14 @@ document.addEventListener('DOMContentLoaded', function () {
             aiStatus.classList.remove('d-none');
             aiMessage.classList.add('d-none');
             fetch('/ajax/generate-ai-description/', {
-                method:'POST',
-                headers:{'Content-Type':'application/json','X-CSRFToken':document.querySelector('[name=csrfmiddlewaretoken]').value,'X-Requested-With':'XMLHttpRequest'},
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value, 'X-Requested-With': 'XMLHttpRequest'},
                 body: JSON.stringify({
                     title,
-                    category:    categorySelect?.options[categorySelect.selectedIndex]?.text||'',
-                    subcategory: subcategorySelect?.options[subcategorySelect.selectedIndex]?.text||'',
-                    brand:       brandSelect?.options[brandSelect.selectedIndex]?.text||'',
-                    condition:   conditionSelect?.value||'',
+                    category:    categorySelect?.options[categorySelect.selectedIndex]?.text || '',
+                    subcategory: subcategorySelect?.options[subcategorySelect.selectedIndex]?.text || '',
+                    brand:       brandSelect?.options[brandSelect.selectedIndex]?.text || '',
+                    condition:   conditionSelect?.value || '',
                     generate_comprehensive: true
                 })
             })
@@ -1268,26 +1274,31 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(data => {
                 if (data.success) {
                     descTextarea.value = data.description;
-                    if (data.remaining_today !== undefined) updateBtn(data.remaining_today);
+                    if (data.remaining_today !== undefined) {
+                        currentRemaining = data.remaining_today;
+                        updateBtn(currentRemaining);
+                    }
                     showSuccessToast(data.message || 'Description generated!');
-                    aiMessage.classList.remove('d-none'); aiSuccess.style.display='block'; aiError.style.display='none';
+                    aiMessage.classList.remove('d-none'); aiSuccess.style.display = 'block'; aiError.style.display = 'none';
                     descTextarea.focus(); adjustTextarea(descTextarea);
                     setTimeout(() => aiMessage.classList.add('d-none'), 10000);
                 } else {
-                    if (data.error?.includes('Daily limit')) updateBtn(0);
+                    if (data.error?.includes('Daily limit')) { currentRemaining = 0; updateBtn(0); }
                     throw new Error(data.error || 'Failed to generate');
                 }
             })
             .catch(err => {
-                aiMessage.classList.remove('d-none'); aiSuccess.style.display='none'; aiError.style.display='block';
+                aiMessage.classList.remove('d-none'); aiSuccess.style.display = 'none'; aiError.style.display = 'block';
                 aiErrorText.textContent = err.message || 'Failed. Please write one manually.';
                 showErrorToast('Failed to generate description.');
                 setTimeout(() => aiMessage.classList.add('d-none'), 12000);
             })
             .finally(() => {
-                generateBtn.disabled = false;
-                generateBtn.innerHTML = '<i class="bi bi-magic me-1"></i>Generate with AI';
                 aiStatus.classList.add('d-none');
+                // Only restore button if limit hasn't been reached
+                if (currentRemaining === null || currentRemaining > 0) {
+                    updateBtn(currentRemaining);
+                }
             });
         });
     }

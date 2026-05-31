@@ -130,6 +130,7 @@ class ListingForm(forms.ModelForm):
         if self.user and hasattr(self.user, 'profile'):
             if self.user.profile.is_verified_business:
                 self.fields['listing_type'].choices = self.ALL_LISTING_TYPE_CHOICES
+                self.fields['listing_type'].initial = 'permanent'
             else:
                 self.fields['listing_type'].choices = self.REGULAR_LISTING_TYPE_CHOICES
         else:

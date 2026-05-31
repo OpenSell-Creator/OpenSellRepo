@@ -11,7 +11,7 @@ from django.shortcuts import render, get_object_or_404,redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
-from .models import Product_Listing, Review, ReviewReply,AIDescriptionUsage
+from .models import Product_Listing, Review, ReviewReply, AIDescriptionUsage
 from User.models import LGA, State
 from Dashboard.models import ProductBoost
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
@@ -1333,6 +1333,11 @@ class ProductUpdateView(LoginRequiredMixin, UpdateView):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Update Listing'
         context['save'] = 'Update Product'
+        
+        AI_DAILY_LIMIT = 3
+        today_count = AIDescriptionUsage.get_today_count(self.request.user)
+        context['ai_descriptions_remaining'] = max(0, AI_DAILY_LIMIT - today_count)
+        
         return context
     
 class ProductDeleteView(LoginRequiredMixin, DeleteView):
