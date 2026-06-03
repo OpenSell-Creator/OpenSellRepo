@@ -2252,21 +2252,12 @@ def my_store(request, username=None):
 
 @login_required
 def manage_listings(request):
-    """
-    Combined management dashboard for the logged-in seller's products,
-    services, and buyer requests.
- 
-    Replaces the three separate pages (my_store owner-only view,
-    my_services, my_requests) with a single tabbed interface at /manage.
- 
-    Context mirrors the variable names used in the three existing templates
-    so the manage.html template stays consistent with the codebase.
-    """
- 
+
+
     profile = request.user.profile
- 
+
     # ── Products ─────────────────────────────────────────────────────────────
-    # Use prefetch_related for images so product.images.first() hits no extra queries
+    # Use prefetch_related for images 
     user_products = (
         Product_Listing.objects
         .filter(seller=profile)
@@ -2274,7 +2265,7 @@ def manage_listings(request):
         .prefetch_related('images', 'boosts')
         .order_by('-created_at')
     )
- 
+
     # Collect active boost product IDs for O(1) lookup — avoids N+1 queries
     active_boost_product_ids = set(
         ProductBoost.objects.filter(
@@ -2283,17 +2274,17 @@ def manage_listings(request):
             end_date__gt=timezone.now()
         ).values_list('product_id', flat=True)
     )
- 
+
     for product in user_products:
         product.formatted_price = format_price(product.price)
         product.boost_active = product.pk in active_boost_product_ids
- 
+
     product_stats = {
         'total':         user_products.count(),
         'total_views':   user_products.aggregate(v=Sum('view_count'))['v'] or 0,
         'active_boosts': len(active_boost_product_ids),
     }
- 
+
     # ── Services ─────────────────────────────────────────────────────────────
     # Mirrors my_services() exactly — same queryset, pagination, and stats shape
     services_qs = (
@@ -2302,7 +2293,7 @@ def manage_listings(request):
         .prefetch_related('inquiries', 'images', 'reviews')
         .order_by('-created_at')
     )
- 
+
     services_paginator = Paginator(services_qs, 10)
     services_page = request.GET.get('services_page')
     try:
@@ -2311,28 +2302,28 @@ def manage_listings(request):
         services = services_paginator.page(1)
     except EmptyPage:
         services = services_paginator.page(services_paginator.num_pages)
- 
+
     service_stats = {
         'total':       ServiceListing.objects.filter(provider=profile).count(),
         'active':      ServiceListing.objects.filter(provider=profile, is_active=True).count(),
         'inquiries':   ServiceInquiry.objects.filter(service__provider=profile).count(),
         'total_views': ServiceListing.objects.filter(provider=profile).aggregate(
-                           total=Sum('view_count')
-                       )['total'] or 0,
+                            total=Sum('view_count')
+                        )['total'] or 0,
         'avg_rating':  ServiceReview.objects.filter(
-                           service__provider=profile
-                       ).aggregate(avg=Avg('rating'))['avg'] or 0,
+                            service__provider=profile
+                        ).aggregate(avg=Avg('rating'))['avg'] or 0,
     }
- 
+
     recent_inquiries = (
         ServiceInquiry.objects
         .filter(service__provider=profile)
         .select_related('client__user', 'service')
         .order_by('-created_at')[:5]
     )
- 
+
     # ── Buyer Requests ────────────────────────────────────────────────────────
-    # Mirrors my_requests() exactly — same queryset, pagination, and stats shape
+
     requests_qs = (
         BuyerRequest.objects
         .filter(buyer=profile)
@@ -2340,7 +2331,7 @@ def manage_listings(request):
         .prefetch_related('responses', 'images')
         .order_by('-created_at')
     )
- 
+
     requests_paginator = Paginator(requests_qs, 10)
     requests_page = request.GET.get('requests_page')
     try:
@@ -2349,17 +2340,17 @@ def manage_listings(request):
         buyer_requests = requests_paginator.page(1)
     except EmptyPage:
         buyer_requests = requests_paginator.page(requests_paginator.num_pages)
- 
+
     request_stats = {
         'total':           BuyerRequest.objects.filter(buyer=profile).count(),
         'active':          BuyerRequest.objects.filter(buyer=profile, status='active').count(),
         'fulfilled':       BuyerRequest.objects.filter(buyer=profile, status='fulfilled').count(),
         'total_responses': SellerResponse.objects.filter(buyer_request__buyer=profile).count(),
         'total_views':     BuyerRequest.objects.filter(buyer=profile).aggregate(
-                               total=Sum('view_count')
-                           )['total'] or 0,
+                                total=Sum('view_count')
+                            )['total'] or 0,
     }
- 
+
     # ── Store URL (for "View My Store →" link) ────────────────────────────────
     store_url = reverse('user_store', kwargs={'username': request.user.username})
  
@@ -2368,27 +2359,27 @@ def manage_listings(request):
     active_tab = request.GET.get('tab', 'products')
     if active_tab not in ('products', 'services', 'requests'):
         active_tab = 'products'
- 
+
     context = {
         # Products
         'products':         user_products,
         'product_stats':    product_stats,
- 
+
         # Services  (key names match my_services template: `services`, `stats`, `recent_inquiries`)
         'services':         services,
-        'stats':            service_stats,       # template uses {{ stats.total }}, {{ stats.active }}, etc.
+        'stats':            service_stats,      
         'recent_inquiries': recent_inquiries,
- 
- 
+
+
         'buyer_requests':   buyer_requests,
-        'request_stats':    request_stats,       # separate key to avoid collision with `stats` above
- 
+        'request_stats':    request_stats,   
+
         # Shared
-        'store_owner':      request.user,        # matches my_store's `store_owner` convention
+        'store_owner':      request.user,        
         'store_url':        store_url,
         'active_tab':       active_tab,
     }
- 
+
     return render(request, 'manage.html', context)
 
 def get_product_verification_status(product):
