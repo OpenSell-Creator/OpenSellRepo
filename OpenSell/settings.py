@@ -500,7 +500,7 @@ if DEBUG:
 else:
     Q_CLUSTER = {
         'name': 'opensell-prod',
-        'workers': 4,
+        'workers': 1,
         'recycle': 500,
         'timeout': 120,
         'compress': True,
