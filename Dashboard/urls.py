@@ -36,6 +36,11 @@ urlpatterns = [
     path('affiliate/analytics/', views.affiliate_analytics, name='affiliate_analytics'),
     path('affiliate/leaderboard/', views.affiliate_leaderboard, name='affiliate_leaderboard'),
     
+    path('withdrawal/',               views.withdrawal_request_list,   name='withdrawal_request_list'),
+    path('withdrawal/new/',           views.withdrawal_request_create, name='withdrawal_request_create'),
+    path('withdrawal/<str:ref>/',     views.withdrawal_request_detail, name='withdrawal_request_detail'),
+    path('withdrawal/<str:ref>/cancel/', views.withdrawal_request_cancel, name='withdrawal_request_cancel'),
+    
     path('admin/affiliates/', views.admin_affiliate_approvals, name='admin_affiliate_approvals'),
     path('admin/affiliates/<int:affiliate_id>/', views.admin_affiliate_detail, name='admin_affiliate_detail'),
     

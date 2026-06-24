@@ -7,17 +7,17 @@ from django.db.models import Sum, Count, Q, Avg, F
 from decimal import Decimal, InvalidOperation
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.paginator import Paginator
+from django.core.exceptions import ValidationError
 from django.http import JsonResponse, HttpResponse
-from django.core.paginator import Paginator
 from django.urls import reverse
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods, require_POST
-from .models import UserAccount, Transaction, ProductBoost, AccountStatus
+from .models import UserAccount, Transaction, ProductBoost, AccountStatus, WithdrawalRequest, WalletTransfer
 from Home.models import Product_Listing
 from Dashboard.models import AffiliateProfile, AffiliateCommission, Referral
 from .models import VirtualAccount, MonnifyTransaction
 from .monnify_service import monnify_service
-from .forms import DepositForm, BoostProductForm
+from .forms import DepositForm, BoostProductForm, WithdrawalRequestForm, WalletTransferForm
 from django.contrib.admin.views.decorators import staff_member_required
 from django_q.models import Task, Schedule
 from django_q.tasks import async_task
@@ -25,8 +25,6 @@ from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.conf import settings
 from django.utils.html import strip_tags
-from .models import UserAccount, Transaction, WalletTransfer
-from .forms  import WalletTransferForm
 from django.db import transaction as db_transaction
 from django.contrib import messages
 from django.core import signing
@@ -112,9 +110,8 @@ def dashboard_home(request):
                 name='Free User',
                 tier_type='free',
                 description='Basic free account',
-                max_listings=5,
                 monthly_price=0,
-                yearly_price=0
+                two_month_price=0
             )
         account = UserAccount.objects.create(user=request.user, status=free_status)
     
@@ -127,9 +124,8 @@ def dashboard_home(request):
                 name='Free User',
                 tier_type='free',
                 description='Basic free account',
-                max_listings=5,
                 monthly_price=0,
-                yearly_price=0
+                two_month_price=0
             )
         account.status = free_status
         account.save()
@@ -150,6 +146,11 @@ def dashboard_home(request):
     
     # Get recent transactions
     recent_transactions = Transaction.objects.filter(account=account).order_by('-created_at')[:5]
+
+    # Withdrawal info for wallet section
+    recent_withdrawals = WithdrawalRequest.objects.filter(
+        account=account
+    ).order_by('-submitted_at')[:5]
     
     # Get user's listings with boost info
     user_listings = Product_Listing.objects.filter(
@@ -222,6 +223,10 @@ def dashboard_home(request):
         'effective_status': effective_status,
         'subscription_info': subscription_info,
         'recent_transactions': recent_transactions,
+        'withdrawable_balance': account.withdrawable_balance,
+        'bonus_balance': account.bonus_balance,
+        'has_pending_withdrawal': account.has_pending_withdrawal,
+        'recent_withdrawals': recent_withdrawals,
         'user_listings': user_listings[:5],
         'listings_count': user_listings.count(),
         'total_spent': abs(total_spent),
@@ -2264,3 +2269,104 @@ def admin_affiliate_detail(request, affiliate_id):
     }
     
     return render(request, 'admin/affiliate_detail.html', context)
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def withdrawal_request_create(request):
+    account = get_object_or_404(UserAccount, user=request.user)
+
+    if account.has_pending_withdrawal:
+        messages.info(
+            request,
+            "You already have a pending or under-review withdrawal request."
+        )
+        return redirect("withdrawal_request_list")
+
+    if request.method == "GET":
+        form = WithdrawalRequestForm(user=request.user)
+        return render(request, "dashboard/withdrawal_request_form.html", {
+            "form": form,
+            "account": account,
+            "withdrawable_balance": account.withdrawable_balance,
+            "has_pending_withdrawal": account.has_pending_withdrawal,
+        })
+
+    # POST
+    form = WithdrawalRequestForm(request.POST, request.FILES, user=request.user)
+    if form.is_valid():
+        try:
+            withdrawal = WithdrawalRequest.create_for_user(
+                account=account,
+                requested_amount=form.cleaned_data["requested_amount"],
+                bank_name=form.cleaned_data["bank_name"],
+                account_number=form.cleaned_data["account_number"],
+                account_name=form.cleaned_data["account_name"],
+                proof_type=form.cleaned_data["proof_type"],
+                monnify_transaction=form.cleaned_data.get("monnify_transaction"),
+                monnify_reference_manual=form.cleaned_data.get("monnify_reference_manual", ""),
+                proof_upload=form.cleaned_data.get("proof_upload"),
+                proof_notes=form.cleaned_data.get("proof_notes", ""),
+            )
+            messages.success(
+                request,
+                f"Withdrawal request submitted (Ref: {withdrawal.reference}). "
+                f"You'll receive ₦{withdrawal.net_payout:,.2f} after the "
+                f"₦{withdrawal.fee_amount:,.2f} fee, once approved."
+            )
+            return redirect("withdrawal_request_list")
+        except ValidationError as e:
+            for error in e.messages if hasattr(e, "messages") else [str(e)]:
+                form.add_error(None, error)
+        except Exception as e:
+            logger.error(f"Withdrawal request creation error: {e}", exc_info=True)
+            form.add_error(None, "Something went wrong submitting your request. Please try again.")
+
+    # Form invalid or exception above — re-render with errors
+    return render(request, "dashboard/withdrawal_request_form.html", {
+        "form": form,
+        "account": account,
+        "withdrawable_balance": account.withdrawable_balance,
+        "has_pending_withdrawal": account.has_pending_withdrawal,
+    })
+
+@login_required
+def withdrawal_request_list(request):
+    account = get_object_or_404(UserAccount, user=request.user)
+    withdrawals = WithdrawalRequest.objects.filter(
+        account=account
+    ).order_by('-submitted_at')
+
+    return render(request, "dashboard/withdrawal_request_list.html", {
+        "account": account,
+        "withdrawals": withdrawals,
+        "has_pending_withdrawal": account.has_pending_withdrawal,
+    })
+
+@login_required
+def withdrawal_request_detail(request, ref):
+    account = get_object_or_404(UserAccount, user=request.user)
+    withdrawal = get_object_or_404(
+        WithdrawalRequest, reference=ref, account=account
+    )
+
+    return render(request, "dashboard/withdrawal_request_detail.html", {
+        "account": account,
+        "withdrawal": withdrawal,
+    })
+
+@login_required
+@require_POST
+def withdrawal_request_cancel(request, ref):
+    account = get_object_or_404(UserAccount, user=request.user)
+    withdrawal = get_object_or_404(
+        WithdrawalRequest, reference=ref, account=account
+    )
+
+    try:
+        withdrawal.cancel()
+        messages.success(request, f"Withdrawal request {withdrawal.reference} has been cancelled.")
+    except ValueError as e:
+        messages.error(request, str(e))
+
+    return redirect("withdrawal_request_detail", ref=withdrawal.reference)

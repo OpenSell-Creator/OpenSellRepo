@@ -86,18 +86,185 @@
         margin-bottom: 1rem;
     }
 
-    .balance-label {
-        color: var(--primary-text);
+.balance-label {
+        color: var(--text-primary);
         font-size: 0.9rem;
         display: block;
         margin-bottom: 0.5rem;
     }
 
     .balance-amount {
-        color: var(--primary-text);
+        color: var(--text-primary);
         font-size: 2.5rem;
         font-weight: 700;
         margin-bottom: 0;
+    }
+
+    /* Wallet balance rows */
+    .balance-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+    }
+
+    .balance-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .balance-row:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    .balance-row .balance-row-label {
+        color: var(--text-primary);
+        font-size: 0.85rem;
+        opacity: 0.85;
+    }
+
+    .balance-row .balance-row-sublabel {
+        color: var(--text-muted);
+        font-size: 0.7rem;
+        display: block;
+    }
+
+    .balance-row.primary .balance-row-amount {
+        color: var(--text-primary);
+        font-size: 2rem;
+        font-weight: 700;
+    }
+
+    .balance-row.secondary .balance-row-amount {
+        color: var(--text-primary);
+        font-size: 1.15rem;
+        font-weight: 600;
+    }
+
+    .balance-row.bonus .balance-row-amount {
+        color: var(--text-primary);
+        font-size: 1.15rem;
+        font-weight: 600;
+        opacity: 0.75;
+    }
+
+    /* Withdraw button */
+    .btn-withdraw {
+        background-color: var(--accent-color);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: var(--radius-md);
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .btn-withdraw:hover:not(:disabled) {
+        background-color: var(--accent-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-withdraw:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    /* Mini recent withdrawals list */
+    .mini-withdrawals-card {
+        background-color: var(--card-background);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        margin-top: 1rem;
+    }
+
+    .mini-withdrawals-card .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .mini-withdrawal-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.65rem 1rem;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 0.85rem;
+    }
+
+    .mini-withdrawal-row:last-child {
+        border-bottom: none;
+    }
+
+    .mini-withdrawal-ref {
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 0.8rem;
+    }
+
+    .mini-withdrawal-date {
+        color: var(--text-muted);
+        font-size: 0.7rem;
+        display: block;
+    }
+
+    .mini-withdrawal-amount {
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+
+    /* Withdrawal status badges (used in mini list + withdrawal pages) */
+    .withdrawal-status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.3rem 0.6rem;
+        border-radius: var(--radius-full);
+        font-size: 0.7rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .withdrawal-status-badge.status-pending {
+        background-color: rgba(241, 196, 15, 0.12);
+        color: #f1c40f;
+        border: 1px solid rgba(241, 196, 15, 0.25);
+    }
+
+    .withdrawal-status-badge.status-under_review {
+        background-color: rgba(13, 110, 253, 0.12);
+        color: #0d6efd;
+        border: 1px solid rgba(13, 110, 253, 0.25);
+    }
+
+    .withdrawal-status-badge.status-approved,
+    .withdrawal-status-badge.status-processing {
+        background-color: var(--primary-color);
+        color: white;
+        border: 1px solid var(--primary-color);
+    }
+
+    .withdrawal-status-badge.status-completed {
+        background-color: rgba(46, 204, 113, 0.12);
+        color: #2ecc71;
+        border: 1px solid rgba(46, 204, 113, 0.25);
+    }
+
+    .withdrawal-status-badge.status-rejected {
+        background-color: rgba(231, 76, 60, 0.12);
+        color: #e74c3c;
+        border: 1px solid rgba(231, 76, 60, 0.25);
+    }
+
+    .withdrawal-status-badge.status-cancelled {
+        background-color: var(--hover-bg);
+        color: var(--text-muted);
+        border: 1px solid var(--border-color);
     }
 
     .header-actions {
@@ -1078,11 +1245,25 @@
                 <div class="col-12 col-md-6 text-md-end mt-3 mt-md-0">
                     <div class="balance-display-container">
                         <div class="balance-display">
-                            <span class="balance-label">Account Balance</span>
-                            <h2 class="balance-amount">₦{{ account.balance|floatformat:0 }}</h2>
+                            <div class="balance-rows">
+                                <div class="balance-row primary">
+                                    <span class="balance-row-label">Total Balance</span>
+                                    <span class="balance-row-amount">₦{{ account.balance|floatformat:0 }}</span>
+                                </div>
+                                <div class="balance-row secondary">
+                                    <span class="balance-row-label">Withdrawable Balance</span>
+                                    <span class="balance-row-amount">₦{{ withdrawable_balance|floatformat:0 }}</span>
+                                </div>
+                                <div class="balance-row bonus">
+                                    <span class="balance-row-label">
+                                        Bonus Balance
+                                        <span class="balance-row-sublabel">Non-withdrawable bonus credits</span>
+                                    </span>
+                                    <span class="balance-row-amount">₦{{ bonus_balance|floatformat:0 }}</span>
+                                </div>
+                            </div>
                         </div>
-                        <!-- Wallet notice -->
-                       
+
                         <div class="header-actions mt-2">
                             <a href="{% url 'deposit_with_monnify' %}" class="btn btn-deposit">
                                 <i class="bi bi-plus-circle me-2"></i>Add Funds
@@ -1090,6 +1271,17 @@
                             <a href="{% url 'wallet_transfer' %}" class="btn btn-transfer ms-2">
                                 <i class="bi bi-send-fill me-2"></i>Transfer
                             </a>
+                            {% if has_pending_withdrawal %}
+                            <span class="ms-2" data-bs-toggle="tooltip" title="You have a pending request">
+                                <button type="button" class="btn btn-withdraw" disabled>
+                                    <i class="bi bi-cash-stack me-2"></i>Withdraw
+                                </button>
+                            </span>
+                            {% else %}
+                            <a href="{% url 'withdrawal_request_create' %}" class="btn btn-withdraw ms-2">
+                                <i class="bi bi-cash-stack me-2"></i>Withdraw
+                            </a>
+                            {% endif %}
                             {% if not account.is_subscription_active %}
                             <a href="{% url 'subscription_management' %}" class="btn btn-upgrade ms-2">
                                 <i class="bi bi-star-fill me-2"></i>Upgrade
@@ -1101,6 +1293,35 @@
             </div>
         </div>
     </div>
+
+    {% if recent_withdrawals %}
+    <div class="container">
+        <div class="mini-withdrawals-card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-cash-stack me-2"></i>Recent Withdrawals
+                </h6>
+                <a href="{% url 'withdrawal_request_list' %}" class="btn btn-sm btn-outline-primary">
+                    View All
+                </a>
+            </div>
+            <div>
+                {% for w in recent_withdrawals %}
+                <a href="{% url 'withdrawal_request_detail' ref=w.reference %}" class="mini-withdrawal-row text-decoration-none">
+                    <div>
+                        <span class="mini-withdrawal-ref">{{ w.reference }}</span>
+                        <span class="mini-withdrawal-date">{{ w.submitted_at|date:"M d, Y" }}</span>
+                    </div>
+                    <div class="text-end">
+                        <div class="mini-withdrawal-amount">₦{{ w.requested_amount|floatformat:0 }}</div>
+                        <span class="withdrawal-status-badge status-{{ w.status }}">{{ w.get_status_display }}</span>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Dashboard Content -->
     <div class="container mt-4 ">

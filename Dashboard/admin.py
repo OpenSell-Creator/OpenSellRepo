@@ -8,6 +8,12 @@ from .models import (
     AffiliateProfile, Referral, AffiliateCommission, 
     AffiliateWithdrawal, UserAccount, Transaction
 )
+from django.shortcuts import render
+from django import forms as django_forms
+from .models import WithdrawalRequest, WalletTransfer
+from .forms import WithdrawalAdminActionForm
+
+
 from django.utils import timezone
 from datetime import timedelta
 from .models import AccountStatus, UserAccount, Transaction, ProductBoost, AffiliateProfile, Referral
@@ -649,3 +655,157 @@ class AffiliateWithdrawalAdmin(admin.ModelAdmin):
         )
         self.message_user(request, f'{updated} withdrawal(s) rejected.')
     reject_withdrawals.short_description = "❌ Reject withdrawals"
+    
+
+@admin.register(WithdrawalRequest)
+class WithdrawalRequestAdmin(admin.ModelAdmin):
+    list_display = [
+        'reference', 'user_link', 'requested_amount_display', 'fee_amount_display',
+        'net_payout_display', 'status', 'submitted_at', 'reviewed_by',
+    ]
+    list_filter = ['status', 'submitted_at']
+    search_fields = ['reference', 'account__user__username', 'account_number']
+    readonly_fields = [
+        'reference', 'fee_amount', 'net_payout',
+        'withdrawable_balance_at_submission', 'submitted_at', 'proof_preview',
+    ]
+
+    fieldsets = (
+        ('Request', {
+            'fields': ('reference', 'account', 'status', 'submitted_at')
+        }),
+        ('Amounts', {
+            'fields': (
+                'requested_amount', 'fee_rate', 'fee_amount',
+                'net_payout', 'withdrawable_balance_at_submission',
+            )
+        }),
+        ('Bank Details', {
+            'fields': ('bank_name', 'account_number', 'account_name')
+        }),
+        ('Proof of Deposit', {
+            'fields': (
+                'proof_type', 'monnify_transaction', 'monnify_reference_manual',
+                'proof_upload', 'proof_preview', 'proof_notes',
+            )
+        }),
+        ('Review', {
+            'fields': (
+                'reviewed_by', 'reviewed_at', 'rejection_reason',
+                'admin_notes', 'payment_reference',
+            )
+        }),
+        ('Completion', {
+            'fields': ('completed_at', 'wallet_transaction')
+        }),
+    )
+
+    actions = ['approve_selected', 'reject_selected', 'complete_selected']
+
+    def user_link(self, obj):
+        url = reverse('admin:auth_user_change', args=[obj.account.user.id])
+        return format_html('<a href="{}">{}</a>', url, obj.account.user.username)
+    user_link.short_description = 'User'
+
+    def requested_amount_display(self, obj):
+        return format_html('₦{}', f'{obj.requested_amount:,.2f}')
+    requested_amount_display.short_description = 'Requested'
+
+    def fee_amount_display(self, obj):
+        return format_html('₦{}', f'{obj.fee_amount:,.2f}')
+    fee_amount_display.short_description = 'Fee'
+
+    def net_payout_display(self, obj):
+        return format_html(
+            '<span style="font-weight: bold;">₦{}</span>', f'{obj.net_payout:,.2f}'
+        )
+    net_payout_display.short_description = 'Net Payout'
+
+    def proof_preview(self, obj):
+        if obj.proof_upload:
+            name = obj.proof_upload.name.lower()
+            if name.endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                return format_html(
+                    '<a href="{0}" target="_blank">'
+                    '<img src="{0}" style="max-height:200px;border:1px solid #ccc;" />'
+                    '</a>', obj.proof_upload.url
+                )
+            return format_html(
+                '<a href="{}" target="_blank">View uploaded proof</a>', obj.proof_upload.url
+            )
+        return '—'
+    proof_preview.short_description = 'Proof Preview'
+
+    def approve_selected(self, request, queryset):
+        eligible = queryset.filter(status__in=['pending', 'under_review'])
+        count = 0
+        for wdr in eligible:
+            wdr.approve(admin_user=request.user)
+            count += 1
+        self.message_user(request, f'{count} withdrawal request(s) approved.')
+    approve_selected.short_description = "✅ Approve selected withdrawal requests"
+
+    def reject_selected(self, request, queryset):
+        if 'apply' in request.POST:
+            form = WithdrawalAdminActionForm(request.POST)
+            if form.is_valid():
+                reason = form.cleaned_data['rejection_reason']
+                eligible = queryset.filter(status__in=['pending', 'under_review'])
+                count = 0
+                for wdr in eligible:
+                    wdr.reject(admin_user=request.user, reason=reason)
+                    count += 1
+                self.message_user(request, f'{count} withdrawal request(s) rejected.')
+                return None
+        else:
+            form = WithdrawalAdminActionForm()
+
+        return render(request, 'admin/withdrawal_reject_action.html', {
+            'form': form,
+            'queryset': queryset,
+            'action_checkbox_name': admin.helpers.ACTION_CHECKBOX_NAME,
+            'opts': self.model._meta,
+        })
+    reject_selected.short_description = "❌ Reject selected withdrawal requests"
+
+    def complete_selected(self, request, queryset):
+        eligible = queryset.filter(status__in=['approved', 'processing'])
+        count = 0
+        errors = []
+        for wdr in eligible:
+            try:
+                wdr.complete()
+                count += 1
+            except ValueError as e:
+                errors.append(f"{wdr.reference}: {e}")
+        if count:
+            self.message_user(request, f'{count} withdrawal request(s) completed.')
+        if errors:
+            self.message_user(request, "Errors: " + " | ".join(errors), level='ERROR')
+    complete_selected.short_description = "✔️ Mark selected as completed (deducts wallet)"
+
+@admin.register(WalletTransfer)
+class WalletTransferAdmin(admin.ModelAdmin):
+    list_display = [
+        'reference', 'sender_link', 'recipient_link', 'amount_display',
+        'status', 'created_at',
+    ]
+    list_filter = ['status', 'created_at']
+    search_fields = [
+        'reference', 'sender__user__username', 'recipient__user__username',
+    ]
+    readonly_fields = ['reference']
+
+    def sender_link(self, obj):
+        url = reverse('admin:auth_user_change', args=[obj.sender.user.id])
+        return format_html('<a href="{}">{}</a>', url, obj.sender.user.username)
+    sender_link.short_description = 'Sender'
+
+    def recipient_link(self, obj):
+        url = reverse('admin:auth_user_change', args=[obj.recipient.user.id])
+        return format_html('<a href="{}">{}</a>', url, obj.recipient.user.username)
+    recipient_link.short_description = 'Recipient'
+
+    def amount_display(self, obj):
+        return format_html('₦{}', f'{obj.amount:,.2f}')
+    amount_display.short_description = 'Amount'

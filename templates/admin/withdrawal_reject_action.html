@@ -1,0 +1,84 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls %}
+
+{% block content %}
+<style>
+  .wdr-warning-box {
+    border: 1px solid #f5c2c7;
+    background: #fff5f5;
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+  }
+  .wdr-warning-box .bi { color: #b02a37; }
+  .wdr-table { width: 100%; margin-bottom: 20px; }
+  .wdr-table th, .wdr-table td { padding: 8px 10px; border-bottom: 1px solid #e2e2e2; text-align: left; }
+  .wdr-status-pill {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 11px; font-weight: 600; background: var(--primary-color); color: #fff;
+  }
+  .wdr-section-title { color: var(--text-primary); font-weight: 600; margin-bottom: 8px; }
+  .wdr-actions { margin-top: 18px; }
+  .wdr-actions a { margin-left: 14px; color: var(--text-primary); }
+</style>
+
+<h1>{% trans "Reject withdrawal requests" %}</h1>
+
+{% if ineligible %}
+<div class="wdr-warning-box">
+  <p><i class="bi bi-exclamation-triangle-fill"></i>
+    <strong>{{ ineligible|length }}</strong> selected request(s) are not in a rejectable status
+    (only <em>Pending</em> or <em>Under Review</em> can be rejected) and will be
+    <strong>skipped</strong>:
+  </p>
+  <table class="wdr-table">
+    <tr><th>Reference</th><th>User</th><th>Amount</th><th>Status</th></tr>
+    {% for wdr in ineligible %}
+    <tr>
+      <td>{{ wdr.reference }}</td>
+      <td>{{ wdr.account.user.username }}</td>
+      <td>₦{{ wdr.requested_amount }}</td>
+      <td><span class="wdr-status-pill">{{ wdr.get_status_display }}</span></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{% if eligible %}
+<p class="wdr-section-title">The following request(s) will be rejected:</p>
+<table class="wdr-table">
+  <tr><th>Reference</th><th>User</th><th>Amount</th><th>Current Status</th></tr>
+  {% for wdr in eligible %}
+  <tr>
+    <td>{{ wdr.reference }}</td>
+    <td>{{ wdr.account.user.username }}</td>
+    <td>₦{{ wdr.requested_amount }}</td>
+    <td><span class="wdr-status-pill">{{ wdr.get_status_display }}</span></td>
+  </tr>
+  {% endfor %}
+</table>
+
+<form method="post">
+  {% csrf_token %}
+  {% for obj in queryset %}
+    <input type="hidden" name="{{ action_checkbox_name }}" value="{{ obj.pk }}">
+  {% endfor %}
+  <input type="hidden" name="action" value="reject_selected">
+  <input type="hidden" name="apply" value="1">
+
+  <p class="wdr-section-title">Rejection reason</p>
+  {{ form.rejection_reason.errors }}
+  {{ form.rejection_reason }}
+
+  <div class="wdr-actions">
+    <input type="submit" value="Confirm Rejection" class="button" style="background: var(--primary-color); color:#fff;">
+    <a href="{% url opts|admin_urlname:'changelist' %}">{% trans "Cancel" %}</a>
+  </div>
+</form>
+{% else %}
+<p>{% trans "No eligible withdrawal requests were selected." %}</p>
+<a href="{% url opts|admin_urlname:'changelist' %}">{% trans "Back to changelist" %}</a>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,502 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Request Withdrawal - {{ block.super }}{% endblock %}
+
+{% block page_css %}
+<style>
+    .withdrawal-form-card {
+        background-color: var(--card-background);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        box-shadow: 0 2px 8px var(--shadow-color);
+    }
+
+    .withdrawal-form-card .card-header {
+        background-color: transparent;
+        border-bottom: 1px solid var(--border-color);
+        padding: 1.25rem 1.5rem;
+    }
+
+    .withdrawal-form-card .card-body {
+        padding: 1.5rem;
+    }
+
+    .withdrawable-banner {
+        background: linear-gradient(135deg, var(--accent-color) 0%, var(--primary-color) 100%);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        color: white;
+        margin-bottom: 1.5rem;
+    }
+
+    .withdrawable-banner .label {
+        font-size: 0.85rem;
+        opacity: 0.9;
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+
+    .withdrawable-banner .amount {
+        font-size: 2.25rem;
+        font-weight: 700;
+        margin-bottom: 0;
+    }
+
+    .form-label {
+        color: var(--text-primary);
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
+
+    .form-control,
+    .form-select {
+        border: 2px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 0.625rem 0.875rem;
+        background-color: var(--card-background);
+        color: var(--text-primary);
+        font-size: 0.9rem;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+        background-color: var(--card-background);
+        color: var(--text-primary);
+        outline: none;
+    }
+
+    .input-group .input-group-text {
+        border: 1px solid var(--border-color);
+        background-color: var(--hover-bg);
+        color: var(--text-primary);
+    }
+
+    .fee-breakdown {
+        background-color: var(--hover-bg);
+        border-radius: var(--radius-md);
+        padding: 1rem;
+        margin-top: 0.75rem;
+    }
+
+    .fee-breakdown-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        color: var(--text-primary);
+        padding: 0.25rem 0;
+    }
+
+    .fee-breakdown-row.net {
+        border-top: 1px solid var(--border-color);
+        margin-top: 0.4rem;
+        padding-top: 0.5rem;
+        font-weight: 700;
+        font-size: 0.95rem;
+    }
+
+    .fee-breakdown-row .value.fee {
+        color: #e74c3c;
+    }
+
+    .fee-breakdown-row .value.net-amount {
+        color: #2ecc71;
+    }
+
+    .amount-exceeds-warning {
+        color: #e74c3c;
+        font-size: 0.8rem;
+        margin-top: 0.4rem;
+        display: none;
+    }
+
+    .proof-type-options {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+    }
+
+    .proof-type-option {
+        flex: 1;
+        min-width: 180px;
+    }
+
+    .proof-type-option input[type="radio"] {
+        display: none;
+    }
+
+    .proof-type-option label {
+        display: block;
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        font-size: 0.85rem;
+        color: var(--text-primary);
+        transition: all 0.2s ease;
+        text-align: center;
+        margin-bottom: 0;
+    }
+
+    .proof-type-option input[type="radio"]:checked + label {
+        border-color: var(--primary-color);
+        background-color: rgba(var(--primary-rgb), 0.08);
+        font-weight: 600;
+    }
+
+    .proof-field-section {
+        display: none;
+    }
+
+    .proof-field-section.active {
+        display: block;
+    }
+
+    .btn-submit-withdrawal {
+        background-color: var(--accent-color);
+        color: white;
+        border: none;
+        padding: 0.85rem 1.5rem;
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        width: 100%;
+        transition: all 0.3s ease;
+    }
+
+    .btn-submit-withdrawal:hover:not(:disabled) {
+        background-color: var(--accent-hover);
+    }
+
+    .btn-submit-withdrawal:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .zero-balance-banner {
+        background-color: rgba(231, 76, 60, 0.08);
+        border: 1px solid rgba(231, 76, 60, 0.25);
+        border-left: 4px solid #e74c3c;
+        border-radius: var(--radius-md);
+        padding: 1rem 1.25rem;
+        color: var(--text-primary);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .zero-balance-banner i {
+        color: #e74c3c;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    .pending-guard-banner {
+        background-color: rgba(241, 196, 15, 0.08);
+        border: 1px solid rgba(241, 196, 15, 0.25);
+        border-left: 4px solid #f1c40f;
+        border-radius: var(--radius-md);
+        padding: 1rem 1.25rem;
+        color: var(--text-primary);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .pending-guard-banner i {
+        color: #f1c40f;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    .fee-note {
+        color: var(--text-muted);
+        font-size: 0.78rem;
+        margin-top: 0.35rem;
+    }
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="dashboard-container">
+    <div class="container py-4">
+        <div class="row mb-3">
+            <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h1 class="dashboard-title" style="color: var(--text-primary); font-size: 1.75rem;">
+                    <i class="bi bi-cash-stack me-2"></i>Request Withdrawal
+                </h1>
+                <a href="{% url 'withdrawal_request_list' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-list-ul me-2"></i>View My Requests
+                </a>
+            </div>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-12 col-lg-7">
+
+                {% if has_pending_withdrawal %}
+                <div class="pending-guard-banner">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <div>
+                        <strong>You already have a pending withdrawal request.</strong>
+                        <p class="mb-0">Please wait for it to be resolved before submitting a new one.
+                        <a href="{% url 'withdrawal_request_list' %}">View your requests</a>.</p>
+                    </div>
+                </div>
+                {% else %}
+
+                <div class="withdrawable-banner">
+                    <span class="label">Withdrawable Balance</span>
+                    <h2 class="amount" id="withdrawableBalanceDisplay">₦{{ withdrawable_balance|floatformat:2 }}</h2>
+                </div>
+
+                {% if withdrawable_balance <= 0 %}
+                <div class="zero-balance-banner">
+                    <i class="bi bi-exclamation-circle-fill"></i>
+                    <div>
+                        <strong>You have no withdrawable balance.</strong>
+                        <p class="mb-0">Only funds you've directly deposited can be withdrawn — bonus credits and balances spent on boosts or subscriptions aren't eligible.</p>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="withdrawal-form-card">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="bi bi-bank me-2"></i>Withdrawal Details
+                        </h6>
+                    </div>
+                    <div class="card-body">
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                                <div>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <form method="post" enctype="multipart/form-data" id="withdrawalForm" novalidate>
+                            {% csrf_token %}
+
+                            <!-- Amount -->
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ form.requested_amount.id_for_label }}">Amount to Withdraw</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">₦</span>
+                                    {{ form.requested_amount }}
+                                </div>
+                                {% if form.requested_amount.errors %}
+                                <div class="text-danger small mt-1">{{ form.requested_amount.errors.0 }}</div>
+                                {% endif %}
+
+                                <div class="fee-breakdown" id="feeBreakdown" style="display: none;">
+                                    <div class="fee-breakdown-row">
+                                        <span>Amount Requested</span>
+                                        <span class="value" id="feeAmountRequested">₦0.00</span>
+                                    </div>
+                                    <div class="fee-breakdown-row">
+                                        <span>Withdrawal Fee (10%)</span>
+                                        <span class="value fee" id="feeAmountFee">-₦0.00</span>
+                                    </div>
+                                    <div class="fee-breakdown-row net">
+                                        <span>You'll Receive</span>
+                                        <span class="value net-amount" id="feeAmountNet">₦0.00</span>
+                                    </div>
+                                </div>
+                                <div class="amount-exceeds-warning" id="exceedsWarning">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                    Amount exceeds your withdrawable balance.
+                                </div>
+                                <p class="fee-note">A 10% fee applies to all withdrawals, calculated on the amount you request.</p>
+                            </div>
+
+                            <!-- Bank details -->
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <label class="form-label" for="{{ form.bank_name.id_for_label }}">Bank Name</label>
+                                    {{ form.bank_name }}
+                                    {% if form.bank_name.errors %}
+                                    <div class="text-danger small mt-1">{{ form.bank_name.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-12 col-md-6 mb-3">
+                                    <label class="form-label" for="{{ form.account_number.id_for_label }}">Account Number</label>
+                                    {{ form.account_number }}
+                                    {% if form.account_number.errors %}
+                                    <div class="text-danger small mt-1">{{ form.account_number.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-12 col-md-6 mb-3">
+                                    <label class="form-label" for="{{ form.account_name.id_for_label }}">Account Name</label>
+                                    {{ form.account_name }}
+                                    {% if form.account_name.errors %}
+                                    <div class="text-danger small mt-1">{{ form.account_name.errors.0 }}</div>
+                                    {% endif %}
+                                    <small class="text-muted">Must match your verified identity on OpenSell</small>
+                                </div>
+                            </div>
+
+                            <!-- Proof of deposit -->
+                            <hr style="border-color: var(--border-color);">
+                            <label class="form-label d-block mb-2">Proof of Original Deposit</label>
+                            {% if form.proof_type.errors %}
+                            <div class="text-danger small mb-2">{{ form.proof_type.errors.0 }}</div>
+                            {% endif %}
+
+                            <div class="proof-type-options">
+                                {% for radio in form.proof_type %}
+                                <div class="proof-type-option">
+                                    {{ radio.tag }}
+                                    <label for="{{ radio.id_for_label }}">
+                                        {% if radio.data.value == 'monnify_reference' %}
+                                            <i class="bi bi-receipt me-1"></i>
+                                        {% elif radio.data.value == 'bank_alert' %}
+                                            <i class="bi bi-cloud-upload me-1"></i>
+                                        {% else %}
+                                            <i class="bi bi-files me-1"></i>
+                                        {% endif %}
+                                        {{ radio.choice_label }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="proof-field-section" data-proof-section="monnify_reference">
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ form.monnify_transaction.id_for_label }}">Select Your Deposit</label>
+                                    {{ form.monnify_transaction }}
+                                    {% if form.monnify_transaction.errors %}
+                                    <div class="text-danger small mt-1">{{ form.monnify_transaction.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ form.monnify_reference_manual.id_for_label }}">Or Enter Reference Manually</label>
+                                    {{ form.monnify_reference_manual }}
+                                    {% if form.monnify_reference_manual.errors %}
+                                    <div class="text-danger small mt-1">{{ form.monnify_reference_manual.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="proof-field-section" data-proof-section="bank_alert">
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ form.proof_upload.id_for_label }}">Upload Bank Debit Alert</label>
+                                    {{ form.proof_upload }}
+                                    {% if form.proof_upload.errors %}
+                                    <div class="text-danger small mt-1">{{ form.proof_upload.errors.0 }}</div>
+                                    {% endif %}
+                                    <small class="text-muted">Screenshot or PDF of your original deposit alert</small>
+                                </div>
+                            </div>
+
+                            <div class="proof-field-section" data-proof-section="both">
+                                <div class="mb-3">
+                                    <label class="form-label">Select Your Deposit</label>
+                                    {{ form.monnify_transaction }}
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Or Enter Reference Manually</label>
+                                    {{ form.monnify_reference_manual }}
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Upload Bank Debit Alert</label>
+                                    {{ form.proof_upload }}
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ form.proof_notes.id_for_label }}">Additional Notes (optional)</label>
+                                {{ form.proof_notes }}
+                                {% if form.proof_notes.errors %}
+                                <div class="text-danger small mt-1">{{ form.proof_notes.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+
+                            <button type="submit" class="btn btn-submit-withdrawal mt-2" id="submitWithdrawalBtn"
+                                    {% if withdrawable_balance <= 0 %}disabled{% endif %}>
+                                <i class="bi bi-send-check-fill me-2"></i>Submit Withdrawal Request
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+(function() {
+    var withdrawableBalance = parseFloat("{{ withdrawable_balance|default:0 }}");
+    var feeRate = 0.10;
+
+    var amountInput = document.getElementById('{{ form.requested_amount.id_for_label }}');
+    var feeBreakdown = document.getElementById('feeBreakdown');
+    var exceedsWarning = document.getElementById('exceedsWarning');
+    var submitBtn = document.getElementById('submitWithdrawalBtn');
+
+    function formatNaira(value) {
+        return '₦' + value.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function recalculate() {
+        if (!amountInput) return;
+        var amount = parseFloat(amountInput.value);
+
+        if (isNaN(amount) || amount <= 0) {
+            feeBreakdown.style.display = 'none';
+            exceedsWarning.style.display = 'none';
+            if (submitBtn && withdrawableBalance > 0) submitBtn.disabled = false;
+            return;
+        }
+
+        var fee = amount * feeRate;
+        var net = amount - fee;
+
+        document.getElementById('feeAmountRequested').textContent = formatNaira(amount);
+        document.getElementById('feeAmountFee').textContent = '-' + formatNaira(fee);
+        document.getElementById('feeAmountNet').textContent = formatNaira(net);
+        feeBreakdown.style.display = 'block';
+
+        if (amount > withdrawableBalance) {
+            exceedsWarning.style.display = 'block';
+            if (submitBtn) submitBtn.disabled = true;
+        } else {
+            exceedsWarning.style.display = 'none';
+            if (submitBtn && withdrawableBalance > 0) submitBtn.disabled = false;
+        }
+    }
+
+    if (amountInput) {
+        amountInput.addEventListener('input', recalculate);
+        recalculate();
+    }
+
+    // Proof type toggle
+    var proofRadios = document.querySelectorAll('input[name="proof_type"]');
+    var proofSections = document.querySelectorAll('.proof-field-section');
+
+    function updateProofSections() {
+        var selected = document.querySelector('input[name="proof_type"]:checked');
+        if (!selected) return;
+        proofSections.forEach(function(section) {
+            section.classList.toggle('active', section.dataset.proofSection === selected.value);
+        });
+    }
+
+    proofRadios.forEach(function(radio) {
+        radio.addEventListener('change', updateProofSections);
+    });
+    updateProofSections();
+})();
+</script>
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

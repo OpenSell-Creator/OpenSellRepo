@@ -1,5 +1,5 @@
 from django import forms
-from .models import UserAccount, Transaction, ProductBoost
+from .models import UserAccount, Transaction, ProductBoost, WithdrawalRequest, MonnifyTransaction
 from decimal import Decimal
 
 class DepositForm(forms.Form):
@@ -120,3 +120,154 @@ class BoostProductForm(forms.Form):
         if boost_type not in valid_types:
             raise forms.ValidationError("Invalid boost type selected")
         return boost_type
+    
+### forms.py — ADD new class WithdrawalRequestForm (after WalletTransferForm, before BoostProductForm)
+
+class WithdrawalRequestForm(forms.Form):
+    """
+    User-facing withdrawal request form. Does NOT save directly —
+    call WithdrawalRequest.create_for_user() with the cleaned_data
+    from the view. This form only validates input and previews fee/payout.
+    """
+    requested_amount = forms.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        min_value=Decimal("100.00"),
+        widget=forms.NumberInput(attrs={
+            "class": "form-control",
+            "placeholder": "Amount to withdraw (₦)",
+            "id": "id_requested_amount",
+        }),
+    )
+    bank_name = forms.CharField(
+        max_length=100,
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+            "placeholder": "e.g. GTBank, Access Bank",
+        }),
+    )
+    account_number = forms.CharField(
+        max_length=20,
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+            "placeholder": "10-digit account number",
+        }),
+    )
+    account_name = forms.CharField(
+        max_length=255,
+        help_text="Must match your verified identity on OpenSell",
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+            "placeholder": "Account holder's full name",
+        }),
+    )
+
+    proof_type = forms.ChoiceField(
+        choices=WithdrawalRequest.PROOF_TYPE_CHOICES,
+        initial='monnify_reference',
+        widget=forms.RadioSelect(attrs={"class": "proof-type-radio"}),
+    )
+    monnify_transaction = forms.ModelChoiceField(
+        queryset=MonnifyTransaction.objects.none(),
+        required=False,
+        label="Select your deposit transaction",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    monnify_reference_manual = forms.CharField(
+        max_length=100,
+        required=False,
+        label="Or enter Monnify reference manually",
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+            "placeholder": "e.g. MNFY|0|20240601...",
+        }),
+    )
+    proof_upload = forms.FileField(
+        required=False,
+        label="Or upload bank debit alert",
+        widget=forms.ClearableFileInput(attrs={"class": "form-control"}),
+    )
+    proof_notes = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            "class": "form-control",
+            "rows": 3,
+            "placeholder": "Any additional notes about your proof (optional)",
+        }),
+    )
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+        self.account = getattr(user, "account", None) if user else None
+        self._fee_amount = None
+        self._net_payout = None
+
+        if self.account:
+            self.fields["monnify_transaction"].queryset = (
+                MonnifyTransaction.objects
+                .filter(user_account=self.account, payment_status="PAID")
+                .order_by("-paid_on")
+            )
+
+    def clean_requested_amount(self):
+        amount = self.cleaned_data.get("requested_amount")
+        if amount and self.account:
+            if amount > self.account.withdrawable_balance:
+                raise forms.ValidationError(
+                    f"Requested amount (₦{amount:,.2f}) exceeds your withdrawable "
+                    f"balance (₦{self.account.withdrawable_balance:,.2f})."
+                )
+        return amount
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        # Only one active withdrawal request at a time
+        if self.account and self.account.has_pending_withdrawal:
+            raise forms.ValidationError(
+                "You already have a pending or under-review withdrawal request. "
+                "Please wait for it to be resolved before submitting a new one."
+            )
+
+        # At least one form of proof required
+        monnify_transaction = cleaned_data.get("monnify_transaction")
+        monnify_reference_manual = cleaned_data.get("monnify_reference_manual")
+        proof_upload = cleaned_data.get("proof_upload")
+
+        if not monnify_transaction and not monnify_reference_manual and not proof_upload:
+            raise forms.ValidationError(
+                "You must provide proof of the original deposit: either select your "
+                "Monnify transaction, enter the Monnify reference number, or upload a "
+                "bank debit alert."
+            )
+
+        # Compute fee/net payout preview once amount is valid
+        requested_amount = cleaned_data.get("requested_amount")
+        if requested_amount:
+            fee_rate = WithdrawalRequest.DEFAULT_FEE_RATE
+            self._fee_amount = (requested_amount * fee_rate / 100).quantize(Decimal("0.01"))
+            self._net_payout = requested_amount - self._fee_amount
+
+        return cleaned_data
+
+    @property
+    def fee_amount(self):
+        """Live fee preview — available after clean(). None if not yet computed."""
+        return self._fee_amount
+
+    @property
+    def net_payout(self):
+        """Live net payout preview — available after clean(). None if not yet computed."""
+        return self._net_payout
+    
+class WithdrawalAdminActionForm(forms.Form):
+    """Used by admin's reject action to collect a rejection reason."""
+    rejection_reason = forms.CharField(
+        label="Reason for rejection",
+        widget=forms.Textarea(attrs={
+            "class": "form-control",
+            "rows": 4,
+            "placeholder": "Explain why this withdrawal request is being rejected...",
+        }),
+    )
