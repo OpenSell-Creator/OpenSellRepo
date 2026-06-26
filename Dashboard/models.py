@@ -679,7 +679,6 @@ class WithdrawalRequest(models.Model):
             instance.save()
             return instance
 
-
 # PRODUCT BOOST
 class ProductBoost(models.Model):
     BOOST_TYPES = [

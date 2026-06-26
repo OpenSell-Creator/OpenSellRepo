@@ -487,11 +487,27 @@ class BusinessVerificationDocument(models.Model):
     document_type = models.CharField(
         max_length=50,
         choices=[
-            ('business_registration', 'Business Registration Certificate'),
+            # Formal / registered businesses
+            ('business_registration', 'Business Registration Certificate (CAC)'),
             ('tax_certificate', 'Tax Identification Certificate'),
             ('business_license', 'Business License'),
+
+            # Financial proof
             ('bank_statement', 'Bank Statement'),
+
+            # Address / presence proof
             ('utility_bill', 'Utility Bill'),
+            ('shop_front_image', 'Shop/Store Front Photo'),
+            ('shop_interior_image', 'Shop Interior Photo'),
+            ('signage_image', 'Shop Signage/Branding Photo'),
+
+            # Informal/local verification
+            ('nin_slip', 'National ID (NIN) Slip'),
+            ('voters_card', "Voter's Card"),
+            ('market_association_letter', 'Market/Trade Association Letter'),
+            ('lasrra_card', 'State Residency Card (e.g. LASRRA)'),
+            ('guarantor_letter', "Guarantor's Letter"),
+
             ('other', 'Other Document'),
         ],
         default='business_registration'

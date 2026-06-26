@@ -150,7 +150,7 @@ class BusinessVerificationDocumentAdmin(admin.ModelAdmin):
     actions = ['mark_as_verified', 'mark_as_unverified']
     
     def profile_link(self, obj):
-        url = reverse('admin:User_profile_change', args=[obj.profile.id])
+        url = reverse('admin:user_profile_change', args=[obj.profile.id])
         return format_html('<a href="{}">{}</a>', url, obj.profile.user.username)
     profile_link.short_description = 'Profile'
     
@@ -175,7 +175,7 @@ class EmailPreferencesAdmin(admin.ModelAdmin):
     readonly_fields = ('unsubscribe_token', 'token_created_at')
     
     def profile_link(self, obj):
-        url = reverse('admin:User_profile_change', args=[obj.profile.id])
+        url = reverse('admin:user_profile_change', args=[obj.profile.id])
         return format_html('<a href="{}">{}</a>', url, obj.profile.user.username)
     profile_link.short_description = 'Profile'
     

@@ -308,22 +308,14 @@ class BusinessDocumentForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Replace Django's default "----------" with a clear prompt.
-        # document_type is only required when a file is actually being uploaded;
-        # the whole document section is optional on the verification form.
         self.fields['document_type'].required = False
         self.fields['document'].required = False
         self.fields['description'].required = False
 
+        # Pull choices from the model so this never drifts out of sync again
         self.fields['document_type'].choices = [
-            ('', 'Select Document Type'),
-            ('business_registration', 'Business Registration Certificate'),
-            ('tax_certificate', 'Tax Identification Certificate'),
-            ('business_license', 'Business License'),
-            ('bank_statement', 'Bank Statement'),
-            ('utility_bill', 'Utility Bill'),
-            ('other', 'Other Document'),
-        ]
+            ('', 'Select Document Type')
+        ] + list(BusinessVerificationDocument._meta.get_field('document_type').choices)
         self.initial['document_type'] = ''
 
     def clean(self):
