@@ -503,6 +503,7 @@ else:
         'workers': 1,
         'recycle': 500,
         'timeout': 120,
+        'poll': 2,
         'compress': True,
         'save_limit': 250,
         'queue_limit': 500,
