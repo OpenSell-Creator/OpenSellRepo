@@ -538,3 +538,11 @@ def get_email_preference_stats():
         'announcements_opted_in': announcements_opted_in,
         'notifications_opted_in': notifications_opted_in,
     }
+
+def get_client_ip(request):
+    """Real visitor IP behind Cloudflare. Locally (DEBUG) uses REMOTE_ADDR."""
+    if not settings.DEBUG:
+        cf_ip = request.META.get('HTTP_CF_CONNECTING_IP')
+        if cf_ip:
+            return cf_ip.strip()
+    return request.META.get('REMOTE_ADDR')

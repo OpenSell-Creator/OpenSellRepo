@@ -1,389 +1,150 @@
 {% extends "base.html" %}
 {% load static %}
 
-
 {% block page_css %}
-
 <style>
-    .store-container {
-        background-color: var(--background-color);
-        min-height: 100vh;
-    }
+/* Richness kit subset (assets/home-kit.css): vars, hues, icon badge */
+.ox {
+    --ox-navy: var(--primary-color);
+    --ox-orange: var(--accent-color);
+    --ox-teal: var(--bs-teal, var(--primary-color));
+    --ox-green: var(--bs-success, var(--primary-color));
+    --ox-purple: var(--bs-purple, var(--primary-color));
+    --ox-red: var(--bs-danger, var(--accent-color));
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+    line-height: var(--lh-body);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-4));
+}
+.ox a { text-decoration: none; }
+.t-navy { --tint: var(--ox-navy); } .t-orange { --tint: var(--ox-orange); } .t-teal { --tint: var(--ox-teal); }
+.t-green { --tint: var(--ox-green); } .t-purple { --tint: var(--ox-purple); } .t-red { --tint: var(--ox-red); }
+.ox-ico { display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-xl); }
 
-    .store-header {
-        background-color: var(--primary-color);
-        margin: -2rem -1rem 2rem -1rem;
-        border-radius: 0 0 var(--radius-xl) var(--radius-xl);
-    }
+/* Header: navy, full-bleed, tucks under the navbar like the home hero */
+.ox-head { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); margin: -2rem -1rem var(--gap-sections); padding: calc(2rem + var(--sp-4)) var(--sp-5) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); text-align: center; }
+.ox-photo { width: 5.5rem; height: 5.5rem; border: 3px solid rgba(255, 255, 255, .9); border-radius: var(--radius-full); background: rgba(255, 255, 255, .12); color: var(--bs-white); object-fit: cover; }
+.ox-name { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-tight); }
+.ox-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-1) var(--sp-2); }
+.ox-chip { display: inline-flex; align-items: center; gap: var(--sp-1); padding: 0 var(--sp-2); border: 1px solid rgba(255, 255, 255, .3); border-radius: var(--radius-full); background: rgba(255, 255, 255, .12); font-size: var(--font-size-xs); font-weight: 600; line-height: var(--lh-body); }
+.ox-edit { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: var(--h-control-lg); margin-top: var(--sp-2); padding: 0 var(--sp-6); border: 2px solid var(--bs-white); border-radius: 22px; background: var(--accent-color); color: var(--bs-white); font-size: var(--font-size-sm); font-weight: 600; letter-spacing: .3px; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); transition: transform .2s ease, box-shadow .2s ease; touch-action: manipulation; }
+@media (hover: hover) { .ox .ox-edit:hover { color: var(--bs-white); } .ox-edit:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 0, 0, .25); } }
 
-    .store-profile-photo {
-        width: 150px;
-        height: 150px;
-        object-fit: cover;
-        border-radius: var(--radius-full);
-        border: 4px solid var(--card-background);
-        box-shadow: 0 4px 20px var(--shadow-color);
-    }
-
-    .profile-username {
-        color: var(--light-hover-bg);
-        font-weight: 600;
-        font-size: 2rem;
-    }
-
-    .btn-edit-profile {
-        position: relative;
-        padding: 0.8rem 1.75rem;
-        border: none;
-        border-radius: var(--radius-lg);
-        font-weight: 600;
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-        color: white !important;
-        box-shadow: 0 4px 6px -1px var(--shadow-color);
-        display: inline-flex;
-        align-items: center;
-        gap: 0.75rem;
-        overflow: hidden;
-    }
-
-    .btn-edit-profile .btn-icon {
-        position: relative;
-        display: inline-flex;
-        transition: transform 0.3s ease;
-    }
-
-    .btn-edit-profile .btn-icon i {
-        transition: all 0.3s ease;
-    }
-
-    .btn-edit-profile .btn-icon i:last-child {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, 100%);
-        opacity: 0;
-    }
-
-    .btn-edit-profile:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 12px -2px var(--shadow-color);
-    }
-
-    .btn-edit-profile:hover .btn-icon i:first-child {
-        transform: translateY(-100%);
-        opacity: 0;
-    }
-
-    .btn-edit-profile:hover .btn-icon i:last-child {
-        transform: translate(-50%, -50%);
-        opacity: 1;
-    }
-
-    .btn-edit-profile::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(45deg, 
-            transparent 25%,
-            rgba(255,255,255,0.1) 50%,
-            transparent 75%);
-        background-size: 400% 400%;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
-
-    .btn-edit-profile:hover::after {
-        opacity: 1;
-        animation: gradientFlow 3s infinite linear;
-    }
-
-    @keyframes gradientFlow {
-        0% { background-position: 100% 50% }
-        100% { background-position: 0% 50% }
-    }
-
-    .profile-card {
-        padding: 1rem;
-        border-radius: var(--radius-md);
-        transition: all 0.3s ease;
-    }
-
-    .profile-card:hover {
-        background-color: var(--hover-bg);
-        transform: translateX(8px);
-    }
-
-    .menu-link {
-        text-decoration: none;
-        color: var(--text-primary);
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-
-    .menu-content {
-        flex-grow: 1;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
-
-    .menu-text {
-        font-size: 1.1rem;
-        font-weight: 500;
-        flex-grow: 1;
-    }
-
-    .badge {
-        font-size: 0.75rem;
-        padding: 0.35rem 0.65rem;
-        border-radius: var(--radius-md);
-    }
-
-    .badge-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        justify-content: center;
-        align-items: center;
-    }
-
-    .balance-amount {
-        font-size: 1rem;
-        font-weight: 700;
-        color: var(--bs-success, #198754);
-        white-space: nowrap;
-    }
-
-    /* Theme Toggle Icon */
-    .theme-toggle-menu:hover {
-        background-color: transparent !important;
-    }
-
-    [data-bs-theme="dark"] .theme-toggle-icon {
-        color: var(--text-primary);
-    }
-
-    @media (max-width: 768px) {
-        .store-header {
-            margin: -1rem -0.5rem 1.5rem -0.5rem;
-            padding: 1.5rem 0;
-        }
-
-        .store-profile-photo {
-            width: 120px;
-            height: 120px;
-        }
-
-        .profile-username {
-            font-size: 1.75rem;
-        }
-
-        .menu-text {
-            font-size: 1rem;
-        }
-    }
-
-    @media (max-width: 576px) {
-        .store-profile-photo {
-            width: 100px;
-            height: 100px;
-        }
-
-        .profile-username {
-            font-size: 1.5rem;
-        }
-
-        .btn-edit-profile {
-            padding: 0.7rem 1.25rem;
-            font-size: 0.9rem;
-        }
-
-        .badge {
-            font-size: 0.7rem;
-            padding: 0.2rem 0.4rem;
-        }
-
-        .badge-container {
-            gap: 0.35rem;
-        }
-
-        .balance-amount {
-            font-size: 0.9rem;
-        }
-
-        .menu-text {
-            font-size: 0.95rem;
-        }
-    }
+/* Menu rows */
+.ox-menu { display: grid; grid-template-columns: 1fr; gap: var(--gap-cards); max-width: 48rem; margin: 0 auto; }
+.ox-row { box-sizing: border-box; display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: 3.25rem; margin: 0; padding: var(--pad-s) var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); color: var(--text-primary); font: inherit; text-align: left; cursor: pointer; touch-action: manipulation; -webkit-appearance: none; appearance: none; }
+.ox-row-txt { display: flex; flex-direction: column; gap: var(--sp-1); flex: 1 1 auto; min-width: 0; line-height: var(--lh-tight); }
+.ox-row-txt b { font-size: var(--font-size-base); font-weight: 600; }
+.ox-row-txt small { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.ox-row .bi-chevron-right { flex: none; color: var(--text-secondary); }
+.ox-bal { flex: none; font-size: var(--font-size-base); font-weight: 600; color: var(--bs-success); white-space: nowrap; }
+.ox-tag { flex: none; padding: 0 var(--sp-2); border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); font-size: var(--font-size-xs); font-weight: 600; }
+.ox-row-danger .ox-row-txt b { color: var(--bs-danger); }
+.ox-sun { display: none; }
+[data-bs-theme="dark"] .ox-sun { display: inline; }
+[data-bs-theme="dark"] .ox-moon { display: none; }
+.ox-row:focus-visible, .ox-edit:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+@media (hover: hover) { .ox-row:hover { border-color: var(--primary-color); } }
+@media (min-width: 768px) { .ox-menu { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ox-ico { width: 2.5rem; height: 2.5rem; } }
+@media (prefers-reduced-motion: reduce) { .ox-edit { transition: none; } }
 </style>
 {% endblock %}
 
-{% block 'Body'%}
-<div class="store-container">
-    <!-- Profile Header -->
-    <div class="store-header">
-        <div class="container">
-            <div class="row align-items-center py-4 py-md-5">
-                <div class="col-12 text-center">
-                    {% if user.profile.photo %}
-                        <img src="{{ user.profile.photo.url }}" 
-                             alt="Profile Photo" 
-                             class="store-profile-photo">
-                    {% else %}
-                    <svg xmlns="http://www.w3.org/2000/svg" width="150" height="150" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="store-profile-photo">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="12" cy="7" r="4"></circle>
-                    </svg>
-                    {% endif %}
-                    <h1 class="profile-username mt-3">{{ user.username }}</h1>
-                    
-                    <!-- Role & Status Badges -->
-                    <div class="badge-container mb-2">
-                        {% if user.is_superuser %}
-                            <span class="badge bg-danger">
-                                <i class="bi bi-shield-fill-check"></i> Super Admin
-                            </span>
-                        {% elif user.is_staff %}
-                            <span class="badge bg-warning">
-                                <i class="bi bi-shield-check"></i> Staff
-                            </span>
-                        {% endif %}
-                        
-                        {% if user.affiliate %}
-                            <span class="badge bg-success">
-                                ₦</i> Affiliate Partner
-                            </span>
-                        {% endif %}
-                        
-                        {% if user.profile.is_verified_business %}
-                            <span class="badge bg-primary">
-                                <i class="bi bi-patch-check-fill"></i> Verified Business
-                            </span>
-                        {% elif user.profile.has_pending_verification %}
-                            <span class="badge bg-warning">
-                                <i class="bi bi-clock-history"></i> Verification Pending
-                            </span>
-                        {% endif %}
-                        
-                        {% if user.profile.email_verified %}
-                            <span class="badge bg-info">
-                                <i class="bi bi-envelope-check-fill"></i> Email Verified
-                            </span>
-                        {% endif %}
-                    </div>
+{% block 'Body' %}
+<div class="ox">
 
-                    <div class="profile-actions mt-4">
-                        <a href="{% url 'profile_update' %}" class="btn btn-edit-profile">
-                            <span class="btn-icon">
-                                <i class="bi bi-pencil-fill"></i>
-                                <i class="bi bi-person-gear"></i>
-                            </span>
-                            <span class="btn-text">Edit Profile</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
+    <header class="ox-head">
+        {% if user.profile.photo %}
+            <img src="{{ user.profile.photo.url }}" alt="Profile photo" class="ox-photo" width="88" height="88">
+        {% else %}
+            <svg class="ox-photo" xmlns="http://www.w3.org/2000/svg" viewBox="-6 -6 36 36" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+        {% endif %}
+        <h1 class="ox-name">{{ user.username }}</h1>
+
+        <div class="ox-chips">
+            {% if user.is_superuser %}
+                <span class="ox-chip"><i class="bi bi-shield-fill-check" aria-hidden="true"></i>Super Admin</span>
+            {% elif user.is_staff %}
+                <span class="ox-chip"><i class="bi bi-shield-check" aria-hidden="true"></i>Staff</span>
+            {% endif %}
+            {% if user.affiliate %}
+                <span class="ox-chip"><i class="bi bi-cash-coin" aria-hidden="true"></i>Affiliate Partner</span>
+            {% endif %}
+            {% if user.profile.is_verified_business %}
+                <span class="ox-chip"><i class="bi bi-patch-check-fill" aria-hidden="true"></i>Verified Business</span>
+            {% elif user.profile.has_pending_verification %}
+                <span class="ox-chip"><i class="bi bi-clock-history" aria-hidden="true"></i>Verification Pending</span>
+            {% endif %}
+            {% if user.profile.email_verified %}
+                <span class="ox-chip"><i class="bi bi-envelope-check-fill" aria-hidden="true"></i>Email Verified</span>
+            {% endif %}
         </div>
-    </div>
 
-    <!-- Menu Cards Container -->
-    <div class="container mt-4">
-        <div class="row g-3">
-            <div class="col-12">
-                <div class="card main-card">
-                    <div class="card-body p-3">
-                        <!-- My Store -->
-                        <div class="profile-card mb-3">
-                            <a href="{% url 'my_store' %}" class="menu-link">
-                                <i class="bi bi-shop fs-4 me-3 text-warning"></i>
-                                <span class="menu-text">My Store</span>
-                                <i class="bi bi-chevron-right ms-auto"></i>
-                            </a>
-                        </div>
+        <a href="{% url 'profile_update' %}" class="ox-edit"><i class="bi bi-pencil-fill" aria-hidden="true"></i>Edit Profile</a>
+    </header>
 
-                        <!-- Manage Listings -->
-                        <div class="profile-card mb-3">
-                            <a href="{% url 'manage_listings' %}" class="menu-link">
-                                <i class="bi bi-grid-fill fs-4 me-3 text-primary"></i>
-                                <span class="menu-text">Manage Listings</span>
-                                <i class="bi bi-chevron-right ms-auto"></i>
-                            </a>
-                        </div>
+    <nav class="ox-menu" aria-label="Account menu">
+        <a href="{% url 'my_store' %}" class="ox-row t-purple">
+            <span class="ox-ico"><i class="bi bi-shop" aria-hidden="true"></i></span>
+            <span class="ox-row-txt"><b>My Store</b><small>View and share your store link</small></span>
+            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        </a>
 
-                        <!-- Dashboard with Balance -->
-                        <div class="profile-card mb-3">
-                            <a href="{% url 'dashboard_home' %}" class="menu-link">
-                                <i class="bi bi-wallet-fill fs-4 me-3 text-success"></i>
-                                <div class="menu-content">
-                                    <span class="menu-text">Dashboard</span>
-                                    {% if account %}
-                                    <span class="balance-amount">₦{{ account.balance|floatformat:0 }}</span>
-                                    {% endif %}
-                                </div>
-                                <i class="bi bi-chevron-right ms-auto"></i>
-                            </a>
-                        </div>
+        <a href="{% url 'manage_listings' %}" class="ox-row t-navy">
+            <span class="ox-ico"><i class="bi bi-grid-fill" aria-hidden="true"></i></span>
+            <span class="ox-row-txt"><b>Manage Listings</b><small>Edit or remove your products</small></span>
+            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        </a>
 
-                        <!-- Affiliate Dashboard (Only for Affiliates) -->
-                        {% if user.affiliate %}
-                        <div class="profile-card mb-3">
-                            <a href="{% url 'affiliate_dashboard' %}" class="menu-link">
-                                <i class="bi bi-graph-up-arrow fs-4 me-3 text-success"></i>
-                                <span class="menu-text">Affiliate Dashboard</span>
-                                {% if user.affiliate.status == 'active' %}
-                                    <span class="badge bg-success ms-2">Active</span>
-                                {% elif user.affiliate.status == 'pending' %}
-                                    <span class="badge bg-warning ms-2">Pending</span>
-                                {% endif %}
-                                <i class="bi bi-chevron-right ms-auto"></i>
-                            </a>
-                        </div>
-                        {% endif %}
+        <a href="{% url 'dashboard_home' %}" class="ox-row t-green">
+            <span class="ox-ico"><i class="bi bi-wallet-fill" aria-hidden="true"></i></span>
+            <span class="ox-row-txt"><b>Dashboard</b><small>Wallet and withdrawals</small></span>
+            {% if account %}<span class="ox-bal">₦{{ account.balance|floatformat:0 }}</span>{% endif %}
+            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        </a>
 
-                        <!-- Admin Panel (Only for Staff/Superuser) -->
-                        {% if user.is_staff or user.is_superuser %}
-                        <div class="profile-card mb-3">
-                            <a href="{% url 'admin_panel' %}" class="menu-link">
-                                <i class="bi bi-shield-lock-fill fs-4 me-3 text-danger"></i>
-                                <span class="menu-text">Admin Panel</span>
-                                {% if user.is_superuser %}
-                                    <span class="badge bg-danger ms-2">Super</span>
-                                {% else %}
-                                    <span class="badge bg-warning ms-2">Staff</span>
-                                {% endif %}
-                                <i class="bi bi-chevron-right ms-auto"></i>
-                            </a>
-                        </div>
-                        {% endif %}
+        <a href="{% url 'saved_items' %}" class="ox-row t-teal">
+            <span class="ox-ico"><i class="bi bi-bookmark-fill" aria-hidden="true"></i></span>
+            <span class="ox-row-txt"><b>Saved Items</b><small>Listings you bookmarked</small></span>
+            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        </a>
 
+        {% if user.affiliate %}
+        <a href="{% url 'affiliate_dashboard' %}" class="ox-row t-teal">
+            <span class="ox-ico"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i></span>
+            <span class="ox-row-txt"><b>Affiliate Dashboard</b></span>
+            {% if user.affiliate.status == 'active' %}<span class="ox-tag">Active</span>{% elif user.affiliate.status == 'pending' %}<span class="ox-tag">Pending</span>{% endif %}
+            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        </a>
+        {% endif %}
 
-                        <!-- Theme Toggle -->
-                        <div class="profile-card mb-3">
-                            <a href="#" class="menu-link theme-toggle-menu" onclick="window.themeManager.toggleTheme(); return false;">
-                                <i class="theme-toggle-icon bi bi-moon-fill fs-4 me-3"></i>
-                                <span class="menu-text">Theme</span>
-                                <i class="bi bi-chevron-right ms-auto"></i>
-                            </a>
-                        </div>
+        {% if user.is_staff or user.is_superuser %}
+        <a href="{% url 'admin_panel' %}" class="ox-row t-orange">
+            <span class="ox-ico"><i class="bi bi-shield-lock-fill" aria-hidden="true"></i></span>
+            <span class="ox-row-txt"><b>Admin Panel</b></span>
+            <span class="ox-tag">{% if user.is_superuser %}Super{% else %}Staff{% endif %}</span>
+            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        </a>
+        {% endif %}
 
-                        <!-- Logout -->
-                        <div class="profile-card">
-                            <a href="{% url 'logout' %}" class="menu-link text-danger">
-                                <i class="bi bi-box-arrow-right fs-4 me-3"></i>
-                                <span class="menu-text">Logout</span>
-                                <i class="bi bi-chevron-right ms-auto"></i>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+        <button type="button" class="ox-row t-navy" onclick="window.themeManager.toggleTheme();">
+            <span class="ox-ico"><i class="bi bi-moon-fill ox-moon" aria-hidden="true"></i><i class="bi bi-sun-fill ox-sun" aria-hidden="true"></i></span>
+            <span class="ox-row-txt"><b>Theme</b><small>Switch between light and dark</small></span>
+            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        </button>
+
+        <a href="{% url 'logout' %}" class="ox-row ox-row-danger t-red">
+            <span class="ox-ico"><i class="bi bi-box-arrow-right" aria-hidden="true"></i></span>
+            <span class="ox-row-txt"><b>Logout</b></span>
+            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        </a>
+    </nav>
+
 </div>
-
-
 {% endblock %}
-{% block 'Footer'%}
+
+{% block 'Footer' %}
 {% endblock %}

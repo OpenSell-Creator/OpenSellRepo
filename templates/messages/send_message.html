@@ -2,175 +2,103 @@
 
 {% block title %}Send Message - {{ product.title }}{% endblock %}
 
-{% block messages_content %}
-<div class="row">
-    <div class="col-12 col-md-8 mx-auto">
-        <h2 class="message-page-title mb-4">Send message about <span class="product-title-highlight">{{ product.title }}</span></h2>
-        <div class="message-card card">
-            <div class="card-body">
-                <form method="post" class="message-form">
-                    {% csrf_token %}
-                    <div class="mb-4">
-                        <label for="{{ form.inquiry_type.id_for_label }}" class="form-label message-form-label">
-                            Message Type
-                        </label>
-                        <select name="{{ form.inquiry_type.name }}" 
-                                id="{{ form.inquiry_type.id_for_label }}" 
-                                class="form-select message-form-select">
-                            {% for value, text in form.inquiry_type.field.choices %}
-                                <option value="{{ value }}">{{ text }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="mb-4">
-                        <label for="{{ form.content.id_for_label }}" class="form-label message-form-label">
-                            Your Message
-                        </label>
-                        <textarea name="{{ form.content.name }}" 
-                                 id="{{ form.content.id_for_label }}" 
-                                 class="form-control message-form-textarea" 
-                                 rows="5"
-                                 placeholder="Type your message here...">{{ form.content.value|default:'' }}</textarea>
-                    </div>
-                    <div class="message-form-actions">
-                        <button type="submit" class="btn btn-primary message-submit-btn">Send Message</button>
-                        <a href="{{ request.META.HTTP_REFERER }}" class="btn btn-outline-secondary message-cancel-btn">Cancel</a>
-                    </div>
-                </form>
-            </div>
+{# ── Navy header band: back and what the message is about ───────────────────── #}
+{% block messages_header %}
+<style>
+.sm-head { margin: -2rem -1rem 0; padding: calc(2rem + var(--sp-4)) var(--sp-4) var(--sp-4); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); }
+.sm-head-in { display: flex; align-items: center; gap: var(--sp-3); max-width: 40rem; margin: 0 auto; }
+.sm-back { display: grid; place-items: center; flex: none; width: 2.5rem; height: 2.5rem; border-radius: var(--radius-full); background: rgba(255, 255, 255, .14); color: var(--bs-white); font-size: var(--font-size-lg); text-decoration: none; }
+.sm-head-txt { display: flex; flex: 1 1 auto; flex-direction: column; gap: 2px; min-width: 0; }
+.sm-head h1 { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-snug); }
+.sm-head small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--font-size-sm); opacity: .85; }
+.sm-back:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+@media (hover: hover) { .sm-back:hover { background: rgba(255, 255, 255, .24); color: var(--bs-white); } }
+@media (min-width: 768px) { .sm-head h1 { font-size: var(--font-size-3xl); } }
+</style>
+<header class="sm-head">
+    <div class="sm-head-in">
+        <a href="{{ request.META.HTTP_REFERER|default:'#' }}" class="sm-back" data-back aria-label="Go back"><i class="bi bi-arrow-left" aria-hidden="true"></i></a>
+        <div class="sm-head-txt">
+            <h1 class="message-page-title">Send a message</h1>
+            <small>About <span class="product-title-highlight">{{ product.title }}</span></small>
         </div>
     </div>
-</div>
+</header>
+{% endblock %}
 
+{% block messages_content %}
 <style>
-    /* Page Title */
-    .message-page-title {
-        color: var(--text-primary);
-        font-weight: 600;
-        letter-spacing: -0.01em;
-        margin-bottom: 1.5rem;
-    }
-    
-    .product-title-highlight {
-        color: var(--primary-color);
-        font-weight: 700;
-    }
-    
-    /* Message Card */
-    .message-card {
-        border: 1px solid var(--border-color);
-        background-color: var(--card-background);
-        border-radius: var(--radius-md);
-        box-shadow: 0 4px 12px var(--shadow-color);
-        transition: all 0.3s ease;
-    }
-    
-    /* Form Styling */
-    .message-form-label {
-        color: var(--text-primary);
-        font-weight: 500;
-        font-size: var(--font-size-base);
-        margin-bottom: 0.5rem;
-    }
-    
-    .message-form-select {
-        border: 1px solid var(--border-color);
-        background-color: var(--card-background);
-        color: var(--text-primary);
-        border-radius: var(--radius-sm);
-        padding: 0.75rem 1rem;
-        font-size: var(--font-size-base);
-        transition: border-color 0.2s ease;
-    }
-    
-    .message-form-select:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.25);
-    }
-    
-    .message-form-textarea {
-        border: 1px solid var(--border-color);
-        background-color: var(--card-background);
-        color: var(--text-primary);
-        border-radius: var(--radius-sm);
-        padding: 0.75rem 1rem;
-        font-size: var(--font-size-base);
-        transition: border-color 0.2s ease;
-        resize: vertical;
-    }
-    
-    .message-form-textarea:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.25);
-    }
-    
-    .message-form-textarea::placeholder {
-        color: var(--text-secondary);
-        opacity: 0.6;
-    }
-    
-    /* Action Buttons */
-    .message-form-actions {
-        display: flex;
-        gap: 1rem;
-        margin-top: 1.5rem;
-    }
-    
-    .message-submit-btn {
-        background-color: var(--primary-color);
-        border-color: var(--primary-color);
-        color: white;
-        font-weight: 500;
-        padding: 0.6rem 1.5rem;
-        transition: all 0.2s ease;
-    }
-    
-    .message-submit-btn:hover {
-        background-color: var(--secondary-color);
-        border-color: var(--secondary-color);
-        transform: translateY(-2px);
-    }
-    
-    .message-cancel-btn {
-        color: var(--text-secondary);
-        border-color: var(--border-color);
-        font-weight: 500;
-        padding: 0.6rem 1.5rem;
-        transition: all 0.2s ease;
-    }
-    
-    .message-cancel-btn:hover {
-        background-color: var(--hover-bg);
-        color: var(--text-primary);
-    }
-    
-    /* Dark Mode Specific Styles */
-    [data-bs-theme="dark"] .message-form-select option {
-        background-color: var(--dark-card-background);
-        color: var(--dark-text-primary);
-    }
-    
-    [data-bs-theme="dark"] .message-form-textarea::placeholder {
-        color: var(--dark-text-secondary);
-        opacity: 0.7;
-    }
-    
-    /* Add this to your base CSS to ensure proper rgba values are available */
-    :root {
-        --primary-color-rgb: 0, 51, 102; /* RGB values for Navy Blue */
-    }
-    
-    [data-bs-theme="dark"] {
-        --primary-color-rgb: 0, 51, 102; /* Keep the same for consistency */
-    }
+/* Send message: shared OpenSell design (navy header band, token card, pill buttons). */
+.sm { display: flex; flex-direction: column; gap: var(--gap-sections); max-width: 40rem; margin: 0 auto; font-size: var(--font-size-base); line-height: var(--lh-body); }
+.sm p, .sm form { margin: 0; }
+.sm-card { box-sizing: border-box; padding: var(--pad-l); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); box-shadow: var(--shadow-md); }
+.message-form { display: flex; flex-direction: column; gap: var(--sp-4); }
+.sm-field { display: flex; flex-direction: column; gap: var(--sp-1); }
+.message-form-label { margin: 0; font-size: var(--font-size-sm); font-weight: 600; color: var(--text-primary); }
+.message-form-select, .message-form-textarea { box-sizing: border-box; width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--card-background); color: var(--text-primary); font: inherit; font-size: var(--font-size-base); }
+.message-form-select { min-height: var(--h-control-lg); padding: 0 var(--sp-3); }
+.message-form-textarea { min-height: 8rem; padding: var(--sp-2) var(--sp-3); resize: vertical; }
+.message-form-textarea::placeholder { color: var(--text-secondary); opacity: 1; }
+.message-form-select:focus, .message-form-textarea:focus { border-color: var(--primary-color); outline: 2px solid var(--accent-color); outline-offset: 1px; box-shadow: none; }
+.sm-err { font-size: var(--font-size-sm); color: var(--bs-danger); }
+.sm-note { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--font-size-xs); color: var(--text-secondary); }
+
+/* Actions: Send on top on phones, Cancel left and Send right from 480px */
+.message-form-actions { display: flex; flex-direction: column; gap: var(--sp-2); }
+@media (min-width: 480px) { .message-form-actions { flex-direction: row-reverse; } .message-form-actions > * { flex: 1 1 0; } }
+.sm-btn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-4); border: 1px solid transparent; border-radius: 22px; font: inherit; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); text-align: center; text-decoration: none; cursor: pointer; touch-action: manipulation; }
+.message-submit-btn { border: 2px solid var(--bs-white); background: var(--primary-color); color: var(--bs-white); box-shadow: 0 4px 12px rgba(0, 0, 0, .2); }
+.message-submit-btn:disabled { opacity: .7; cursor: default; }
+.message-cancel-btn, .message-cancel-btn:hover { border-color: var(--border-color); background: var(--card-background); color: var(--text-primary); }
+.sm-btn .spinner-border { width: 1rem; height: 1rem; border-width: .15em; }
+
+.sm a:focus-visible, .sm button:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+@media (hover: hover) { .message-cancel-btn:hover { background: var(--hover-bg); border-color: var(--primary-color); } }
 </style>
+
+<div class="sm">
+    <div class="message-card sm-card">
+        <form method="post" class="message-form" id="smForm">
+            {% csrf_token %}
+
+            <div class="sm-field">
+                <label for="{{ form.inquiry_type.id_for_label }}" class="message-form-label">Message type</label>
+                <select name="{{ form.inquiry_type.name }}"
+                        id="{{ form.inquiry_type.id_for_label }}"
+                        class="form-select message-form-select">
+                    {% for value, text in form.inquiry_type.field.choices %}
+                        <option value="{{ value }}">{{ text }}</option>
+                    {% endfor %}
+                </select>
+                {% for error in form.inquiry_type.errors %}<span class="sm-err">{{ error }}</span>{% endfor %}
+            </div>
+
+            <div class="sm-field">
+                <label for="{{ form.content.id_for_label }}" class="message-form-label">Your message</label>
+                <textarea name="{{ form.content.name }}"
+                          id="{{ form.content.id_for_label }}"
+                          class="form-control message-form-textarea"
+                          rows="5"
+                          placeholder="Type your message here...">{{ form.content.value|default:'' }}</textarea>
+                {% for error in form.content.errors %}<span class="sm-err">{{ error }}</span>{% endfor %}
+            </div>
+
+            <p class="sm-note"><i class="bi bi-lock-fill" aria-hidden="true"></i>Messages are end-to-end encrypted.</p>
+
+            <div class="message-form-actions">
+                <button type="submit" class="sm-btn message-submit-btn" id="smSend"><i class="bi bi-send-fill" aria-hidden="true"></i>Send message</button>
+                <a href="{{ request.META.HTTP_REFERER|default:'#' }}" class="sm-btn message-cancel-btn" data-back>Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const inquirySelect = document.getElementById('{{ form.inquiry_type.id_for_label }}');
     const contentTextarea = document.getElementById('{{ form.content.id_for_label }}');
-    
-    if (inquirySelect) {
+
+    if (inquirySelect && contentTextarea) {
         inquirySelect.addEventListener('change', function() {
             const selectedText = this.options[this.selectedIndex].text;
             if (this.value !== '') {
@@ -179,20 +107,30 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
-    // Ensure all textareas adapt to theme
-    const allTextareas = document.querySelectorAll('textarea');
-    allTextareas.forEach(textarea => {
-        textarea.classList.add('form-control');
+
+    // No referrer (opened directly): go back in history instead of a dead link
+    document.querySelectorAll('[data-back]').forEach(function (a) {
+        if (a.getAttribute('href') === '#') {
+            a.addEventListener('click', function (e) { e.preventDefault(); window.history.back(); });
+        }
     });
-    
-    // Ensure all selects adapt to theme
-    const allSelects = document.querySelectorAll('select');
-    allSelects.forEach(select => {
-        select.classList.add('form-select');
-    });
+
+    // Guard against double-submitting
+    const form = document.getElementById('smForm');
+    const btn = document.getElementById('smSend');
+    if (form && btn) {
+        const label = btn.innerHTML;
+        form.addEventListener('submit', function () {
+            // Delay so the browser has already collected the form data
+            setTimeout(function () {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border" aria-hidden="true"></span><span>Sending…</span>';
+            }, 0);
+        });
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted) { btn.disabled = false; btn.innerHTML = label; }
+        });
+    }
 });
 </script>
 {% endblock %}
-{% block 'Footer'%}
-{% endblock%}

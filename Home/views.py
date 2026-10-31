@@ -13,7 +13,7 @@ from django.contrib import messages
 from django.views.decorators.http import require_http_methods
 from .models import Product_Listing, Review, ReviewReply, AIDescriptionUsage
 from User.models import LGA, State
-from Dashboard.models import ProductBoost
+from Dashboard.models import ProductBoost, record_product_view
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import View
@@ -32,7 +32,7 @@ from User.models import Profile, SavedItem, ItemReport
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.urls import resolve, Resolver404
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlencode
 from django.core.mail import send_mail
 from django.conf import settings
 from django.template.loader import render_to_string
@@ -348,6 +348,21 @@ def home(request):
             location_name = user_location.lga.name
         elif user_location.state:
             location_name = user_location.state.name
+            
+    near_params = {}
+    if request.user.is_authenticated and hasattr(request.user, 'profile') and request.user.profile.location:
+        loc = request.user.profile.location
+        if loc.city:
+            near_params['city'] = loc.city
+            if loc.state_id:
+                near_params['state'] = loc.state_id
+        elif loc.lga_id:
+            near_params['state'] = loc.state_id
+            near_params['lga'] = loc.lga_id
+        elif loc.state_id:
+            near_params['state'] = loc.state_id       
+    
+    
 
     context.update({
         'categories': categories,
@@ -355,6 +370,7 @@ def home(request):
         'local_products': local_products,
         'trending_products': trending_products,
         'location_name': location_name,
+        'near_query': urlencode(near_params),
         'location_filter_params': location_filter_params,
         'first_position_banners': first_position_banners,
         'second_position_banners': second_position_banners,
@@ -593,6 +609,11 @@ class ProductListView(ListView):
                 queryset = queryset.filter(seller__location__lga__id=int(lga_param))
             except (ValueError, TypeError):
                 pass
+            
+        # City/town filter — ignores capitals and extra spaces, matches partial names
+        city_param = ' '.join(self.request.GET.get('city', '').split())
+        if city_param:
+            queryset = queryset.filter(seller__location__city__icontains=city_param)
         
         # FIX 7: Handle search query
         query = self.request.GET.get('query')
@@ -680,6 +701,7 @@ class ProductListView(ListView):
         context['categories'] = categories
         context['global_categories'] = categories
         context['states'] = State.objects.all().order_by('name')
+        context['selected_city'] = self.request.GET.get('city', '').strip()
 
         # ── Read all active filter params once ────────────────────────────────────
         category_param    = self.request.GET.get('category', '').strip()
@@ -821,6 +843,8 @@ class ProductDetailView(DetailView):
     model = Product_Listing
     template_name = 'product_detail.html'
     context_object_name = 'product'
+    
+    
 
     def get(self, request, *args, **kwargs):
         response = super().get(request, *args, **kwargs)
@@ -832,8 +856,12 @@ class ProductDetailView(DetailView):
         if f'viewed_product_{self.object.id}' not in request.session:
             self.object.increase_view_count()
             request.session[f'viewed_product_{self.object.id}'] = True
+            
+        record_product_view(request, self.object)
         
         return response
+    
+    
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -981,6 +1009,8 @@ class ProductDetailView(DetailView):
             'email_verified': seller_profile.email_verified,
             'has_pending_verification': seller_profile.has_pending_verification,
         }
+        
+        
 
         context['created_at'] = self.object.created_at
         time_since_creation = timezone.now() - self.object.created_at

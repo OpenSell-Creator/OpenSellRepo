@@ -1,45 +1,46 @@
 document.addEventListener('DOMContentLoaded', function () {
 
   // ── DOM refs ──────────────────────────────────────────────────────────────
-  const mainNavbar    = document.getElementById('mainNavbar');
-  const bottomNav     = document.getElementById('bottomNav');
-  const mainSidebar   = document.getElementById('mainSidebar');
-  const hamburgerBtn  = document.querySelector('.navbar-toggler');
-  const hamburgerIcon = hamburgerBtn.querySelector('.hamburger-icon');
-  const closeIcon     = hamburgerBtn.querySelector('.close-icon');
-  const backBtn       = document.getElementById('navBackBar');
+  const mainNavbar   = document.getElementById('mainNavbar');
+  const bottomNav    = document.getElementById('bottomNav');
+  const mainSidebar  = document.getElementById('mainSidebar');
+  const menuBtn      = document.querySelector('[data-bs-target="#mainSidebar"]');
+  const backBtn      = document.getElementById('navBackBar');
+  const backArrow    = document.getElementById('navBackBtn');
 
-  // ── Active nav links ──────────────────────────────────────────────────────
+  // ── Theme toggles (top bar, phone controls) ───────────────────────────────
+  document.querySelectorAll('[data-theme-toggle]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (window.themeManager) window.themeManager.toggleTheme();
+    });
+  });
+
+  // ── Back button ───────────────────────────────────────────────────────────
+  if (backArrow) backArrow.addEventListener('click', () => history.back());
+
+  // ── Active item: sub-pages too (template covers exact matches) ────────────
   const path = window.location.pathname;
-  document.querySelectorAll('.nav-link').forEach(link => {
+  document.querySelectorAll('.nb-item[href]').forEach(link => {
     const href = link.getAttribute('href');
-    if (href === path || (path.includes(href) && href !== '/')) {
+    if (!href || href === '/') return;
+    if (path === href || path.startsWith(href)) {
       link.classList.add('active');
+      link.setAttribute('aria-current', 'page');
     }
   });
 
-  // ── Hamburger ↔ X animation ───────────────────────────────────────────────
-  mainSidebar.addEventListener('show.bs.offcanvas', function () {
-    hamburgerIcon.style.opacity   = '0';
-    hamburgerIcon.style.transform = 'rotate(180deg)';
-    closeIcon.style.display       = 'block';
-    closeIcon.style.opacity       = '1';
-    closeIcon.style.transform     = 'rotate(0)';
-    document.body.classList.add('sidebar-open');
-  });
+  // ── Menu button state (icon swap is CSS, driven by aria-expanded) ─────────
+  if (mainSidebar && menuBtn) {
+    mainSidebar.addEventListener('show.bs.offcanvas', () => {
+      menuBtn.setAttribute('aria-expanded', 'true');
+      document.body.classList.add('sidebar-open');
+    });
+    mainSidebar.addEventListener('hide.bs.offcanvas', () => {
+      menuBtn.setAttribute('aria-expanded', 'false');
+      document.body.classList.remove('sidebar-open');
+    });
+  }
 
-  mainSidebar.addEventListener('hide.bs.offcanvas', function () {
-    closeIcon.style.opacity   = '0';
-    closeIcon.style.transform = 'rotate(-180deg)';
-    setTimeout(() => {
-      closeIcon.style.display       = 'none';
-      hamburgerIcon.style.opacity   = '1';
-      hamburgerIcon.style.transform = 'rotate(0)';
-    }, 300);
-    document.body.classList.remove('sidebar-open');
-  });
-
-  // ── Viewport width helper (iOS split-view / orientation safe) ─────────────
   const getViewportWidth = () =>
     window.visualViewport ? window.visualViewport.width : window.innerWidth;
 
@@ -275,12 +276,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
   } // end mobile block
 
-  // ── Search form validation ────────────────────────────────────────────────
-  const searchForms = document.querySelectorAll('.search-form, .sidebar-search-form');
-  searchForms.forEach(form => {
+  // ── Search form validation (top bar, back bar) ────────────────────────────
+  document.querySelectorAll('.search-form').forEach(form => {
     form.addEventListener('submit', function (e) {
       const input = this.querySelector('input[name="query"]');
-      if (!input.value.trim()) {
+      if (input && !input.value.trim()) {
         e.preventDefault();
         input.focus();
       }
@@ -292,68 +292,34 @@ document.addEventListener('DOMContentLoaded', function () {
   const pwaInstallSection = document.getElementById('pwaInstallSection');
   const pwaInstallBtn     = document.getElementById('pwaInstallBtn');
 
-  if (
+  const isStandalone =
     window.matchMedia('(display-mode: standalone)').matches ||
-    window.navigator.standalone === true
-  ) {
-    if (pwaInstallSection) pwaInstallSection.style.display = 'none';
-  }
+    window.navigator.standalone === true;
 
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    if (pwaInstallSection) pwaInstallSection.style.display = 'block';
+    if (pwaInstallSection && !isStandalone) pwaInstallSection.hidden = false;
   });
 
   if (pwaInstallBtn) {
     pwaInstallBtn.addEventListener('click', async () => {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-          console.log('User accepted the install prompt');
-          pwaInstallSection.style.display = 'none';
-        }
-        deferredPrompt = null;
-      }
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted' && pwaInstallSection) pwaInstallSection.hidden = true;
+      deferredPrompt = null;
     });
   }
 
   // ── Tooltips ──────────────────────────────────────────────────────────────
-  const tooltipTriggerList = [].slice.call(
-    document.querySelectorAll('[data-bs-toggle="tooltip"]')
-  );
-  tooltipTriggerList.map(el => new bootstrap.Tooltip(el));
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
 
-  // ── Notification badges ───────────────────────────────────────────────────
-  function updateNotificationsBadges() {
-    document.querySelectorAll('.notification-badge, .quick-action-badge').forEach(badge => {
-      const count = parseInt(badge.textContent.trim());
-      badge.style.display = (isNaN(count) || count === 0) ? 'none' : 'flex';
-    });
-  }
-  updateNotificationsBadges();
-
-  // ── Collapsible (animation by CSS) ───────────────────────────────────────
-  document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(el => {
-    el.addEventListener('click', function () {});
+  // ── Count badges: hide zero / empty ───────────────────────────────────────
+  document.querySelectorAll('.nav-badge').forEach(badge => {
+    const text = badge.textContent.trim();
+    const count = parseInt(text, 10);
+    badge.hidden = (text === '' || (!isNaN(count) && count === 0));
   });
-
-  // ── Smooth offcanvas open / close ─────────────────────────────────────────
-  const offcanvasConfig = { backdrop: true, keyboard: true, scroll: false };
-  const bsOffcanvas     = new bootstrap.Offcanvas(mainSidebar, offcanvasConfig);
-  const originalShow    = bsOffcanvas.show;
-  const originalHide    = bsOffcanvas.hide;
-
-  bsOffcanvas.show = function () {
-    mainSidebar.style.transform = 'translateX(100%)';
-    originalShow.call(this);
-    setTimeout(() => { mainSidebar.style.transform = 'translateX(0)'; }, 10);
-  };
-
-  bsOffcanvas.hide = function () {
-    mainSidebar.style.transform = 'translateX(100%)';
-    setTimeout(() => { originalHide.call(this); }, 300);
-  };
 
 });

@@ -1,299 +1,449 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load compress %}
-
-{% block page_css %}
-    <link rel="preload" href="{% static 'css/pages/home.css' %}" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="{% static 'css/pages/home.css' %}"></noscript>
-{% endblock %}
 
 {% block additional_head %}
     <link rel="preload" as="image" href="{% static 'images/market1.webp' %}" type="image/webp" fetchpriority="high">
     <link rel="preconnect" href="https://opensellstatic.s3.amazonaws.com" crossorigin>
 {% endblock %}
 
+{% block page_css %}
+<style>
+.hm {
+    --hm-navy: var(--primary-color);
+    --hm-orange: var(--accent-color);
+    --hm-teal: var(--bs-teal, var(--primary-color));
+    --hm-green: var(--bs-success, var(--primary-color));
+    --hm-purple: var(--bs-purple, var(--primary-color));
+    display: flex; flex-direction: column; gap: var(--gap-sections);
+    font-size: var(--font-size-base); line-height: var(--lh-body); color: var(--text-primary);
+}
+.hm a { text-decoration: none; }
+.hm [id] { scroll-margin-top: 5.5rem; }
+.hm p { margin: 0; }
+.t-navy { --tint: var(--hm-navy); } .t-orange { --tint: var(--hm-orange); } .t-teal { --tint: var(--hm-teal); }
+.t-green { --tint: var(--hm-green); } .t-purple { --tint: var(--hm-purple); }
+.hm-h1 { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-tight); }
+.hm-h2 { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-snug); }
+.hm-h2 .bi { margin-right: var(--sp-2); color: var(--tint); }
+.hm-muted { color: var(--text-secondary); }
+.hm-fine { font-size: var(--font-size-sm); color: var(--text-secondary); }
+@media (min-width: 768px) { .hm-h2 { font-size: var(--font-size-xl); } .hm-h1 { font-size: var(--font-size-3xl); } }
+
+/* Solid icon badge, used on tiles, cards and perks */
+.hm-ico { display: grid; place-items: center; flex: none; width: 2rem; height: 2rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-lg); }
+
+/* Hero: large image with the original pill buttons on top */
+.hm-hero { display: grid; grid-template-columns: 1fr; overflow: hidden; border-radius: var(--r-card); background: var(--card-background); border: 1px solid var(--border-color); box-shadow: var(--shadow-md); }
+.hm-hero-img { position: relative; width: 100%; aspect-ratio: 21 / 10; max-height: 60vh; overflow: hidden; background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%); }
+.hm-hero-img::after { content: ""; position: absolute; inset: 0; z-index: 2; background: linear-gradient(45deg, rgba(0, 51, 102, .4), transparent); pointer-events: none; }
+.hm-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 20%; opacity: 0; transition: opacity .8s ease-in-out; }
+.hm-img.is-on { opacity: .85; }
+.hm-hbtns { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; display: flex; justify-content: center; gap: var(--sp-2); padding: 0 var(--pad-m) var(--pad-l); }
+.hm-hbtns .hm-hbtn { flex: 1 1 0; max-width: 11rem; }
+.hm-hbtn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-3); border: 2px solid var(--bs-white); border-radius: 22px; font-size: var(--font-size-sm); font-weight: 600; letter-spacing: .3px; line-height: var(--lh-tight); text-align: center; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); transition: transform .2s ease, box-shadow .2s ease; touch-action: manipulation; }
+.hm-hbtn-pri { background: var(--accent-color); color: var(--bs-white); }
+.hm-hbtn-sec { background: rgba(255, 255, 255, .1); color: var(--bs-white); border-color: rgba(255, 255, 255, .9); box-shadow: none; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+@media (hover: hover) { .hm a.hm-hbtn-pri:hover, .hm a.hm-hbtn-sec:hover { color: var(--bs-white); } .hm a.hm-hbtn-sec:hover { background: rgba(255, 255, 255, .2); border-color: var(--bs-white); } }
+@media (hover: hover) { .hm-hbtn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 0, 0, .25); } }
+.hm-hero-body { display: flex; flex-direction: column; justify-content: center; gap: var(--sp-2); padding: var(--sp-4) var(--sp-5) var(--sp-5); background: var(--primary-color); color: var(--bs-white); }
+.hm-hero-body .hm-h1 { color: var(--bs-white); }
+.hm-hero-body .hm-muted, .hm-hero-body .hm-fine { color: rgba(255, 255, 255, .85); }
+.hm .hm-signin { color: var(--bs-white); font-weight: 600; text-decoration: underline; }
+.hm-sub { font-size: var(--font-size-sm); line-height: var(--lh-snug); }
+/* Phones: full-bleed hero that tucks up under the navbar, as in the original */
+@media (max-width: 767.98px) {
+    .hm-hero { margin: -2rem -1rem 0; border: 0; border-radius: 0 0 25px 25px; box-shadow: 0 8px 24px rgba(0, 0, 0, .12), 0 4px 8px rgba(0, 0, 0, .08); }
+}
+@media (min-width: 768px) {
+    .hm-hero { grid-template-columns: 6fr 5fr; }
+    .hm-hero-img { align-self: stretch; max-height: none; aspect-ratio: auto; min-height: clamp(15rem, 24vw, 19rem); }
+    .hm-img { object-position: center 25%; }
+    .hm-hero-body { gap: var(--sp-3); padding: var(--sp-6); }
+    .hm-hbtn { font-size: var(--font-size-base); }
+}
+.hm-search { position: relative; }
+.hm-search input { width: 100%; min-height: var(--h-control-lg); padding: 0 3rem 0 var(--sp-4); border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--background-color); color: var(--text-primary); font-size: var(--font-size-base); }
+.hm-search input:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px var(--hover-bg); }
+.hm-search button { position: absolute; top: 0; right: 0; bottom: 0; width: 2.75rem; border: 0; background: none; color: var(--text-secondary); touch-action: manipulation; }
+@supports (-webkit-touch-callout: none) { .hm-search input { font-size: 16px; } }
+
+/* Tinted tiles and cards: coloured wash behind the content, solid icon badge on top */
+.hm-tile, .hm-q { position: relative; isolation: isolate; border: 1px solid var(--border-color); background: var(--card-background); color: var(--text-primary); }
+.hm-tile::before, .hm-q::before, .hm-cat::before, .hm-step::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .hm-tile::before, [data-bs-theme="dark"] .hm-q::before, [data-bs-theme="dark"] .hm-cat::before, [data-bs-theme="dark"] .hm-step::before { opacity: .09; }
+[data-bs-theme="dark"] .hm-cat { box-shadow: 0 6px 12px -6px rgba(0, 0, 0, .6); }
+
+/* Entry tiles: one big, three small */
+.hm-tiles { display: grid; grid-template-columns: 3fr 2fr; grid-template-rows: repeat(3, auto); gap: var(--gap-cards); }
+.hm-tile { display: flex; align-items: center; gap: var(--sp-2); min-height: 3rem; padding: var(--pad-s); border-radius: var(--r-card-s); font-size: var(--font-size-sm); font-weight: 600; line-height: var(--lh-tight); }
+.hm-tile-main { grid-row: 1 / span 3; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); min-height: 9.5rem; padding: var(--pad-l); border-radius: var(--r-card); font-size: var(--font-size-base); }
+.hm-tile-main .hm-ico { width: 2.75rem; height: 2.75rem; font-size: var(--font-size-3xl); }
+.hm-tile-title { display: block; font-size: var(--font-size-xl); font-weight: 600; }
+.hm-tile-sub { display: block; margin-top: var(--sp-1); font-size: var(--font-size-sm); font-weight: 400; color: var(--text-secondary); }
+.hm-badge { display: inline-block; margin-top: var(--sp-2); padding: 0 var(--sp-2); border: 1px solid var(--primary-color); border-radius: var(--radius-full); background: var(--bs-white); color: var(--primary-color); font-size: var(--font-size-xs); font-weight: 600; }
+@media (min-width: 768px) {
+    .hm-tiles { grid-template-columns: 2fr 1fr 1fr; grid-template-rows: repeat(2, auto); }
+    .hm-tile-main { grid-row: 1 / span 2; min-height: 8rem; }
+    .hm-tile-wide { grid-column: 2 / span 2; }
+    .hm-tile { font-size: var(--font-size-base); padding: var(--pad-m); }
+    .hm-tile .hm-ico { width: 2.25rem; height: 2.25rem; }
+}
+
+/* More on OpenSell: three tinted cards in one row */
+.hm-quick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap-cards); }
+.hm-q { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); padding: var(--pad-m) var(--pad-s); border-radius: var(--r-card-s); text-align: center; }
+.hm-q .hm-ico { width: 2.5rem; height: 2.5rem; font-size: var(--font-size-xl); }
+.hm-q-txt { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; line-height: var(--lh-tight); }
+.hm-q-txt b { font-size: var(--font-size-sm); font-weight: 600; }
+.hm-q-txt small { font-size: var(--font-size-xs); color: var(--text-secondary); }
+@media (min-width: 768px) { .hm-q { flex-direction: row; gap: var(--sp-3); padding: var(--pad-m); text-align: left; } .hm-q-txt b { font-size: var(--font-size-base); } }
+
+/* How it works (visitors): three tinted steps */
+.hm-how { display: grid; gap: var(--gap-cards); margin: 0; padding: 0; list-style: none; }
+.hm-step { position: relative; isolation: isolate; display: flex; align-items: center; gap: var(--sp-3); padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); }
+.hm-step .hm-ico { width: 2.75rem; height: 2.75rem; font-size: var(--font-size-xl); }
+.hm-step-txt { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; line-height: var(--lh-tight); }
+.hm-step-n { font-size: var(--font-size-xs); font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; }
+.hm-step-txt b { font-size: var(--font-size-base); font-weight: 600; }
+.hm-step-txt small { font-size: var(--font-size-sm); color: var(--text-secondary); }
+@media (min-width: 576px) { .hm-how { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 992px) { .hm-how { grid-template-columns: repeat(4, minmax(0, 1fr)); } .hm-step { flex-direction: column; align-items: flex-start; } }
+
+/* Seller pitch (signed-out only): solid navy panel */
+.hm-pitch { display: flex; flex-direction: column; gap: var(--sp-4); padding: var(--pad-l); border-radius: var(--r-card); background: var(--primary-color); border: 1px solid var(--border-color); color: var(--bs-white); }
+.hm-pitch-head { display: flex; align-items: center; gap: var(--sp-3); }
+.hm-pitch .hm-h2 { color: var(--bs-white); }
+.hm-pitch-sub { margin-top: var(--sp-1); font-size: var(--font-size-sm); opacity: .85; }
+.hm-shop { flex: none; width: 3.5rem; height: 3.5rem; }
+.hm-shop .a { fill: var(--accent-color); } .hm-shop .w { fill: var(--bs-white); } .hm-shop .b { fill: rgba(255, 255, 255, .25); }
+.hm-perks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+.hm a.hm-perk { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--pad-m); border: 1px solid rgba(255, 255, 255, .2); border-radius: var(--r-card-s); background: rgba(255, 255, 255, .1); color: var(--bs-white); line-height: var(--lh-tight); }
+.hm-perk b { font-size: var(--font-size-base); font-weight: 600; }
+.hm-perk small { font-size: var(--font-size-sm); opacity: .85; }
+.hm-pitch .hm-hbtn { width: 100%; }
+@media (min-width: 768px) { .hm-perks { grid-template-columns: repeat(4, minmax(0, 1fr)); } .hm-pitch .hm-hbtn { align-self: flex-start; width: auto; padding: 0 var(--sp-8); } }
+@media (hover: hover) { .hm a.hm-perk:hover { background: rgba(255, 255, 255, .18); } }
+
+/* Section header, categories, product grid */
+.hm-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-2); }
+.hm-more { padding: var(--sp-1) 0; font-size: var(--font-size-sm); font-weight: 600; white-space: nowrap; }
+.hm-cats { display: flex; gap: var(--gap-cards); overflow-x: auto; padding-bottom: var(--sp-3); scroll-snap-type: x proximity; scrollbar-width: none; }
+.hm-cats::-webkit-scrollbar { display: none; }
+.hm-cat { position: relative; isolation: isolate; flex: 0 0 6.5rem; display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); padding: var(--pad-m) var(--sp-2) var(--pad-s); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); box-shadow: 0 6px 12px -6px var(--tint); color: var(--text-primary); font-size: var(--font-size-sm); font-weight: 600; line-height: var(--lh-tight); text-align: center; scroll-snap-align: start; }
+.hm-cat-ico { display: grid; place-items: center; width: 3.25rem; height: 3.25rem; border-radius: var(--radius-full); background: var(--card-background); box-shadow: 0 0 0 2px var(--tint); }
+.hm-cat-ico img { width: 2.25rem; height: 2.25rem; object-fit: contain; }
+.hm-cat-ico .bi { font-size: var(--font-size-xl); color: var(--tint); }
+@media (min-width: 576px) { .hm-cats { display: grid; grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr)); overflow: visible; } .hm-cat { flex: none; } }
+@media (min-width: 992px) { .hm-cats { grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); } .hm-cat { padding: var(--pad-l) var(--sp-2) var(--pad-m); font-size: var(--font-size-base); } .hm-cat-ico { width: 4rem; height: 4rem; } .hm-cat-ico img { width: 2.75rem; height: 2.75rem; } }
+.hm-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-cards); }
+.hm-grid > * { min-width: 0; }
+@media (min-width: 768px) { .hm-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 992px) { .hm-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (hover: hover) { .hm-tile:hover, .hm-q:hover, .hm-cat:hover { border-color: var(--primary-color); } }
+
+/* Create sheet (signed in): native <dialog> in the top layer. Bottom sheet on phones, centred from 576px.
+   No Bootstrap scroll lock, so the page behind does not shift when it opens. */
+.hm-sheet { width: 100%; max-width: none; max-height: none; margin: auto 0 0; padding: 0; border: 0; border-radius: 20px 20px 0 0; background: var(--card-background); color: var(--text-primary); }
+.hm-sheet::backdrop { background: rgba(0, 0, 0, .5); }
+.hm-sheet[open] { animation: hm-sheet-up .25s ease-out; }
+@keyframes hm-sheet-up { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes hm-sheet-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+html:has(.hm-sheet[open]) { overflow: hidden; scrollbar-gutter: stable; }
+.hm-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--pad-l) var(--pad-l) var(--sp-2); }
+.hm-sheet-body { display: flex; flex-direction: column; gap: var(--gap-cards); padding: var(--sp-2) var(--pad-l) calc(var(--sp-6) + env(safe-area-inset-bottom, 0px)); }
+.hm-sheet a { text-decoration: none; }
+.hm-sheet-row { min-height: 3.5rem; padding: var(--pad-m); border-radius: var(--r-card-s); font-size: var(--font-size-base); }
+.hm-sheet-row b { display: block; font-weight: 600; }
+.hm-sheet-row small { display: block; margin-top: var(--sp-1); font-size: var(--font-size-sm); font-weight: 400; color: var(--text-secondary); }
+.hm-sheet-row .bi-chevron-right { margin-left: auto; color: var(--text-secondary); }
+.hm-sheet-row .hm-ico { width: 2.5rem; height: 2.5rem; font-size: var(--font-size-xl); }
+@media (min-width: 576px) { .hm-sheet { max-width: 26rem; margin: auto; border-radius: var(--r-card); } .hm-sheet[open] { animation-name: hm-sheet-in; } .hm-sheet-body { padding-bottom: var(--sp-6); } }
+@media (prefers-reduced-motion: reduce) { .hm-sheet[open] { animation: none; } }
+
+/* Floating create button: original design */
+.hm-fab { position: fixed; right: 1.75rem; bottom: 90px; z-index: 1044; display: flex; align-items: center; justify-content: center; width: 3.5rem; height: 3.5rem; border: 3px solid rgba(255, 255, 255, .9); border-radius: 50%; background-color: var(--accent-color); color: var(--bs-white); box-shadow: 0 2px 10px rgba(0, 0, 0, .15); transition: transform .2s ease, box-shadow .2s ease; backdrop-filter: blur(10px); }
+.hm-fab i { font-size: var(--font-size-3xl); transition: transform .2s ease; }
+@media (hover: hover) { .hm-fab:hover { color: var(--bs-white); transform: translateY(-2px) scale(1.05); box-shadow: 0 4px 15px rgba(0, 0, 0, .3); } .hm-fab:hover i { transform: rotate(90deg); } }
+@media (min-width: 768px) { .hm-fab { right: 1.5rem; bottom: 80px; } }
+@media (prefers-reduced-motion: reduce) { .hm-img, .hm-hbtn, .hm-fab, .hm-fab i { transition: none; } }
+</style>
+{% endblock %}
+
 {% block page_js %}
-    <script type="text/javascript" src="{% static 'js/pages/home.js' %}" defer></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Hero slider: images are already in the HTML; only toggle a class (keeps LCP discovery intact).
+    var imgs = [].slice.call(document.querySelectorAll('.hm-img'));
+    if (imgs.length > 1 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        var i = 0;
+        setInterval(function () {
+            imgs[i].classList.remove('is-on');
+            i = (i + 1) % imgs.length;
+            imgs[i].classList.add('is-on');
+        }, 5000);
+    }
+
+    // Create sheet: without <dialog> support the button simply opens the product form.
+    var fab = document.getElementById('hm-fab');
+    var dlg = document.getElementById('hm-create-sheet');
+    if (fab && dlg && typeof dlg.showModal === 'function') {
+        fab.addEventListener('click', function (e) { e.preventDefault(); dlg.showModal(); });
+        dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
+        dlg.querySelector('[data-close]').addEventListener('click', function () { dlg.close(); });
+    }
+});
+</script>
 {% endblock %}
 
 {% block 'Body' %}
+<div class="hm">
 
-<!-- Modern Split Hero Section -->
-<section class="modern-hero">
-    <div class="hero-container">
-        <!-- Image Side -->
-        <div class="hero-image-section">
-
+    <section class="hm-hero">
+        <div class="hm-hero-img">
             <picture>
                 <source srcset="{% static 'images/market1.webp' %}" type="image/webp">
-                <img src="{% static 'images/market1.png' %}"
-                     alt="Marketplace"
-                     class="hero-image active"
-                     fetchpriority="high"
-                     width="800"
-                     height="534">
+                <img src="{% static 'images/market1.png' %}" alt="Traders at a busy market" class="hm-img is-on" fetchpriority="high" width="800" height="534">
             </picture>
-
             <picture>
                 <source srcset="{% static 'images/market4.webp' %}" type="image/webp">
-                <img src="{% static 'images/market4.jpg' %}"
-                     alt="Marketplace"
-                     class="hero-image inactive"
-                     loading="lazy"
-                     width="800"
-                     height="534">
+                <img src="{% static 'images/market4.jpg' %}" alt="" class="hm-img" loading="lazy" width="800" height="534">
             </picture>
-
             <picture>
                 <source srcset="{% static 'images/cars.webp' %}" type="image/webp">
-                <img src="{% static 'images/cars.png' %}"
-                     alt="Marketplace"
-                     class="hero-image inactive"
-                     loading="lazy"
-                     width="800"
-                     height="534">
+                <img src="{% static 'images/cars.png' %}" alt="" class="hm-img" loading="lazy" width="800" height="534">
             </picture>
-
-            <div class="hero-image-overlay">
-                <div class="hero-cta-buttons">
-                    {% if user.is_authenticated %}
-                        <a href="{% url 'product_create' %}" class="hero-btn hero-btn-primary">
-                            <i class="bi bi-plus-circle me-1"></i> LIST ITEM
-                        </a>
-                        <a href="{% url 'product_list' %}" class="hero-btn hero-btn-secondary">
-                            <i class="bi bi-grid me-1"></i> BROWSE
-                        </a>
-                    {% else %}
-                        <a href="{% url 'signup' %}" class="hero-btn hero-btn-primary">
-                            SELL NOW
-                        </a>
-                        <a href="{% url 'login' %}" class="hero-btn hero-btn-secondary">
-                            SIGN IN
-                        </a>
-                    {% endif %}
-                </div>
+            <div class="hm-hbtns">
+                {% if user.is_authenticated %}
+                    <a href="{% url 'product_create' %}" class="hm-hbtn hm-hbtn-pri">List an item</a>
+                {% else %}
+                    <a href="{% url 'signup' %}" class="hm-hbtn hm-hbtn-pri">Create an account</a>
+                {% endif %}
+                <a href="{% url 'product_list' %}" class="hm-hbtn hm-hbtn-sec">Browse products</a>
             </div>
         </div>
 
-        <!-- Text Side -->
-        <div class="hero-text-section">
-            <div class="hero-subtitle-container">
-                <p id="hero-subtitle-text" class="hero-subtitle"></p>
-            </div>
-            <div class="hero-search">
-                <form action="{% url 'product_search' %}" method="get">
-                    <input
-                        type="text"
-                        name="query"
-                        placeholder="Search for anything..."
-                        class="search-input"
-                    >
-                    <i class="bi bi-search hero-search-icon"></i>
-                </form>
-            </div>
+        <div class="hm-hero-body">
+            <h1 class="hm-h1">{% if user.is_authenticated %}Find it. Sell it.{% else %}Buy and sell near you.{% endif %}</h1>
+            <p class="hm-muted hm-sub">Add a photo and your price in naira. Buyers contact you directly, by WhatsApp or phone call.</p>
+            <form class="hm-search" action="{% url 'product_search' %}" method="get" role="search">
+                <label class="visually-hidden" for="hm-q">Search listings</label>
+                <input id="hm-q" type="search" name="query" placeholder="Search for anything..." autocomplete="off" enterkeyhint="search">
+                <button type="submit" aria-label="Search"><i class="bi bi-search" aria-hidden="true"></i></button>
+            </form>
+            {% if not user.is_authenticated %}
+                <p class="hm-fine">Already registered? <a href="{% url 'login' %}" class="hm-signin">Sign in</a></p>
+            {% endif %}
         </div>
-    </div>
-</section>
+    </section>
 
-<!-- Quick Access Buttons Section -->
-<section class="quick-access-section">
-    <div class="container">
-        <div class="quick-access-row">
-            <div class="quick-access-col">
-                <a href="{% url 'services:list' %}" class="quick-access-card services-card">
-                    <div class="quick-access-icon">
-                        <i class="bi bi-tools"></i>
-                    </div>
-                    <div class="quick-access-content">
-                        <h3 class="quick-access-title"><span>Services</span></h3>
-                        <p class="quick-access-description"><span>Find professionals</span></p>
-                    </div>
-                    <div class="quick-access-arrow">
-                        <i class="bi bi-arrow-right"></i>
-                    </div>
-                </a>
-            </div>
-
-            <div class="quick-access-col">
-                <a href="{% url 'buyer_requests:list' %}" class="quick-access-card requests-card">
-                    <div class="quick-access-icon">
-                        <i class="bi bi-megaphone"></i>
-                    </div>
-                    <div class="quick-access-content">
-                        <h3 class="quick-access-title"><span>Post Request</span></h3>
-                        <p class="quick-access-description"><span>Let sellers find you</span></p>
-                    </div>
-                    <div class="quick-access-arrow">
-                        <i class="bi bi-arrow-right"></i>
-                    </div>
-                </a>
-            </div>
-
-            <div class="quick-access-col">
-                <a href="{% url 'affiliate_dashboard' %}" class="quick-access-card affiliate-card">
-                    <div class="quick-access-icon">
-                        <i class="bi bi-cash-coin"></i>
-                    </div>
-                    <div class="quick-access-content">
-                        <h3 class="quick-access-title"><span>Earn with Us</span></h3>
-                        <p class="quick-access-description"><span>Join affiliate program</span></p>
-                    </div>
-                    <div class="quick-access-arrow">
-                        <i class="bi bi-arrow-right"></i>
-                    </div>
-                </a>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- Categories Section -->
-<section class="categories-section">
-    <div class="container">
-        <div class="d-flex justify-content-between align-items-center mb-3 categories-header">
-            <h2 class="section-title">Popular Categories</h2>
-            <a href="{% url 'category_list' %}" class="text-primary text-decoration-none text-muted">
-                View All <i class="bi bi-chevron-right"></i>
+    <nav class="hm-tiles" aria-label="Browse products">
+        {% if user.is_authenticated %}
+            <a href="{% url 'product_list' %}{% if near_query %}?{{ near_query }}{% endif %}" class="hm-tile hm-tile-main t-teal">
+                <span class="hm-ico"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i></span>
+                <span>
+                    <span class="hm-tile-title">{% if location_name %}Near {{ location_name }}{% else %}Near you{% endif %}</span>
+                    <span class="hm-tile-sub">See products listed in your city, town, LGA or state</span>
+                </span>
             </a>
-        </div>
-
-        <div class="categories-wrapper">
-            <div class="category-nav-indicator category-nav-prev hidden">
-                <i class="bi bi-chevron-left"></i>
-            </div>
-            <div class="category-nav-indicator category-nav-next">
-                <i class="bi bi-chevron-right"></i>
-            </div>
-
-            <div class="row g-3 categories-grid">
-                {% for category in categories %}
-                <div class="category-item col-6 col-md-4 col-lg-2">
-                    <a href="{% url 'product_list' %}?category={{ category.slug }}" class="text-decoration-none">
-                        <div class="category-card card h-100">
-                            <div class="card-body">
-                                <div class="category-icon mb-2">
-                                    {% if category.image %}
-                                        <img src="{{ category.image.url }}"
-                                             alt="{{ category.name }}"
-                                             class="category-image"
-                                             loading="lazy"
-                                             width="67"
-                                             height="67">
-                                    {% else %}
-                                        <i class="bi bi-grid-fill fs-2 text-primary"></i>
-                                    {% endif %}
-                                </div>
-                                <h3 class="category-title h6 mb-0">{{ category.name }}</h3>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- Featured Products -->
-<section class="featured-products py-4">
-    <div class="container">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="section-title">Featured Products</h2>
-            <a href="{% url 'product_list' %}" class="text-primary text-decoration-none text-muted">
-                See More Products <i class="bi bi-arrow-up-right"></i>
+        {% else %}
+            <a href="{% url 'signup' %}" class="hm-tile hm-tile-main t-teal">
+                <span class="hm-ico"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i></span>
+                <span>
+                    <span class="hm-tile-title">Shop near you</span>
+                    <span class="hm-tile-sub">See products listed in your city, town, LGA or state</span>
+                    <span class="hm-badge">Free account</span>
+                </span>
             </a>
-        </div>
+        {% endif %}
+        <a href="#hm-feat" class="hm-tile t-orange"><span class="hm-ico"><i class="bi bi-star-fill" aria-hidden="true"></i></span><span>Featured picks</span></a>
+        {% if user.is_authenticated %}
+            <a href="{% url 'product_list' %}?sort=-created_at" class="hm-tile t-navy"><span class="hm-ico"><i class="bi bi-clock-history" aria-hidden="true"></i></span><span>Just added</span></a>
+            <a href="{% url 'product_list' %}?sort=price" class="hm-tile hm-tile-wide t-green"><span class="hm-ico"><i class="bi bi-tag-fill" aria-hidden="true"></i></span><span>Lowest prices</span></a>
+        {% else %}
+            <a href="{% url 'product_list' %}?verified_business=true" class="hm-tile t-green"><span class="hm-ico"><i class="bi bi-patch-check-fill" aria-hidden="true"></i></span><span>Verified sellers</span></a>
+            <a href="#hm-how" class="hm-tile hm-tile-wide t-purple"><span class="hm-ico"><i class="bi bi-lightbulb-fill" aria-hidden="true"></i></span><span>How it works</span></a>
+        {% endif %}
+    </nav>
 
-        <div class="row g-4">
+    <section aria-labelledby="hm-more-title">
+        <div class="hm-head">
+            <h2 class="hm-h2" id="hm-more-title">Get more from OpenSell</h2>
+        </div>
+        <nav class="hm-quick" aria-label="Services, requests and affiliate program">
+            <a href="{% url 'services:list' %}" class="hm-q t-navy">
+                <span class="hm-ico"><i class="bi bi-tools" aria-hidden="true"></i></span>
+                <span class="hm-q-txt"><b>Hire a professional</b><small>Find service providers</small></span>
+            </a>
+            <a href="{% url 'buyer_requests:list' %}" class="hm-q t-orange">
+                <span class="hm-ico"><i class="bi bi-megaphone-fill" aria-hidden="true"></i></span>
+                <span class="hm-q-txt"><b>Can't find it? Request it</b><small>Let sellers come to you</small></span>
+            </a>
+            <a href="{% url 'affiliate_dashboard' %}" class="hm-q t-green">
+                <span class="hm-ico"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
+                <span class="hm-q-txt"><b>Earn with OpenSell</b><small>Join the affiliate program</small></span>
+            </a>
+        </nav>
+    </section>
+
+
+    <section aria-labelledby="hm-cats-title">
+        <div class="hm-head">
+            <h2 class="hm-h2 t-purple" id="hm-cats-title"><i class="bi bi-grid-fill" aria-hidden="true"></i>Popular categories</h2>
+            <a href="{% url 'category_list' %}" class="hm-more text-primary text-decoration-none text-muted">View all</a>
+        </div>
+        <div class="hm-cats">
+            {% for category in categories %}
+            <a href="{% url 'product_list' %}?category={{ category.slug }}" class="hm-cat {% cycle 't-navy' 't-orange' 't-teal' 't-purple' 't-green' %}">
+                <span class="hm-cat-ico">
+                {% if category.image %}
+                    <img src="{{ category.image.url }}" alt="" loading="lazy" width="36" height="36">
+                {% else %}
+                    <i class="bi bi-grid-fill" aria-hidden="true"></i>
+                {% endif %}
+                </span>
+                <span>{{ category.name }}</span>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section id="hm-feat" aria-labelledby="hm-feat-title">
+        <div class="hm-head">
+            <h2 class="hm-h2 t-orange" id="hm-feat-title"><i class="bi bi-star-fill" aria-hidden="true"></i>Featured products</h2>
+            <a href="{% url 'product_list' %}" class="hm-more text-primary text-decoration-none text-muted">See more</a>
+        </div>
+        <div class="hm-grid">
             {% for product in featured_products %}
-                <div class="col-6 col-md-4 col-lg-3">
-                    {% include 'product_card.html' with product=product %}
-                </div>
+                <div>{% include 'product_card.html' with product=product %}</div>
             {% endfor %}
         </div>
-    </div>
-</section>
+    </section>
 
-<!-- First Position Banner -->
-{% if first_position_banners %}
-    {% include 'banner.html' with banners=first_position_banners %}
-{% endif %}
-
-<!-- Local Products Section (Authenticated Users Only) -->
-{% if user.is_authenticated and local_products %}
-<section class="local-products py-4">
-    <div class="container">
-        <div class="d-flex justify-content-between align-items-center mb-3">
+    {% if not user.is_authenticated %}
+    <section id="hm-how" aria-labelledby="hm-how-title">
+        <div class="hm-head">
             <div>
-                <h2 class="section-title">
-                    <i class="bi bi-geo-alt text-primary me-2"></i>
-                    {% if location_name %}
-                        Near {{ location_name }}
-                    {% else %}
-                        Near You
-                    {% endif %}
-                </h2>
-                <p class="text-muted small mb-0">Products from sellers in your area</p>
+                <h2 class="hm-h2 t-purple" id="hm-how-title"><i class="bi bi-lightbulb-fill" aria-hidden="true"></i>How it works</h2>
+                <p class="hm-fine">Free to join, with no commission on your sales.</p>
             </div>
-            <a href="{% url 'product_list' %}{% if location_name %}?location={{ location_name }}{% endif %}"
-                class="text-primary text-decoration-none text-muted">
-                View All <i class="bi bi-arrow-up-right"></i>
-            </a>
         </div>
+        <ol class="hm-how">
+            <li class="hm-step t-orange">
+                <span class="hm-ico"><i class="bi bi-person-plus-fill" aria-hidden="true"></i></span>
+                <span class="hm-step-txt"><span class="hm-step-n">Step 1</span><b>Sign up in seconds</b><small>One tap with Google, or just a username and password</small></span>
+            </li>
+            <li class="hm-step t-teal">
+                <span class="hm-ico"><i class="bi bi-person-badge-fill" aria-hidden="true"></i></span>
+                <span class="hm-step-txt"><span class="hm-step-n">Step 2</span><b>Set up your seller profile</b><small>Add your location and phone number so buyers can reach you</small></span>
+            </li>
+            <li class="hm-step t-purple">
+                <span class="hm-ico"><i class="bi bi-camera-fill" aria-hidden="true"></i></span>
+                <span class="hm-step-txt"><span class="hm-step-n">Step 3</span><b>Add a photo and your price</b><small>Post in naira. The form takes you through it step by step</small></span>
+            </li>
+            <li class="hm-step t-green">
+                <span class="hm-ico"><i class="bi bi-telephone-fill" aria-hidden="true"></i></span>
+                <span class="hm-step-txt"><span class="hm-step-n">Step 4</span><b>Get contacted directly</b><small>Buyers call or WhatsApp you. Share your store link to reach more</small></span>
+            </li>
+        </ol>
+    </section>
 
-        <div class="row g-4">
+    <section class="hm-pitch" aria-labelledby="hm-pitch-title">
+        <div class="hm-pitch-head">
+            <svg class="hm-shop" viewBox="0 0 64 64" aria-hidden="true">
+                <path class="a" d="M6 22 10 8h44l4 14z"/>
+                <path class="w" d="M20 8h8l-2 14h-8zM36 8h8l2 14h-8z"/>
+                <rect class="b" x="10" y="22" width="44" height="32"/>
+                <rect class="w" x="15" y="30" width="15" height="13"/>
+                <rect class="a" x="36" y="30" width="13" height="24"/>
+                <rect class="w" x="4" y="54" width="56" height="3"/>
+            </svg>
+            <div>
+                <h2 class="hm-h2" id="hm-pitch-title">An item you haven't listed can't sell.</h2>
+                <p class="hm-pitch-sub">Open your free store, reach more buyers, and share your store link with your own customers.</p>
+            </div>
+        </div>
+        <div class="hm-perks">
+            <a href="{% url 'signup' %}" class="hm-perk t-orange"><span class="hm-ico"><i class="bi bi-shop" aria-hidden="true"></i></span><b>Your own online store</b><small>Share your link, no website needed</small></a>
+            <a href="{% url 'signup' %}" class="hm-perk t-teal"><span class="hm-ico"><i class="bi bi-house-door-fill" aria-hidden="true"></i></span><b>Sell from home</b><small>Buyers call or WhatsApp you</small></a>
+            <a href="{% url 'signup' %}" class="hm-perk t-purple"><span class="hm-ico"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i></span><b>Reach more buyers</b><small>Be found nationwide, by state, or in your own city or town</small></a>
+            <a href="{% url 'signup' %}" class="hm-perk t-green"><span class="hm-ico"><i class="bi bi-infinity" aria-hidden="true"></i></span><b>Permanent listings</b><small>Verify your business to keep them up</small></a>
+        </div>
+        <a href="{% url 'signup' %}" class="hm-hbtn hm-hbtn-pri">Create an account</a>
+    </section>
+    {% endif %}
+
+    {% if first_position_banners %}
+        {% include 'banner.html' with banners=first_position_banners %}
+    {% endif %}
+
+    {% if user.is_authenticated and local_products %}
+    <section aria-labelledby="hm-local-title">
+        <div class="hm-head">
+            <div>
+                <h2 class="hm-h2 t-teal" id="hm-local-title"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i>{% if location_name %}Near {{ location_name }}{% else %}Near you{% endif %}</h2>
+                <p class="hm-fine">Products from sellers in your area</p>
+            </div>
+            <a href="{% url 'product_list' %}{% if near_query %}?{{ near_query }}{% endif %}" class="hm-more text-primary text-decoration-none text-muted">View all</a>
+        </div>
+        <div class="hm-grid">
             {% for product in local_products %}
-                <div class="col-6 col-md-4 col-lg-3">
-                    {% include 'product_card.html' with product=product %}
-                </div>
+                <div>{% include 'product_card.html' with product=product %}</div>
             {% endfor %}
         </div>
-    </div>
-</section>
-{% endif %}
+    </section>
+    {% endif %}
 
-<!-- Second Position Banner -->
-{% if second_position_banners %}
-    {% include 'banner.html' with banners=second_position_banners %}
-{% endif %}
+    {% if second_position_banners %}
+        {% include 'banner.html' with banners=second_position_banners %}
+    {% endif %}
 
-<!-- Recently Added Products -->
-{% if trending_products %}
-<section class="trending-products py-4">
-    <div class="container">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="section-title">Recently Added</h2>
-            <a href="{% url 'product_list' %}" class="text-primary text-decoration-none text-muted">
-                See More Products <i class="bi bi-arrow-up-right"></i>
+    {% if trending_products %}
+    <section id="hm-new" aria-labelledby="hm-new-title">
+        <div class="hm-head">
+            <h2 class="hm-h2 t-navy" id="hm-new-title"><i class="bi bi-clock-history" aria-hidden="true"></i>Recently added</h2>
+            <a href="{% url 'product_list' %}?sort=-created_at" class="hm-more text-primary text-decoration-none text-muted">See more</a>
+        </div>
+        <div class="hm-grid">
+            {% for product in trending_products %}
+                <div>{% include 'product_card.html' with product=product %}</div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if third_position_banners %}
+        {% include 'banner.html' with banners=third_position_banners %}
+    {% endif %}
+
+    {% if user.is_authenticated %}
+    <dialog class="hm-sheet" id="hm-create-sheet" aria-labelledby="hm-sheet-title">
+        <div class="hm-sheet-head">
+            <h2 class="hm-h2" id="hm-sheet-title">What would you like to post?</h2>
+            <button type="button" class="btn-close" data-close aria-label="Close"></button>
+        </div>
+        <div class="hm-sheet-body">
+            <a href="{% url 'product_create' %}" class="hm-tile hm-sheet-row t-orange">
+                <span class="hm-ico"><i class="bi bi-box-seam-fill" aria-hidden="true"></i></span>
+                <span><b>List a product</b><small>Sell an item with photos and a price</small></span>
+                <i class="bi bi-chevron-right" aria-hidden="true"></i>
+            </a>
+            <a href="{% url 'services:create' %}" class="hm-tile hm-sheet-row t-navy">
+                <span class="hm-ico"><i class="bi bi-tools" aria-hidden="true"></i></span>
+                <span><b>Offer a service</b><small>Let people hire you</small></span>
+                <i class="bi bi-chevron-right" aria-hidden="true"></i>
+            </a>
+            <a href="{% url 'buyer_requests:create' %}" class="hm-tile hm-sheet-row t-green">
+                <span class="hm-ico"><i class="bi bi-megaphone-fill" aria-hidden="true"></i></span>
+                <span><b>Post a request</b><small>Tell sellers what you need</small></span>
+                <i class="bi bi-chevron-right" aria-hidden="true"></i>
             </a>
         </div>
+    </dialog>
+    {% endif %}
 
-        <div class="row g-4">
-            {% for product in trending_products %}
-                <div class="col-6 col-md-4 col-lg-3">
-                    {% include 'product_card.html' with product=product %}
-                </div>
-            {% endfor %}
-        </div>
-    </div>
-</section>
-{% endif %}
+</div>
 
-<!-- Third Position Banner -->
-{% if third_position_banners %}
-    {% include 'banner.html' with banners=third_position_banners %}
-{% endif %}
-
-<!-- Create Listing Floating Button (Authenticated Users Only) -->
 {% if user.is_authenticated %}
-    <a href="{% url 'product_create' %}"
-       id="create-listing-btn"
-       class="btn btn-primary rounded-circle position-fixed"
-       data-bs-toggle="tooltip"
-       data-bs-placement="left"
-       title="Create New Listing">
-        <i class="bi bi-plus fs-4"></i>
-    </a>
+    <a href="{% url 'product_create' %}" id="hm-fab" class="hm-fab" aria-label="Post something" aria-haspopup="dialog"><i class="bi bi-plus" aria-hidden="true"></i></a>
 {% endif %}
-
 {% endblock %}

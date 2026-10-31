@@ -4,574 +4,781 @@
 {% block title %}Review Affiliate: {{ affiliate.referral_code }} - Admin{% endblock %}
 
 {% block 'Body' %}
-<div class="container-fluid my-4">
-    <div class="row">
-        <!-- Back Navigation -->
-        <div class="col-12 mb-3">
-            <a href="{% url 'admin_affiliate_approvals' %}" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left"></i> Back to Approvals
-            </a>
-        </div>
-        
+<style>
+.adm {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-sections);
+    min-width: 0;
+}
+.adm-card {
+    padding: var(--pad-m);
+    min-width: 0;
+}
+.adm-card--flush {
+    padding: 0;
+    overflow: hidden;
+}
+.adm-card--alert {
+    border-color: var(--error);
+}
+.adm-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-2) var(--sp-3);
+}
+.adm-head--pad {
+    padding: var(--pad-m) var(--pad-m) 0;
+}
+.adm-title {
+    margin: 0;
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+    line-height: var(--lh-tight);
+    color: var(--text-primary);
+}
+.adm-card__title {
+    margin: 0;
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    line-height: var(--lh-snug);
+    color: var(--text-primary);
+}
+.adm-card__head {
+    margin-bottom: var(--gap-fields);
+}
+.adm-subtitle {
+    margin: 0 0 var(--gap-fields);
+    padding-bottom: var(--sp-2);
+    border-bottom: 1px solid var(--border-color);
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.adm-meta {
+    display: block;
+    font-size: var(--font-size-sm);
+    line-height: var(--lh-snug);
+    color: var(--text-secondary);
+}
+.adm-strong {
+    font-weight: 600;
+}
+.adm-money {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.adm-mono {
+    font-family: var(--bs-font-monospace, monospace);
+    font-size: var(--font-size-sm);
+}
+@media (min-width: 768px) {
+    .adm-title {
+        font-size: var(--font-size-3xl);
+    }
+}
+.adm-badge {
+    --tone: var(--border-color);
+    --tone-soft: var(--hover-bg);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1);
+    padding: .125rem var(--sp-2);
+    border: 1px solid var(--tone);
+    border-radius: var(--radius-full);
+    background: var(--tone-soft);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    line-height: var(--lh-snug);
+    white-space: nowrap;
+}
+.adm-badge--pending {
+    --tone: var(--warning);
+    --tone-soft: var(--warning-soft);
+}
+.adm-badge--success {
+    --tone: var(--success);
+    --tone-soft: var(--success-soft);
+}
+.adm-badge--danger {
+    --tone: var(--error);
+    --tone-soft: var(--danger-soft);
+}
+.adm-badge--info {
+    --tone: var(--link-color);
+    --tone-soft: var(--primary-soft);
+}
+.adm-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+    gap: var(--gap-cards);
+}
+.adm-stat {
+    padding: var(--pad-m);
+    border-radius: var(--r-card-s);
+    background: var(--hover-bg);
+    text-align: center;
+    min-width: 0;
+}
+.adm-stat__value {
+    display: block;
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+    line-height: var(--lh-tight);
+    color: var(--text-primary);
+}
+.adm-stat__label {
+    display: block;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+.adm-scroll {
+    overflow-x: auto;
+}
+.adm-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--font-size-base);
+}
+.adm-table th {
+    padding: var(--sp-2) var(--sp-3);
+    border-bottom: 1px solid var(--border-color);
+    background: var(--hover-bg);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    text-align: left;
+    white-space: nowrap;
+}
+.adm-table td {
+    padding: var(--sp-2) var(--sp-3);
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+.adm-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+@media (hover: hover) {
+    .adm-table tbody tr:hover {
+        background: var(--hover-bg);
+    }
+}
+.adm-stack {
+    display: grid;
+    gap: var(--sp-2);
+}
+.adm-form {
+    display: grid;
+    gap: var(--gap-fields);
+}
+.adm-empty {
+    display: grid;
+    justify-items: center;
+    gap: var(--sp-1);
+    padding: var(--pad-l) var(--pad-m);
+    text-align: center;
+    color: var(--text-secondary);
+}
+.adm-empty i {
+    font-size: var(--font-size-4xl);
+}
+.adm-empty p {
+    margin: 0;
+    font-size: var(--font-size-base);
+}
+.adm-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--gap-sections);
+}
+.adm-main, .adm-side {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-sections);
+    min-width: 0;
+}
+.adm-cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--gap-sections);
+}
+@media (min-width: 768px) {
+    .adm-cols {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+@media (min-width: 992px) {
+    .adm-layout {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+        align-items: start;
+    }
+    .adm-sticky {
+        position: sticky;
+        top: calc(var(--navbar-height) + var(--sp-3));
+    }
+}
+.adm-kv {
+    display: grid;
+    margin: 0;
+}
+.adm-kv > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    min-width: 0;
+    padding: var(--sp-2) 0;
+    border-bottom: 1px solid var(--border-color);
+}
+.adm-kv > div:last-child {
+    border-bottom: 0;
+}
+.adm-kv dt {
+    flex: none;
+    max-width: 45%;
+    font-size: var(--font-size-sm);
+    font-weight: 400;
+    color: var(--text-secondary);
+}
+.adm-kv dd {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--sp-2);
+    min-width: 0;
+    margin: 0;
+    font-size: var(--font-size-base);
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+@media (max-width: 575.98px) {
+    .adm-kv > div {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--sp-1);
+    }
+    .adm-kv dt {
+        max-width: none;
+    }
+    .adm-kv dd {
+        justify-content: flex-start;
+        text-align: left;
+    }
+}
+.adm-note {
+    padding: var(--pad-m);
+    border-left: 3px solid var(--link-color);
+    border-radius: var(--radius-md);
+    background: var(--primary-soft);
+    font-size: var(--font-size-base);
+    overflow-wrap: anywhere;
+}
+.adm-note p {
+    margin: 0 0 var(--sp-2);
+}
+.adm-note > :last-child {
+    margin-bottom: 0;
+}
+.adm-state {
+    display: grid;
+    justify-items: center;
+    gap: var(--sp-1);
+    margin-bottom: var(--gap-fields);
+    text-align: center;
+}
+.adm-state i {
+    font-size: var(--font-size-4xl);
+}
+.adm-state--success i {
+    color: var(--success);
+}
+.adm-state--danger i {
+    color: var(--error);
+}
+.adm-state--neutral i {
+    color: var(--text-secondary);
+}
+.adm-state__title {
+    margin: 0;
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.adm-state p {
+    margin: 0;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+.adm-timeline {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.adm-timeline li {
+    padding: var(--sp-2) 0;
+    border-bottom: 1px solid var(--border-color);
+}
+.adm-timeline li:first-child {
+    padding-top: 0;
+}
+.adm-timeline li:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+.adm-timeline strong {
+    font-weight: 600;
+}
+form[aria-busy="true"] button[type="submit"] {
+    opacity: .7;
+    cursor: progress;
+}
+</style>
+
+<div class="adm">
+
+    <div>
+        <a href="{% url 'admin_affiliate_approvals' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i> Back to Approvals
+        </a>
+    </div>
+
+    <div class="adm-layout">
+
         <!-- Main Content -->
-        <div class="col-lg-8">
-            <!-- Affiliate Information Card -->
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h4><i class="bi bi-person-badge me-2"></i>{{ affiliate.user.get_full_name|default:affiliate.user.username }}</h4>
-                        <div class="status-badge">
-                            {% if affiliate.status == 'pending' %}
-                                <span class="badge bg-warning fs-6">Pending Review</span>
-                            {% elif affiliate.status == 'active' %}
-                                <span class="badge bg-success fs-6">Active</span>
-                            {% elif affiliate.status == 'rejected' %}
-                                <span class="badge bg-danger fs-6">Rejected</span>
-                            {% elif affiliate.status == 'suspended' %}
-                                <span class="badge bg-secondary fs-6">Suspended</span>
-                            {% endif %}
-                        </div>
-                    </div>
+        <div class="adm-main">
+
+            <!-- Affiliate Information -->
+            <section class="card adm-card">
+                <div class="adm-head adm-card__head">
+                    <h1 class="adm-title">{{ affiliate.user.get_full_name|default:affiliate.user.username }}</h1>
+                    {% if affiliate.status == 'pending' %}
+                        <span class="adm-badge adm-badge--pending">Pending Review</span>
+                    {% elif affiliate.status == 'active' %}
+                        <span class="adm-badge adm-badge--success">Active</span>
+                    {% elif affiliate.status == 'rejected' %}
+                        <span class="adm-badge adm-badge--danger">Rejected</span>
+                    {% elif affiliate.status == 'suspended' %}
+                        <span class="adm-badge">Suspended</span>
+                    {% endif %}
                 </div>
-                
-                <div class="card-body">
-                    <div class="row">
-                        <!-- User Details -->
-                        <div class="col-md-6">
-                            <h6 class="section-title">User Information</h6>
-                            <div class="info-list">
-                                <div class="info-item">
-                                    <strong>Full Name:</strong>
-                                    <span>{{ affiliate.user.get_full_name|default:"Not provided" }}</span>
-                                </div>
-                                <div class="info-item">
-                                    <strong>Username:</strong>
-                                    <span>@{{ affiliate.user.username }}</span>
-                                </div>
-                                <div class="info-item">
-                                    <strong>Email:</strong>
-                                    <span>{{ affiliate.user.email }}</span>
-                                    <a href="mailto:{{ affiliate.user.email }}" class="btn btn-sm btn-outline-primary ms-2">
-                                        <i class="bi bi-envelope"></i>
+
+                <div class="adm-cols">
+                    <!-- User Details -->
+                    <div>
+                        <h2 class="adm-subtitle">User Information</h2>
+                        <dl class="adm-kv">
+                            <div>
+                                <dt>Full Name</dt>
+                                <dd>{{ affiliate.user.get_full_name|default:"Not provided" }}</dd>
+                            </div>
+                            <div>
+                                <dt>Username</dt>
+                                <dd>@{{ affiliate.user.username }}</dd>
+                            </div>
+                            <div>
+                                <dt>Email</dt>
+                                <dd>
+                                    {{ affiliate.user.email }}
+                                    <a href="mailto:{{ affiliate.user.email }}" class="btn btn-sm btn-outline-secondary"
+                                       aria-label="Email {{ affiliate.user.email }}">
+                                        <i class="bi bi-envelope" aria-hidden="true"></i>
                                     </a>
-                                </div>
-                                <div class="info-item">
-                                    <strong>Referral Code:</strong>
-                                    <span class="badge bg-primary">{{ affiliate.referral_code }}</span>
-                                </div>
-                                <div class="info-item">
-                                    <strong>Join Date:</strong>
-                                    <span>{{ affiliate.user.date_joined|date:"F d, Y" }}</span>
-                                </div>
-                                <div class="info-item">
-                                    <strong>Last Login:</strong>
-                                    <span>{{ affiliate.user.last_login|date:"F d, Y H:i"|default:"Never" }}</span>
-                                </div>
+                                </dd>
                             </div>
-                        </div>
-                        
-                        <!-- Affiliate Stats -->
-                        <div class="col-md-6">
-                            <h6 class="section-title">Affiliate Stats</h6>
-                            <div class="info-list">
-                                <div class="info-item">
-                                    <strong>Total Referrals:</strong>
-                                    <span class="badge bg-info">{{ total_referrals }}</span>
-                                </div>
-                                <div class="info-item">
-                                    <strong>Active Referrals:</strong>
-                                    <span class="badge bg-success">{{ active_referrals }}</span>
-                                </div>
-                                <div class="info-item">
-                                    <strong>Conversion Rate:</strong>
-                                    <span>{{ conversion_rate|floatformat:1 }}%</span>
-                                </div>
-                                <div class="info-item">
-                                    <strong>Total Earned:</strong>
-                                    <span class="text-success fw-bold">₦{{ total_commissions|floatformat:2 }}</span>
-                                </div>
-                                <div class="info-item">
-                                    <strong>Pending Balance:</strong>
-                                    <span class="text-warning fw-bold">₦{{ pending_commissions|floatformat:2 }}</span>
-                                </div>
-                                <div class="info-item">
-                                    <strong>Available Balance:</strong>
-                                    <span class="text-success fw-bold">₦{{ affiliate.available_balance|floatformat:2 }}</span>
-                                </div>
+                            <div>
+                                <dt>Referral Code</dt>
+                                <dd><span class="adm-badge adm-badge--info">{{ affiliate.referral_code }}</span></dd>
                             </div>
-                        </div>
+                            <div>
+                                <dt>Join Date</dt>
+                                <dd>{{ affiliate.user.date_joined|date:"F d, Y" }}</dd>
+                            </div>
+                            <div>
+                                <dt>Last Login</dt>
+                                <dd>{{ affiliate.user.last_login|date:"F d, Y H:i"|default:"Never" }}</dd>
+                            </div>
+                        </dl>
                     </div>
-                    
-                    <!-- Application Reason -->
-                    {% if affiliate.application_reason %}
-                    <div class="mt-4">
-                        <h6 class="section-title">Application Reason</h6>
-                        <div class="description-box">
-                            {{ affiliate.application_reason|linebreaks }}
-                        </div>
+
+                    <!-- Affiliate Stats -->
+                    <div>
+                        <h2 class="adm-subtitle">Affiliate Stats</h2>
+                        <dl class="adm-kv">
+                            <div>
+                                <dt>Total Referrals</dt>
+                                <dd class="adm-strong">{{ total_referrals }}</dd>
+                            </div>
+                            <div>
+                                <dt>Active Referrals</dt>
+                                <dd class="adm-strong">{{ active_referrals }}</dd>
+                            </div>
+                            <div>
+                                <dt>Conversion Rate</dt>
+                                <dd>{{ conversion_rate|floatformat:1 }}%</dd>
+                            </div>
+                            <div>
+                                <dt>Total Earned</dt>
+                                <dd class="adm-money">₦{{ total_commissions|floatformat:2 }}</dd>
+                            </div>
+                            <div>
+                                <dt>Pending Balance</dt>
+                                <dd class="adm-money">₦{{ pending_commissions|floatformat:2 }}</dd>
+                            </div>
+                            <div>
+                                <dt>Available Balance</dt>
+                                <dd class="adm-money">₦{{ affiliate.available_balance|floatformat:2 }}</dd>
+                            </div>
+                        </dl>
                     </div>
-                    {% endif %}
-                    
-                    <!-- Admin Notes (if any) -->
-                    {% if affiliate.admin_notes %}
-                    <div class="mt-4">
-                        <h6 class="section-title">Previous Admin Notes</h6>
-                        <div class="alert alert-info">
-                            {{ affiliate.admin_notes|linebreaks }}
-                        </div>
-                    </div>
-                    {% endif %}
                 </div>
-            </div>
-            
+
+                <!-- Application Reason -->
+                {% if affiliate.application_reason %}
+                <div class="mt-4">
+                    <h2 class="adm-subtitle">Application Reason</h2>
+                    <div class="adm-note">{{ affiliate.application_reason|linebreaks }}</div>
+                </div>
+                {% endif %}
+
+                <!-- Admin Notes (if any) -->
+                {% if affiliate.admin_notes %}
+                <div class="mt-4">
+                    <h2 class="adm-subtitle">Previous Admin Notes</h2>
+                    <div class="adm-note">{{ affiliate.admin_notes|linebreaks }}</div>
+                </div>
+                {% endif %}
+            </section>
+
             <!-- Fraud Warning Signals -->
             {% if warnings %}
-            <div class="card mb-4 border-danger">
-                <div class="card-header bg-danger text-white">
-                    <h5><i class="bi bi-exclamation-triangle-fill me-2"></i>Warning Signals Detected</h5>
-                </div>
-                <div class="card-body">
+            <section class="card adm-card adm-card--alert" role="alert">
+                <h2 class="adm-card__title adm-card__head">
+                    <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i> Warning Signals Detected
+                </h2>
+                <div class="adm-stack">
                     {% for warning in warnings %}
-                    <div class="alert alert-{{ warning.severity }} border-{{ warning.severity }}">
+                    <div class="alert alert-{{ warning.severity }} mb-0">
                         <strong>{{ warning.type|title }}:</strong> {{ warning.message }}
                     </div>
                     {% endfor %}
                 </div>
-            </div>
+            </section>
             {% endif %}
-            
+
             <!-- Recent Referrals -->
-            <div class="card mb-4">
-                <div class="card-header bg-info text-white">
-                    <h5><i class="bi bi-people me-2"></i>Recent Referrals ({{ recent_referrals|length }})</h5>
+            <section class="card adm-card adm-card--flush">
+                <h2 class="adm-card__title adm-head--pad adm-card__head">Recent Referrals ({{ recent_referrals|length }})</h2>
+                {% if recent_referrals %}
+                <div class="adm-scroll">
+                    <table class="adm-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">User</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Joined</th>
+                                <th scope="col">Revenue</th>
+                                <th scope="col">IP Address</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for referral in recent_referrals %}
+                            <tr>
+                                <td>
+                                    <span class="adm-strong">{{ referral.referred_user.username }}</span>
+                                    <span class="adm-meta">{{ referral.referred_user.email }}</span>
+                                </td>
+                                <td>
+                                    {% if referral.status == 'active' %}
+                                    <span class="adm-badge adm-badge--success">Active</span>
+                                    {% elif referral.status == 'pending' %}
+                                    <span class="adm-badge adm-badge--pending">Pending</span>
+                                    {% elif referral.status == 'fraud' %}
+                                    <span class="adm-badge adm-badge--danger">Fraud</span>
+                                    {% else %}
+                                    <span class="adm-badge">{{ referral.status|title }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ referral.signup_date|date:"M d, Y" }}
+                                    <span class="adm-meta">{{ referral.signup_date|timesince }} ago</span>
+                                </td>
+                                <td>
+                                    <span class="adm-money">₦{{ referral.total_revenue_generated|floatformat:2 }}</span>
+                                    <span class="adm-meta">₦{{ referral.total_commission_earned|floatformat:2 }} commission</span>
+                                </td>
+                                <td><span class="adm-mono">{{ referral.signup_ip|default:"N/A" }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
-                <div class="card-body p-0">
-                    {% if recent_referrals %}
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>User</th>
-                                    <th>Status</th>
-                                    <th>Joined</th>
-                                    <th>Revenue</th>
-                                    <th>IP Address</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for referral in recent_referrals %}
-                                <tr>
-                                    <td>
-                                        <strong>{{ referral.referred_user.username }}</strong>
-                                        <br><small class="text-muted">{{ referral.referred_user.email }}</small>
-                                    </td>
-                                    <td>
-                                        {% if referral.status == 'active' %}
-                                        <span class="badge bg-success">Active</span>
-                                        {% elif referral.status == 'pending' %}
-                                        <span class="badge bg-warning">Pending</span>
-                                        {% elif referral.status == 'fraud' %}
-                                        <span class="badge bg-danger">Fraud</span>
-                                        {% else %}
-                                        <span class="badge bg-secondary">{{ referral.status|title }}</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {{ referral.signup_date|date:"M d, Y" }}
-                                        <br><small class="text-muted">{{ referral.signup_date|timesince }} ago</small>
-                                    </td>
-                                    <td>
-                                        <strong class="text-success">₦{{ referral.total_revenue_generated|floatformat:2 }}</strong>
-                                        <br><small class="text-muted">₦{{ referral.total_commission_earned|floatformat:2 }} commission</small>
-                                    </td>
-                                    <td>
-                                        <small class="text-muted font-monospace">{{ referral.signup_ip|default:"N/A" }}</small>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="text-center py-4">
-                        <i class="bi bi-person-plus display-4 text-muted"></i>
-                        <p class="text-muted mt-3">No referrals yet</p>
-                    </div>
-                    {% endif %}
+                {% else %}
+                <div class="adm-empty">
+                    <i class="bi bi-person-plus" aria-hidden="true"></i>
+                    <p>No referrals yet</p>
                 </div>
-            </div>
-            
+                {% endif %}
+            </section>
+
             <!-- Recent Commissions -->
-            <div class="card mb-4">
-                <div class="card-header bg-success text-white">
-                    <h5><i class="bi bi-cash-stack me-2"></i>Recent Commissions ({{ recent_commissions|length }})</h5>
+            <section class="card adm-card adm-card--flush">
+                <h2 class="adm-card__title adm-head--pad adm-card__head">Recent Commissions ({{ recent_commissions|length }})</h2>
+                {% if recent_commissions %}
+                <div class="adm-scroll">
+                    <table class="adm-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Date</th>
+                                <th scope="col">Type</th>
+                                <th scope="col">From User</th>
+                                <th scope="col">Base Amount</th>
+                                <th scope="col">Commission</th>
+                                <th scope="col">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for commission in recent_commissions %}
+                            <tr>
+                                <td>
+                                    {{ commission.created_at|date:"M d, Y" }}
+                                    <span class="adm-meta">{{ commission.created_at|time:"H:i" }}</span>
+                                </td>
+                                <td>
+                                    {% if commission.transaction_type == 'funding' %}Funding
+                                    {% elif commission.transaction_type == 'boost' %}Boost
+                                    {% elif commission.transaction_type == 'subscription' %}Subscription
+                                    {% endif %}
+                                </td>
+                                <td><span class="adm-strong">{{ commission.referral.referred_user.username }}</span></td>
+                                <td class="adm-money">₦{{ commission.base_amount|floatformat:2 }}</td>
+                                <td>
+                                    <span class="adm-money">₦{{ commission.commission_amount|floatformat:2 }}</span>
+                                    <span class="adm-meta">{{ commission.commission_rate }}%</span>
+                                </td>
+                                <td>
+                                    {% if commission.status == 'pending' %}
+                                    <span class="adm-badge adm-badge--pending">Pending (7d)</span>
+                                    {% elif commission.status == 'available' %}
+                                    <span class="adm-badge adm-badge--success">Available</span>
+                                    {% elif commission.status == 'paid' %}
+                                    <span class="adm-badge">Paid</span>
+                                    {% elif commission.status == 'cancelled' %}
+                                    <span class="adm-badge adm-badge--danger">Cancelled</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
-                <div class="card-body p-0">
-                    {% if recent_commissions %}
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Type</th>
-                                    <th>From User</th>
-                                    <th>Base Amount</th>
-                                    <th>Commission</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for commission in recent_commissions %}
-                                <tr>
-                                    <td>
-                                        {{ commission.created_at|date:"M d, Y" }}
-                                        <br><small class="text-muted">{{ commission.created_at|time:"H:i" }}</small>
-                                    </td>
-                                    <td>
-                                        {% if commission.transaction_type == 'funding' %}
-                                        <i class="bi bi-wallet2 text-primary"></i> Funding
-                                        {% elif commission.transaction_type == 'boost' %}
-                                        <i class="bi bi-rocket text-warning"></i> Boost
-                                        {% elif commission.transaction_type == 'subscription' %}
-                                        <i class="bi bi-star text-success"></i> Subscription
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <strong>{{ commission.referral.referred_user.username }}</strong>
-                                    </td>
-                                    <td>₦{{ commission.base_amount|floatformat:2 }}</td>
-                                    <td>
-                                        <strong class="text-success">₦{{ commission.commission_amount|floatformat:2 }}</strong>
-                                        <br><small class="text-muted">{{ commission.commission_rate }}%</small>
-                                    </td>
-                                    <td>
-                                        {% if commission.status == 'pending' %}
-                                        <span class="badge bg-warning">Pending (7d)</span>
-                                        {% elif commission.status == 'available' %}
-                                        <span class="badge bg-success">Available</span>
-                                        {% elif commission.status == 'paid' %}
-                                        <span class="badge bg-secondary">Paid</span>
-                                        {% elif commission.status == 'cancelled' %}
-                                        <span class="badge bg-danger">Cancelled</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="text-center py-4">
-                        <i class="bi bi-cash-coin display-4 text-muted"></i>
-                        <p class="text-muted mt-3">No commissions earned yet</p>
-                    </div>
-                    {% endif %}
+                {% else %}
+                <div class="adm-empty">
+                    <i class="bi bi-cash-coin" aria-hidden="true"></i>
+                    <p>No commissions earned yet</p>
                 </div>
-            </div>
-            
+                {% endif %}
+            </section>
+
             <!-- Commission Rates -->
-            <div class="card">
-                <div class="card-header bg-secondary text-white">
-                    <h5><i class="bi bi-percent me-2"></i>Commission Rates</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="text-center p-3 border rounded">
-                                <i class="bi bi-wallet2 display-5 text-primary"></i>
-                                <h4 class="mt-2 mb-0">{{ affiliate.funding_commission_rate }}%</h4>
-                                <p class="text-muted mb-0">Funding</p>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-center p-3 border rounded">
-                                <i class="bi bi-rocket display-5 text-warning"></i>
-                                <h4 class="mt-2 mb-0">{{ affiliate.boost_commission_rate }}%</h4>
-                                <p class="text-muted mb-0">Boosts</p>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-center p-3 border rounded">
-                                <i class="bi bi-star display-5 text-success"></i>
-                                <h4 class="mt-2 mb-0">{{ affiliate.subscription_commission_rate }}%</h4>
-                                <p class="text-muted mb-0">Subscriptions</p>
-                            </div>
-                        </div>
+            <section class="card adm-card">
+                <h2 class="adm-card__title adm-card__head">Commission Rates</h2>
+                <div class="adm-stats">
+                    <div class="adm-stat">
+                        <span class="adm-stat__value">{{ affiliate.funding_commission_rate }}%</span>
+                        <span class="adm-stat__label">Funding</span>
+                    </div>
+                    <div class="adm-stat">
+                        <span class="adm-stat__value">{{ affiliate.boost_commission_rate }}%</span>
+                        <span class="adm-stat__label">Boosts</span>
+                    </div>
+                    <div class="adm-stat">
+                        <span class="adm-stat__value">{{ affiliate.subscription_commission_rate }}%</span>
+                        <span class="adm-stat__label">Subscriptions</span>
                     </div>
                 </div>
-            </div>
+            </section>
         </div>
-        
+
         <!-- Action Panel -->
-        <div class="col-lg-4">
-            <div class="card sticky-top" style="top: 20px;">
-                <div class="card-header bg-dark text-white">
-                    <h5><i class="bi bi-gear me-2"></i>Review Actions</h5>
+        <div class="adm-side">
+            <section class="card adm-card adm-sticky" aria-labelledby="review-actions">
+                <h2 class="adm-card__title adm-card__head" id="review-actions">Review Actions</h2>
+
+                {% if affiliate.status == 'pending' %}
+                <!-- Approval Form -->
+                <form method="post" class="adm-form">
+                    {% csrf_token %}
+                    <div>
+                        <label for="admin_notes" class="form-label">Admin Notes</label>
+                        <textarea name="admin_notes" id="admin_notes" class="form-control" rows="4"
+                                  placeholder="Add notes about this decision..."></textarea>
+                    </div>
+                    <div class="adm-stack">
+                        <button type="submit" name="action" value="approve" class="btn btn-primary">
+                            <i class="bi bi-check-circle-fill me-1" aria-hidden="true"></i>Approve Affiliate
+                        </button>
+                        <button type="submit" name="action" value="reject" class="btn btn-outline-danger">
+                            <i class="bi bi-x-circle-fill me-1" aria-hidden="true"></i>Reject Application
+                        </button>
+                    </div>
+                </form>
+
+                {% elif affiliate.status == 'active' %}
+                <!-- Active Affiliate Actions -->
+                <div class="adm-state adm-state--success">
+                    <i class="bi bi-patch-check-fill" aria-hidden="true"></i>
+                    <h3 class="adm-state__title">Affiliate Active</h3>
+                    <p>
+                        Approved on {{ affiliate.approved_at|date:"F d, Y" }}
+                        {% if affiliate.approved_by %}
+                        by {{ affiliate.approved_by.get_full_name|default:affiliate.approved_by.username }}
+                        {% endif %}
+                    </p>
                 </div>
-                <div class="card-body">
-                    {% if affiliate.status == 'pending' %}
-                    <!-- Approval Form -->
-                    <form method="post">
-                        {% csrf_token %}
-                        
-                        <div class="mb-3">
-                            <label for="admin_notes" class="form-label">Admin Notes</label>
-                            <textarea name="admin_notes" class="form-control" rows="4" 
-                                      placeholder="Add notes about this decision..."></textarea>
-                        </div>
-                        
-                        <div class="d-grid gap-2">
-                            <button type="submit" name="action" value="approve" class="btn btn-success btn-lg">
-                                <i class="bi bi-check-circle-fill me-2"></i>Approve Affiliate
-                            </button>
-                            
-                            <button type="submit" name="action" value="reject" class="btn btn-danger btn-lg">
-                                <i class="bi bi-x-circle-fill me-2"></i>Reject Application
-                            </button>
-                        </div>
-                    </form>
-                    
-                    {% elif affiliate.status == 'active' %}
-                    <!-- Active Affiliate Actions -->
-                    <div class="text-center mb-3">
-                        <i class="bi bi-patch-check-fill fs-1 text-success"></i>
-                        <h5 class="text-success mt-3">Affiliate Active</h5>
-                        <p class="text-muted">
-                            Approved on {{ affiliate.approved_at|date:"F d, Y" }}
-                            {% if affiliate.approved_by %}
-                            by {{ affiliate.approved_by.get_full_name|default:affiliate.approved_by.username }}
-                            {% endif %}
-                        </p>
+                <form method="post" class="adm-form">
+                    {% csrf_token %}
+                    <div>
+                        <label for="admin_notes" class="visually-hidden">Reason for suspension</label>
+                        <textarea name="admin_notes" id="admin_notes" class="form-control" rows="3"
+                                  placeholder="Reason for suspension..."></textarea>
                     </div>
-                    
-                    <form method="post">
-                        {% csrf_token %}
-                        <div class="mb-3">
-                            <textarea name="admin_notes" class="form-control" rows="3" 
-                                      placeholder="Reason for suspension..."></textarea>
-                        </div>
-                        <button type="submit" name="action" value="suspend" class="btn btn-warning w-100">
-                            <i class="bi bi-pause-circle me-2"></i>Suspend Affiliate
-                        </button>
-                    </form>
-                    
-                    {% elif affiliate.status == 'rejected' %}
-                    <!-- Rejected - Option to Approve -->
-                    <div class="text-center mb-3">
-                        <i class="bi bi-x-circle-fill fs-1 text-danger"></i>
-                        <h5 class="text-danger mt-3">Application Rejected</h5>
-                    </div>
-                    
-                    <form method="post">
-                        {% csrf_token %}
-                        <div class="mb-3">
-                            <textarea name="admin_notes" class="form-control" rows="3" 
-                                      placeholder="Reason for approving after rejection..."></textarea>
-                        </div>
-                        <button type="submit" name="action" value="approve" class="btn btn-success w-100">
-                            <i class="bi bi-check-circle-fill me-2"></i>Approve Now
-                        </button>
-                    </form>
-                    
-                    {% elif affiliate.status == 'suspended' %}
-                    <!-- Suspended - Option to Reactivate -->
-                    <div class="text-center mb-3">
-                        <i class="bi bi-pause-circle-fill fs-1 text-secondary"></i>
-                        <h5 class="text-secondary mt-3">Account Suspended</h5>
-                    </div>
-                    
-                    <form method="post">
-                        {% csrf_token %}
-                        <div class="mb-3">
-                            <textarea name="admin_notes" class="form-control" rows="3" 
-                                      placeholder="Reason for reactivation..."></textarea>
-                        </div>
-                        <button type="submit" name="action" value="approve" class="btn btn-success w-100">
-                            <i class="bi bi-play-circle me-2"></i>Reactivate Affiliate
-                        </button>
-                    </form>
-                    {% endif %}
+                    <button type="submit" name="action" value="suspend" class="btn btn-outline-danger w-100">
+                        <i class="bi bi-pause-circle me-1" aria-hidden="true"></i>Suspend Affiliate
+                    </button>
+                </form>
+
+                {% elif affiliate.status == 'rejected' %}
+                <!-- Rejected - Option to Approve -->
+                <div class="adm-state adm-state--danger">
+                    <i class="bi bi-x-circle-fill" aria-hidden="true"></i>
+                    <h3 class="adm-state__title">Application Rejected</h3>
                 </div>
-            </div>
-            
+                <form method="post" class="adm-form">
+                    {% csrf_token %}
+                    <div>
+                        <label for="admin_notes" class="visually-hidden">Reason for approving after rejection</label>
+                        <textarea name="admin_notes" id="admin_notes" class="form-control" rows="3"
+                                  placeholder="Reason for approving after rejection..."></textarea>
+                    </div>
+                    <button type="submit" name="action" value="approve" class="btn btn-primary w-100">
+                        <i class="bi bi-check-circle-fill me-1" aria-hidden="true"></i>Approve Now
+                    </button>
+                </form>
+
+                {% elif affiliate.status == 'suspended' %}
+                <!-- Suspended - Option to Reactivate -->
+                <div class="adm-state adm-state--neutral">
+                    <i class="bi bi-pause-circle-fill" aria-hidden="true"></i>
+                    <h3 class="adm-state__title">Account Suspended</h3>
+                </div>
+                <form method="post" class="adm-form">
+                    {% csrf_token %}
+                    <div>
+                        <label for="admin_notes" class="visually-hidden">Reason for reactivation</label>
+                        <textarea name="admin_notes" id="admin_notes" class="form-control" rows="3"
+                                  placeholder="Reason for reactivation..."></textarea>
+                    </div>
+                    <button type="submit" name="action" value="approve" class="btn btn-primary w-100">
+                        <i class="bi bi-play-circle me-1" aria-hidden="true"></i>Reactivate Affiliate
+                    </button>
+                </form>
+                {% endif %}
+            </section>
+
             <!-- Quick Actions -->
-            <div class="card mt-3">
-                <div class="card-header bg-light">
-                    <h6><i class="bi bi-lightning-charge me-2"></i>Quick Actions</h6>
+            <section class="card adm-card" aria-labelledby="quick-actions">
+                <h2 class="adm-card__title adm-card__head" id="quick-actions">Quick Actions</h2>
+                <div class="adm-stack">
+                    <a href="mailto:{{ affiliate.user.email }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-envelope" aria-hidden="true"></i> Email Affiliate
+                    </a>
+                    {% if affiliate.user.profile %}
+                    <a href="{% url 'user_store' affiliate.user.username %}" target="_blank" rel="noopener"
+                       class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-shop" aria-hidden="true"></i> View User's Store
+                    </a>
+                    {% endif %}
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="copyReferralCode(this)">
+                        <i class="bi bi-clipboard" aria-hidden="true"></i> <span>Copy Referral Code</span>
+                    </button>
                 </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <a href="mailto:{{ affiliate.user.email }}" class="btn btn-outline-primary btn-sm">
-                            <i class="bi bi-envelope"></i> Email Affiliate
-                        </a>
-                        {% if affiliate.user.profile %}
-                        <a href="{% url 'user_store' affiliate.user.username %}" target="_blank" class="btn btn-outline-secondary btn-sm">
-                            <i class="bi bi-shop"></i> View User's Store
-                        </a>
-                        {% endif %}
-                        <button class="btn btn-outline-info btn-sm" onclick="copyReferralCode()">
-                            <i class="bi bi-clipboard"></i> Copy Referral Code
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
+            </section>
+
             <!-- Activity Timeline -->
-            <div class="card mt-3">
-                <div class="card-header bg-light">
-                    <h6><i class="bi bi-clock-history me-2"></i>Activity Timeline</h6>
-                </div>
-                <div class="card-body">
-                    <div class="timeline-compact">
-                        <div class="timeline-item">
-                            <small class="text-muted">{{ affiliate.created_at|date:"M d, Y" }}</small>
-                            <p class="mb-0"><strong>Applied</strong></p>
-                        </div>
-                        {% if affiliate.approved_at %}
-                        <div class="timeline-item">
-                            <small class="text-muted">{{ affiliate.approved_at|date:"M d, Y" }}</small>
-                            <p class="mb-0"><strong>Approved</strong></p>
-                        </div>
-                        {% endif %}
-                        {% if total_referrals > 0 %}
-                        <div class="timeline-item">
-                            <small class="text-muted">Now</small>
-                            <p class="mb-0">{{ total_referrals }} referral{{ total_referrals|pluralize }}</p>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
+            <section class="card adm-card" aria-labelledby="timeline">
+                <h2 class="adm-card__title adm-card__head" id="timeline">Activity Timeline</h2>
+                <ol class="adm-timeline">
+                    <li>
+                        <span class="adm-meta">{{ affiliate.created_at|date:"M d, Y" }}</span>
+                        <strong>Applied</strong>
+                    </li>
+                    {% if affiliate.approved_at %}
+                    <li>
+                        <span class="adm-meta">{{ affiliate.approved_at|date:"M d, Y" }}</span>
+                        <strong>Approved</strong>
+                    </li>
+                    {% endif %}
+                    {% if total_referrals > 0 %}
+                    <li>
+                        <span class="adm-meta">Now</span>
+                        {{ total_referrals }} referral{{ total_referrals|pluralize }}
+                    </li>
+                    {% endif %}
+                </ol>
+            </section>
         </div>
     </div>
 </div>
 
-<style>
-.card {
-    border: none;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    border-radius: 8px;
-}
-
-.section-title {
-    color: #495057;
-    font-weight: 600;
-    border-bottom: 2px solid #e9ecef;
-    padding-bottom: 8px;
-    margin-bottom: 15px;
-}
-
-.info-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.info-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid #f8f9fa;
-}
-
-.info-item:last-child {
-    border-bottom: none;
-}
-
-.info-item strong {
-    color: #6c757d;
-    font-weight: 600;
-    min-width: 140px;
-}
-
-.description-box {
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 6px;
-    border-left: 4px solid #0d6efd;
-}
-
-.timeline-compact .timeline-item {
-    padding: 10px 0;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.timeline-compact .timeline-item:last-child {
-    border-bottom: none;
-}
-
-.btn-lg {
-    padding: 12px 20px;
-    font-weight: 600;
-}
-
-.status-badge {
-    position: absolute;
-    top: 15px;
-    right: 20px;
-}
-
-.sticky-top {
-    position: sticky;
-    z-index: 1020;
-}
-
-@media (max-width: 992px) {
-    .sticky-top {
-        position: relative;
-        top: auto !important;
-    }
-    
-    .info-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 5px;
-    }
-    
-    .info-item strong {
-        min-width: auto;
-    }
-}
-
-.btn:active {
-    transform: scale(0.98);
-}
-</style>
-
 <script>
-// Confirmation dialogs
 document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('button[value="approve"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            if (!confirm('Are you sure you want to APPROVE this affiliate? They will start earning commissions immediately.')) {
-                e.preventDefault();
-            }
+    // Confirmation dialogs
+    var messages = {
+        approve: 'Are you sure you want to APPROVE this affiliate? They will start earning commissions immediately.',
+        reject: 'Are you sure you want to REJECT this affiliate application?',
+        suspend: 'Are you sure you want to SUSPEND this affiliate? They will stop earning commissions.'
+    };
+    Object.keys(messages).forEach(function(action) {
+        document.querySelectorAll('button[value="' + action + '"]').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                if (!confirm(messages[action])) {
+                    e.preventDefault();
+                }
+            });
         });
     });
-    
-    document.querySelectorAll('button[value="reject"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            if (!confirm('Are you sure you want to REJECT this affiliate application?')) {
-                e.preventDefault();
-            }
-        });
-    });
-    
-    document.querySelectorAll('button[value="suspend"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            if (!confirm('Are you sure you want to SUSPEND this affiliate? They will stop earning commissions.')) {
-                e.preventDefault();
-            }
+
+    // Ignore a second submit. Buttons stay enabled: a disabled submitter would not send action=...
+    document.querySelectorAll('form[method="post"]').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            if (form.dataset.busy) { e.preventDefault(); return; }
+            form.dataset.busy = '1';
+            form.setAttribute('aria-busy', 'true');
         });
     });
 });
 
-function copyReferralCode() {
-    const code = '{{ affiliate.referral_code }}';
-    navigator.clipboard.writeText(code).then(() => {
-        alert('✓ Referral code copied: ' + code);
-    });
+window.addEventListener('pageshow', function(e) {
+    if (e.persisted) {
+        document.querySelectorAll('form[data-busy]').forEach(function(form) {
+            delete form.dataset.busy;
+            form.removeAttribute('aria-busy');
+        });
+    }
+});
+
+function copyReferralCode(btn) {
+    const code = '{{ affiliate.referral_code|escapejs }}';
+    navigator.clipboard.writeText(code).then(function() {
+        const label = btn.querySelector('span');
+        const original = label.textContent;
+        label.textContent = 'Copied: ' + code;
+        setTimeout(function() { label.textContent = original; }, 1800);
+    }).catch(function() {});
 }
 </script>
 {% endblock %}

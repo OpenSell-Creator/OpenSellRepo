@@ -10,6 +10,7 @@ urlpatterns = [
     path('subscription/', views.subscription_management, name='subscription_management'),
     path('account/status/', views.account_status, name='account_status'),
     path('boost/status/', views.product_boost_status, name='product_boost_status'),
+    path('boost/chart-data/', views.boost_chart_data, name='boost_chart_data'),
     
     path('wallet/transfer/',    views.wallet_transfer,      name='wallet_transfer'),
     path('wallet/lookup-user/', views.lookup_transfer_user, name='lookup_transfer_user'),

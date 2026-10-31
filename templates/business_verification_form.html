@@ -1,1130 +1,564 @@
 {% extends 'base.html' %}
-{% load static %}
 
 {% block title %}Business Verification{% endblock %}
 
 {% block page_css %}
 <style>
-/* ════════════════════════════════════════════════════════════════
-   BUSINESS VERIFICATION — Complete Design System
-   Matches profile / product / service / request form pages exactly:
-   • Floating labels  →  all text / email / tel / url inputs + selects
-   • Standard labels  →  textareas, checkboxes
-   • Shared border, focus ring, font, colour tokens
-   • Light + dark theme  ·  all screen sizes
-════════════════════════════════════════════════════════════════ */
+/* Same design core as profile_update, login, signup, the product, service and request forms (shared .ox wrapper,
+   hue tints, 42px controls, autofill fix, navy pill buttons). Verification form only: the .bvf-* rules at the end. */
+.ox {
+    --ox-navy: var(--primary-color);
+    --ox-orange: var(--accent-color);
+    --ox-teal: var(--bs-teal, var(--primary-color));
+    --ox-green: var(--bs-success, var(--primary-color));
+    --ox-purple: var(--bs-purple, var(--primary-color));
+    display: flex; flex-direction: column; gap: var(--gap-sections);
+    color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-body);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-4));
+}
+.ox [hidden] { display: none !important; }
+.ox a { text-decoration: none; }
+.ox p { margin: 0; }
+.t-navy { --tint: var(--ox-navy); } .t-orange { --tint: var(--ox-orange); } .t-teal { --tint: var(--ox-teal); }
+.t-green { --tint: var(--ox-green); } .t-purple { --tint: var(--ox-purple); }
+.ox-ico { display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-lg); }
+.ox-tint, .auth-alert { position: relative; isolation: isolate; }
+.ox-tint::before, .auth-alert::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .ox-tint::before, [data-bs-theme="dark"] .auth-alert::before { opacity: .09; }
+.ox-card { border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); }
 
-/* ── 1. Base controls ── */
-.form-control, .form-select {
-    border-width: 2px;
-    border-style: solid;
-    border-color: var(--border-color);
-    border-radius: var(--radius-md, 0.45rem);
-    font-size: 0.9375rem;
-    color: var(--text-primary);
-    background-color: var(--card-background);
-    transition: border-color 0.25s ease, box-shadow 0.25s ease;
-}
-.form-control:focus, .form-select:focus {
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.18);
-    outline: none;
-    background-color: var(--card-background);
-}
-.form-control.is-invalid, .form-select.is-invalid { border-color: #dc3545 !important; box-shadow: none !important; }
-.form-control.is-valid,   .form-select.is-valid   { border-color: #198754 !important; box-shadow: none !important; }
-[data-bs-theme="dark"] .form-control,
-[data-bs-theme="dark"] .form-select {
-    background-color: var(--dark-card-background, #1e2330);
-    border-color: var(--dark-border-color, #3a3f52);
-    color: var(--dark-text-primary, #e9ecef);
-}
-[data-bs-theme="dark"] .form-control:focus,
-[data-bs-theme="dark"] .form-select:focus {
-    background-color: var(--dark-card-background, #1e2330);
-}
+/* Header: navy band, full-bleed, tucks under the navbar */
+.ox-head { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); margin: -2rem -1rem 0; padding: calc(2rem + var(--sp-4)) var(--sp-5) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); text-align: center; }
+.ox-title { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-snug); }
+.ox-lead { max-width: 32rem; font-size: var(--font-size-sm); line-height: var(--lh-snug); opacity: .85; }
+@media (min-width: 768px) { .ox-title { font-size: var(--font-size-3xl); } .ox-lead { font-size: var(--font-size-base); } }
 
-/* ── 2. Standard label (textareas, checkboxes) ── */
-.form-label {
-    display: block;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    margin-bottom: 0.4rem;
-    letter-spacing: 0.01em;
-}
-.form-label .req { color: #dc3545; margin-left: 2px; font-size: 0.75rem; font-weight: 700; }
-.form-label .opt {
-    display: inline-block;
-    font-size: 0.68rem; font-weight: 500;
-    color: var(--text-secondary); background: var(--border-color);
-    border-radius: 4px; padding: 1px 6px; margin-left: 5px;
-}
-[data-bs-theme="dark"] .form-label { color: var(--dark-text-secondary, #9ca3af); }
-[data-bs-theme="dark"] .form-label .opt { background: var(--dark-border-color, #3a3f52); }
+/* Form primitives (42px controls, same as the auth pages) */
+.auth-field { display: flex; flex-direction: column; gap: var(--gap-label); min-width: 0; }
+.auth-label { font-size: var(--font-size-sm); font-weight: 600; }
+.auth-opt { font-weight: 400; color: var(--text-secondary); }
+.auth-hint { display: flex; align-items: flex-start; gap: var(--sp-1); font-size: var(--font-size-xs); line-height: var(--lh-snug); color: var(--text-secondary); }
+.auth-hint--ok { color: var(--bs-success); }
+.auth-hint--bad { color: var(--bs-danger); font-weight: 600; }
+.ox .has-error .auth-hint { display: none; }
+.ox .form-control, .ox .form-select { box-sizing: border-box; width: 100%; min-height: var(--h-control-lg); padding: 0 var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--background-color); color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-tight); }
+.ox .form-select { padding-right: 2.25rem; }
+.ox textarea.form-control { min-height: 9.5rem; padding: var(--sp-2) var(--sp-3); line-height: var(--lh-body); resize: vertical; }
+.ox .form-control:focus, .ox .form-select:focus { outline: 2px solid var(--accent-color); outline-offset: 1px; border-color: var(--accent-color); box-shadow: none; background-color: var(--background-color); color: var(--text-primary); }
+.ox .form-control:disabled, .ox .form-select:disabled { opacity: .7; }
+/* Browser autofill: keep the field dark in dark mode (browsers paint it white with dark text) */
+[data-bs-theme="dark"] .ox .form-control, [data-bs-theme="dark"] .ox .form-select { color-scheme: dark; }
+.ox .form-control:-webkit-autofill, .ox .form-control:-webkit-autofill:hover, .ox .form-control:-webkit-autofill:focus, .ox .form-select:-webkit-autofill, .ox .form-select:-webkit-autofill:hover, .ox .form-select:-webkit-autofill:focus { -webkit-text-fill-color: var(--text-primary); caret-color: var(--text-primary); -webkit-box-shadow: 0 0 0 1000px var(--background-color) inset; box-shadow: 0 0 0 1000px var(--background-color) inset; transition: background-color 9999s ease-out 0s; }
+.ox .form-control:autofill, .ox .form-select:autofill { -webkit-text-fill-color: var(--text-primary); caret-color: var(--text-primary); box-shadow: 0 0 0 1000px var(--background-color) inset; }
+.ox .invalid-feedback { display: none; margin: 0; font-size: var(--font-size-xs); font-weight: 600; color: var(--bs-danger); }
+.ox .has-error .invalid-feedback { display: block; }
+.ox .has-error .form-control, .ox .has-error .form-select { border-color: var(--bs-danger); }
+.ox .has-error .form-control { background-image: none; }
+@supports (-webkit-touch-callout: none) { .ox .form-control, .ox .form-select { font-size: 16px; } }
+.auth-check { display: flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; margin: 0; font-size: var(--font-size-sm); cursor: pointer; }
+.auth-check .form-check-input { flex: none; width: 1.125rem; height: 1.125rem; margin: 0; cursor: pointer; accent-color: var(--primary-color); }
+.auth-check .form-check-input:checked { background-color: var(--primary-color); border-color: var(--primary-color); }
+[data-bs-theme="dark"] .auth-check .form-check-input:checked { border-color: var(--text-secondary); }
+.ox .form-select option { background-color: var(--background-color); color: var(--text-primary); }
+.auth-more > summary { display: flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; font-size: var(--font-size-sm); font-weight: 600; list-style: none; cursor: pointer; touch-action: manipulation; }
+.auth-more > summary::-webkit-details-marker { display: none; }
+.auth-more > summary .auth-opt { margin-left: auto; }
+.auth-more > summary .bi { transition: transform .2s ease; }
+.auth-more[open] > summary .bi { transform: rotate(90deg); }
+.auth-more-body { display: flex; flex-direction: column; gap: var(--gap-fields); padding-top: var(--sp-1); }
 
-/* ── 3. Floating labels ── */
-.form-floating { position: relative; }
-.form-floating > .form-control,
-.form-floating > .form-select {
-    height: calc(3.5rem + 4px);
-    padding: 1.2rem 0.875rem 0.4rem;
-    line-height: 1.25;
-}
-.form-floating > textarea.form-control {
-    height: auto;
-    min-height: 7rem;
-    padding-top: 1.75rem;
-    resize: vertical;
-    line-height: 1.55;
-}
-.form-floating > label {
-    position: absolute; top: 0; left: 0;
-    height: 100%; padding: 1rem 0.875rem;
-    pointer-events: none; border: 1px solid transparent;
-    transform-origin: 0 0;
-    transition: transform 0.15s ease, color 0.15s ease, opacity 0.15s ease;
-    font-size: 0.9375rem; font-weight: 400;
-    color: var(--text-secondary);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
-}
-/* Text/email/tel/url: float when focused or filled */
-.form-floating > .form-control:focus ~ label,
-.form-floating > .form-control:not(:placeholder-shown) ~ label {
-    transform: scale(0.78) translateY(-0.6rem) translateX(0.08rem);
-    color: var(--accent-color); opacity: 1; font-weight: 600;
-}
-/* Selects: always floated */
-.form-floating > .form-select { padding-top: 1.625rem; padding-bottom: 0.5rem; }
-.form-floating > .form-select ~ label {
-    transform: scale(0.78) translateY(-0.6rem) translateX(0.08rem);
-    color: var(--accent-color); opacity: 1; font-weight: 600;
-}
-.form-floating > label .req { color: #dc3545; margin-left: 2px; font-size: inherit; }
-.form-floating > label .opt {
-    display: inline-block; font-size: 0.7rem; font-weight: 400;
-    color: var(--text-secondary); background: var(--border-color);
-    border-radius: 3px; padding: 1px 4px; margin-left: 3px;
-}
-[data-bs-theme="dark"] .form-floating > label { color: var(--dark-text-secondary, #9ca3af); }
-[data-bs-theme="dark"] .form-floating > .form-control:focus ~ label,
-[data-bs-theme="dark"] .form-floating > .form-control:not(:placeholder-shown) ~ label,
-[data-bs-theme="dark"] .form-floating > .form-select ~ label { color: var(--accent-color); }
+/* Messages */
+.auth-alert { display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-md); font-size: var(--font-size-sm); line-height: var(--lh-snug); --tint: var(--bs-danger); }
+.auth-alert i { margin-top: 1px; color: var(--bs-danger); }
+.auth-alert--success { --tint: var(--bs-success); }
+.auth-alert--success i { color: var(--bs-success); }
 
-/* ── 4. Textarea (standard label-above) ── */
-textarea.form-control {
-    min-height: 6.5rem; resize: vertical;
-    padding: 0.75rem 0.875rem; line-height: 1.55;
-}
-.form-floating textarea.form-control { padding-top: 1.75rem; }
-.form-control::placeholder {
-    color: var(--text-secondary); opacity: 0.6;
-    font-size: 0.875rem; font-style: italic;
-}
-[data-bs-theme="dark"] .form-control::placeholder { opacity: 0.38; }
+/* Buttons: the same navy pill as the auth pages and the profile Save button */
+.ox-btn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-4); border: 2px solid var(--bs-white); border-radius: 22px; background: var(--primary-color); color: var(--bs-white); font: inherit; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); text-align: center; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.ox-btn:disabled { opacity: .7; cursor: default; }
+.ox-btn .spinner-border { width: 1rem; height: 1rem; border-width: .15em; }
+.ox-btn-neutral { border: 1px solid var(--border-color); background: var(--card-background); color: var(--text-primary); box-shadow: none; }
 
-/* ── 5. Helper text ── */
-.form-text {
-    display: block; font-size: 0.75rem; line-height: 1.45;
-    margin-top: 0.3rem; color: var(--text-secondary) !important;
-    padding-left: 0.1rem;
-}
-[data-bs-theme="dark"] .form-text { color: var(--dark-text-secondary, #9ca3af) !important; }
+/* Links */
+.auth-link { font-weight: 600; }
 
-/* ── 6. Error messages ── */
-.field-error-msg {
-    display: flex; align-items: center; gap: 5px;
-    font-size: 0.78rem; color: #dc3545; margin-top: 0.3rem;
-    animation: errorSlide 0.2s ease;
+.ox a:focus-visible, .ox button:focus-visible, .ox summary:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; border-radius: var(--radius-sm); }
+@media (hover: hover) {
+    .ox-btn-neutral:hover { background: var(--hover-bg); }
+    .auth-link:hover { text-decoration: underline; }
 }
-@keyframes errorSlide {
-    from { opacity: 0; transform: translateY(-4px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
+@media (prefers-reduced-motion: reduce) { .auth-more > summary .bi { transition: none; } }
 
-/* ── 7. Form checks / switches ── */
-.form-check-input {
-    width: 1.1em; height: 1.1em;
-    border-width: 2px; border-color: var(--border-color);
-    background-color: var(--card-background);
-    cursor: pointer;
-}
-.form-check-input:checked {
-    background-color: var(--accent-color);
-    border-color: var(--accent-color);
-}
-.form-check-input:focus {
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.18);
-}
-.form-check-label {
-    font-size: 0.875rem; font-weight: 500;
-    color: var(--text-primary); cursor: pointer;
-}
-[data-bs-theme="dark"] .form-check-input { background-color: var(--dark-card-background, #1e2330); border-color: var(--dark-border-color, #3a3f52); }
-[data-bs-theme="dark"] .form-check-label { color: var(--dark-text-primary, #e9ecef); }
 
-/* ── 8. Page / card shell ── */
-.verification-form-card {
-    background: var(--card-background);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-xl, 0.75rem);
-    box-shadow: 0 6px 24px var(--shadow-color, rgba(0,0,0,0.08));
-    overflow: hidden;
-    margin-bottom: 2rem;
-}
-[data-bs-theme="dark"] .verification-form-card {
-    background: var(--dark-card-background, #1e2330);
-    border-color: var(--dark-border-color, #3a3f52);
-}
+/* ---- Business verification form only ---- */
+.bvf-body { display: flex; flex-direction: column; gap: var(--gap-sections); width: 100%; max-width: 40rem; margin: 0 auto; }
+.bvf-form { display: flex; flex-direction: column; gap: var(--gap-sections); }
+.bvf-card { display: flex; flex-direction: column; gap: var(--gap-sections); padding: var(--pad-m); scroll-margin-top: calc(var(--navbar-height-mobile) + var(--sp-2)); }
+@media (min-width: 768px) { .bvf-card { padding: var(--pad-l); scroll-margin-top: calc(var(--navbar-height) + var(--sp-2)); } }
+.bvf-cardhead { display: flex; align-items: center; gap: var(--sp-3); }
+.bvf-h { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-snug); }
+.bvf-sub { font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+.bvf-fields { display: flex; flex-direction: column; gap: var(--gap-fields); }
+.ox .bvf-short textarea.form-control { min-height: 5.5rem; }
 
-/* ── 9. Coloured header ── */
-.verification-header {
-    background: var(--primary-color);
-    color: white;
-    padding: 2rem 1.5rem;
-    position: relative;
-    overflow: hidden;
-}
-.verification-header::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-   
-    pointer-events: none;
-}
-.verification-icon {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 60px; height: 60px;
-    background: rgba(255,255,255,0.2);
-    border-radius: 50%;
-    backdrop-filter: blur(8px);
-    position: relative; z-index: 1;
-}
-.verification-icon i { font-size: 1.75rem; color: white; }
-.header-title {
-    font-size: 1.75rem; font-weight: 700;
-    color: white; margin: 0; position: relative; z-index: 1;
-}
-.header-subtitle {
-    font-size: 0.9375rem; color: rgba(255,255,255,0.88);
-    position: relative; z-index: 1;
-}
-[data-bs-theme="dark"] .verification-header {
-    background: var(--dark-primary-color, #1a4a7a);
-}
+/* Benefits: one closed disclosure, so the form starts on the first screen */
+.bvf-perks { padding: 0 var(--pad-m); }
+@media (min-width: 768px) { .bvf-perks { padding: 0 var(--pad-l); } }
+.bvf-perks-list { display: flex; flex-direction: column; gap: var(--sp-2); margin: 0; padding: 0 0 var(--pad-m); list-style: none; font-size: var(--font-size-sm); line-height: var(--lh-snug); }
+.bvf-perks-list li { display: flex; align-items: flex-start; gap: var(--sp-2); }
+.bvf-perks-list i { flex: none; margin-top: 1px; color: var(--bs-success); }
 
-/* ── 10. Inline save status bar (under header) ── */
-.verif-inline-progress {
-    height: 4px;
-    background: rgba(255,255,255,0.25);
-    overflow: hidden;
-}
-.verif-inline-bar {
-    height: 100%;
-    width: 0%;
-    background: rgba(255,255,255,0.9);
-    border-radius: 2px;
-    transition: width 0.35s ease;
-}
+/* Document: same dashed drop zone as the profile photo, one file */
+.bvf-photo { overflow: hidden; border: 2px dashed var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); }
+.bvf-photo:focus-within, .bvf-photo.drag { border-color: var(--accent-color); }
+.bvf-drop { position: relative; display: flex; align-items: center; gap: var(--sp-3); padding: var(--pad-m); cursor: pointer; }
+.bvf-drop > i { flex: none; font-size: var(--font-size-3xl); color: var(--accent-color); }
+.bvf-drop-text { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; line-height: var(--lh-tight); }
+.bvf-drop strong { font-size: var(--font-size-base); font-weight: 600; }
+.bvf-drop small { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.bvf-drop input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; padding: 0; opacity: 0; cursor: pointer; }
+.bvf-file { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3); border-top: 1px solid var(--border-color); }
+.bvf-file img, .bvf-file-ico { flex: none; width: 3rem; height: 3rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--hover-bg); }
+.bvf-file img { object-fit: cover; }
+.bvf-file-ico { display: grid; place-items: center; font-size: var(--font-size-3xl); color: var(--text-secondary); }
+.bvf-file-text { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; line-height: var(--lh-snug); }
+.bvf-file-name { overflow: hidden; font-size: var(--font-size-base); text-overflow: ellipsis; white-space: nowrap; }
+.bvf-file-size { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.bvf-file-x { flex: none; display: grid; place-items: center; min-width: var(--h-control-sm); min-height: var(--h-control-sm); padding: 0; border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-base); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+@media (hover: hover) { .bvf-file-x:hover { background: var(--hover-bg); } }
 
-/* ── 11. Save chip (in header) ── */
-.save-chip {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 0.3rem 0.75rem;
-    border-radius: 20px; font-size: 0.78rem; font-weight: 600;
-    background: rgba(255,255,255,0.18); color: white;
-    border: 1px solid rgba(255,255,255,0.3);
-    white-space: nowrap; flex-shrink: 0;
-    transition: background 0.3s ease, border-color 0.3s ease;
-}
-.save-chip.done  { background: rgba(25,135,84,0.35); border-color: rgba(25,135,84,0.6); }
-.save-chip.error { background: rgba(220,53,69,0.35); border-color: rgba(220,53,69,0.6); }
-.save-chip-dot {
-    width: 7px; height: 7px; border-radius: 50%;
-    background: currentColor;
-    animation: chipPulse 1.1s ease infinite; flex-shrink: 0;
-}
-.save-chip.done .save-chip-dot,
-.save-chip.error .save-chip-dot { animation: none; }
-@keyframes chipPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.45;transform:scale(.75)} }
-
-/* ── 12. Full-screen loading overlay ── */
-.verif-loading-overlay {
-    position: fixed; inset: 0;
-    background: rgba(255,255,255,0.94);
-    backdrop-filter: blur(3px);
-    z-index: 1050;
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0; pointer-events: none;
-    transition: opacity 0.3s ease;
-}
-.verif-loading-overlay.show { opacity: 1; pointer-events: all; }
-.verif-loading-content {
-    text-align: center; padding: 2.25rem 2rem;
-    background: #fff;
-    border-radius: 14px;
-    box-shadow: 0 16px 48px rgba(0,0,0,0.12);
-    width: min(88vw, 380px);
-    border: 1px solid rgba(0,0,0,0.07);
-}
-.verif-loading-content .progress { height: 7px; border-radius: 4px; }
-.verif-loading-label { font-size: 1rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem; }
-.verif-loading-sub   { font-size: 0.82rem; color: var(--text-secondary); }
-[data-bs-theme="dark"] .verif-loading-overlay { background: rgba(18,22,30,0.93); }
-[data-bs-theme="dark"] .verif-loading-content {
-    background: var(--dark-card-background, #1e2330);
-    border-color: var(--dark-border-color, #3a3f52);
-}
-[data-bs-theme="dark"] .verif-loading-label { color: var(--dark-text-primary, #e9ecef); }
-[data-bs-theme="dark"] .verif-loading-sub   { color: var(--dark-text-secondary, #9ca3af); }
-
-/* ── 13. Body / section cards ── */
-.verification-body { padding: 2rem 1.5rem; }
-
-.form-section {
-    background: var(--card-background);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md, 0.5rem);
-    padding: 1.5rem;
-    transition: border-color 0.25s ease, box-shadow 0.25s ease;
-}
-.form-section:hover {
-    border-color: var(--accent-color);
-    box-shadow: 0 3px 12px rgba(0,0,0,0.06);
-}
-.section-title {
-    color: var(--text-primary);
-    font-weight: 700; font-size: 1rem;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 0.65rem; letter-spacing: 0.01em;
-    display: flex; align-items: center; margin-bottom: 0;
-}
-.section-title i { color: var(--accent-color); }
-.section-description {
-    color: var(--text-secondary);
-    font-size: 0.8125rem;
-    margin-bottom: 1.125rem;
-    margin-top: 0.5rem;
-    line-height: 1.5;
-}
-[data-bs-theme="dark"] .form-section { background: var(--dark-card-background, #1e2330); border-color: var(--dark-border-color, #3a3f52); }
-[data-bs-theme="dark"] .form-section:hover { border-color: var(--accent-color); }
-[data-bs-theme="dark"] .section-title { color: var(--dark-text-primary, #e9ecef); border-color: var(--dark-border-color, #3a3f52); }
-[data-bs-theme="dark"] .section-description { color: var(--dark-text-secondary, #9ca3af); }
-
-/* ── 14. Benefits section ── */
-.benefits-section {
-    background: var(--hover-bg);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md, 0.5rem);
-    padding: 1.375rem 1.5rem;
-}
-.benefits-title {
-    color: var(--text-primary); font-weight: 700;
-    font-size: 0.9375rem; margin-bottom: 1rem;
-    display: flex; align-items: center; gap: 0.5rem;
-}
-.benefits-title i { color: var(--accent-color); font-size: 1rem; }
-.benefits-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 0.5rem 1rem;
-}
-.benefit-item {
-    display: flex; align-items: center; gap: 0.625rem;
-    font-size: 0.8375rem; font-weight: 500;
-    color: var(--text-primary); padding: 0.35rem 0;
-}
-.benefit-item i {
-    color: var(--accent-color); font-size: 0.9375rem;
-    width: 16px; text-align: center; flex-shrink: 0;
-}
-[data-bs-theme="dark"] .benefits-section { background: var(--dark-hover-bg, #252a38); border-color: var(--dark-border-color, #3a3f52); }
-[data-bs-theme="dark"] .benefits-title, [data-bs-theme="dark"] .benefit-item { color: var(--dark-text-primary, #e9ecef); }
-
-/* ── 15. Document upload drop zone ── */
-.doc-upload-zone {
-    display: flex; align-items: center; gap: 0.875rem;
-    padding: 0.875rem 1rem;
-    border: 2px dashed var(--border-color);
-    border-radius: var(--radius-md, 0.45rem);
-    background: var(--card-background);
-    cursor: pointer;
-    position: relative;
-    transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
-    min-height: 64px;
-}
-.doc-upload-zone:hover,
-.doc-upload-zone.drag-over {
-    border-color: var(--accent-color);
-    background: rgba(184, 115, 51, 0.04);
-    box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.1);
-}
-.doc-upload-zone .doc-zone-icon {
-    font-size: 1.6rem; color: var(--accent-color); opacity: 0.8; flex-shrink: 0; pointer-events: none;
-}
-.doc-zone-text { display: flex; flex-direction: column; gap: 2px; pointer-events: none; }
-.doc-zone-title { font-size: 0.8125rem; font-weight: 600; color: var(--text-primary); }
-.doc-zone-hint  { font-size: 0.72rem; color: var(--text-secondary); }
-.doc-file-hidden {
-    position: absolute; inset: 0;
-    opacity: 0; width: 100%; height: 100%; cursor: pointer;
-}
-[data-bs-theme="dark"] .doc-upload-zone {
-    background: var(--dark-card-background, #1e2330);
-    border-color: var(--dark-border-color, #3a3f52);
-}
-[data-bs-theme="dark"] .doc-zone-title { color: var(--dark-text-primary, #e9ecef); }
-
-/* ── 16. Document preview ── */
-.doc-preview-row {
-    display: flex; align-items: center; gap: 0.75rem;
-    padding: 0.65rem 1rem;
-    background: rgba(25,135,84,0.06);
-    border: 1px solid rgba(25,135,84,0.18);
-    border-radius: var(--radius-md, 0.45rem);
-}
-.doc-preview-thumb {
-    width: 52px; height: 52px;
-    border-radius: 6px; object-fit: cover; flex-shrink: 0;
-    border: 2px solid rgba(25,135,84,0.3);
-}
-.doc-preview-icon-wrap {
-    width: 52px; height: 52px;
-    border-radius: 6px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(13,110,253,0.1); border: 2px solid rgba(13,110,253,0.25);
-    font-size: 1.5rem; color: #0d6efd;
-}
-.doc-preview-meta { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.doc-preview-name { font-size: 0.8rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.doc-preview-size { font-size: 0.72rem; color: var(--text-secondary); }
-.doc-optimised-badge { font-size: 0.7rem; font-weight: 600; color: #198754; }
-.doc-clear-btn { flex-shrink: 0; padding: 0.2rem 0.5rem; font-size: 0.75rem; }
-[data-bs-theme="dark"] .doc-preview-row { background: rgba(25,135,84,0.1); border-color: rgba(25,135,84,0.25); }
-[data-bs-theme="dark"] .doc-preview-name { color: var(--dark-text-primary, #e9ecef); }
-[data-bs-theme="dark"] .doc-preview-size { color: var(--dark-text-secondary, #9ca3af); }
-
-/* ── 17. Compress status pill ── */
-.compress-status {
-    display: flex; align-items: center; gap: 0.6rem;
-    padding: 0.5rem 0.875rem;
-    border-radius: var(--radius-md, 0.45rem);
-    font-size: 0.79rem; font-weight: 500;
-}
-.compress-status.running { background: #e7f3ff; color: #0d6efd; border: 1px solid #b8d4ff; }
-.compress-status.done    { background: #d1f2e4; color: #198754; border: 1px solid #a3dcc0; }
-.compress-status.warn    { background: #fff3cd; color: #856404; border: 1px solid #ffe08a; }
-[data-bs-theme="dark"] .compress-status.running { background: rgba(13,110,253,0.15); border-color: rgba(13,110,253,0.3); color: #74b9ff; }
-[data-bs-theme="dark"] .compress-status.done    { background: rgba(25,135,84,0.15); border-color: rgba(25,135,84,0.3); color: #55efc4; }
-[data-bs-theme="dark"] .compress-status.warn    { background: rgba(255,193,7,0.12); border-color: rgba(255,193,7,0.3); color: #ffd32a; }
-
-/* ── 18. Submit button ── */
-.submit-btn {
-    font-size: 0.9375rem; font-weight: 600;
-    padding: 0.8rem 2rem;
-    border-radius: var(--radius-md, 0.45rem);
-    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
-    max-width: 400px; margin: 0 auto;
-}
-.submit-btn:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(13,110,253,0.25);
-}
-.submit-btn:disabled { opacity: 0.65; cursor: not-allowed; }
-
-/* ── 19. Responsive ── */
-@media (max-width: 768px) {
-    .verification-body { padding: 1.375rem 1rem; }
-    .verification-header { padding: 1.5rem 1rem; }
-    .header-title { font-size: 1.4rem; }
-    .form-section { padding: 1.25rem 1rem; }
-    .benefits-section { padding: 1.125rem 1rem; }
-    .benefits-grid { grid-template-columns: 1fr; gap: 0.4rem; }
-    .verif-loading-content { padding: 1.75rem 1.25rem; }
-}
-@media (max-width: 576px) {
-    .verification-header { padding: 1.25rem 0.875rem; }
-    .verification-body { padding: 1.125rem 0.875rem; }
-    .header-title { font-size: 1.2rem; }
-    .header-subtitle { font-size: 0.85rem; }
-    .verification-icon { width: 48px; height: 48px; }
-    .verification-icon i { font-size: 1.4rem; }
-    .form-section { padding: 1rem 0.875rem; }
-    .benefits-section { padding: 1rem 0.875rem; }
-    .form-floating > .form-control, .form-floating > .form-select { height: calc(3.25rem + 4px); }
-    .form-label { font-size: 0.78rem; }
-    .form-text  { font-size: 0.72rem; }
-    .submit-btn { font-size: 0.875rem; max-width: 100%; }
-    .benefit-item { font-size: 0.8rem; }
-}
-@media (max-width: 360px) {
-    .verification-body { padding: 1rem 0.75rem; }
-    .form-section { padding: 0.875rem 0.75rem; }
-}
+/* Busy overlay: only while a document uploads */
+.bvf-overlay { position: fixed; inset: 0; z-index: 1060; display: grid; place-items: center; padding: var(--sp-4); background: rgba(0, 0, 0, .55); }
+.bvf-box { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); max-width: 20rem; padding: var(--pad-l); border-radius: var(--r-card); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-sm); text-align: center; }
+.bvf-box strong { font-size: var(--font-size-base); }
 </style>
 {% endblock %}
-
 {% block 'Body' %}
+<div class="ox">
 
-<!-- ══ Loading overlay ══ -->
-<div id="verifLoadingOverlay" class="verif-loading-overlay" role="dialog" aria-label="Submitting">
-    <div class="verif-loading-content">
-        <div class="spinner-border text-primary mb-3" role="status">
-            <span class="visually-hidden">Submitting…</span>
-        </div>
-        <div id="verifProgressLabel" class="verif-loading-label">Submitting verification…</div>
-        <div class="progress mb-2">
-            <div id="verifProgressBar"
-                 class="progress-bar progress-bar-striped progress-bar-animated"
-                 role="progressbar" style="width:0%"></div>
-        </div>
-        <div id="verifProgressSub" class="verif-loading-sub">Please wait a moment</div>
-    </div>
-</div>
+    <header class="ox-head">
+        <h1 class="ox-title">Business verification</h1>
+        <p class="ox-lead">Get verified to unlock premium features and build customer trust. Fields marked optional can be left blank.</p>
+    </header>
 
-<!-- ══ Toast notifications ══ -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index:1200;">
-    <div id="verifInfoToast"
-         class="toast align-items-center text-white border-0"
-         style="background:#0d6efd;"
-         role="alert" aria-live="polite" aria-atomic="true">
-        <div class="d-flex">
-            <div class="toast-body">
-                <i class="bi bi-info-circle-fill me-2"></i>
-                <span id="verifInfoMsg">Document optimised.</span>
+    <div class="bvf-body">
+
+    <details class="auth-more ox-card bvf-perks">
+        <summary>
+            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+            <span>What you get when verified</span>
+        </summary>
+    <ul class="bvf-perks-list">
+        <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i><span>Verified badge on all your products and services</span></li>
+        <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i><span>Access to permanent retail listings</span></li>
+        <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i><span>Better visibility for your business profile</span></li>
+        <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i><span>Show your business address and contact info</span></li>
+        <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i><span>Priority placement in search results</span></li>
+        <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i><span>Access to business-only filters</span></li>
+    </ul>
+    </details>
+
+    {# No Django messages here: base.html already renders them #}
+    {# A normal POST, so the view can redirect on success or show field errors, and messages survive #}
+    <form method="post" action="" enctype="multipart/form-data" id="verifForm" class="bvf-form" novalidate>
+        {% csrf_token %}
+
+        {% if form.errors or document_form.errors %}
+        <div class="auth-alert" role="alert">
+            <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+            <span>{% if form.non_field_errors %}{{ form.non_field_errors.0 }}{% elif document_form.non_field_errors %}{{ document_form.non_field_errors.0 }}{% else %}Some fields need attention. We moved to the first one.{% endif %}</span>
+        </div>
+        {% endif %}
+
+        {# ================= Business ================= #}
+        <section class="ox-card bvf-card" aria-labelledby="h-business">
+            <div class="bvf-cardhead t-navy">
+                <span class="ox-ico"><i class="bi bi-building-fill" aria-hidden="true"></i></span>
+                <div>
+                    <h2 class="bvf-h" id="h-business">Your business</h2>
+                    <p class="bvf-sub">Tell us what your business is and does.</p>
+                </div>
             </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto"
-                    data-bs-dismiss="toast"></button>
+            <div class="bvf-fields">
+                <div class="auth-field{% if form.business_name.errors %} has-error{% endif %}">
+                    <label for="id_business_name" class="auth-label">Business name</label>
+                    {{ form.business_name }}
+                    <div class="invalid-feedback" id="err-business_name">{{ form.business_name.errors.0 }}</div>
+                </div>
+                <div class="auth-field{% if form.business_type.errors %} has-error{% endif %}">
+                    <label for="id_business_type" class="auth-label">Business type</label>
+                    {{ form.business_type }}
+                    <div class="invalid-feedback" id="err-business_type">{{ form.business_type.errors.0 }}</div>
+                </div>
+                <div class="auth-field{% if form.business_registration_number.errors %} has-error{% endif %}">
+                    <label for="id_business_registration_number" class="auth-label">Registration number <span class="auth-opt">(optional)</span></label>
+                    {{ form.business_registration_number }}
+                    <p class="auth-hint" id="hint-business_registration_number">Not registered? Leave this blank.</p>
+                    <div class="invalid-feedback" id="err-business_registration_number">{{ form.business_registration_number.errors.0 }}</div>
+                </div>
+                <div class="auth-field bvf-short{% if form.business_description.errors %} has-error{% endif %}">
+                    <label for="id_business_description" class="auth-label">Business description</label>
+                    {{ form.business_description }}
+                    <p class="auth-hint" id="hint-business_description">Say what you sell or do, and who your customers are.</p>
+                    <div class="invalid-feedback" id="err-business_description">{{ form.business_description.errors.0 }}</div>
+                </div>
+            </div>
+        </section>
+
+        {# ================= Contact ================= #}
+        <section class="ox-card bvf-card" aria-labelledby="h-contact">
+            <div class="bvf-cardhead t-green">
+                <span class="ox-ico"><i class="bi bi-telephone-fill" aria-hidden="true"></i></span>
+                <div>
+                    <h2 class="bvf-h" id="h-contact">Contact details</h2>
+                    <p class="bvf-sub">How customers and our team can reach the business.</p>
+                </div>
+            </div>
+            <div class="bvf-fields">
+                <div class="auth-field{% if form.business_phone.errors %} has-error{% endif %}">
+                    <label for="id_business_phone" class="auth-label">Business phone</label>
+                    {{ form.business_phone }}
+                    <div class="invalid-feedback" id="err-business_phone">{{ form.business_phone.errors.0 }}</div>
+                </div>
+                <div class="auth-field{% if form.business_email.errors %} has-error{% endif %}">
+                    <label for="id_business_email" class="auth-label">Business email</label>
+                    {{ form.business_email }}
+                    <div class="invalid-feedback" id="err-business_email">{{ form.business_email.errors.0 }}</div>
+                </div>
+                <div class="auth-field{% if form.business_website.errors %} has-error{% endif %}">
+                    <label for="id_business_website" class="auth-label">Website <span class="auth-opt">(optional)</span></label>
+                    {{ form.business_website }}
+                    <p class="auth-hint" id="hint-business_website">Example: https://yourbusiness.com</p>
+                    <div class="invalid-feedback" id="err-business_website">{{ form.business_website.errors.0 }}</div>
+                </div>
+                <label class="auth-check">
+                    {{ form.business_address_visible }}
+                    <span>Show my business address on my profile</span>
+                </label>
+            </div>
+        </section>
+
+        {# ================= Documents ================= #}
+        <section class="ox-card bvf-card" aria-labelledby="h-docs">
+            <div class="bvf-cardhead t-orange">
+                <span class="ox-ico"><i class="bi bi-file-earmark-check-fill" aria-hidden="true"></i></span>
+                <div>
+                    <h2 class="bvf-h" id="h-docs">Supporting document</h2>
+                    <p class="bvf-sub">Optional, but a document speeds up approval. A shop photo, NIN slip or market association letter can be used.</p>
+                </div>
+            </div>
+            <div class="bvf-fields">
+                <div class="auth-field{% if document_form.document_type.errors %} has-error{% endif %}">
+                    <label for="id_document_type" class="auth-label">Document type <span class="auth-opt">(optional)</span></label>
+                    {{ document_form.document_type }}
+                    <div class="invalid-feedback" id="err-document_type">{{ document_form.document_type.errors.0 }}</div>
+                </div>
+                <div class="auth-field{% if document_form.document.errors %} has-error{% endif %}">
+                    <label for="id_document" class="auth-label">Document <span class="auth-opt">(optional)</span></label>
+                    <div class="bvf-photo" id="docBox">
+                        <div class="bvf-drop ox-tint t-orange">
+                            <i class="bi bi-file-earmark-arrow-up" aria-hidden="true"></i>
+                            <div class="bvf-drop-text">
+                                <strong>Choose a file</strong>
+                                <small>JPG, PNG, WebP or PDF, up to 10 MB. We resize images for you.</small>
+                            </div>
+                            {{ document_form.document }}
+                        </div>
+                        <div class="bvf-file" id="docFile" hidden>
+                            <img id="docThumb" alt="" width="48" height="48" hidden>
+                            <span class="bvf-file-ico" id="docIcon" hidden><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i></span>
+                            <span class="bvf-file-text"><span class="bvf-file-name" id="docName"></span><span class="bvf-file-size" id="docSize"></span></span>
+                            <button type="button" class="bvf-file-x" id="docClear" aria-label="Remove document"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+                        </div>
+                    </div>
+                    <p class="auth-hint" id="docNote" aria-live="polite">One file only.</p>
+                    <div class="invalid-feedback" id="err-document">{{ document_form.document.errors.0 }}</div>
+                </div>
+                <div class="auth-field bvf-short{% if document_form.description.errors %} has-error{% endif %}">
+                    <label for="id_description" class="auth-label">Document description <span class="auth-opt">(optional)</span></label>
+                    {{ document_form.description }}
+                    <p class="auth-hint" id="hint-description">Say what this document is or what it proves.</p>
+                    <div class="invalid-feedback" id="err-description">{{ document_form.description.errors.0 }}</div>
+                </div>
+            </div>
+        </section>
+
+        <button type="submit" class="ox-btn" id="verifSubmitBtn" data-label="Submit for verification">Submit for verification</button>
+    </form>
+
+    </div>
+
+    {# Shown only while a document uploads, so a slow connection never looks like a frozen page #}
+    <div class="bvf-overlay" id="bvfOverlay" role="status" aria-live="polite" hidden>
+        <div class="bvf-box">
+            <span class="spinner-border" aria-hidden="true"></span>
+            <strong>Uploading your document…</strong>
+            <span>Keep this page open. This can take a moment on a slow connection.</span>
         </div>
     </div>
+
 </div>
 
-<div class="container my-3 my-lg-4">
-    <div class="row justify-content-center">
-        <div class="col-12 col-lg-10 col-xl-8">
-            <div class="verification-form-card">
 
-                <!-- ── Coloured Header ── -->
-                <div class="verification-header text-center">
-                    <div class="d-flex align-items-start justify-content-between mb-3 position-relative" style="z-index:1;">
-                        <!-- spacer -->
-                        <div style="width:90px;"></div>
-                        <!-- centre icon -->
-                        <div class="verification-icon">
-                            <i class="bi bi-patch-check-fill"></i>
-                        </div>
-                        <!-- save chip (right) -->
-                        <div style="width:90px; display:flex; justify-content:flex-end;">
-                            <div id="verifSaveChip" class="save-chip d-none">
-                                <span class="save-chip-dot"></span>
-                                <span id="verifSaveChipText">Submitting…</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <h2 class="header-title mb-2" style="position:relative;z-index:1;">
-                        Business Verification
-                    </h2>
-                    <p class="header-subtitle mb-0" style="position:relative;z-index:1;">
-                        Get verified to unlock premium features and build customer trust
-                    </p>
-                </div>
-
-                <!-- slim progress bar sits between header and body -->
-                <div id="verifInlineProgress" class="verif-inline-progress d-none">
-                    <div id="verifInlineBar" class="verif-inline-bar"></div>
-                </div>
-
-                <div class="verification-body">
-
-                    <!-- ── Django messages ── -->
-                    {% if messages %}
-                    <div class="mb-4">
-                        {% for message in messages %}
-                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show py-2 small" role="alert">
-                            <i class="bi bi-{% if message.tags == 'success' %}check-circle{% else %}exclamation-triangle{% endif %}-fill me-2"></i>
-                            {{ message }}
-                            <button type="button" class="btn-close btn-sm" data-bs-dismiss="alert"></button>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-
-                    <!-- ── Benefits ── -->
-                    <div class="benefits-section mb-4">
-                        <h5 class="benefits-title">
-                            <i class="bi bi-star-fill"></i>Benefits of Business Verification
-                        </h5>
-                        <div class="benefits-grid">
-                            <div class="benefit-item">
-                                <i class="bi bi-patch-check-fill"></i>
-                                <span>Verified badge on all your products &amp; services</span>
-                            </div>
-                            <div class="benefit-item">
-                                <i class="bi bi-infinity"></i>
-                                <span>Access to permanent retail listings</span>
-                            </div>
-                            <div class="benefit-item">
-                                <i class="bi bi-eye-fill"></i>
-                                <span>Enhanced business profile visibility</span>
-                            </div>
-                            <div class="benefit-item">
-                                <i class="bi bi-geo-alt-fill"></i>
-                                <span>Display business address and contact info</span>
-                            </div>
-                            <div class="benefit-item">
-                                <i class="bi bi-graph-up-arrow"></i>
-                                <span>Priority placement in search results</span>
-                            </div>
-                            <div class="benefit-item">
-                                <i class="bi bi-filter-circle"></i>
-                                <span>Access to business-only filters</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <form method="post" enctype="multipart/form-data"
-                          class="needs-validation" id="verifForm" novalidate>
-                        {% csrf_token %}
-
-                        <!-- ── Business Information ── -->
-                        <div class="form-section mb-4">
-                            <h5 class="section-title mb-4">
-                                <i class="bi bi-building me-2"></i>Business Information
-                            </h5>
-
-                            <div class="row g-3">
-                                <div class="col-12 col-md-6">
-                                    <div class="form-floating">
-                                        {{ form.business_name }}
-                                        <label for="id_business_name">
-                                            Business Name <span class="req">*</span>
-                                        </label>
-                                    </div>
-                                    {% for e in form.business_name.errors %}
-                                    <div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>
-                                    {% endfor %}
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <div class="form-floating">
-                                        {{ form.business_registration_number }}
-                                        <label for="id_business_registration_number">
-                                            Registration Number <span class="opt">Optional</span>
-                                        </label>
-                                    </div>
-                                    {% for e in form.business_registration_number.errors %}
-                                    <div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>
-                                    {% endfor %}
-                                    <div class="form-text">Optional but strongly recommended for faster approval.</div>
-                                </div>
-                            </div>
-
-                            <div class="row g-3 mt-1">
-                                <div class="col-12 col-md-6">
-                                    <div class="form-floating">
-                                        {{ form.business_type }}
-                                        <label for="id_business_type">
-                                            Business Type <span class="req">*</span>
-                                        </label>
-                                    </div>
-                                    {% for e in form.business_type.errors %}
-                                    <div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>
-                                    {% endfor %}
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <div class="form-floating">
-                                        {{ form.business_phone }}
-                                        <label for="id_business_phone">
-                                            Business Phone <span class="req">*</span>
-                                        </label>
-                                    </div>
-                                    {% for e in form.business_phone.errors %}
-                                    <div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-
-                            <div class="mt-3">
-                                <label class="form-label" for="id_business_description">
-                                    Business Description <span class="req">*</span>
-                                </label>
-                                {{ form.business_description }}
-                                {% for e in form.business_description.errors %}
-                                <div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>
-                                {% endfor %}
-                                <div class="form-text">
-                                    Describe what your business does, your products or services, and your target customers.
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- ── Contact Information ── -->
-                        <div class="form-section mb-4">
-                            <h5 class="section-title mb-4">
-                                <i class="bi bi-envelope me-2"></i>Contact Information
-                            </h5>
-
-                            <div class="row g-3">
-                                <div class="col-12 col-md-6">
-                                    <div class="form-floating">
-                                        {{ form.business_email }}
-                                        <label for="id_business_email">
-                                            Business Email <span class="req">*</span>
-                                        </label>
-                                    </div>
-                                    {% for e in form.business_email.errors %}
-                                    <div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>
-                                    {% endfor %}
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <div class="form-floating">
-                                        {{ form.business_website }}
-                                        <label for="id_business_website">
-                                            Website <span class="opt">Optional</span>
-                                        </label>
-                                    </div>
-                                    {% for e in form.business_website.errors %}
-                                    <div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>
-                                    {% endfor %}
-                                    <div class="form-text">E.g. https://yourbusiness.com</div>
-                                </div>
-                            </div>
-
-                            <div class="mt-3">
-                                <div class="form-check">
-                                    {{ form.business_address_visible }}
-                                    <label class="form-check-label" for="id_business_address_visible">
-                                        Display my business address publicly on my profile
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- ── Supporting Documents ── -->
-                        <div class="form-section mb-4">
-                            <h5 class="section-title mb-2">
-                                <i class="bi bi-file-earmark-check me-2"></i>Supporting Documents
-                            </h5>
-                            <p class="section-description">
-                                Upload a document to verify your business (optional but speeds up approval).
-                                Accepted: JPG, PNG, WebP, PDF — max 10 MB.
-                            </p>
-
-                            <div class="row g-3 align-items-start">
-                                <!-- Document type select -->
-                                <div class="col-12 col-md-6">
-                                    <div class="form-floating">
-                                        {{ document_form.document_type }}
-                                        <label for="id_document_type">
-                                            Document Type <span class="opt">Optional</span>
-                                        </label>
-                                    </div>
-                                    {% for e in document_form.document_type.errors %}
-                                    <div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>
-                                    {% endfor %}
-                                </div>
-
-                                <!-- File upload drop zone -->
-                                <div class="col-12 col-md-6">
-                                    <div class="doc-upload-zone" id="docUploadZone">
-                                        <i class="bi bi-cloud-arrow-up doc-zone-icon"></i>
-                                        <div class="doc-zone-text">
-                                            <span class="doc-zone-title">Click to upload or drag &amp; drop</span>
-                                            <span class="doc-zone-hint">JPG, PNG, WebP or PDF · max 10 MB · auto-optimised</span>
-                                        </div>
-                                        {{ document_form.document }}
-                                    </div>
-                                    {% for e in document_form.document.errors %}
-                                    <div class="field-error-msg mt-1"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-
-                            <!-- Compress status (shown during / after processing) -->
-                            <div id="docCompressStatus" class="compress-status d-none mt-3"></div>
-
-                            <!-- Preview row (shown after file selection) -->
-                            <div id="docPreviewRow" class="doc-preview-row mt-3 d-none">
-                                <img id="docPreviewThumb" src="" alt="Document preview"
-                                     class="doc-preview-thumb d-none">
-                                <div id="docPreviewIconWrap" class="doc-preview-icon-wrap d-none">
-                                    <i class="bi bi-file-earmark-text"></i>
-                                </div>
-                                <div class="doc-preview-meta">
-                                    <span id="docPreviewName" class="doc-preview-name"></span>
-                                    <span id="docPreviewSize" class="doc-preview-size"></span>
-                                    <span id="docOptimisedBadge" class="doc-optimised-badge d-none">
-                                        <i class="bi bi-check-circle-fill me-1"></i>Optimised
-                                    </span>
-                                </div>
-                                <button type="button" id="docClearBtn"
-                                        class="btn btn-sm btn-outline-secondary doc-clear-btn"
-                                        title="Remove selection">
-                                    <i class="bi bi-x-lg"></i>
-                                </button>
-                            </div>
-
-                            <!-- Description textarea -->
-                            <div class="mt-3">
-                                <label class="form-label" for="id_description">
-                                    Document Description <span class="opt">Optional</span>
-                                </label>
-                                {{ document_form.description }}
-                                {% for e in document_form.description.errors %}
-                                <div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>
-                                {% endfor %}
-                                <div class="form-text">
-                                    Briefly describe what this document is or what it proves.
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- ── Submit ── -->
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-primary btn-lg submit-btn"
-                                    id="verifSubmitBtn">
-                                <i class="bi bi-send-fill me-2"></i>Submit for Verification
-                            </button>
-                        </div>
-
-                    </form>
-                </div><!-- /verification-body -->
-            </div><!-- /verification-form-card -->
-        </div>
-    </div>
-</div>
-
-<!-- ══════════════════════════════════════════════════════════════
-     SCRIPTS
-══════════════════════════════════════════════════════════════ -->
 <script>
-/* ════════════════════════════════════════════════════════════════
-   Document / Image Compressor
-   Images (JPG, PNG, WebP)  → canvas JPEG, 0.88 quality, max 1200 px, target ≤ 600 KB
-   PDFs / other non-images  → passed through untouched
-   Matches the pattern used in profile_update, product_form, service_form
-════════════════════════════════════════════════════════════════ */
-const DocCompressor = {
-    MAX_BYTES: 600 * 1024,
-    MAX_DIM:   1200,
-    QUALITY:   0.88,
+    /* Business verification form: inline validation, optional document with resize and preview.
+       The form submits normally, so the view can redirect on success or re-show field errors. */
+    (function () {
+        'use strict';
 
-    isImage(file) {
-        return ['image/jpeg','image/jpg','image/png','image/webp'].includes(file.type);
-    },
+        var $ = function (id) { return document.getElementById(id); };
+        var form = $('verifForm');
+        var submitBtn = $('verifSubmitBtn');
+        var overlay = $('bvfOverlay');
+        var busy = false;
 
-    fmtSize(bytes) {
-        if (bytes < 1024)    return bytes + ' B';
-        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-        return (bytes / 1048576).toFixed(2) + ' MB';
-    },
-
-    compress(file) {
-        if (!this.isImage(file) || file.size <= this.MAX_BYTES) {
-            return Promise.resolve({ file, saved: false });
+        function el(name) { return form.elements[name] || null; }
+        function fmt(b) {
+            if (b < 1024) return b + ' B';
+            if (b < 1048576) return (b / 1024).toFixed(0) + ' KB';
+            return (b / 1048576).toFixed(1) + ' MB';
         }
-        return new Promise(resolve => {
-            const reader = new FileReader();
-            reader.onload = e => {
-                const img = new Image();
-                img.onload = () => {
-                    let w = img.width, h = img.height;
-                    if (w > this.MAX_DIM || h > this.MAX_DIM) {
-                        const r = Math.min(this.MAX_DIM / w, this.MAX_DIM / h);
-                        w = Math.round(w * r); h = Math.round(h * r);
-                    }
-                    const canvas = document.createElement('canvas');
-                    canvas.width = w; canvas.height = h;
-                    const ctx = canvas.getContext('2d');
-                    ctx.fillStyle = '#fff';
-                    ctx.fillRect(0, 0, w, h);
-                    ctx.drawImage(img, 0, 0, w, h);
-                    canvas.toBlob(blob => {
-                        const out = new File(
-                            [blob],
-                            file.name.replace(/\.\w+$/, '.jpg'),
-                            { type: 'image/jpeg' }
-                        );
-                        resolve({ file: out, saved: file.size > out.size });
-                    }, 'image/jpeg', this.QUALITY);
-                };
-                img.onerror = () => resolve({ file, saved: false });
-                img.src = e.target.result;
-            };
-            reader.onerror = () => resolve({ file, saved: false });
-            reader.readAsDataURL(file);
+
+        /* Attributes the Django widgets may not carry */
+        [].forEach.call(form.querySelectorAll('input:not([type=hidden]):not([type=file]):not([type=checkbox]), select, textarea'), function (c) {
+            if (!c.hasAttribute('autocomplete')) c.setAttribute('autocomplete', 'off');
+            if (c.tagName === 'INPUT' && !c.hasAttribute('enterkeyhint')) c.setAttribute('enterkeyhint', 'next');
         });
-    }
-};
-
-/* ════════════════════════════════════════════════════════
-   DOM Ready
-════════════════════════════════════════════════════════ */
-document.addEventListener('DOMContentLoaded', function () {
-
-    /* ── Refs ── */
-    const form          = document.getElementById('verifForm');
-    const submitBtn     = document.getElementById('verifSubmitBtn');
-    const docInput      = document.querySelector('input[name="document"]');
-    const docZone       = document.getElementById('docUploadZone');
-    const compressStatus= document.getElementById('docCompressStatus');
-    const previewRow    = document.getElementById('docPreviewRow');
-    const previewThumb  = document.getElementById('docPreviewThumb');
-    const previewIcon   = document.getElementById('docPreviewIconWrap');
-    const previewName   = document.getElementById('docPreviewName');
-    const previewSize   = document.getElementById('docPreviewSize');
-    const optimisedBadge= document.getElementById('docOptimisedBadge');
-    const clearBtn      = document.getElementById('docClearBtn');
-
-    // Status bar
-    const overlay       = document.getElementById('verifLoadingOverlay');
-    const progressBar   = document.getElementById('verifProgressBar');
-    const progressLabel = document.getElementById('verifProgressLabel');
-    const progressSub   = document.getElementById('verifProgressSub');
-    const inlineProgress= document.getElementById('verifInlineProgress');
-    const inlineBar     = document.getElementById('verifInlineBar');
-    const saveChip      = document.getElementById('verifSaveChip');
-    const saveChipText  = document.getElementById('verifSaveChipText');
-
-    // Toast
-    const infoToastEl   = document.getElementById('verifInfoToast');
-    const infoMsg       = document.getElementById('verifInfoMsg');
-    const infoToast     = infoToastEl ? new bootstrap.Toast(infoToastEl, { delay: 5000 }) : null;
-
-    function showInfoToast(msg) {
-        if (!infoToast) return;
-        infoMsg.textContent = msg;
-        infoToast.show();
-    }
-
-    /* ── Add file-input class to Django-rendered doc input ── */
-    if (docInput) {
-        docInput.classList.add('doc-file-hidden');
-        // Ensure it sits over the drop zone
-        docInput.style.cssText = 'position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;';
-    }
-
-    /* ── Drag-over highlight ── */
-    if (docZone) {
-        docZone.addEventListener('dragover', e => {
-            e.preventDefault();
-            docZone.classList.add('drag-over');
+        [['business_name', 'organization', ''], ['business_phone', 'tel', 'tel'], ['business_email', 'email', 'email'], ['business_website', 'url', 'url']].forEach(function (a) {
+            var c = el(a[0]);
+            if (!c) return;
+            c.setAttribute('autocomplete', a[1]);
+            if (a[2] && !c.hasAttribute('inputmode')) c.setAttribute('inputmode', a[2]);
         });
-        docZone.addEventListener('dragleave', () => docZone.classList.remove('drag-over'));
-        docZone.addEventListener('drop', e => {
-            e.preventDefault();
-            docZone.classList.remove('drag-over');
-            const file = e.dataTransfer.files?.[0];
-            if (file) handleDocFile(file);
+
+        /* ---------- Validation ---------- */
+        var RULES = {
+            business_name: function (c) { return c.value.trim() ? '' : 'Enter your business name.'; },
+            business_type: function (c) { return c.value ? '' : 'Choose your business type.'; },
+            business_description: function (c) { return c.value.trim() ? '' : 'Describe your business.'; },
+            business_phone: function (c) {
+                if (!c.value.trim()) return 'Enter your business phone number.';
+                return c.checkValidity() ? '' : 'Enter a valid phone number.';
+            },
+            business_email: function (c) {
+                if (!c.value.trim()) return 'Enter your business email.';
+                return c.checkValidity() ? '' : 'Enter a valid email address.';
+            },
+            business_website: function (c) {
+                return !c.value.trim() || c.checkValidity() ? '' : 'Enter a web address like https://yourbusiness.com.';
+            }
+        };
+
+        function control(f) {
+            return f.querySelector('input:not([type=hidden]):not([type=file]):not([type=checkbox]), select, textarea');
+        }
+        function check(c) {
+            if (!c || c.disabled || !RULES[c.name]) return '';
+            return RULES[c.name](c);
+        }
+
+        // The hint stays attached; the error id joins it only while an error shows
+        function flag(f, msg) {
+            var c = control(f), fb = f.querySelector('.invalid-feedback'), hint = f.querySelector('.auth-hint');
+            f.classList.toggle('has-error', !!msg);
+            if (!c) return;
+            c.setAttribute('aria-invalid', msg ? 'true' : 'false');
+            if (msg && fb) fb.textContent = msg;
+            var ids = [];
+            if (hint && hint.id) ids.push(hint.id);
+            if (msg && fb) ids.push(fb.id);
+            if (ids.length) c.setAttribute('aria-describedby', ids.join(' '));
+            else c.removeAttribute('aria-describedby');
+        }
+
+        var allFields = [].slice.call(form.querySelectorAll('.auth-field'));
+        var fields = allFields.filter(function (f) {
+            var c = control(f);
+            return c && RULES[c.name];
         });
-    }
 
-    /* ── File selected ── */
-    if (docInput) {
-        docInput.addEventListener('change', function () {
-            const file = this.files?.[0];
-            if (file) handleDocFile(file);
+        // Server errors: describe them to assistive tech from the first paint
+        allFields.forEach(function (f) {
+            var c = control(f), fb = f.querySelector('.invalid-feedback');
+            if (!c) return;
+            var hint = f.querySelector('.auth-hint'), ids = [];
+            if (hint && hint.id) ids.push(hint.id);
+            if (f.classList.contains('has-error') && fb) { ids.push(fb.id); c.setAttribute('aria-invalid', 'true'); }
+            if (ids.length) c.setAttribute('aria-describedby', ids.join(' '));
         });
-    }
 
-    /* ── Clear selection ── */
-    if (clearBtn) {
-        clearBtn.addEventListener('click', () => {
-            if (docInput) docInput.value = '';
-            previewRow.classList.add('d-none');
-            previewThumb.classList.add('d-none');
-            previewIcon.classList.add('d-none');
-            compressStatus.className = 'compress-status d-none';
-            compressStatus.textContent = '';
+        fields.forEach(function (f) {
+            var c = control(f);
+            c.addEventListener('blur', function () { if (c.value) flag(f, check(c)); });
+            function clear() { if (f.classList.contains('has-error') && !check(c)) flag(f, ''); }
+            c.addEventListener('input', clear);
+            c.addEventListener('change', clear);
         });
-    }
 
-    /* ── Core handler: validate → compress → preview ── */
-    async function handleDocFile(file) {
-        const ALLOWED = [
-            'image/jpeg','image/jpg','image/png','image/webp','application/pdf'
-        ];
-        if (!ALLOWED.includes(file.type)) {
-            showInfoToast('Please select a JPG, PNG, WebP, or PDF file.');
-            return;
-        }
-        if (file.size > 10 * 1024 * 1024) {
-            showInfoToast('File is too large. Please use a file under 10 MB.');
-            return;
+        function validateAll() {
+            var first = null;
+            fields.forEach(function (f) {
+                var c = control(f), msg = check(c);
+                if (msg || f.classList.contains('has-error')) flag(f, msg);
+                if (msg && !first) first = c;
+            });
+            return first;
         }
 
-        const isImg = DocCompressor.isImage(file);
+        /* ---------- Document ---------- */
+        var TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
+        var MAX_SIZE = 10 * 1024 * 1024;
+        var IDLE = 'One file only.';
+        var fileInput = form.querySelector('input[type=file]');
+        var box = $('docBox'), note = $('docNote'), row = $('docFile');
+        var thumb = $('docThumb'), icon = $('docIcon'), nameEl = $('docName'), sizeEl = $('docSize');
+        var working = false, thumbUrl = '';
 
-        // Show compress status
-        compressStatus.className = 'compress-status running mt-3';
-        compressStatus.innerHTML = `
-            <div class="spinner-border spinner-border-sm flex-shrink-0" role="status">
-                <span class="visually-hidden">Processing…</span>
-            </div>
-            <span>${isImg ? 'Optimising image…' : 'Preparing document…'}</span>`;
-        compressStatus.classList.remove('d-none');
+        // Documents stay readable: smaller than a product photo, but not shrunk as hard
+        var Compressor = {
+            MAX_BYTES: 600 * 1024, MAX_DIM: 1200, QUALITY: 0.88,
+            isImage: function (f) { return f.type.indexOf('image/') === 0; },
+            compress: function (file) {
+                var self = this;
+                if (!self.isImage(file) || file.size <= self.MAX_BYTES) return Promise.resolve({ file: file, saved: false });
+                return new Promise(function (resolve) {
+                    var url = URL.createObjectURL(file), img = new Image();
+                    img.onload = function () {
+                        var w = img.width, h = img.height;
+                        if (w > self.MAX_DIM || h > self.MAX_DIM) {
+                            var r = Math.min(self.MAX_DIM / w, self.MAX_DIM / h);
+                            w = Math.round(w * r); h = Math.round(h * r);
+                        }
+                        var c = document.createElement('canvas');
+                        c.width = w; c.height = h;
+                        var ctx = c.getContext('2d');
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(0, 0, w, h);
+                        ctx.drawImage(img, 0, 0, w, h);
+                        URL.revokeObjectURL(url);
+                        c.toBlob(function (b) {
+                            // Keep the original when the result is not smaller
+                            if (!b || b.size >= file.size) return resolve({ file: file, saved: false });
+                            resolve({ file: new File([b], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }), saved: true });
+                        }, 'image/jpeg', self.QUALITY);
+                    };
+                    img.onerror = function () { URL.revokeObjectURL(url); resolve({ file: file, saved: false }); };
+                    img.src = url;
+                });
+            }
+        };
 
-        let result;
-        try {
-            result = await DocCompressor.compress(file);
-        } catch {
-            result = { file, saved: false };
+        function say(kind, text) {
+            note.className = 'auth-hint' + (kind ? ' auth-hint--' + kind : '');
+            note.textContent = text;
+        }
+        function dropPreview() {
+            if (thumbUrl) { URL.revokeObjectURL(thumbUrl); thumbUrl = ''; }
+            thumb.removeAttribute('src');
+            thumb.hidden = true;
+            icon.hidden = true;
+            row.hidden = true;
+        }
+        function clearFile(kind, text) {
+            try { fileInput.value = ''; } catch (err) {}
+            dropPreview();
+            say(kind, text || IDLE);
+        }
+        function showFile(f, saved) {
+            dropPreview();
+            nameEl.textContent = f.name.length > 36 ? f.name.slice(0, 35) + '\u2026' : f.name;
+            sizeEl.textContent = fmt(f.size) + (saved ? ', resized' : '');
+            if (Compressor.isImage(f)) {
+                thumbUrl = URL.createObjectURL(f);
+                thumb.src = thumbUrl;
+                thumb.hidden = false;
+            } else {
+                icon.hidden = false;
+            }
+            row.hidden = false;
+            say('', IDLE);
         }
 
-        // Inject back into input
-        const dt = new DataTransfer();
-        dt.items.add(result.file);
-        if (docInput) docInput.files = dt.files;
-
-        // Update status pill
-        if (isImg && result.saved) {
-            const pct = Math.round((1 - result.file.size / file.size) * 100);
-            compressStatus.className = 'compress-status done mt-3';
-            compressStatus.innerHTML =
-                `<i class="bi bi-check-circle-fill flex-shrink-0"></i>
-                 <span>Optimised — ${DocCompressor.fmtSize(file.size)} → ${DocCompressor.fmtSize(result.file.size)} (${pct}% smaller)</span>`;
-            showInfoToast(`Document optimised · saved ${pct}% · ${DocCompressor.fmtSize(result.file.size)}`);
-        } else {
-            compressStatus.className = 'compress-status done mt-3';
-            compressStatus.innerHTML =
-                `<i class="bi bi-check-circle-fill flex-shrink-0"></i>
-                 <span>Ready · ${DocCompressor.fmtSize(result.file.size)}</span>`;
+        async function take(file, fromDrop) {
+            if (working) return;
+            if (TYPES.indexOf(file.type) === -1) { clearFile('bad', 'Use a JPG, PNG, WebP or PDF file.'); return; }
+            if (file.size > MAX_SIZE) { clearFile('bad', 'That file is over 10 MB.'); return; }
+            working = true;
+            say('', Compressor.isImage(file) ? 'Resizing\u2026' : 'Preparing\u2026');
+            var r = await Compressor.compress(file);
+            try {
+                var dt = new DataTransfer();
+                dt.items.add(r.file);
+                fileInput.files = dt.files;
+            } catch (err) {
+                if (fromDrop) { clearFile('bad', 'Could not attach that. Use the Choose button instead.'); working = false; return; }
+                r = { file: fileInput.files[0] || r.file, saved: false }; // the input already holds the original
+            }
+            showFile(r.file, r.saved);
+            working = false;
         }
 
-        // Build preview
-        const fname = result.file.name;
-        previewName.textContent = fname.length > 36 ? fname.slice(0, 35) + '…' : fname;
-        previewSize.textContent = DocCompressor.fmtSize(result.file.size);
-        optimisedBadge.classList.toggle('d-none', !(isImg && result.saved));
-
-        if (isImg) {
-            const reader = new FileReader();
-            reader.onload = ev => {
-                previewThumb.src = ev.target.result;
-                previewThumb.classList.remove('d-none');
-                previewIcon.classList.add('d-none');
-            };
-            reader.readAsDataURL(result.file);
-        } else {
-            previewThumb.classList.add('d-none');
-            previewIcon.classList.remove('d-none');
-            // Adjust icon for PDF
-            previewIcon.innerHTML = file.type === 'application/pdf'
-                ? '<i class="bi bi-file-earmark-pdf" style="color:#dc3545;"></i>'
-                : '<i class="bi bi-file-earmark-text"></i>';
-        }
-
-        previewRow.classList.remove('d-none');
-    }
-
-    /* ════════════════════════════════════════════════════════
-       Submit — status bar + overlay
-    ════════════════════════════════════════════════════════ */
-    let isSubmitting = false;
-
-    function setProgress(pct) {
-        progressBar.style.width = pct + '%';
-        inlineBar.style.width   = pct + '%';
-    }
-
-    function setChip(state, text) {
-        saveChip.classList.remove('d-none', 'done', 'error');
-        if (state) saveChip.classList.add(state);
-        saveChipText.textContent = text;
-    }
-
-    function showOverlay(hasDoc) {
-        overlay.classList.add('show');
-        setProgress(0);
-        inlineProgress.classList.remove('d-none');
-        saveChip.classList.remove('d-none', 'done', 'error');
-        saveChipText.textContent = 'Submitting…';
-        progressLabel.textContent = hasDoc ? 'Uploading document…' : 'Submitting verification…';
-        progressSub.textContent   = 'Please wait — do not close this page';
-        submitBtn.disabled = true;
-    }
-
-    function hideOverlay() {
-        overlay.classList.remove('show');
-        submitBtn.disabled = false;
-    }
-
-    if (form) {
-        form.addEventListener('submit', function (e) {
-
-            // HTML5 validity
-            if (!form.checkValidity()) {
+        if (fileInput) {
+            fileInput.addEventListener('change', function () {
+                if (fileInput.files.length) take(fileInput.files[0], false); else clearFile('', '');
+            });
+            box.addEventListener('dragover', function (e) { e.preventDefault(); box.classList.add('drag'); });
+            box.addEventListener('dragleave', function () { box.classList.remove('drag'); });
+            box.addEventListener('drop', function (e) {
                 e.preventDefault();
-                form.classList.add('was-validated');
+                box.classList.remove('drag');
+                if (e.dataTransfer.files.length) take(e.dataTransfer.files[0], true);
+            });
+            $('docClear').addEventListener('click', function () { clearFile('', ''); });
+        }
+
+        /* ---------- Submit ---------- */
+        function setBusy(text) {
+            submitBtn.disabled = true;
+            submitBtn.setAttribute('aria-busy', 'true');
+            submitBtn.innerHTML = '<span class="spinner-border" aria-hidden="true"></span><span>' + text + '</span>';
+        }
+
+        form.addEventListener('submit', function (e) {
+            if (busy) { e.preventDefault(); return; }
+
+            if (working) {
+                e.preventDefault();
+                say('bad', 'Still resizing your file. Try again in a second.');
                 return;
             }
-            form.classList.add('was-validated');
 
-            if (isSubmitting) { e.preventDefault(); return; }
+            var first = validateAll();
+            if (first) {
+                e.preventDefault();
+                first.focus();
+                return;
+            }
 
-            const hasDoc = (docInput?.files?.length ?? 0) > 0;
-            e.preventDefault();
-
-            isSubmitting = true;
-            showOverlay(hasDoc);
-
-            const formData = new FormData(form);
-            const url = form.getAttribute('action') || window.location.href;
-
-            // Animate progress
-            let pct = 0;
-            const duration = hasDoc ? 3200 : 1100;
-            const interval = setInterval(() => {
-                pct = Math.min(pct + (hasDoc ? 1.5 : 4.5), 88);
-                setProgress(pct);
-            }, duration / 55);
-
-            fetch(url, {
-                method: 'POST',
-                body: formData,
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            })
-            .then(res => {
-                clearInterval(interval);
-                setProgress(100);
-
-                if (res.redirected || res.ok) {
-                    setChip('done', 'Submitted!');
-                    progressLabel.textContent = 'Verification submitted!';
-                    progressSub.textContent   = 'Redirecting…';
-                    inlineBar.style.background = '#198754';
-                    setTimeout(() => {
-                        hideOverlay();
-                        inlineProgress.classList.add('d-none');
-                        window.location.href = res.url || window.location.href;
-                    }, 900);
-                } else {
-                    throw new Error('Server returned an error. Please try again.');
-                }
-            })
-            .catch(err => {
-                clearInterval(interval);
-                setProgress(100);
-                inlineBar.style.background = '#dc3545';
-                setChip('error', 'Error');
-                progressLabel.textContent = 'Submission failed';
-                progressSub.textContent   = err.message || 'Check your connection and try again.';
-                setTimeout(() => {
-                    hideOverlay();
-                    isSubmitting = false;
-                    inlineBar.style.background = '';
-                    inlineBar.style.width = '0%';
-                    inlineProgress.classList.add('d-none');
-                    saveChip.classList.add('d-none');
-                }, 3500);
-            });
+            busy = true;
+            if (fileInput && fileInput.files.length) overlay.hidden = false;
+            // Delay so the browser has already collected the form data
+            setTimeout(function () { setBusy('Submitting\u2026'); }, 0);
         });
-    }
 
-});
+        // Coming back with the Back button restores the page from cache
+        window.addEventListener('pageshow', function (e) {
+            if (!e.persisted) return;
+            busy = false;
+            overlay.hidden = true;
+            submitBtn.disabled = false;
+            submitBtn.removeAttribute('aria-busy');
+            submitBtn.textContent = submitBtn.getAttribute('data-label');
+        });
+
+        /* ---------- Start ---------- */
+        // After a server error, land on the first field that has one
+        var serverErr = form.querySelector('.has-error');
+        if (serverErr) {
+            var sc = control(serverErr);
+            if (sc) sc.focus();
+        }
+    })();
 </script>
-
 {% endblock %}
 {% block 'Footer' %}{% endblock %}

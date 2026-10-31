@@ -5,637 +5,350 @@
 
 {% block page_css %}
 <style>
-.affiliate-container {
-    background-color: var(--background-color);
-    min-height: 100vh;
+/* Highlight colour for hover, selection and links: navy in light mode, orange in dark mode (no blue) */
+:root, [data-bs-theme="light"] { --hl: var(--primary-color); --hl-edge: var(--primary-color); --hl-soft: var(--primary-soft); }
+[data-bs-theme="dark"] { --hl: var(--accent-text); --hl-edge: var(--accent-color); --hl-soft: var(--accent-soft); }
+/* Buttons: same pill as login, profile and the wallet pages. Hover fills with the brand orange. */
+.ox-btn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-4); border: 2px solid var(--bs-white); border-radius: var(--radius-full); background: var(--primary-color); color: var(--bs-white); font: inherit; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); text-align: center; text-decoration: none; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); cursor: pointer; touch-action: manipulation; }
+.ox-btn:disabled { opacity: .7; cursor: default; }
+.ox-btn .spinner-border { width: 1rem; height: 1rem; border-width: .15em; }
+.ox-btn-sm { min-height: 2.5rem; width: auto; padding: 0 var(--sp-4); font-size: var(--font-size-sm); }
+.ox-btn.ox-btn-neutral { border: 1px solid var(--border-color); background: var(--card-background); color: var(--text-primary); box-shadow: none; }
+.ox-btn.ox-btn-light { border-color: var(--bs-white); background: var(--bs-white); color: var(--primary-color); box-shadow: none; }
+.ox-btn.ox-btn-ghost { border-color: var(--bs-white); background: transparent; color: var(--bs-white); box-shadow: none; }
+.ox-btn:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+@media (hover: hover) {
+    .ox-btn.ox-btn:not(:disabled):hover { background: var(--accent-color); color: var(--on-accent); }
+    .ox-btn.ox-btn-neutral:not(:disabled):hover { background: var(--hover-bg); color: var(--text-primary); border-color: var(--hl-edge); }
+}
+/* Shared core */
+.ox {
+    --ox-navy: var(--primary-color);
+    --ox-orange: var(--accent-color);
+    --ox-green: var(--bs-success, var(--primary-color));
+    --ox-red: var(--bs-danger, var(--accent-color));
+    --ox-purple: var(--bs-purple, var(--primary-color));
     color: var(--text-primary);
-    padding-top: 0.5rem;
+    font-size: var(--font-size-base);
+    line-height: var(--lh-body);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-4));
 }
+.ox a { text-decoration: none; }
+.ox p { margin: 0; }
+.ox [hidden] { display: none !important; }
+.t-navy { --tint: var(--ox-navy); } .t-orange { --tint: var(--ox-orange); } .t-green { --tint: var(--ox-green); } .t-red { --tint: var(--ox-red); } .t-purple { --tint: var(--ox-purple); }
+.ox-ico { display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-lg); }
+.t-orange .ox-ico, .t-orange.ox-ico { color: var(--on-accent); }
+.ox-wash { position: relative; isolation: isolate; }
+.ox-wash::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .ox-wash::before { opacity: .09; }
+.ox a:focus-visible, .ox button:focus-visible, .ox summary:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
 
-/* Typography */
-.page-title {
-    font-size: var(--font-size-xl);
-    font-weight: var(--font-weight-bold);
-    color: var(--text-primary);
-    margin-bottom: 0.25rem;
-}
+/* Header */
+.ox-head { margin: -2rem -1rem var(--gap-sections); padding: calc(2rem + var(--sp-4)) var(--sp-4) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); }
+.ox-head-in { display: grid; gap: var(--sp-4); max-width: var(--ox-w); margin: 0 auto; }
+.ox-head-l { display: flex; align-items: center; gap: var(--sp-2); }
+.ox-back { display: grid; place-items: center; flex: none; width: 2.75rem; height: 2.75rem; margin-left: calc(var(--sp-2) * -1); border-radius: var(--radius-full); color: var(--bs-white); font-size: var(--font-size-xl); }
+.ox-title { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-tight); }
+.ox-sub { margin: var(--sp-1) 0 0; font-size: var(--font-size-sm); color: rgba(255, 255, 255, .85); }
+.ox-bal { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--pad-l); border-radius: var(--radius-lg); background: var(--card-background); color: var(--text-primary); }
+.ox-bal-l { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.ox-total { margin: 0; font-size: var(--font-size-3xl); font-weight: 600; line-height: var(--lh-tight); }
+.ox-link { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1); min-height: 2.75rem; padding: 0 var(--sp-2); color: var(--hl); font-size: var(--font-size-sm); font-weight: 600; }
+@media (hover: hover) { .ox-link:hover { text-decoration: underline; } }
 
-.page-subtitle {
-    font-size: var(--font-size-xs);
-    color: var(--text-secondary);
-}
+/* Layout and cards (same as the profile page: icon, title, one-line subtitle) */
+.ox-main { display: flex; flex-direction: column; gap: var(--gap-sections); max-width: var(--ox-w); margin: 0 auto; }
+.ox-card { padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); }
+@media (min-width: 768px) { .ox-card { padding: var(--pad-l); } }
+.ox-sec-h { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.ox-sec-t { flex: 1 1 auto; min-width: 0; }
+.ox-h2 { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-tight); }
+.ox-card-sub { margin: var(--sp-1) 0 0; font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+.ox-pill { display: inline-flex; align-items: center; gap: var(--sp-1); padding: 0 var(--sp-2); border: 1px solid var(--tint); border-radius: var(--radius-full); font-size: var(--font-size-xs); font-weight: 600; line-height: var(--lh-body); white-space: nowrap; }
+.ox-alert { display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-md); font-size: var(--font-size-sm); line-height: var(--lh-snug); --tint: var(--ox-red); }
+.ox-alert i { margin-top: 1px; color: var(--error-text); }
+.ox-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-cards); }
+.ox-tile { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); line-height: var(--lh-tight); }
+.ox-tile .ox-ico { width: 2rem; height: 2rem; margin-bottom: var(--sp-1); color: var(--bs-white); font-size: var(--font-size-lg); }
+.ox-tile .t-orange.ox-ico { color: var(--on-accent); }
+.ox-tile b { font-size: var(--font-size-xl); font-weight: 600; overflow-wrap: anywhere; }
+.ox-tile span { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.ox-tile small { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.ox-dl { margin: 0; border: 1px solid var(--border-color); border-radius: var(--r-card-s); }
+.ox-dl div { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3); border-top: 1px solid var(--border-color); }
+.ox-dl div:first-child { border-top: 0; }
+.ox-dl dt { font-size: var(--font-size-sm); font-weight: 400; color: var(--text-secondary); }
+.ox-dl dd { margin: 0; font-size: var(--font-size-base); font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+@media (hover: hover) { a.ox-tile:hover, a.ox-row:hover { border-color: var(--hl-edge); } }
+.ox-row { display: flex; align-items: center; gap: var(--sp-3); min-height: 2.75rem; padding: var(--pad-s) var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-base); font-weight: 600; }
+.ox-row .ox-ico { width: 2rem; height: 2rem; }
+.ox-row .bi-chevron-right { margin-left: auto; color: var(--text-secondary); }
+@media (min-width: 768px) { .ox-head-in { gap: var(--sp-5); } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+/* Status pills: one tint per state. The icon and the label carry the meaning, not the colour alone. */
+.st { --tint: var(--text-secondary); }
+.st-pending { --tint: var(--ox-orange); }
+.st-under_review, .st-approved, .st-processing { --tint: var(--hl-edge); }
+.st-completed { --tint: var(--ox-green); }
+.st-rejected, .st-failed { --tint: var(--ox-red); }
+.ox { --pos: #1e7e34; }
+[data-bs-theme="dark"] .ox { --pos: #4cc16a; }
+.st-active, .st-available { --tint: var(--ox-green); }
+.af-tabs { display: flex; gap: var(--sp-1); overflow-x: auto; padding: var(--sp-1); border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); scrollbar-width: none; }
+.af-tabs::-webkit-scrollbar { display: none; }
+.af-tab { flex: none; display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 2.5rem; padding: 0 var(--sp-3); border-radius: var(--radius-full); color: var(--text-secondary); font-size: var(--font-size-sm); font-weight: 600; white-space: nowrap; }
+.af-tab[aria-current="page"] { background: var(--primary-color); color: var(--bs-white); }
+@media (hover: hover) { .af-tab:not([aria-current]):hover { background: var(--hover-bg); color: var(--text-primary); } }
+.af-list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; border: 1px solid var(--border-color); border-radius: var(--r-card-s); }
+.af-li { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; padding: var(--sp-3); border-top: 1px solid var(--border-color); }
+.af-li:first-child { border-top: 0; }
+.af-li .ox-ico { width: 2rem; height: 2rem; font-size: var(--font-size-lg); }
+.af-li-t { flex: 1 1 auto; min-width: 0; line-height: var(--lh-snug); }
+.af-li-t b { display: block; font-size: var(--font-size-base); font-weight: 600; overflow-wrap: anywhere; }
+.af-li-t span { display: block; font-size: var(--font-size-sm); color: var(--text-secondary); overflow-wrap: anywhere; }
+.af-li-r { display: flex; flex-direction: column; align-items: flex-end; gap: var(--sp-1); flex: none; text-align: right; line-height: var(--lh-snug); }
+.af-li-r b { font-size: var(--font-size-base); font-weight: 600; font-variant-numeric: tabular-nums; }
+.af-li-r small { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.af-pos { color: var(--pos); }
+.af-empty { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); padding: var(--sp-5) var(--sp-3); text-align: center; font-size: var(--font-size-base); color: var(--text-secondary); }
+.af-empty .ox-ico { width: 3rem; height: 3rem; font-size: var(--font-size-3xl); }
+.af-rank { --tint: var(--text-secondary); flex: none; min-width: 2.75rem; justify-content: center; }
+.af-rank.is-1 { --tint: var(--ox-orange); }
+.af-rank.is-2, .af-rank.is-3 { --tint: var(--hl-edge); }
+.af-li.is-me { background: var(--hl-soft); box-shadow: inset 3px 0 0 var(--hl-edge); }
+.af-av { flex: none; width: 2rem; height: 2rem; border-radius: var(--radius-full); object-fit: cover; }
+.af-av-ph { display: grid; place-items: center; background: var(--primary-color); color: var(--bs-white); font-size: var(--font-size-base); font-weight: 600; }
+.ox { --ox-w: 40rem; }
 
-/* Navigation Pills */
-.nav-custom {
-    background-color: var(--card-background);
-    padding: 0.4rem;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border-color);
-}
+.aw-bal-m { display: block; margin-top: var(--sp-1); font-size: var(--font-size-sm); color: var(--text-secondary); }
+.aw-code { font-weight: 600; color: var(--bs-white); }
 
-.nav-custom .nav-link {
-    color: #6c757d !important; /* Hardcoded for light mode visibility */
-    background-color: transparent;
-    border-radius: var(--radius-sm);
-    padding: 0.5rem 0.85rem;
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-medium);
-    transition: var(--transition-normal);
-    border: 1px solid transparent;
-    text-decoration: none;
-}
+/* Fields: same 42px controls as login, signup and profile */
+.aw-field { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; margin-bottom: var(--gap-fields); }
+.aw-lab { font-size: var(--font-size-sm); font-weight: 600; }
+.aw-req { color: var(--error-text); }
+.aw-ctl { box-sizing: border-box; width: 100%; min-height: var(--h-control-lg); padding: 0 var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--background-color); color: var(--text-primary); font: inherit; font-size: var(--font-size-base); }
+select.aw-ctl { padding-right: 2rem; }
+.aw-ctl::placeholder { color: var(--text-secondary); opacity: 1; }
+.aw-ctl:focus { outline: 2px solid var(--accent-color); outline-offset: 1px; border-color: var(--accent-color); box-shadow: none; background-color: var(--background-color); color: var(--text-primary); }
+[data-bs-theme="dark"] .aw-ctl { color-scheme: dark; }
+.aw-ctl:-webkit-autofill { -webkit-text-fill-color: var(--text-primary); caret-color: var(--text-primary); box-shadow: 0 0 0 1000px var(--background-color) inset; transition: background-color 9999s ease-out 0s; }
+@supports (-webkit-touch-callout: none) { .aw-ctl { font-size: 16px; } }
+.aw-input { display: flex; align-items: stretch; overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--background-color); }
+.aw-input > span { display: grid; place-items: center; padding: 0 var(--sp-3); border-right: 1px solid var(--border-color); background: var(--hover-bg); color: var(--text-secondary); font-weight: 600; }
+.aw-input .aw-ctl { flex: 1 1 auto; min-width: 0; border: 0; border-radius: 0; background: transparent; }
+.aw-input:focus-within { outline: 2px solid var(--accent-color); outline-offset: 1px; border-color: var(--accent-color); }
+.aw-input .aw-ctl:focus { outline: 0; }
+.aw-hint { font-size: var(--font-size-xs); line-height: var(--lh-snug); color: var(--text-secondary); }
+.aw-max { align-self: flex-start; min-height: 2.75rem; margin: 0; padding: 0 var(--sp-2); border: 0; background: none; color: var(--hl); font: inherit; font-size: var(--font-size-sm); font-weight: 600; cursor: pointer; }
+@media (hover: hover) { .aw-max:hover { text-decoration: underline; } }
 
-[data-bs-theme="dark"] .nav-custom .nav-link {
-    color: #adb5bd !important; /* Lighter for dark mode */
-}
-
-.nav-custom .nav-link:hover {
-    background-color: var(--hover-bg);
-    color: var(--text-primary) !important;
-    border-color: var(--border-color);
-}
-
-.nav-custom .nav-link.active {
-    background-color: var(--primary-color) !important;
-    color: #ffffff !important;
-    border-color: var(--primary-color);
-}
-
-.nav-custom .nav-link.active:hover {
-    color: #ffffff !important;
-}
-
-/* Cards */
-.card-custom {
-    background-color: var(--card-background);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-}
-
-.card-header-custom {
-    padding: 0.85rem 1rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.card-header-custom.bg-success {
-    background-color: #198754 !important;
-    border-color: #198754;
-}
-
-.card-title-custom {
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-semibold);
-    margin-bottom: 0;
-    color: var(--text-primary);
-}
-
-.card-body-custom {
-    padding: 1rem;
-}
-
-/* Balance Grid */
-.balance-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 0.75rem;
-}
-
-.balance-card {
-    padding: 0.85rem;
-    border-radius: var(--radius-md);
-    border: 1px solid;
-    text-align: center;
-}
-
-.balance-card.balance-available {
-    background-color: rgba(25, 135, 84, 0.1);
-    border-color: #198754;
-}
-
-.balance-card.balance-pending {
-    background-color: rgba(255, 193, 7, 0.1);
-    border-color: #ffc107;
-}
-
-.balance-label {
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-semibold);
-    margin-bottom: 0.5rem;
-    color: var(--text-primary);
-}
-
-.balance-amount {
-    font-size: var(--font-size-xl);
-    font-weight: var(--font-weight-bold);
-    margin-bottom: 0.25rem;
-    color: var(--text-primary);
-}
-
-.balance-card.balance-available .balance-amount {
-    color: #198754;
-}
-
-.balance-card.balance-pending .balance-amount {
-    color: #ffc107;
-}
-
-.balance-meta {
-    font-size: var(--font-size-xs);
-    color: var(--text-secondary);
-}
-
-/* Status Section - Stable Alert */
-.status-section {
-    padding: 0.85rem;
-    border-radius: var(--radius-md);
-    border: 1px solid;
-}
-
-.status-danger {
-    background-color: rgba(220, 53, 69, 0.1);
-    border-color: #dc3545;
-}
-
-.status-icon {
-    font-size: var(--font-size-2xl);
-    color: #dc3545;
-    flex-shrink: 0;
-}
-
-.status-heading {
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-semibold);
-    margin-bottom: 0.35rem;
-    color: var(--text-primary);
-}
-
-.status-text {
-    font-size: var(--font-size-xs);
-    color: var(--text-secondary);
-    line-height: 1.5;
-}
-
-/* Form Elements */
-.form-label-custom {
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-semibold);
-    color: var(--text-primary);
-    margin-bottom: 0.4rem;
-    display: block;
-}
-
-.form-control-custom,
-.form-select-custom {
-    background-color: var(--card-background);
-    border: 2px solid var(--border-color);
-    color: var(--text-primary);
-    font-size: var(--font-size-xs);
-    padding: 0.5rem 0.75rem;
-    border-radius: var(--radius-sm);
-}
-
-.form-control-custom:focus,
-.form-select-custom:focus {
-    background-color: var(--card-background);
-    border-color: var(--primary-color);
-    color: var(--text-primary);
-    box-shadow: 0 0 0 0.15rem rgba(13, 110, 253, 0.25);
-    outline: none;
-}
-
-.input-group-icon {
-    background-color: #0d6efd;
-    color: white;
-    border: 2px solid #0d6efd;
-    font-weight: var(--font-weight-semibold);
-    font-size: var(--font-size-xs);
-}
-
-.form-text-custom {
-    font-size: var(--font-size-xs);
-    color: var(--text-secondary);
-    margin-top: 0.35rem;
-    display: block;
-}
-
-/* Alerts */
-.alert-custom {
-    border-radius: var(--radius-md);
-    padding: 0.85rem;
-    border: 1px solid;
-    font-size: var(--font-size-xs);
-}
-
-.alert-heading {
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-semibold);
-    margin-bottom: 0.5rem;
-}
-
-.info-list {
-    padding-left: 1rem;
-    margin-top: 0.5rem;
-    font-size: var(--font-size-xs);
-}
-
-.info-list li {
-    margin-bottom: 0.35rem;
-    line-height: 1.5;
-}
-
-/* Buttons */
-.btn-action {
-    font-size: var(--font-size-xs);
-    padding: 0.5rem 1rem;
-    font-weight: var(--font-weight-semibold);
-    border-radius: var(--radius-sm);
-}
-
-.button-group {
-    display: grid;
-    gap: 0.65rem;
-}
-
-/* Table */
-.table-custom {
-    color: var(--text-primary);
-    font-size: var(--font-size-xs);
-}
-
-.table-custom thead {
-    background-color: var(--hover-bg);
-}
-
-.table-custom th {
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-semibold);
-    padding: 0.65rem 0.75rem;
-    color: var(--text-primary);
-    border-bottom: 1px solid var(--border-color);
-}
-
-.table-custom td {
-    padding: 0.65rem 0.75rem;
-    font-size: var(--font-size-xs);
-    border-bottom: 1px solid var(--border-color);
-    vertical-align: middle;
-}
-
-.table-custom tbody tr {
-    transition: var(--transition-normal);
-}
-
-.table-custom tbody tr:hover {
-    background-color: var(--hover-bg);
-}
-
-.badge-sm {
-    font-size: 10px;
-    padding: 0.2rem 0.4rem;
-}
-
-/* Empty State */
-.empty-state {
-    text-align: center;
-    padding: 2rem 1rem;
-    color: var(--text-secondary);
-}
-
-.empty-state i {
-    opacity: 0.5;
-}
-
-/* Responsive Design */
-@media (max-width: 767px) {
-    .page-title {
-        font-size: var(--font-size-lg);
-    }
-    
-    .balance-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .balance-amount {
-        font-size: var(--font-size-lg);
-    }
-    
-    .nav-custom {
-        overflow-x: auto;
-        white-space: nowrap;
-    }
-    
-    .nav-custom .nav-item {
-        display: inline-block;
-    }
-    
-    .table-custom {
-        font-size: 10px;
-    }
-    
-    .table-custom th,
-    .table-custom td {
-        padding: 0.5rem 0.35rem;
-    }
-}
+.aw-info { --tint: var(--ox-orange); flex-direction: column; margin: var(--sp-3) 0; }
+.aw-info i { color: var(--accent-text); }
+.aw-info b { display: flex; align-items: center; gap: var(--sp-2); }
+.aw-info ul { margin: 0; padding-left: var(--sp-4); }
+.aw-info li + li { margin-top: var(--sp-1); }
+.aw-acts { display: grid; gap: var(--sp-2); }
+.aw-stop { margin-bottom: var(--sp-3); }
 </style>
 {% endblock %}
 
-{% block 'Body'%}
-<div class="affiliate-container">
-    <div class="container-fluid py-3">
-        <!-- Header -->
-        <div class="affiliate-header mb-3">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+{% block 'Body' %}
+<div class="ox">
+
+    <header class="ox-head">
+        <div class="ox-head-in">
+            <div class="ox-head-l">
+                <a href="{% url 'affiliate_dashboard' %}" class="ox-back" aria-label="Back to affiliate dashboard"><i class="bi bi-arrow-left" aria-hidden="true"></i></a>
                 <div>
-                    <h2 class="page-title">
-                        <i class="bi bi-cash-coin me-2"></i>Request Withdrawal
-                    </h2>
-                    <p class="page-subtitle mb-0">
-                        Withdraw your earnings â€¢ Referral Code: <strong class="text-primary">{{ affiliate.referral_code }}</strong>
-                    </p>
+                    <h1 class="ox-title">Request withdrawal</h1>
+                    <p class="ox-sub">Withdraw your earnings · Code <span class="aw-code">{{ affiliate.referral_code }}</span></p>
                 </div>
-                <a href="{% url 'affiliate_dashboard' %}" class="btn btn-outline-secondary btn-action">
-                    <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
-                </a>
+            </div>
+            <div class="ox-bal">
+                <div>
+                    <span class="ox-bal-l">Available balance</span>
+                    <p class="ox-total">₦{{ affiliate.available_balance|floatformat:"2g" }}</p>
+                    <span class="aw-bal-m">Pending ₦{{ affiliate.pending_balance|floatformat:"2g" }} · available after 7 days</span>
+                </div>
             </div>
         </div>
+    </header>
 
-        <!-- Navigation Tabs -->
-        <ul class="nav nav-pills nav-custom mb-3" role="tablist">
-            <li class="nav-item" role="presentation">
-                <a class="nav-link" href="{% url 'affiliate_dashboard' %}">
-                    <i class="bi bi-house-fill me-1"></i>Overview
-                </a>
-            </li>
-            <li class="nav-item" role="presentation">
-                <a class="nav-link" href="{% url 'affiliate_analytics' %}">
-                    <i class="bi bi-graph-up me-1"></i>Analytics
-                </a>
-            </li>
-            <li class="nav-item" role="presentation">
-                <a class="nav-link" href="{% url 'affiliate_leaderboard' %}">
-                    <i class="bi bi-trophy-fill me-1"></i>Leaderboard
-                </a>
-            </li>
-            <li class="nav-item" role="presentation">
-                <a class="nav-link active" href="{% url 'affiliate_withdraw' %}">
-                    <i class="bi bi-wallet2 me-1"></i>Withdrawals
-                </a>
-            </li>
-            <li class="nav-item" role="presentation">
-                <a class="nav-link" href="#">
-                    <i class="bi bi-book me-1"></i>Resources
-                </a>
-            </li>
-        </ul>
+    <div class="ox-main">
 
-        <!-- Withdrawal Form Card -->
-        <div class="card-custom mb-3">
-            <div class="card-header-custom bg-success text-white">
-                <h5 class="card-title-custom mb-0 text-white">
-                    <i class="bi bi-cash-coin me-2"></i>Withdrawal Request
-                </h5>
+        <nav class="af-tabs" aria-label="Affiliate sections">
+            <a class="af-tab" href="{% url 'affiliate_dashboard' %}"><i class="bi bi-house-fill" aria-hidden="true"></i>Overview</a>
+            <a class="af-tab" href="{% url 'affiliate_analytics' %}"><i class="bi bi-graph-up" aria-hidden="true"></i>Analytics</a>
+            <a class="af-tab" href="{% url 'affiliate_leaderboard' %}"><i class="bi bi-trophy-fill" aria-hidden="true"></i>Leaderboard</a>
+            <a class="af-tab" href="{% url 'affiliate_withdraw' %}" aria-current="page"><i class="bi bi-wallet2" aria-hidden="true"></i>Withdrawals</a>
+            <a class="af-tab" href="#"><i class="bi bi-book" aria-hidden="true"></i>Resources</a>
+        </nav>
+
+        <section class="ox-card" aria-labelledby="wdTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-green"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
+                <div class="ox-sec-t">
+                    <h2 class="ox-h2" id="wdTitle">Withdrawal request</h2>
+                    <p class="ox-card-sub">Minimum ₦{{ affiliate.minimum_withdrawal|floatformat:"2g" }} · Maximum ₦{{ affiliate.available_balance|floatformat:"2g" }}</p>
+                </div>
             </div>
-            <div class="card-body-custom">
-                <!-- Balance Summary Grid -->
-                <div class="balance-grid mb-3">
-                    <div class="balance-card balance-available">
-                        <p class="balance-label">Available Balance</p>
-                        <h3 class="balance-amount">₦{{ affiliate.available_balance|floatformat:2 }}</h3>
+
+            {% if affiliate.available_balance < affiliate.minimum_withdrawal %}
+            <div class="ox-alert ox-wash aw-stop" role="alert">
+                <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+                <span><b>Insufficient balance.</b> Your available balance (₦{{ affiliate.available_balance|floatformat:"2g" }}) is below the minimum withdrawal amount (₦{{ affiliate.minimum_withdrawal|floatformat:"2g" }}). Keep earning to reach the minimum!</span>
+            </div>
+            <a href="{% url 'affiliate_dashboard' %}" class="ox-btn ox-btn-neutral">Back to dashboard</a>
+            {% else %}
+            <form method="post" id="withdrawalForm">
+                {% csrf_token %}
+
+                <div class="aw-field">
+                    <label for="amount" class="aw-lab">Withdrawal amount <span class="aw-req" aria-hidden="true">*</span></label>
+                    <div class="aw-input">
+                        <span aria-hidden="true">₦</span>
+                        <input type="number" name="amount" id="amount" class="aw-ctl" inputmode="decimal"
+                               min="{{ affiliate.minimum_withdrawal }}" max="{{ affiliate.available_balance }}" step="100"
+                               value="{{ affiliate.available_balance|floatformat:0 }}" required>
                     </div>
-                    <div class="balance-card balance-pending">
-                        <p class="balance-label">Pending Balance</p>
-                        <h4 class="balance-amount">₦{{ affiliate.pending_balance|floatformat:2 }}</h4>
-                        <small class="balance-meta">Available after 7 days</small>
-                    </div>
+                    <button type="button" class="aw-max" id="maxBtn">Use the maximum amount</button>
                 </div>
 
-                {% if affiliate.available_balance < affiliate.minimum_withdrawal %}
-                <!-- Insufficient Balance Status -->
-                <div class="status-section status-danger mb-3">
-                    <div class="d-flex align-items-start gap-2">
-                        <i class="bi bi-exclamation-triangle-fill status-icon"></i>
-                        <div class="flex-grow-1">
-                            <h6 class="status-heading">
-                                <i class="bi bi-exclamation-triangle-fill"></i> Insufficient Balance
-                            </h6>
-                            <p class="status-text mb-0">
-                                Your available balance (₦{{ affiliate.available_balance|floatformat:2 }}) is below the 
-                                minimum withdrawal amount (₦{{ affiliate.minimum_withdrawal|floatformat:2 }}). Keep earning to reach the minimum!
-                            </p>
-                        </div>
-                    </div>
+                <div class="aw-field">
+                    <label for="bank_name" class="aw-lab">Bank name <span class="aw-req" aria-hidden="true">*</span></label>
+                    <select name="bank_name" id="bank_name" class="aw-ctl form-select" required>
+                        <option value="">Select your bank</option>
+                        <option value="Access Bank">Access Bank</option>
+                        <option value="Citibank Nigeria">Citibank Nigeria</option>
+                        <option value="Ecobank Nigeria">Ecobank Nigeria</option>
+                        <option value="Fidelity Bank">Fidelity Bank</option>
+                        <option value="First Bank of Nigeria">First Bank of Nigeria</option>
+                        <option value="First City Monument Bank">First City Monument Bank (FCMB)</option>
+                        <option value="Globus Bank">Globus Bank</option>
+                        <option value="Guaranty Trust Bank">Guaranty Trust Bank (GTBank)</option>
+                        <option value="Heritage Bank">Heritage Bank</option>
+                        <option value="Keystone Bank">Keystone Bank</option>
+                        <option value="Kuda Bank">Kuda Bank</option>
+                        <option value="Polaris Bank">Polaris Bank</option>
+                        <option value="Providus Bank">Providus Bank</option>
+                        <option value="Stanbic IBTC Bank">Stanbic IBTC Bank</option>
+                        <option value="Standard Chartered Bank">Standard Chartered Bank</option>
+                        <option value="Sterling Bank">Sterling Bank</option>
+                        <option value="SunTrust Bank">SunTrust Bank</option>
+                        <option value="Titan Trust Bank">Titan Trust Bank</option>
+                        <option value="Union Bank of Nigeria">Union Bank of Nigeria</option>
+                        <option value="United Bank for Africa">United Bank for Africa (UBA)</option>
+                        <option value="Unity Bank">Unity Bank</option>
+                        <option value="Wema Bank">Wema Bank</option>
+                        <option value="Zenith Bank">Zenith Bank</option>
+                    </select>
                 </div>
-                <a href="{% url 'affiliate_dashboard' %}" class="btn btn-secondary w-100 btn-action">
-                    Back to Dashboard
-                </a>
-                {% else %}
-                <!-- Withdrawal Form -->
-                <form method="post" id="withdrawalForm">
-                    {% csrf_token %}
-                    
-                    <div class="mb-3">
-                        <label for="amount" class="form-label-custom">
-                            Withdrawal Amount <span class="text-danger">*</span>
-                        </label>
-                        <div class="input-group">
-                            <span class="input-group-text input-group-icon">₦</span>
-                            <input 
-                                type="number" 
-                                name="amount" 
-                                id="amount" 
-                                class="form-control form-control-custom" 
-                                min="{{ affiliate.minimum_withdrawal }}" 
-                                max="{{ affiliate.available_balance }}" 
-                                step="100"
-                                value="{{ affiliate.available_balance|floatformat:0 }}"
-                                required
-                            >
-                        </div>
-                        <div class="form-text-custom">
-                            Min: ₦{{ affiliate.minimum_withdrawal|floatformat:2 }} 
-                            Max: ₦{{ affiliate.available_balance|floatformat:2 }}
-                        </div>
-                    </div>
 
-                    <div class="mb-3">
-                        <label for="bank_name" class="form-label-custom">
-                            Bank Name <span class="text-danger">*</span>
-                        </label>
-                        <select name="bank_name" id="bank_name" class="form-select form-select-custom" required>
-                            <option value="">Select your bank</option>
-                            <option value="Access Bank">Access Bank</option>
-                            <option value="Citibank Nigeria">Citibank Nigeria</option>
-                            <option value="Ecobank Nigeria">Ecobank Nigeria</option>
-                            <option value="Fidelity Bank">Fidelity Bank</option>
-                            <option value="First Bank of Nigeria">First Bank of Nigeria</option>
-                            <option value="First City Monument Bank">First City Monument Bank (FCMB)</option>
-                            <option value="Globus Bank">Globus Bank</option>
-                            <option value="Guaranty Trust Bank">Guaranty Trust Bank (GTBank)</option>
-                            <option value="Heritage Bank">Heritage Bank</option>
-                            <option value="Keystone Bank">Keystone Bank</option>
-                            <option value="Kuda Bank">Kuda Bank</option>
-                            <option value="Polaris Bank">Polaris Bank</option>
-                            <option value="Providus Bank">Providus Bank</option>
-                            <option value="Stanbic IBTC Bank">Stanbic IBTC Bank</option>
-                            <option value="Standard Chartered Bank">Standard Chartered Bank</option>
-                            <option value="Sterling Bank">Sterling Bank</option>
-                            <option value="SunTrust Bank">SunTrust Bank</option>
-                            <option value="Titan Trust Bank">Titan Trust Bank</option>
-                            <option value="Union Bank of Nigeria">Union Bank of Nigeria</option>
-                            <option value="United Bank for Africa">United Bank for Africa (UBA)</option>
-                            <option value="Unity Bank">Unity Bank</option>
-                            <option value="Wema Bank">Wema Bank</option>
-                            <option value="Zenith Bank">Zenith Bank</option>
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="account_number" class="form-label-custom">
-                            Account Number <span class="text-danger">*</span>
-                        </label>
-                        <input 
-                            type="text" 
-                            name="account_number" 
-                            id="account_number" 
-                            class="form-control form-control-custom" 
-                            maxlength="10"
-                            pattern="[0-9]{10}"
-                            placeholder="0123456789"
-                            required
-                        >
-                        <div class="form-text-custom">Enter your 10-digit account number</div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="account_name" class="form-label-custom">
-                            Account Name <span class="text-danger">*</span>
-                        </label>
-                        <input 
-                            type="text" 
-                            name="account_name" 
-                            id="account_name" 
-                            class="form-control form-control-custom" 
-                            placeholder="Full name as shown on bank account"
-                            required
-                        >
-                    </div>
-
-                    <div class="alert alert-info alert-custom mb-3">
-                        <h6 class="alert-heading">
-                            <i class="bi bi-info-circle-fill me-2"></i>Processing Information
-                        </h6>
-                        <ul class="mb-0 info-list">
-                            <li>Withdrawals are processed within 1-2 business days</li>
-                            <li>Please ensure your account details are correct</li>
-                            <li>You'll receive an email confirmation once processed</li>
-                            <li>Bank transfer fees may apply</li>
-                        </ul>
-                    </div>
-
-                    <div class="button-group">
-                        <button type="submit" class="btn btn-success btn-action">
-                            <i class="bi bi-send-fill me-2"></i>Submit Withdrawal Request
-                        </button>
-                        <a href="{% url 'affiliate_dashboard' %}" class="btn btn-outline-secondary btn-action">
-                            Cancel
-                        </a>
-                    </div>
-                </form>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Recent Withdrawals -->
-        <div class="card-custom">
-            <div class="card-header-custom">
-                <h5 class="card-title-custom">
-                    <i class="bi bi-clock-history me-2"></i>Recent Withdrawals
-                </h5>
-            </div>
-            <div class="card-body-custom p-0">
-                {% if affiliate.withdrawals.all %}
-                <div class="table-responsive">
-                    <table class="table table-custom mb-0">
-                        <thead>
-                            <tr>
-                                <th>Amount</th>
-                                <th>Bank Details</th>
-                                <th>Status</th>
-                                <th>Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for withdrawal in affiliate.withdrawals.all|slice:":5" %}
-                            <tr>
-                                <td><strong>₦{{ withdrawal.amount|floatformat:2 }}</strong></td>
-                                <td>
-                                    {{ withdrawal.bank_name }}<br>
-                                    <small class="text-muted">{{ withdrawal.account_number }}</small>
-                                </td>
-                                <td>
-                                    {% if withdrawal.status == 'pending' %}
-                                    <span class="badge bg-warning text-dark badge-sm">Pending</span>
-                                    {% elif withdrawal.status == 'approved' %}
-                                    <span class="badge bg-info badge-sm">Approved</span>
-                                    {% elif withdrawal.status == 'processing' %}
-                                    <span class="badge bg-primary badge-sm">Processing</span>
-                                    {% elif withdrawal.status == 'completed' %}
-                                    <span class="badge bg-success badge-sm">Completed</span>
-                                    {% elif withdrawal.status == 'rejected' %}
-                                    <span class="badge bg-danger badge-sm">Rejected</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <small class="text-muted">{{ withdrawal.requested_at|date:"M d, Y" }}</small>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                <div class="aw-field">
+                    <label for="account_number" class="aw-lab">Account number <span class="aw-req" aria-hidden="true">*</span></label>
+                    <input type="text" name="account_number" id="account_number" class="aw-ctl" maxlength="10" pattern="[0-9]{10}" inputmode="numeric" autocomplete="off" placeholder="0123456789" required>
+                    <span class="aw-hint">Enter your 10-digit account number</span>
                 </div>
-                {% else %}
-                <div class="empty-state">
-                    <i class="bi bi-clock-history display-4"></i>
-                    <p class="mt-2 mb-0">No withdrawal history yet</p>
+
+                <div class="aw-field">
+                    <label for="account_name" class="aw-lab">Account name <span class="aw-req" aria-hidden="true">*</span></label>
+                    <input type="text" name="account_name" id="account_name" class="aw-ctl" placeholder="Full name as shown on bank account" autocomplete="name" required>
                 </div>
-                {% endif %}
+
+                <div class="ox-alert ox-wash aw-info">
+                    <b><i class="bi bi-info-circle-fill" aria-hidden="true"></i>Processing information</b>
+                    <ul>
+                        <li>Withdrawals are processed within 1-2 business days</li>
+                        <li>Please ensure your account details are correct</li>
+                        <li>You'll receive an email confirmation once processed</li>
+                        <li>Bank transfer fees may apply</li>
+                    </ul>
+                </div>
+
+                <div class="aw-acts">
+                    <button type="submit" class="ox-btn" id="submitBtn"><i class="bi bi-send-fill" aria-hidden="true"></i><span>Submit withdrawal request</span></button>
+                    <a href="{% url 'affiliate_dashboard' %}" class="ox-btn ox-btn-neutral">Cancel</a>
+                </div>
+            </form>
+            {% endif %}
+        </section>
+
+        <section class="ox-card" aria-labelledby="rwTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-navy"><i class="bi bi-clock-history" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="rwTitle">Recent withdrawals</h2></div>
             </div>
-        </div>
+            {% if affiliate.withdrawals.all %}
+            <ul class="af-list">
+                {% for withdrawal in affiliate.withdrawals.all|slice:":5" %}
+                <li class="af-li">
+                    <div class="af-li-t">
+                        <b>₦{{ withdrawal.amount|floatformat:"2g" }}</b>
+                        <span>{{ withdrawal.bank_name }} · {{ withdrawal.account_number }}</span>
+                    </div>
+                    <div class="af-li-r">
+                        <span class="ox-pill ox-wash st st-{{ withdrawal.status }}"><i class="bi {% if withdrawal.status == 'pending' %}bi-clock{% elif withdrawal.status == 'approved' %}bi-check2{% elif withdrawal.status == 'processing' %}bi-arrow-repeat{% elif withdrawal.status == 'completed' %}bi-check-circle-fill{% elif withdrawal.status == 'rejected' %}bi-x-circle-fill{% else %}bi-circle{% endif %}" aria-hidden="true"></i>{{ withdrawal.status|title }}</span>
+                        <small>{{ withdrawal.requested_at|date:"M d, Y" }}</small>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="af-empty"><span class="ox-ico t-navy"><i class="bi bi-clock-history" aria-hidden="true"></i></span><p>No withdrawal history yet</p></div>
+            {% endif %}
+        </section>
+
     </div>
 </div>
 
 <script>
-// Account number validation
-document.getElementById('account_number')?.addEventListener('input', function(e) {
-    this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);
-});
+document.addEventListener('DOMContentLoaded', function () {
+    var amount = document.getElementById('amount');
+    var account = document.getElementById('account_number');
+    var form = document.getElementById('withdrawalForm');
+    var submit = document.getElementById('submitBtn');
+    var maxBtn = document.getElementById('maxBtn');
 
-// Amount validation
-document.getElementById('amount')?.addEventListener('input', function(e) {
-    const min = parseFloat(this.min);
-    const max = parseFloat(this.max);
-    const value = parseFloat(this.value);
-    
-    if (value < min) {
-        this.setCustomValidity(`Minimum withdrawal amount is ₦${min.toLocaleString()}`);
-    } else if (value > max) {
-        this.setCustomValidity(`Maximum withdrawal amount is ₦${max.toLocaleString()}`);
-    } else {
-        this.setCustomValidity('');
+    // Largest amount that is within the balance AND on the step (the default value used to break the step rule)
+    function maxAllowed() {
+        var min = parseFloat(amount.min) || 0, max = parseFloat(amount.max) || 0, step = parseFloat(amount.step) || 1;
+        if (max < min) return max;
+        return min + Math.floor((max - min) / step) * step;
     }
-});
 
-// Form submission confirmation
-document.getElementById('withdrawalForm')?.addEventListener('submit', function(e) {
-    const amount = document.getElementById('amount').value;
-    const bankName = document.getElementById('bank_name').value;
-    const accountNumber = document.getElementById('account_number').value;
-    
-    if (!confirm(`Confirm withdrawal of ₦${parseFloat(amount).toLocaleString()} to ${bankName} (${accountNumber})?`)) {
-        e.preventDefault();
+    if (account) {
+        account.addEventListener('input', function () { this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10); });
     }
+
+    if (amount) {
+        amount.value = maxAllowed();
+        amount.addEventListener('input', function () {
+            var min = parseFloat(this.min), max = parseFloat(this.max), value = parseFloat(this.value);
+            if (value < min) {
+                this.setCustomValidity('Minimum withdrawal amount is ₦' + min.toLocaleString());
+            } else if (value > max) {
+                this.setCustomValidity('Maximum withdrawal amount is ₦' + max.toLocaleString());
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+        if (maxBtn) maxBtn.addEventListener('click', function () { amount.value = maxAllowed(); amount.setCustomValidity(''); amount.focus(); });
+    }
+
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            var bank = document.getElementById('bank_name').value;
+            var ok = window.confirm('Confirm withdrawal of ₦' + parseFloat(amount.value).toLocaleString() + ' to ' + bank + ' (' + account.value + ')?');
+            if (!ok) { e.preventDefault(); return; }
+            setTimeout(function () { if (submit) submit.disabled = true; }, 0);
+        });
+        window.addEventListener('pageshow', function () { if (submit) submit.disabled = false; });
+    }
+
+    var current = document.querySelector('.af-tab[aria-current="page"]');
+    if (current && current.scrollIntoView) current.scrollIntoView({ block: 'nearest', inline: 'center' });
 });
 </script>
 {% endblock %}

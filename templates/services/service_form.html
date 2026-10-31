@@ -1,1273 +1,1320 @@
 {% extends 'base.html' %}
-{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" type="text/css" href="{% static 'css/pages/services.css' %}">
 <style>
-    /* ══════════════════════════════════════
-       Wizard Header & Steps
-    ══════════════════════════════════════ */
-    .wizard-header {
-        padding: 1.25rem 1.5rem 0;
-        background: var(--card-background);
-        border-bottom: 1px solid var(--border-color);
-    }
-    .wizard-steps {
-        display: flex;
-        align-items: flex-start;
-        overflow-x: auto;
-        scrollbar-width: none;
-        padding-bottom: 0;
-        gap: 0;
-    }
-    .wizard-steps::-webkit-scrollbar { display: none; }
+/* Same design core as profile_update, login, signup, product_form and request_form (shared .ox wrapper,
+   hue tints, 42px controls, autofill fix, navy pill buttons). Service form only: the .sfm-* rules at the end. */
+.ox {
+    --ox-navy: var(--primary-color);
+    --ox-orange: var(--accent-color);
+    --ox-teal: var(--bs-teal, var(--primary-color));
+    --ox-green: var(--bs-success, var(--primary-color));
+    --ox-purple: var(--bs-purple, var(--primary-color));
+    display: flex; flex-direction: column; gap: var(--gap-sections);
+    color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-body);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-4));
+}
+.ox [hidden] { display: none !important; }
+.ox a { text-decoration: none; }
+.ox p { margin: 0; }
+.t-navy { --tint: var(--ox-navy); } .t-orange { --tint: var(--ox-orange); } .t-teal { --tint: var(--ox-teal); }
+.t-green { --tint: var(--ox-green); } .t-purple { --tint: var(--ox-purple); }
+.ox-ico { display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-lg); }
+.ox-tint, .auth-alert { position: relative; isolation: isolate; }
+.ox-tint::before, .auth-alert::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .ox-tint::before, [data-bs-theme="dark"] .auth-alert::before { opacity: .09; }
+.ox-card { border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); }
 
-    .wizard-step {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.3rem;
-        flex: 1;
-        min-width: 60px;
-        padding-bottom: 0.75rem;
-        border-bottom: 3px solid transparent;
-        cursor: pointer;
-        position: relative;
-        color: var(--text-secondary);
-        font-size: 0.75rem;
-        font-weight: 500;
-        user-select: none;
-        transition: border-color 0.25s, color 0.25s;
-        text-align: center;
-    }
-    /* connector line between steps */
-    .wizard-step + .wizard-step::before {
-        content: '';
-        position: absolute;
-        left: calc(-50% + 0px);
-        top: 18px;
-        width: 100%;
-        height: 2px;
-        background: var(--border-color);
-        z-index: 0;
-        transition: background 0.3s;
-    }
-    .wizard-step.completed + .wizard-step::before { background: var(--accent-color, #0d6efd); }
+/* Header: navy band, full-bleed, tucks under the navbar */
+.ox-head { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); margin: -2rem -1rem 0; padding: calc(2rem + var(--sp-4)) var(--sp-5) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); text-align: center; }
+.ox-title { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-snug); }
+.ox-lead { max-width: 32rem; font-size: var(--font-size-sm); line-height: var(--lh-snug); opacity: .85; }
+@media (min-width: 768px) { .ox-title { font-size: var(--font-size-3xl); } .ox-lead { font-size: var(--font-size-base); } }
 
-    .step-icon {
-        width: 36px; height: 36px;
-        border-radius: 50%;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1rem;
-        border: 2px solid var(--border-color);
-        background: var(--card-background);
-        z-index: 1;
-        transition: all 0.25s;
-        flex-shrink: 0;
-    }
-    .wizard-step.active  { color: var(--accent-color, #0d6efd); border-bottom-color: var(--accent-color, #0d6efd); }
-    .wizard-step.active .step-icon  { border-color: var(--accent-color, #0d6efd); background: var(--accent-color, #0d6efd); color: #fff; }
-    .wizard-step.completed           { color: #198754; }
-    .wizard-step.completed .step-icon { border-color: #198754; background: #198754; color: #fff; }
-    .wizard-step.has-error           { color: #dc3545; }
-    .wizard-step.has-error .step-icon { border-color: #dc3545; background: #dc3545; color: #fff; }
-    .step-label { font-size: 0.68rem; line-height: 1.2; }
+/* Form primitives (42px controls, same as the auth pages) */
+.auth-field { display: flex; flex-direction: column; gap: var(--gap-label); min-width: 0; }
+.auth-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+.auth-label { font-size: var(--font-size-sm); font-weight: 600; }
+.auth-opt { font-weight: 400; color: var(--text-secondary); }
+.auth-hint { display: flex; align-items: flex-start; gap: var(--sp-1); font-size: var(--font-size-xs); line-height: var(--lh-snug); color: var(--text-secondary); }
+.auth-hint--ok { color: var(--bs-success); }
+.auth-hint--bad { color: var(--bs-danger); font-weight: 600; }
+.ox .has-error .auth-hint { display: none; }
+.ox .form-control, .ox .form-select { box-sizing: border-box; width: 100%; min-height: var(--h-control-lg); padding: 0 var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--background-color); color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-tight); }
+.ox .form-select { padding-right: 2.25rem; }
+.ox textarea.form-control { min-height: 6rem; padding: var(--sp-2) var(--sp-3); line-height: var(--lh-body); resize: vertical; }
+.ox textarea#id_description { min-height: 9.5rem; }
+.ox .form-control:focus, .ox .form-select:focus { outline: 2px solid var(--accent-color); outline-offset: 1px; border-color: var(--accent-color); box-shadow: none; background-color: var(--background-color); color: var(--text-primary); }
+.ox .form-control:disabled, .ox .form-select:disabled { opacity: .7; }
+/* Browser autofill: keep the field dark in dark mode (browsers paint it white with dark text) */
+[data-bs-theme="dark"] .ox .form-control, [data-bs-theme="dark"] .ox .form-select { color-scheme: dark; }
+.ox .form-control:-webkit-autofill, .ox .form-control:-webkit-autofill:hover, .ox .form-control:-webkit-autofill:focus, .ox .form-select:-webkit-autofill, .ox .form-select:-webkit-autofill:hover, .ox .form-select:-webkit-autofill:focus { -webkit-text-fill-color: var(--text-primary); caret-color: var(--text-primary); -webkit-box-shadow: 0 0 0 1000px var(--background-color) inset; box-shadow: 0 0 0 1000px var(--background-color) inset; transition: background-color 9999s ease-out 0s; }
+.ox .form-control:autofill, .ox .form-select:autofill { -webkit-text-fill-color: var(--text-primary); caret-color: var(--text-primary); box-shadow: 0 0 0 1000px var(--background-color) inset; }
+.ox .invalid-feedback { display: none; margin: 0; font-size: var(--font-size-xs); font-weight: 600; color: var(--bs-danger); }
+.ox .has-error .invalid-feedback { display: block; }
+.ox .has-error .form-control, .ox .has-error .form-select { border-color: var(--bs-danger); }
+.ox .has-error .form-control { background-image: none; }
+@supports (-webkit-touch-callout: none) { .ox .form-control, .ox .form-select { font-size: 16px; } }
+.auth-check { display: flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; margin: 0; font-size: var(--font-size-sm); cursor: pointer; }
+.auth-check .form-check-input { flex: none; width: 1.125rem; height: 1.125rem; margin: 0; cursor: pointer; accent-color: var(--primary-color); }
+.auth-check .form-check-input:checked { background-color: var(--primary-color); border-color: var(--primary-color); }
+[data-bs-theme="dark"] .auth-check .form-check-input:checked { border-color: var(--text-secondary); }
+.ox .form-select option { background-color: var(--background-color); color: var(--text-primary); }
+.auth-more > summary { display: flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; font-size: var(--font-size-sm); font-weight: 600; list-style: none; cursor: pointer; touch-action: manipulation; }
+.auth-more > summary::-webkit-details-marker { display: none; }
+.auth-more > summary .auth-opt { margin-left: auto; }
+.auth-more > summary .bi { transition: transform .2s ease; }
+.auth-more[open] > summary .bi { transform: rotate(90deg); }
+.auth-more-body { display: flex; flex-direction: column; gap: var(--gap-fields); padding-top: var(--sp-1); }
 
-    /* ══════════════════════════════════════
-       Tab panes
-    ══════════════════════════════════════ */
-    .tab-pane-wizard { display: none; animation: fadeInTab 0.22s ease; }
-    .tab-pane-wizard.active { display: block; }
-    @keyframes fadeInTab {
-        from { opacity: 0; transform: translateY(5px); }
-        to   { opacity: 1; transform: translateY(0); }
-    }
+/* Messages */
+.auth-alert { display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-md); font-size: var(--font-size-sm); line-height: var(--lh-snug); --tint: var(--bs-danger); }
+.auth-alert i { margin-top: 1px; color: var(--bs-danger); }
+.auth-alert--success { --tint: var(--bs-success); }
+.auth-alert--success i { color: var(--bs-success); }
 
-    /* ══════════════════════════════════════
-       Wizard Nav — FIXED: no full-width stretch
-    ══════════════════════════════════════ */
-    .wizard-nav {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-        padding-top: 1.1rem;
-        border-top: 1px solid var(--border-color);
-        margin-top: 1.5rem;
-    }
-    /* Buttons: auto width, not full-width */
-    .wizard-nav .btn {
-        flex: 0 0 auto;         /* don't grow or shrink */
-        width: auto;            /* never full-width */
-        min-width: 90px;
-        max-width: 160px;
-        padding: 0.55rem 1.1rem;
-        font-size: 0.875rem;
-        font-weight: 600;
-        border-radius: var(--radius-md, 0.5rem);
-        white-space: nowrap;
-    }
-    .wizard-nav .btn-submit {
-        min-width: 110px;
-        max-width: 200px;
-    }
-    .step-counter {
-        font-size: 0.78rem;
-        color: var(--text-secondary);
-        text-align: center;
-        flex: 1;
-        white-space: nowrap;
-    }
-    /* Mobile: keep buttons compact, let counter shrink */
-    @media (max-width: 400px) {
-        .wizard-nav .btn { min-width: 76px; padding: 0.5rem 0.75rem; font-size: 0.8rem; }
-        .step-counter { font-size: 0.7rem; }
-        .wizard-step .step-label { display: none; }
-        .wizard-step { min-width: 44px; }
-        .step-icon { width: 30px; height: 30px; font-size: 0.85rem; }
-    }
+/* Buttons: the same navy pill as the auth pages and the profile Save button */
+.ox-btn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-4); border: 2px solid var(--bs-white); border-radius: 22px; background: var(--primary-color); color: var(--bs-white); font: inherit; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); text-align: center; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.ox-btn:disabled { opacity: .7; cursor: default; }
+.ox-btn .spinner-border { width: 1rem; height: 1rem; border-width: .15em; }
+.ox-btn-neutral { border: 1px solid var(--border-color); background: var(--card-background); color: var(--text-primary); box-shadow: none; }
 
-    /* ══════════════════════════════════════
-       Background upload status
-    ══════════════════════════════════════ */
-    .bg-upload-status {
-        display: flex; align-items: center; gap: 0.6rem;
-        padding: 0.5rem 0.8rem; border-radius: var(--radius-md);
-        font-size: 0.78rem; margin-top: 0.5rem;
-    }
-    .bg-upload-status.uploading { background:#e7f3ff; color:#0d6efd; border:1px solid #b8d4ff; }
-    .bg-upload-status.done      { background:#d1f2e4; color:#198754; border:1px solid #a3dcc0; }
-    .bg-upload-status.error     { background:#fff3cd; color:#856404; border:1px solid #ffe08a; }
-    .bg-upload-bar-wrap { height:3px; background:rgba(0,0,0,0.1); border-radius:2px; margin-top:3px; overflow:hidden; }
-    .bg-upload-bar-fill { height:100%; width:0%; background:#0d6efd; border-radius:2px; transition:width 0.3s ease; }
+/* Links */
+.auth-link { font-weight: 600; }
+.pfm-linkbtn { display: inline-block; margin: calc(-1 * var(--sp-1)); padding: var(--sp-1); border: 0; background: none; font: inherit; font-weight: 600; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 
-    /* ══════════════════════════════════════
-       Keep all original styles below
-    ══════════════════════════════════════ */
-    /* ════════════════════════════════════════════════════════════════
-       SHARED HYBRID FIELD SYSTEM
-       • text / email / tel / number inputs  →  floating label
-       • <select>                            →  floating label (always floated)
-       • textarea / date                     →  standard label-above
-       • Image / upload zones                →  UNTOUCHED
-    ════════════════════════════════════════════════════════════════ */
+.ox a:focus-visible, .ox button:focus-visible, .ox summary:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; border-radius: var(--radius-sm); }
+@media (hover: hover) {
+    .ox-btn-neutral:hover { background: var(--hover-bg); }
+    .auth-link:hover { text-decoration: underline; }
+    .sfm-thumb-x:hover { background: var(--hover-bg); }
+}
+@media (prefers-reduced-motion: reduce) { .auth-more > summary .bi { transition: none; } }
 
-    /* 1. Base controls */
-    .form-control, .form-select {
-        border-width: 2px;
-        border-style: solid;
-        border-color: var(--border-color);
-        border-radius: var(--radius-md, 0.45rem);
-        font-size: 0.9375rem;
-        color: var(--text-primary);
-        background-color: var(--card-background);
-        transition: border-color 0.25s ease, box-shadow 0.25s ease;
-    }
-    .form-control:focus, .form-select:focus {
-        border-color: var(--accent-color);
-        box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.18);
-        outline: none;
-        background-color: var(--card-background);
-    }
-    .form-control.is-invalid, .form-select.is-invalid { border-color: #dc3545 !important; box-shadow: none !important; }
-    .form-control.is-valid,   .form-select.is-valid   { border-color: #198754 !important; box-shadow: none !important; }
-    [data-bs-theme="dark"] .form-control, [data-bs-theme="dark"] .form-select {
-        background-color: var(--dark-card-background, #1e2330);
-        border-color: var(--dark-border-color, #3a3f52);
-        color: var(--dark-text-primary, #e9ecef);
-    }
-    [data-bs-theme="dark"] .form-control:focus,
-    [data-bs-theme="dark"] .form-select:focus { background-color: var(--dark-card-background, #1e2330); }
+/* ---- Service form only ---- */
+.sfm-body { display: flex; flex-direction: column; gap: var(--gap-sections); width: 100%; max-width: 60rem; margin: 0 auto; }
+.sfm-grid { display: flex; flex-direction: column; gap: var(--gap-sections); }
+.sfm-main { display: flex; flex-direction: column; gap: var(--gap-sections); min-width: 0; }
 
-    /* 2. Standard label */
-    .form-label {
-        display: block;
-        font-size: 0.8125rem;
-        font-weight: 600;
-        color: var(--text-secondary);
-        margin-bottom: 0.4rem;
-        letter-spacing: 0.01em;
-    }
-    .form-label .req { color: #dc3545; margin-left: 2px; font-size: 0.75rem; font-weight: 700; }
-    .form-label .opt {
-        display: inline-block;
-        font-size: 0.68rem; font-weight: 500;
-        color: var(--text-secondary); background: var(--border-color);
-        border-radius: 4px; padding: 1px 6px; margin-left: 5px;
-    }
-    [data-bs-theme="dark"] .form-label { color: var(--dark-text-secondary, #9ca3af); }
-    [data-bs-theme="dark"] .form-label .opt { background: var(--dark-border-color, #3a3f52); }
+/* Steps: four named stages */
+.sfm-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
+.sfm-step { display: flex; flex-direction: column; gap: var(--sp-1); width: 100%; min-height: 2.75rem; padding: 0; border: 0; background: none; font: inherit; font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); text-align: left; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.sfm-step:disabled { cursor: default; }
+.sfm-step-bar { display: block; height: var(--sp-1); border-radius: var(--radius-full); background: var(--border-color); }
+.sfm-step-label { display: flex; align-items: center; gap: var(--sp-1); min-width: 0; }
+.sfm-step-label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sfm-step-label i { flex: none; }
+.sfm-step.is-done .sfm-step-bar, .sfm-step.is-active .sfm-step-bar { background: var(--bs-success); }
+.sfm-step.is-done { color: var(--text-primary); }
+.sfm-step.is-done .sfm-step-label i { color: var(--bs-success); }
+.sfm-step.is-active { font-weight: 600; color: var(--text-primary); }
+.sfm-step.is-bad { color: var(--bs-danger); }
+.sfm-step.is-bad .sfm-step-bar { background: var(--bs-danger); }
 
-    /* 3. Floating labels */
-    .form-floating { position: relative; }
-    .form-floating > .form-control,
-    .form-floating > .form-select {
-        height: calc(3.5rem + 4px);
-        padding: 1.2rem 0.875rem 0.4rem;
-        line-height: 1.25;
-    }
-    .form-floating > textarea.form-control {
-        height: auto; min-height: 7rem;
-        padding-top: 1.75rem; resize: vertical; line-height: 1.55;
-    }
-    .form-floating > label {
-        position: absolute; top: 0; left: 0;
-        height: 100%; padding: 1rem 0.875rem;
-        pointer-events: none; border: 1px solid transparent;
-        transform-origin: 0 0;
-        transition: transform 0.15s ease, color 0.15s ease, opacity 0.15s ease;
-        font-size: 0.9375rem; font-weight: 400;
-        color: var(--text-secondary);
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
-    }
-    /* Text inputs: float when focused or filled */
-    .form-floating > .form-control:focus ~ label,
-    .form-floating > .form-control:not(:placeholder-shown) ~ label {
-        transform: scale(0.78) translateY(-0.6rem) translateX(0.08rem);
-        color: var(--accent-color); opacity: 1; font-weight: 600;
-    }
-    /* Selects: always floated */
-    .form-floating > .form-select { padding-top: 1.625rem; padding-bottom: 0.5rem; }
-    .form-floating > .form-select ~ label {
-        transform: scale(0.78) translateY(-0.6rem) translateX(0.08rem);
-        color: var(--accent-color); opacity: 1; font-weight: 600;
-    }
-    .form-floating > label .req { color: #dc3545; margin-left: 2px; font-size: inherit; }
-    .form-floating > label .opt {
-        display: inline-block; font-size: 0.7rem; font-weight: 400;
-        color: var(--text-secondary); background: var(--border-color);
-        border-radius: 3px; padding: 1px 4px; margin-left: 3px;
-    }
-    [data-bs-theme="dark"] .form-floating > label { color: var(--dark-text-secondary, #9ca3af); }
-    [data-bs-theme="dark"] .form-floating > .form-control:focus ~ label,
-    [data-bs-theme="dark"] .form-floating > .form-control:not(:placeholder-shown) ~ label,
-    [data-bs-theme="dark"] .form-floating > .form-select ~ label { color: var(--accent-color); }
+/* Card and panes */
+.sfm-card { display: flex; flex-direction: column; gap: var(--gap-sections); padding: var(--pad-m); scroll-margin-top: calc(var(--navbar-height-mobile) + var(--sp-2)); }
+@media (min-width: 768px) { .sfm-card { padding: var(--pad-l); scroll-margin-top: calc(var(--navbar-height) + var(--sp-2)); } }
+.sfm-pane { display: flex; flex-direction: column; gap: var(--gap-sections); }
+.sfm-cardhead { display: flex; align-items: center; gap: var(--sp-3); }
+.sfm-cardhead:focus { outline: none; }
+.sfm-count { font-size: var(--font-size-xs); line-height: var(--lh-snug); color: var(--text-secondary); }
+.sfm-h { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-snug); }
+.sfm-sub { font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+.sfm-fields { display: flex; flex-direction: column; gap: var(--gap-fields); }
+/* A sub-section inside a step: set apart by a rule, not by a second card */
+.sfm-group { display: flex; flex-direction: column; gap: var(--gap-fields); padding-top: var(--gap-sections); border-top: 1px solid var(--border-color); }
+.sfm-h2 { margin: 0; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-snug); }
 
-    /* 4. Textarea */
-    textarea.form-control { min-height: 6.5rem; resize: vertical; padding: 0.75rem 0.875rem; line-height: 1.55; }
-    .form-floating textarea.form-control { padding-top: 1.75rem; }
+/* Step navigation: Back is quiet, Continue fills the row */
+.sfm-nav { display: flex; gap: var(--sp-2); }
+.sfm-nav .ox-btn { flex: 1 1 auto; width: auto; }
+.sfm-nav .sfm-back { flex: 0 0 auto; padding: 0 var(--sp-4); }
 
-    /* 5. Placeholder */
-    .form-control::placeholder { color: var(--text-secondary); opacity: 0.6; font-size: 0.875rem; font-style: italic; }
-    [data-bs-theme="dark"] .form-control::placeholder { opacity: 0.38; }
+/* Photos and documents: same dashed drop zone as the profile photo */
+.sfm-photo { overflow: hidden; border: 2px dashed var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); }
+.sfm-photo:focus-within, .sfm-photo.drag { border-color: var(--accent-color); }
+.sfm-drop { position: relative; display: flex; align-items: center; gap: var(--sp-3); padding: var(--pad-m); cursor: pointer; }
+.sfm-drop > i { flex: none; font-size: var(--font-size-3xl); color: var(--accent-color); }
+.sfm-drop-text { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; line-height: var(--lh-tight); }
+.sfm-drop strong { font-size: var(--font-size-base); font-weight: 600; }
+.sfm-drop small { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.sfm-drop input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; padding: 0; opacity: 0; cursor: pointer; }
+.sfm-thumbs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); margin: 0; padding: var(--sp-3); list-style: none; border-top: 1px solid var(--border-color); }
+@media (min-width: 768px) { .sfm-thumbs { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.sfm-thumb { position: relative; display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; font-size: var(--font-size-xs); color: var(--text-secondary); }
+.sfm-thumb img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--hover-bg); }
+.sfm-thumb-tag { position: absolute; top: var(--sp-1); left: var(--sp-1); padding: 0 var(--sp-2); border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); font-size: var(--font-size-xs); font-weight: 600; color: var(--text-primary); }
+.sfm-thumb-x { position: absolute; top: var(--sp-1); right: var(--sp-1); display: grid; place-items: center; min-width: var(--h-control-sm); min-height: var(--h-control-sm); padding: 0; border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-base); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.sfm-current { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
+.sfm-current li { position: relative; min-width: 0; }
 
-    /* 6. Date input */
-    input[type="date"].form-control { height: calc(2.75rem + 4px); padding: 0.55rem 0.875rem; cursor: pointer; }
+/* Documents: one row each, split by hairlines instead of boxes */
+.sfm-docs { display: flex; flex-direction: column; margin: 0; padding: 0 var(--sp-3); list-style: none; border-top: 1px solid var(--border-color); }
+.sfm-docs--plain { padding: 0; border-top: 0; }
+.sfm-doc { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; padding: var(--sp-1) 0; font-size: var(--font-size-sm); line-height: var(--lh-snug); }
+.sfm-doc + .sfm-doc { border-top: 1px solid var(--border-color); }
+.sfm-doc > i { flex: none; font-size: var(--font-size-xl); color: var(--text-secondary); }
+.sfm-doc-text { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
+.sfm-doc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sfm-doc-size { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.sfm-doc .sfm-thumb-x { position: static; flex: none; }
 
-    /* 7. Helper text */
-    .form-text { display: block; font-size: 0.75rem; line-height: 1.45; margin-top: 0.3rem; color: var(--text-secondary) !important; padding-left: 0.1rem; }
-    [data-bs-theme="dark"] .form-text { color: var(--dark-text-secondary, #9ca3af) !important; }
+/* Live preview: beside the form on desktop, on the last step on phones */
+.sfm-side { display: none; }
+.sfm-form[data-step="3"] .sfm-side { display: block; }
+.sfm-preview { gap: var(--gap-fields); }
+.sfm-pv-label { font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+.sfm-pv-img { display: grid; place-items: center; aspect-ratio: 4 / 3; overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--hover-bg); font-size: var(--font-size-3xl); color: var(--text-secondary); }
+.sfm-pv-img img { width: 100%; height: 100%; object-fit: cover; }
+.sfm-pv-title { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-snug); overflow-wrap: anywhere; }
+.sfm-pv-title.empty { font-weight: 400; color: var(--text-secondary); }
+.sfm-pv-price { font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-snug); color: var(--accent-text); }
+.sfm-pv-meta { font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); overflow-wrap: anywhere; }
+.sfm-chips { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin: 0; padding: 0; list-style: none; }
+.sfm-chips li { padding: 0 var(--sp-2); border: 1px solid var(--border-color); border-radius: var(--radius-full); font-size: var(--font-size-sm); line-height: var(--lh-body); }
+@media (min-width: 992px) {
+    .sfm-grid { display: grid; grid-template-columns: minmax(0, 1fr) 18rem; align-items: start; }
+    .sfm-side { display: block; position: sticky; top: calc(var(--navbar-height) + var(--sp-4)); }
+}
 
-    /* 8. Error messages */
-    .field-error-msg { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; color: #dc3545; margin-top: 0.3rem; animation: errorSlide 0.2s ease; }
-    @keyframes errorSlide { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* 9. Form checks */
-    .form-check-input { border-width: 2px; border-color: var(--border-color); cursor: pointer; }
-    .form-check-input:checked { background-color: var(--accent-color, var(--primary-color)); border-color: var(--accent-color, var(--primary-color)); }
-    .form-check-label { font-size: 0.875rem; color: var(--text-primary); cursor: pointer; }
-    [data-bs-theme="dark"] .form-check-label { color: var(--dark-text-primary, #e9ecef); }
-
-    /* 10. Section cards & titles */
-    .section-card { background: var(--card-background); border: 1px solid var(--border-color); border-radius: var(--radius-md, 0.5rem); padding: 1.5rem; transition: border-color 0.25s ease; }
-    .section-card:hover { border-color: var(--accent-color); }
-    .section-title { color: var(--text-primary); font-weight: 700; font-size: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.6rem; letter-spacing: 0.01em; }
-    .section-title i { color: var(--accent-color); }
-    [data-bs-theme="dark"] .section-card { background: var(--dark-card-background, #1e2330); border-color: var(--dark-border-color, #3a3f52); }
-    [data-bs-theme="dark"] .section-card:hover { border-color: var(--accent-color); }
-    [data-bs-theme="dark"] .section-title { color: var(--dark-text-primary, #e9ecef); border-color: var(--dark-border-color, #3a3f52); }
-
-    .upload-zone { border:2px dashed var(--border-color); border-radius:var(--radius-md); padding:1.1rem; background:var(--card-background); transition:border-color 0.25s,background 0.25s; cursor:pointer; }
-    .upload-zone:hover,.upload-zone.drag-over { border-color:var(--accent-color); background:rgba(184,115,51,0.04); }
-    .upload-zone label { display:flex; flex-direction:column; align-items:center; gap:0.35rem; cursor:pointer; text-align:center; }
-    .upload-icon { font-size:1.8rem; color:var(--accent-color); opacity:0.8; }
-    .upload-title { font-size:0.85rem; font-weight:600; color:var(--text-primary); }
-    .upload-hint  { font-size:0.75rem; color:var(--text-secondary); }
-    .upload-meta  { display:flex; flex-wrap:wrap; justify-content:center; gap:0.35rem; margin-top:0.4rem; }
-    .upload-badge { font-size:0.68rem; padding:2px 7px; border-radius:20px; background:rgba(184,115,51,0.1); color:var(--accent-color); border:1px solid rgba(184,115,51,0.25); font-weight:500; }
-    .upload-zone input[type="file"] { display:none; }
-
-    .image-preview-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(88px,1fr)); gap:9px; margin-top:0.65rem; }
-    .preview-card { position:relative; border-radius:6px; overflow:hidden; border:2px solid var(--border-color); background:#f8f9fa; }
-    .preview-card.primary { border-color:var(--primary-color,#0d6efd); }
-    .preview-card img { width:100%; height:78px; object-fit:cover; display:block; }
-    .preview-card .preview-info { padding:3px 5px; font-size:0.63rem; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; background:var(--card-background); }
-    .preview-card .primary-badge { position:absolute; top:3px; right:3px; font-size:0.58rem; padding:1px 5px; background:var(--primary-color,#0d6efd); color:#fff; border-radius:3px; }
-    .preview-card .compress-badge { position:absolute; top:3px; left:3px; font-size:0.6rem; padding:1px 5px; background:#198754; color:#fff; border-radius:3px; }
-
-    /* ── Doc preview list ── */
-    .doc-preview-list { display:flex; flex-direction:column; gap:6px; margin-top:0.65rem; }
-    .doc-card { display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0.75rem; border:1px solid var(--border-color); border-radius:6px; background:var(--card-background); font-size:0.8rem; }
-    .doc-card .doc-icon { font-size:1.35rem; flex-shrink:0; }
-    .doc-card .doc-icon.pdf  { color:#e44d26; }
-    .doc-card .doc-icon.word { color:#2b579a; }
-    .doc-card .doc-icon.img  { color:#198754; }
-    .doc-card .doc-icon.def  { color:#6c757d; }
-    .doc-card .doc-meta { flex:1; min-width:0; }
-    .doc-card .doc-name { font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .doc-card .doc-size { font-size:0.7rem; color:var(--text-secondary); }
-
-    .upload-stats { display:flex; align-items:center; justify-content:space-between; padding:0.35rem 0.7rem; border-radius:var(--radius-md); background:rgba(0,0,0,0.03); margin-top:0.45rem; font-size:0.77rem; color:var(--text-secondary); }
-    .upload-stats .stat-item { display:flex; align-items:center; gap:4px; }
-
-    .compress-status { display:flex; align-items:center; gap:0.5rem; padding:0.45rem 0.7rem; border-radius:var(--radius-md); font-size:0.78rem; margin-top:0.45rem; }
-    .compress-status.running { background:#e7f3ff; color:#0d6efd; border:1px solid #b8d4ff; }
-    .compress-status.done    { background:#d1f2e4; color:#198754; border:1px solid #a3dcc0; }
-    .compress-status.warn    { background:#fff3cd; color:#856404; border:1px solid #ffe08a; }
-
-    .loading-overlay { position:fixed; inset:0; background:rgba(255,255,255,0.95); backdrop-filter:blur(3px); z-index:1050; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity 0.3s ease; }
-    .loading-overlay.show { opacity:1; pointer-events:all; }
-    .loading-content { text-align:center; padding:2rem; background:white; border-radius:14px; box-shadow:0 12px 40px rgba(0,0,0,0.12); width:min(90vw,420px); border:1px solid rgba(0,0,0,0.08); }
-    [data-bs-theme="dark"] .loading-overlay { background:rgba(33,37,41,0.95); }
-    [data-bs-theme="dark"] .loading-content { background:#2d3748; color:#fff; border-color:rgba(255,255,255,0.1); }
-
-    .form-error-banner { background:#fff5f5; border:1px solid #f5c6cb; border-radius:var(--radius-md); padding:0.875rem 1rem; font-size:0.85rem; color:#721c24; display:none; }
-    .form-error-banner.visible { display:flex; align-items:flex-start; gap:0.5rem; }
-    .form-error-banner ul { margin:0; padding-left:1.1rem; }
-    [data-bs-theme="dark"] .form-error-banner { background:#3d1a1e; border-color:#7a2d37; color:#f8d7da; }
-
-    .btn-primary { background:linear-gradient(135deg,var(--primary-color) 0%,var(--secondary-color) 100%); border:none; font-weight:600; border-radius:var(--radius-md); transition:all 0.3s ease; }
-    .btn-primary:hover { transform:translateY(-2px); box-shadow:0 4px 14px rgba(13,110,253,0.3); }
-
-    [data-bs-theme="dark"] .section-card { background:var(--dark-card-background); border-color:var(--dark-border-color); }
-    [data-bs-theme="dark"] .upload-zone  { background:var(--dark-card-background); }
-    [data-bs-theme="dark"] .doc-card     { background:var(--dark-card-background); }
-    [data-bs-theme="dark"] .upload-stats { background:rgba(255,255,255,0.05); }
-
-    @media (max-width:768px) { .section-card { padding:1rem; } .card-body { padding:1rem!important; } }
-
-    @media (max-width: 480px) {
-        .section-card { padding: 1rem; }
-        .form-floating > .form-control,
-        .form-floating > .form-select { height: calc(3.25rem + 4px); }
-        .form-label { font-size: 0.78rem; }
-        .form-text  { font-size: 0.72rem; }
-    }
+/* Busy overlay: only while files upload with the service (same as the request page) */
+.sfm-overlay { position: fixed; inset: 0; z-index: 1060; display: grid; place-items: center; padding: var(--sp-4); background: rgba(0, 0, 0, .55); }
+.sfm-box { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); width: 100%; max-width: 20rem; padding: var(--pad-l); border-radius: var(--r-card); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-sm); text-align: center; }
+.sfm-box strong { font-size: var(--font-size-base); }
+.sfm-bar { width: 100%; height: .5rem; overflow: hidden; border-radius: var(--radius-full); background: var(--border-color); }
+.sfm-bar div { width: 0; height: 100%; border-radius: inherit; background: var(--bs-success); transition: width .3s ease; }
+@media (prefers-reduced-motion: reduce) { .sfm-bar div { transition: none; } }
 </style>
 {% endblock %}
 
-{% block page_js %}
-<script type="text/javascript" src="{% static 'js/pages/services.js' %}"></script>
-{% endblock %}
-
 {% block 'Body' %}
-<!-- Loading Overlay -->
-<div id="loadingOverlay" class="loading-overlay">
-    <div class="loading-content">
-        <div class="spinner-border text-primary mb-3" role="status"><span class="visually-hidden">Loading…</span></div>
-        <div id="uploadProgressText" class="fw-bold mb-2">Processing your service…</div>
-        <div id="uploadProgressBar" class="progress mb-2" style="height:8px;">
-            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width:0%"></div>
-        </div>
-        <div id="uploadStatusText" class="text-muted small">Please wait, we're submitting your service details</div>
-    </div>
-</div>
+<div class="ox">
 
-<div class="container py-3">
-    <div class="row justify-content-center">
-        <div class="col-lg-10">
-            <div class="card">
+    <header class="ox-head">
+        <h1 class="ox-title">{{ title }}</h1>
+        <p class="ox-lead">Tell clients what you offer and what it costs. Fields marked optional can be left blank.</p>
+    </header>
 
-                <!-- ══ Wizard Header ══ -->
-                <div class="wizard-header">
-                    <h3 class="mb-1">{{ title }}</h3>
-                    <p class="text-muted mb-3 small">Share your skills and expertise with clients</p>
+    <div class="sfm-body">
 
-                    <div class="wizard-steps" id="wizardSteps">
-                        <div class="wizard-step active" data-step="0">
-                            <div class="step-icon"><i class="bi bi-info-circle"></i></div>
-                            <span class="step-label">Basic<br>Setup</span>
-                        </div>
-                        <div class="wizard-step" data-step="1">
-                            <div class="step-icon"><i class="bi bi-currency-exchange"></i></div>
-                            <span class="step-label">Pricing<br>&amp; Terms</span>
-                        </div>
-                        <div class="wizard-step" data-step="2">
-                            <div class="step-icon"><i class="bi bi-card-text"></i></div>
-                            <span class="step-label">Description<br>&amp; Skills</span>
-                        </div>
-                        <div class="wizard-step" data-step="3">
-                            <div class="step-icon"><i class="bi bi-geo-alt"></i></div>
-                            <span class="step-label">Location<br>&amp; Contact</span>
-                        </div>
-                        <div class="wizard-step" data-step="4">
-                            <div class="step-icon"><i class="bi bi-image"></i></div>
-                            <span class="step-label">Media &amp;<br>Docs</span>
-                        </div>
-                    </div>
+    <nav aria-label="Service steps">
+        <ol class="sfm-steps" id="sfmSteps">
+            <li><button type="button" class="sfm-step" data-step="0"><span class="sfm-step-bar"></span><span class="sfm-step-label"><i class="bi" hidden aria-hidden="true"></i><span>Service</span></span></button></li>
+            <li><button type="button" class="sfm-step" data-step="1"><span class="sfm-step-bar"></span><span class="sfm-step-label"><i class="bi" hidden aria-hidden="true"></i><span>Price</span></span></button></li>
+            <li><button type="button" class="sfm-step" data-step="2"><span class="sfm-step-bar"></span><span class="sfm-step-label"><i class="bi" hidden aria-hidden="true"></i><span>Details</span></span></button></li>
+            <li><button type="button" class="sfm-step" data-step="3"><span class="sfm-step-bar"></span><span class="sfm-step-label"><i class="bi" hidden aria-hidden="true"></i><span>Media</span></span></button></li>
+        </ol>
+    </nav>
+
+    {# No Django messages here: base.html already renders them #}
+    {# The form posts with XHR (the view answers JSON), so the page itself never reloads on success #}
+    <form method="post" action="" enctype="multipart/form-data" id="serviceForm" class="sfm-grid sfm-form" novalidate
+          data-step="0"
+          data-final="{{ save_button|default:'Save service' }}"
+          data-draft="{% if not form.instance.pk %}1{% endif %}"
+          data-edit="{% if form.instance.pk %}1{% endif %}"
+          data-image-url="{% if form.instance.pk %}{% with first=form.instance.images.first %}{% if first %}{{ first.image.url }}{% endif %}{% endwith %}{% endif %}">
+        {% csrf_token %}
+
+        <div class="sfm-main">
+            <div class="ox-card sfm-card" id="sfmCard">
+
+                {% if form.errors %}
+                <div class="auth-alert" role="alert">
+                    <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+                    <span>{% if form.non_field_errors %}{{ form.non_field_errors.0 }}{% else %}Some fields need attention. We opened the first one.{% endif %}</span>
+                </div>
+                {% endif %}
+
+                <div class="auth-alert" id="submitAlert" role="alert" hidden>
+                    <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+                    <span id="submitAlertText"></span>
                 </div>
 
-                <div class="card-body p-4">
+                <div class="auth-alert auth-alert--success" id="draftBanner" role="status" hidden>
+                    <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+                    <span>We restored your unsaved draft. Photos and documents are not kept in drafts. <button type="button" class="auth-link text-primary pfm-linkbtn" id="draftReset">Start over</button></span>
+                </div>
 
-                    <!-- Server errors -->
-                    {% if form.errors %}
-                    <div class="form-error-banner visible mb-4">
-                        <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
+                {# ================= Step 1: Service ================= #}
+                <section class="sfm-pane" data-pane="0" aria-labelledby="h-service">
+                    <div class="sfm-cardhead t-navy" tabindex="-1">
+                        <span class="ox-ico"><i class="bi bi-briefcase-fill" aria-hidden="true"></i></span>
                         <div>
-                            <strong>Please fix the following errors:</strong>
-                            <ul class="mt-1 mb-0">
-                                {% for field in form %}{% for e in field.errors %}<li>{{ field.label }}: {{ e }}</li>{% endfor %}{% endfor %}
-                                {% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}
-                            </ul>
+                            <p class="sfm-count">Step 1 of 4</p>
+                            <h2 class="sfm-h" id="h-service">What service do you offer?</h2>
+                            <p class="sfm-sub">Clients search by title, type and category.</p>
                         </div>
                     </div>
-                    {% endif %}
 
-                    <!-- Client errors -->
-                    <div class="form-error-banner mb-4" id="clientErrorBanner">
-                        <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
-                        <div><strong>Please fix the following errors:</strong><ul id="clientErrorList" class="mt-1 mb-0"></ul></div>
+                    <div class="sfm-fields">
+                        <div class="auth-field{% if form.title.errors %} has-error{% endif %}">
+                            <label for="id_title" class="auth-label">Service title</label>
+                            {{ form.title }}
+                            <p class="auth-hint" id="hint-title">Say what you do in a few words. Example: Professional logo design.</p>
+                            <div class="invalid-feedback" id="err-title">{{ form.title.errors.0 }}</div>
+                        </div>
+
+                        <div class="auth-field{% if form.service_type.errors %} has-error{% endif %}">
+                            <label for="id_service_type" class="auth-label">Service type</label>
+                            {{ form.service_type }}
+                            <div class="invalid-feedback" id="err-service_type">{{ form.service_type.errors.0 }}</div>
+                        </div>
+
+                        <div class="auth-field{% if form.category.errors %} has-error{% endif %}">
+                            <label for="id_category" class="auth-label">Category</label>
+                            {{ form.category }}
+                            <div class="invalid-feedback" id="err-category">{{ form.category.errors.0 }}</div>
+                        </div>
+
+                        <div class="auth-field{% if form.experience_level.errors %} has-error{% endif %}">
+                            <label for="id_experience_level" class="auth-label">Experience level</label>
+                            {{ form.experience_level }}
+                            <div class="invalid-feedback" id="err-experience_level">{{ form.experience_level.errors.0 }}</div>
+                        </div>
+                    </div>
+                </section>
+
+                {# ================= Step 2: Price ================= #}
+                <section class="sfm-pane" data-pane="1" aria-labelledby="h-price">
+                    <div class="sfm-cardhead t-green" tabindex="-1">
+                        <span class="ox-ico"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
+                        <div>
+                            <p class="sfm-count">Step 2 of 4</p>
+                            <h2 class="sfm-h" id="h-price">Price and delivery</h2>
+                            <p class="sfm-sub">Set what you charge and how you work with clients.</p>
+                        </div>
                     </div>
 
-                    <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate id="serviceForm">
-                        {% csrf_token %}
+                    <div class="sfm-fields">
+                        <div class="auth-field{% if form.pricing_type.errors %} has-error{% endif %}">
+                            <label for="id_pricing_type" class="auth-label">Pricing type</label>
+                            {{ form.pricing_type }}
+                            <div class="invalid-feedback" id="err-pricing_type">{{ form.pricing_type.errors.0 }}</div>
+                        </div>
 
-                        <!-- ══ TAB 0: Basic Service Setup ══ -->
-                        <div class="tab-pane-wizard active" id="tab-0">
-                            <div class="section-card">
-                                <h4 class="section-title mb-4"><i class="bi bi-info-circle-fill me-2"></i>Basic Service Setup</h4>
+                        <div class="auth-field{% if form.base_price.errors %} has-error{% endif %}" id="basePriceBox"{% if form.pricing_type.value == 'negotiable' %} hidden{% endif %}>
+                            <label for="id_base_price" class="auth-label">Price in naira</label>
+                            {{ form.base_price }}
+                            <p class="auth-hint" id="hint-base_price">Numbers only.</p>
+                            <div class="invalid-feedback" id="err-base_price">{{ form.base_price.errors.0 }}</div>
+                        </div>
 
-                                <div class="mb-3">
-                                    <div class="form-floating">
-                                        {{ form.title }}
-                                        <label for="id_title">Service Title <span class="req">*</span></label>
-                                    </div>
-                                    {% for e in form.title.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text">Max 255 characters. E.g. "Professional Logo Design"</div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <div class="form-floating">
-                                        {{ form.service_type }}
-                                        <label for="id_service_type">Service Type <span class="req">*</span></label>
-                                    </div>
-                                    {% for e in form.service_type.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                </div>
-
-                                <div class="mb-3">
-                                    <div class="form-floating">
-                                        {{ form.category }}
-                                        <label for="id_category">Category <span class="req">*</span></label>
-                                    </div>
-                                    {% for e in form.category.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                </div>
-
-                                <div class="mb-3">
-                                    <div class="form-floating">
-                                        {{ form.experience_level }}
-                                        <label for="id_experience_level">Experience Level <span class="req">*</span></label>
-                                    </div>
-                                    {% for e in form.experience_level.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                </div>
-
-                                <div class="mb-3">
-                                    <div class="form-floating">
-                                        {{ form.availability }}
-                                        <label for="id_availability">Availability <span class="req">*</span></label>
-                                    </div>
-                                    {% for e in form.availability.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                </div>
-
-                                <div class="mb-3">
-                                    <div class="form-floating">
-                                        {{ form.delivery_method }}
-                                        <label for="id_delivery_method">Delivery Method <span class="req">*</span></label>
-                                    </div>
-                                    {% for e in form.delivery_method.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                </div>
-
-                                <div class="mb-0">
-                                    <div class="form-floating">
-                                        {{ form.delivery_time }}
-                                        <label for="id_delivery_time">Delivery Time <span class="opt">Optional</span></label>
-                                    </div>
-                                    {% for e in form.delivery_time.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text">E.g. "3–5 days", "1 week", "Same day"</div>
-                                </div>
+                        <div class="auth-pair" id="rangeBox"{% if form.pricing_type.value != 'negotiable' %} hidden{% endif %}>
+                            <div class="auth-field{% if form.min_price.errors %} has-error{% endif %}">
+                                <label for="id_min_price" class="auth-label">Lowest (₦)</label>
+                                {{ form.min_price }}
+                                <p class="auth-hint" id="hint-min_price">Numbers only.</p>
+                                <div class="invalid-feedback" id="err-min_price">{{ form.min_price.errors.0 }}</div>
+                            </div>
+                            <div class="auth-field{% if form.max_price.errors %} has-error{% endif %}">
+                                <label for="id_max_price" class="auth-label">Highest (₦)</label>
+                                {{ form.max_price }}
+                                <p class="auth-hint" id="hint-max_price">Must be above the lowest.</p>
+                                <div class="invalid-feedback" id="err-max_price">{{ form.max_price.errors.0 }}</div>
                             </div>
                         </div>
 
-                        <!-- ══ TAB 1: Pricing & Terms ══ -->
-                        <div class="tab-pane-wizard" id="tab-1">
-                            <div class="section-card">
-                                <h4 class="section-title mb-4"><i class="bi bi-currency-exchange me-2"></i>Pricing &amp; Terms</h4>
+                        <div class="auth-field{% if form.availability.errors %} has-error{% endif %}">
+                            <label for="id_availability" class="auth-label">Availability</label>
+                            {{ form.availability }}
+                            <div class="invalid-feedback" id="err-availability">{{ form.availability.errors.0 }}</div>
+                        </div>
 
-                                <div class="mb-3">
-                                    <div class="form-floating">
-                                        {{ form.pricing_type }}
-                                        <label for="id_pricing_type">Pricing Type <span class="req">*</span></label>
-                                    </div>
-                                    {% for e in form.pricing_type.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
+                        <div class="auth-field{% if form.delivery_method.errors %} has-error{% endif %}">
+                            <label for="id_delivery_method" class="auth-label">Delivery method</label>
+                            {{ form.delivery_method }}
+                            <div class="invalid-feedback" id="err-delivery_method">{{ form.delivery_method.errors.0 }}</div>
+                        </div>
+
+                        <details class="auth-more"{% if form.delivery_time.value or form.delivery_time.errors or form.delivery_days.errors or form.revision_limit.errors %} open{% endif %}>
+                            <summary>
+                                <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                                <span>Delivery time and revisions</span>
+                                <span class="auth-opt">Optional</span>
+                            </summary>
+                            <div class="auth-more-body">
+                                <div class="auth-field{% if form.delivery_time.errors %} has-error{% endif %}">
+                                    <label for="id_delivery_time" class="auth-label">Delivery time <span class="auth-opt">(optional)</span></label>
+                                    {{ form.delivery_time }}
+                                    <p class="auth-hint" id="hint-delivery_time">Example: 3–5 days, 1 week, same day.</p>
+                                    <div class="invalid-feedback" id="err-delivery_time">{{ form.delivery_time.errors.0 }}</div>
                                 </div>
 
-                                <!-- Base price (fixed/hourly/project/package) -->
-                                <div id="basePriceField" class="mb-3">
-                                    <div class="form-floating">
-                                        {{ form.base_price }}
-                                        <label for="id_base_price">Price (₦) <span class="req">*</span></label>
-                                    </div>
-                                    {% for e in form.base_price.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text">Enter your price in Naira. Numbers only.</div>
-                                </div>
-
-                                <!-- Negotiable price range -->
-                                <div id="negotiablePriceFields" class="row g-3 mb-3" style="{% if form.pricing_type.value == 'negotiable' %}display:flex;{% else %}display:none;{% endif %}">
-                                    <div class="col-6">
-                                        <div class="form-floating">
-                                            {{ form.min_price }}
-                                            <label for="id_min_price">Minimum (₦) <span class="req">*</span></label>
-                                        </div>
-                                        {% for e in form.min_price.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="form-floating">
-                                            {{ form.max_price }}
-                                            <label for="id_max_price">Maximum (₦) <span class="req">*</span></label>
-                                        </div>
-                                        {% for e in form.max_price.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    </div>
-                                    <div class="col-12"><div class="form-text">Max must be greater than min.</div></div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <div class="form-floating">
-                                        {{ form.revision_limit }}
-                                        <label for="id_revision_limit">Revisions Included <span class="opt">Default: 2</span></label>
-                                    </div>
-                                    {% for e in form.revision_limit.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text">Number of free revisions (0–10).</div>
-                                </div>
-
-                                <div class="mb-0">
-                                    <div class="form-floating">
+                                <div class="auth-pair">
+                                    <div class="auth-field{% if form.delivery_days.errors %} has-error{% endif %}">
+                                        <label for="id_delivery_days" class="auth-label">Days to finish</label>
                                         {{ form.delivery_days }}
-                                        <label for="id_delivery_days">Delivery Days <span class="opt">Default: 7</span></label>
+                                        <p class="auth-hint" id="hint-delivery_days">1 to 365. Starts at 7.</p>
+                                        <div class="invalid-feedback" id="err-delivery_days">{{ form.delivery_days.errors.0 }}</div>
                                     </div>
-                                    {% for e in form.delivery_days.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text">Expected days to complete (1–365).</div>
+                                    <div class="auth-field{% if form.revision_limit.errors %} has-error{% endif %}">
+                                        <label for="id_revision_limit" class="auth-label">Free revisions</label>
+                                        {{ form.revision_limit }}
+                                        <p class="auth-hint" id="hint-revision_limit">0 to 10. Starts at 2.</p>
+                                        <div class="invalid-feedback" id="err-revision_limit">{{ form.revision_limit.errors.0 }}</div>
+                                    </div>
                                 </div>
                             </div>
+                        </details>
+                    </div>
+                </section>
+
+                {# ================= Step 3: Details ================= #}
+                <section class="sfm-pane" data-pane="2" aria-labelledby="h-details">
+                    <div class="sfm-cardhead t-purple" tabindex="-1">
+                        <span class="ox-ico"><i class="bi bi-card-text" aria-hidden="true"></i></span>
+                        <div>
+                            <p class="sfm-count">Step 3 of 4</p>
+                            <h2 class="sfm-h" id="h-details">Describe your service</h2>
+                            <p class="sfm-sub">Say what clients get, how you work and what you need from them.</p>
+                        </div>
+                    </div>
+
+                    <div class="sfm-fields">
+                        <div class="auth-field{% if form.description.errors %} has-error{% endif %}">
+                            <label for="id_description" class="auth-label">Description</label>
+                            {{ form.description }}
+                            <p class="auth-hint" id="hint-description">Include what you deliver, your process and what makes you different.</p>
+                            <div class="invalid-feedback" id="err-description">{{ form.description.errors.0 }}</div>
                         </div>
 
-                        <!-- ══ TAB 2: Description & Skills ══ -->
-                        <div class="tab-pane-wizard" id="tab-2">
-                            <div class="section-card">
-                                <h4 class="section-title mb-4"><i class="bi bi-card-text me-2"></i>Service Description</h4>
+                        <div class="auth-field{% if form.what_you_get.errors %} has-error{% endif %}">
+                            <label for="id_what_you_get" class="auth-label">What clients get <span class="auth-opt">(optional)</span></label>
+                            {{ form.what_you_get }}
+                            <p class="auth-hint" id="hint-what_you_get">List the files, results or outcomes clients receive.</p>
+                            <div class="invalid-feedback" id="err-what_you_get">{{ form.what_you_get.errors.0 }}</div>
+                        </div>
 
-                                <div class="mb-3">
-                                    <label class="form-label" for="id_description">Service Description <span class="req">*</span></label>
-                                    {{ form.description }}
-                                    {% for e in form.description.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text"><i class="bi bi-lightbulb me-1"></i>Include what you'll deliver, your process, and what makes your service unique.</div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label" for="id_what_you_get">What Clients Get <span class="opt">Optional</span></label>
-                                    {{ form.what_you_get }}
-                                    {% for e in form.what_you_get.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text"><i class="bi bi-gift me-1"></i>List deliverables, files, or outcomes clients can expect.</div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label" for="id_skills_offered">Skills &amp; Expertise <span class="opt">Optional</span></label>
+                        <details class="auth-more"{% if form.skills_offered.value or form.tools_used.value or form.requirements.value or form.extra_services.value or form.skills_offered.errors or form.tools_used.errors or form.requirements.errors or form.extra_services.errors %} open{% endif %}>
+                            <summary>
+                                <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                                <span>Skills, tools and requirements</span>
+                                <span class="auth-opt">Optional</span>
+                            </summary>
+                            <div class="auth-more-body">
+                                <div class="auth-field{% if form.skills_offered.errors %} has-error{% endif %}">
+                                    <label for="id_skills_offered" class="auth-label">Skills and expertise</label>
                                     {{ form.skills_offered }}
-                                    {% for e in form.skills_offered.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text"><i class="bi bi-award me-1"></i>E.g. Graphic Design, Photoshop, Illustrator</div>
+                                    <p class="auth-hint" id="hint-skills_offered">Example: graphic design, Photoshop, Illustrator.</p>
+                                    <div class="invalid-feedback" id="err-skills_offered">{{ form.skills_offered.errors.0 }}</div>
                                 </div>
 
-                                <div class="mb-3">
-                                    <label class="form-label" for="id_tools_used">Tools Used <span class="opt">Optional</span></label>
+                                <div class="auth-field{% if form.tools_used.errors %} has-error{% endif %}">
+                                    <label for="id_tools_used" class="auth-label">Tools you use</label>
                                     {{ form.tools_used }}
-                                    {% for e in form.tools_used.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text">Software, tools, or equipment you use.</div>
+                                    <p class="auth-hint" id="hint-tools_used">Software, tools or equipment.</p>
+                                    <div class="invalid-feedback" id="err-tools_used">{{ form.tools_used.errors.0 }}</div>
                                 </div>
 
-                                <div class="mb-3">
-                                    <label class="form-label" for="id_requirements">Requirements from Client <span class="opt">Optional</span></label>
+                                <div class="auth-field{% if form.requirements.errors %} has-error{% endif %}">
+                                    <label for="id_requirements" class="auth-label">What you need from the client</label>
                                     {{ form.requirements }}
-                                    {% for e in form.requirements.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text"><i class="bi bi-list-check me-1"></i>What info, files, or access do you need from the client?</div>
+                                    <p class="auth-hint" id="hint-requirements">Information, files or access you need before you start.</p>
+                                    <div class="invalid-feedback" id="err-requirements">{{ form.requirements.errors.0 }}</div>
                                 </div>
 
-                                <div class="mb-0">
-                                    <label class="form-label" for="id_extra_services">Extra Services <span class="opt">Optional</span></label>
+                                <div class="auth-field{% if form.extra_services.errors %} has-error{% endif %}">
+                                    <label for="id_extra_services" class="auth-label">Extra services</label>
                                     {{ form.extra_services }}
-                                    {% for e in form.extra_services.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text">Additional add-on services you can offer.</div>
+                                    <p class="auth-hint" id="hint-extra_services">Additional add-on services you can offer.</p>
+                                    <div class="invalid-feedback" id="err-extra_services">{{ form.extra_services.errors.0 }}</div>
                                 </div>
                             </div>
+                        </details>
+
+                        <div class="sfm-group">
+                            <h3 class="sfm-h2">Where you work and how to reach you</h3>
+
+                            <label class="auth-check">
+                                {{ form.serves_nationwide }}
+                                <span>Serve clients nationwide</span>
+                            </label>
+
+                            <div class="auth-field{% if form.languages.errors %} has-error{% endif %}">
+                                <label for="id_languages" class="auth-label">Languages <span class="auth-opt">(optional)</span></label>
+                                {{ form.languages }}
+                                <p class="auth-hint" id="hint-languages">Example: English, Yoruba, Hausa, Igbo.</p>
+                                <div class="invalid-feedback" id="err-languages">{{ form.languages.errors.0 }}</div>
+                            </div>
+
+                            <div class="auth-field{% if form.contact_instructions.errors %} has-error{% endif %}">
+                                <label for="id_contact_instructions" class="auth-label">Contact instructions <span class="auth-opt">(optional)</span></label>
+                                {{ form.contact_instructions }}
+                                <p class="auth-hint" id="hint-contact_instructions">Tell clients the best way and time to reach you.</p>
+                                <div class="invalid-feedback" id="err-contact_instructions">{{ form.contact_instructions.errors.0 }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {# ================= Step 4: Media ================= #}
+                <section class="sfm-pane" data-pane="3" aria-labelledby="h-media">
+                    <div class="sfm-cardhead t-orange" tabindex="-1">
+                        <span class="ox-ico"><i class="bi bi-camera-fill" aria-hidden="true"></i></span>
+                        <div>
+                            <p class="sfm-count">Step 4 of 4</p>
+                            <h2 class="sfm-h" id="h-media">Show your work</h2>
+                            <p class="sfm-sub">Optional. Photos and samples help clients trust you.</p>
+                        </div>
+                    </div>
+
+                    <div class="sfm-fields">
+                        {% if form.instance.pk and form.instance.images.all %}
+                        <div class="auth-field">
+                            <span class="auth-label">Current images</span>
+                            <ul class="sfm-current">
+                                {% for img in form.instance.images.all %}
+                                <li class="sfm-thumb">
+                                    <img src="{{ img.image.url }}" alt="Current image {{ forloop.counter }}" width="96" height="96">
+                                    {% if img.is_primary %}<span class="sfm-thumb-tag">Main</span>{% endif %}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            <p class="auth-hint">Choose new images to replace these, or leave this empty to keep them.</p>
+                        </div>
+                        {% endif %}
+
+                        <div class="auth-field{% if form.images.errors %} has-error{% endif %}">
+                            <label for="id_images" class="auth-label">Service images <span class="auth-opt">(optional)</span></label>
+                            <div class="sfm-photo" id="imageBox">
+                                <div class="sfm-drop ox-tint t-orange">
+                                    <i class="bi bi-camera" aria-hidden="true"></i>
+                                    <div class="sfm-drop-text">
+                                        <strong>Choose images</strong>
+                                        <small>JPG or PNG, up to 5 images, 5 MB each. We resize them for you.</small>
+                                    </div>
+                                    {{ form.images }}
+                                </div>
+                                <ul class="sfm-thumbs" id="imageThumbs" hidden></ul>
+                            </div>
+                            <p class="auth-hint" id="imageNote" aria-live="polite">The first image is the main one.</p>
+                            <div class="invalid-feedback" id="err-images">{{ form.images.errors.0 }}</div>
                         </div>
 
-                        <!-- ══ TAB 3: Location & Contact ══ -->
-                        <div class="tab-pane-wizard" id="tab-3">
-                            <div class="section-card">
-                                <h4 class="section-title mb-4"><i class="bi bi-geo-alt me-2"></i>Location &amp; Contact</h4>
+                        {% if form.instance.pk and form.instance.documents.all %}
+                        <div class="auth-field">
+                            <span class="auth-label">Current documents</span>
+                            <ul class="sfm-docs sfm-docs--plain">
+                                {% for doc in form.instance.documents.all %}
+                                <li class="sfm-doc">
+                                    <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+                                    <span class="sfm-doc-text">
+                                        <span class="sfm-doc-name">{{ doc.title }}</span>
+                                        <span class="sfm-doc-size">{{ doc.document.size|filesizeformat }}</span>
+                                    </span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            <p class="auth-hint">Choose new documents to replace these, or leave this empty to keep them.</p>
+                        </div>
+                        {% endif %}
 
-                                <div class="mb-3">
-                                    <div class="form-floating">
-                                        {{ form.languages }}
-                                        <label for="id_languages">Languages <span class="opt">Optional</span></label>
+                        <div class="auth-field{% if form.documents.errors %} has-error{% endif %}">
+                            <label for="id_documents" class="auth-label">Portfolio documents <span class="auth-opt">(optional)</span></label>
+                            <div class="sfm-photo" id="docBox">
+                                <div class="sfm-drop ox-tint t-orange">
+                                    <i class="bi bi-file-earmark-arrow-up" aria-hidden="true"></i>
+                                    <div class="sfm-drop-text">
+                                        <strong>Choose documents</strong>
+                                        <small>Certificates, samples or case studies. PDF, DOC, DOCX, JPG or PNG, up to 10 files, 10 MB each.</small>
                                     </div>
-                                    {% for e in form.languages.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text">E.g. English, Yoruba, Hausa, Igbo</div>
+                                    {{ form.documents }}
+                                </div>
+                                <ul class="sfm-docs" id="docList" hidden></ul>
+                            </div>
+                            <p class="auth-hint" id="docNote" aria-live="polite">Add anything that shows your skills.</p>
+                            <div class="invalid-feedback" id="err-documents">{{ form.documents.errors.0 }}</div>
+                        </div>
+
+                        <details class="auth-more"{% if form.portfolio_url.value or form.certifications.value or form.portfolio_url.errors or form.certifications.errors %} open{% endif %}>
+                            <summary>
+                                <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                                <span>Portfolio link and certifications</span>
+                                <span class="auth-opt">Optional</span>
+                            </summary>
+                            <div class="auth-more-body">
+                                <div class="auth-field{% if form.portfolio_url.errors %} has-error{% endif %}">
+                                    <label for="id_portfolio_url" class="auth-label">Portfolio link</label>
+                                    {{ form.portfolio_url }}
+                                    <p class="auth-hint" id="hint-portfolio_url">Link to your website or work samples.</p>
+                                    <div class="invalid-feedback" id="err-portfolio_url">{{ form.portfolio_url.errors.0 }}</div>
                                 </div>
 
-                                <div class="form-check form-switch mb-3">
-                                    {{ form.serves_nationwide }}
-                                    <label class="form-check-label small" for="id_serves_nationwide">Serve clients nationwide</label>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label" for="id_contact_instructions">Contact Instructions <span class="opt">Optional</span></label>
-                                    {{ form.contact_instructions }}
-                                    {% for e in form.contact_instructions.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                </div>
-
-                                <div class="mb-3">
-                                    <div class="form-floating">
-                                        {{ form.portfolio_url }}
-                                        <label for="id_portfolio_url">Portfolio URL <span class="opt">Optional</span></label>
-                                    </div>
-                                    {% for e in form.portfolio_url.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text">Link to your portfolio website or showcase.</div>
-                                </div>
-
-                                <div class="mb-0">
-                                    <label class="form-label" for="id_certifications">Certifications <span class="opt">Optional</span></label>
+                                <div class="auth-field{% if form.certifications.errors %} has-error{% endif %}">
+                                    <label for="id_certifications" class="auth-label">Certifications</label>
                                     {{ form.certifications }}
-                                    {% for e in form.certifications.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text">List relevant qualifications or certifications.</div>
+                                    <p class="auth-hint" id="hint-certifications">List relevant qualifications or certifications.</p>
+                                    <div class="invalid-feedback" id="err-certifications">{{ form.certifications.errors.0 }}</div>
                                 </div>
                             </div>
-                        </div>
+                        </details>
+                    </div>
+                </section>
 
-                        <!-- ══ TAB 4: Media & Documents ══ -->
-                        <div class="tab-pane-wizard" id="tab-4">
-                            <div class="section-card">
-                                <h4 class="section-title mb-4"><i class="bi bi-image me-2"></i>Service Media &amp; Documents</h4>
-
-                                <!-- ── SERVICE IMAGES ── -->
-                                <div class="mb-4">
-                                    <label class="form-label">Service Images <span class="opt">Optional · Max 5</span></label>
-
-                                    {% if form.instance.pk and form.instance.images.all %}
-                                    <div class="mb-3">
-                                        <p class="form-text fw-semibold mb-2">Current Images:</p>
-                                        <div class="row g-2">
-                                            {% for img in form.instance.images.all %}
-                                            <div class="col-3">
-                                                <div class="position-relative">
-                                                    <img src="{{ img.image.url }}" class="img-thumbnail w-100" style="height:68px;object-fit:cover;" alt="">
-                                                    {% if img.is_primary %}<span class="badge bg-primary position-absolute top-0 end-0" style="font-size:0.58rem;">Primary</span>{% endif %}
-                                                </div>
-                                            </div>
-                                            {% endfor %}
-                                        </div>
-                                        <p class="form-text mt-2">Upload new images to replace, or leave empty to keep current.</p>
-                                    </div>
-                                    {% endif %}
-
-                                    <div class="upload-zone" id="imageDropZone">
-                                        <label for="id_images">
-                                            <i class="bi bi-cloud-arrow-up upload-icon"></i>
-                                            <span class="upload-title">Click to select or drag &amp; drop</span>
-                                            <span class="upload-hint">First image becomes the primary showcase</span>
-                                            <div class="upload-meta">
-                                                <span class="upload-badge"><i class="bi bi-filetype-jpg me-1"></i>JPG</span>
-                                                <span class="upload-badge"><i class="bi bi-filetype-png me-1"></i>PNG</span>
-                                                <span class="upload-badge">Max 5 images</span>
-                                                <span class="upload-badge">5 MB each · 25 MB total</span>
-                                            </div>
-                                        </label>
-                                        {{ form.images }}
-                                    </div>
-
-                                    <div id="imageCompressStatus" class="compress-status running d-none" aria-hidden="true" style="display:none!important;">
-                                        <div class="spinner-border spinner-border-sm flex-shrink-0"></div>
-                                        <span>Optimizing images for faster upload…</span>
-                                    </div>
-
-                                    <!-- Background upload status -->
-                                    <div id="bgUploadStatus" class="bg-upload-status d-none" aria-hidden="true" style="display:none!important;">
-                                        <div class="spinner-border spinner-border-sm flex-shrink-0" id="bgUploadSpinner"></div>
-                                        <div class="flex-grow-1">
-                                            <span id="bgUploadText">Uploading images in the background…</span>
-                                            <div class="bg-upload-bar-wrap"><div class="bg-upload-bar-fill" id="bgUploadFill"></div></div>
-                                        </div>
-                                    </div>
-
-                                    <div class="image-preview-grid" id="imagePreviewContainer"></div>
-
-                                    <div id="imageUploadStats" class="upload-stats d-none">
-                                        <div class="stat-item"><i class="bi bi-images"></i><span id="numFiles">0</span>/5 files</div>
-                                        <div class="stat-item"><i class="bi bi-hdd"></i><span id="totalSize">0 KB</span></div>
-                                        <div class="stat-item text-success d-none" id="imgSavedStat"><i class="bi bi-arrow-down-circle"></i><span id="imgSavedPct">0%</span> saved</div>
-                                    </div>
-                                    {% for e in form.images.errors %}<div class="field-error-msg mt-1"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                </div>
-
-                                <!-- ── PORTFOLIO DOCUMENTS ── -->
-                                <div class="mb-0">
-                                    <label class="form-label">Portfolio Documents <span class="opt">Optional · Max 10</span></label>
-
-                                    {% if form.instance.pk and form.instance.documents.all %}
-                                    <div class="mb-3">
-                                        <p class="form-text fw-semibold mb-2">Current Documents:</p>
-                                        <div class="list-group">
-                                            {% for doc in form.instance.documents.all %}
-                                            <div class="list-group-item d-flex justify-content-between align-items-center py-2">
-                                                <div class="small"><i class="bi bi-file-earmark-text me-2"></i>{{ doc.title }}</div>
-                                                <small class="text-muted">{{ doc.document.size|filesizeformat }}</small>
-                                            </div>
-                                            {% endfor %}
-                                        </div>
-                                        <p class="form-text mt-2">Upload new documents to replace, or leave empty to keep current.</p>
-                                    </div>
-                                    {% endif %}
-
-                                    <div class="upload-zone" id="docDropZone">
-                                        <label for="id_documents">
-                                            <i class="bi bi-file-earmark-arrow-up upload-icon"></i>
-                                            <span class="upload-title">Click to select or drag &amp; drop</span>
-                                            <span class="upload-hint">Certificates, portfolio samples, case studies</span>
-                                            <div class="upload-meta">
-                                                <span class="upload-badge"><i class="bi bi-filetype-pdf me-1"></i>PDF</span>
-                                                <span class="upload-badge"><i class="bi bi-filetype-docx me-1"></i>DOCX</span>
-                                                <span class="upload-badge"><i class="bi bi-filetype-doc me-1"></i>DOC</span>
-                                                <span class="upload-badge"><i class="bi bi-filetype-jpg me-1"></i>JPG</span>
-                                                <span class="upload-badge"><i class="bi bi-filetype-png me-1"></i>PNG</span>
-                                                <span class="upload-badge">Max 10 files</span>
-                                                <span class="upload-badge">10 MB each · 50 MB total</span>
-                                            </div>
-                                        </label>
-                                        {{ form.documents }}
-                                    </div>
-
-                                    <div class="doc-preview-list" id="documentPreviewContainer"></div>
-
-                                    <div id="documentUploadStats" class="upload-stats d-none">
-                                        <div class="stat-item"><i class="bi bi-files"></i><span id="numDocuments">0</span>/10 files</div>
-                                        <div class="stat-item"><i class="bi bi-hdd"></i><span id="totalDocSize">0 KB</span></div>
-                                    </div>
-                                    {% for e in form.documents.errors %}<div class="field-error-msg mt-1"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- ══ Wizard Nav ══ -->
-                        <div class="wizard-nav">
-                            <button type="button" class="btn btn-outline-secondary" id="prevBtn" style="display:none;">
-                                <i class="bi bi-arrow-left me-1"></i>Back
-                            </button>
-                            <span class="step-counter" id="stepCounter">Step 1 of 5</span>
-                            <button type="button" class="btn btn-primary btn-submit" id="nextBtn">
-                                Next <i class="bi bi-arrow-right ms-1"></i>
-                            </button>
-                        </div>
-
-                    </form>
+                <div class="sfm-nav">
+                    <button type="button" class="ox-btn ox-btn-neutral sfm-back" id="prevBtn" hidden>Back</button>
+                    <button type="submit" class="ox-btn" id="nextBtn">Continue</button>
                 </div>
             </div>
         </div>
+
+        {# ---- Preview. Shown beside the form on desktop, and on the last step on phones. ---- #}
+        <aside class="sfm-side" aria-label="Service preview">
+            <div class="ox-card sfm-card sfm-preview">
+                <p class="sfm-pv-label">How clients will see it</p>
+                <div class="sfm-pv-img">
+                    <img id="pvImg" src="" alt="" width="320" height="240" hidden>
+                    <i class="bi bi-image" id="pvIcon" aria-hidden="true"></i>
+                </div>
+                <p class="sfm-pv-title empty" id="pvTitle">Your service title</p>
+                <p class="sfm-pv-price" id="pvPrice" hidden></p>
+                <p class="sfm-pv-meta" id="pvMeta" hidden></p>
+                <ul class="sfm-chips" id="pvChips" hidden></ul>
+            </div>
+        </aside>
+    </form>
+
     </div>
+
+    {# Shown only while files upload with the service, so a slow connection never looks like a frozen page #}
+    <div class="sfm-overlay" id="sfmOverlay" role="status" aria-live="polite" hidden>
+        <div class="sfm-box">
+            <span class="spinner-border" aria-hidden="true"></span>
+            <strong>Uploading your files…</strong>
+            <span>Keep this page open. This can take a moment on a slow connection.</span>
+            <div class="sfm-bar" role="progressbar" aria-label="Upload progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="uploadProgressBar"><div></div></div>
+        </div>
+    </div>
+
 </div>
 
 
-
 <script>
-/* ═══════════════════════════════════════════
-   FastImageCompressor
-═══════════════════════════════════════════ */
-class FastImageCompressor {
-    constructor(){this.maxUploadSize=1024*1024;this.quality=0.85;this.maxDimension=1920;}
-    async compress(file){if(file.size<=this.maxUploadSize)return file;try{return await this._do(file);}catch(e){return file;}}
-    _do(file){return new Promise((res,rej)=>{const reader=new FileReader();reader.onload=e=>{const img=new Image();img.onload=()=>{let w=img.width,h=img.height;if(w>this.maxDimension||h>this.maxDimension){const r=Math.min(this.maxDimension/w,this.maxDimension/h);w=Math.round(w*r);h=Math.round(h*r);}const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.fillStyle='#FFF';ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);canvas.toBlob(blob=>{res(new File([blob],file.name.replace(/\.\w+$/,'.jpg'),{type:'image/jpeg'}));},'image/jpeg',this.quality);};img.onerror=()=>rej(new Error('load'));img.src=e.target.result;};reader.onerror=()=>rej(new Error('read'));reader.readAsDataURL(file);});}
-    static fmtSize(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB';}
-}
+    /* Service form: four steps, inline validation per step, price type toggle, image and document resize
+       with per-file remove, background image upload, unsaved-draft restore. The service is sent with XHR
+       because the view answers with JSON (success or status, message, redirect_url, error). */
+    (function () {
+        'use strict';
 
-document.addEventListener('DOMContentLoaded', function () {
+        var $ = function (id) { return document.getElementById(id); };
+        var form = $('serviceForm');
+        var card = $('sfmCard');
+        var panes = [].slice.call(form.querySelectorAll('.sfm-pane'));
+        var stepBtns = [].slice.call(document.querySelectorAll('.sfm-step'));
+        var prevBtn = $('prevBtn'), nextBtn = $('nextBtn');
+        var overlay = $('sfmOverlay'), barBox = $('uploadProgressBar'), barFill = barBox.firstElementChild;
+        var LAST = panes.length - 1;
+        var finalLabel = form.getAttribute('data-final');
+        var calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var cur = 0, reached = 0, busy = false, restoring = false;
+        var bad = {}, passed = {};
 
-    /* ── Element refs ── */
-    const form            = document.getElementById('serviceForm');
-    const pricingType     = document.getElementById('id_pricing_type');
-    const basePriceField  = document.getElementById('basePriceField');
-    const negoPriceFields = document.getElementById('negotiablePriceFields');
-    const basePriceInput  = document.getElementById('id_base_price');
-    const minPriceInput   = document.getElementById('id_min_price');
-    const maxPriceInput   = document.getElementById('id_max_price');
-    const imageField      = document.querySelector('input[name="images"]');
-    const imagePreview    = document.getElementById('imagePreviewContainer');
-    const imageStatsBar   = document.getElementById('imageUploadStats');
-    const imgCompressStatus = document.getElementById('imageCompressStatus');
-    const imageDropZone   = document.getElementById('imageDropZone');
-    const docField        = document.querySelector('input[name="documents"]');
-    const docPreview      = document.getElementById('documentPreviewContainer');
-    const docStatsBar     = document.getElementById('documentUploadStats');
-    const docDropZone     = document.getElementById('docDropZone');
-    const loadingOverlay  = document.getElementById('loadingOverlay');
-    const progressBar     = document.querySelector('#uploadProgressBar .progress-bar');
-    const progressText    = document.getElementById('uploadProgressText');
-    const statusText      = document.getElementById('uploadStatusText');
-    const clientErrorBanner = document.getElementById('clientErrorBanner');
-    const clientErrorList   = document.getElementById('clientErrorList');
-    const bgUploadStatus  = document.getElementById('bgUploadStatus');
-    const bgUploadText    = document.getElementById('bgUploadText');
-    const bgUploadSpinner = document.getElementById('bgUploadSpinner');
-    const bgUploadFill    = document.getElementById('bgUploadFill');
-
-    /* ── System Alert (matches base.html alert-system-container) ── */
-    function showSystemAlert(type, msg) {
-        const iconMap = { success: 'bi-check-circle-fill', error: 'bi-exclamation-circle-fill', warning: 'bi-exclamation-triangle-fill' };
-        const icon = iconMap[type] || 'bi-info-circle-fill';
-        let container = document.getElementById('alertSystemContainer');
-        if (!container) {
-            container = document.createElement('div');
-            container.className = 'alert-system-container';
-            container.id = 'alertSystemContainer';
-            document.body.prepend(container);
+        function el(name) { return form.elements[name] || null; }
+        function val(name) { var e = el(name); return e && e.value ? e.value.trim() : ''; }
+        function digits(v) { return parseInt(String(v || '').replace(/\D/g, ''), 10) || 0; }
+        function csrf() { return form.querySelector('[name=csrfmiddlewaretoken]').value; }
+        function fmt(b) {
+            if (b < 1024) return b + ' B';
+            if (b < 1048576) return (b / 1024).toFixed(0) + ' KB';
+            return (b / 1048576).toFixed(1) + ' MB';
         }
-        const el = document.createElement('div');
-        el.className = `system-alert alert-${type}`;
-        el.setAttribute('role', 'alert');
-        el.setAttribute('data-auto-dismiss', '3500');
-        el.innerHTML = `<div class="alert-content"><div class="alert-icon"><i class="bi ${icon}"></i></div><div class="alert-message">${msg}</div></div><button type="button" class="alert-close-btn" aria-label="Close"><i class="bi bi-x"></i></button>`;
-        container.appendChild(el);
-        el.querySelector('.alert-close-btn').addEventListener('click', () => el.remove());
-        setTimeout(() => el.remove(), 3500);
-    }
-    function showErrorToast(m)   { showSystemAlert('error',   m); }
-    function showSuccessToast(m) { showSystemAlert('success', m); }
-    function showOverlay(){loadingOverlay.classList.add('show');}
-    function hideOverlay(){loadingOverlay.classList.remove('show');}
+        function shortName(n) { return n.length > 24 ? n.slice(0, 23) + '\u2026' : n; }
+        function naira(n) { return '\u20A6' + n.toLocaleString('en-NG'); }
 
-    /* ══════════════════════════════
-       TAB WIZARD
-    ══════════════════════════════ */
-    const TOTAL_STEPS = 5;
-    let currentStep   = 0;
-    // Tab 3 (location/contact) and Tab 4 (media) are optional-heavy — start valid
-    let stepValidity  = [false, false, false, true, true];
-
-    const prevBtn     = document.getElementById('prevBtn');
-    const nextBtn     = document.getElementById('nextBtn');
-    const stepCounter = document.getElementById('stepCounter');
-    const stepEls     = document.querySelectorAll('.wizard-step');
-    const tabPanes    = document.querySelectorAll('.tab-pane-wizard');
-
-    // If server returned errors, jump to first broken tab
-    {% if form.errors %}
-    (function(){
-        const fieldTabMap = {
-            'id_title':0,'id_service_type':0,'id_category':0,'id_experience_level':0,'id_availability':0,'id_delivery_method':0,'id_delivery_time':0,
-            'id_pricing_type':1,'id_base_price':1,'id_min_price':1,'id_max_price':1,'id_revision_limit':1,'id_delivery_days':1,
-            'id_description':2,'id_what_you_get':2,'id_skills_offered':2,'id_tools_used':2,'id_requirements':2,'id_extra_services':2,
-            'id_languages':3,'id_serves_nationwide':3,'id_contact_instructions':3,'id_portfolio_url':3,'id_certifications':3,
-            'id_images':4,'id_documents':4,
-        };
-        for(const[id,tab] of Object.entries(fieldTabMap)){
-            if(document.getElementById(id)?.classList.contains('is-invalid')){currentStep=tab;break;}
+        /* Same toast markup as base.html's alert system, built with textContent so a server message cannot inject HTML */
+        function toast(type, msg) {
+            var icon = { success: 'bi-check-circle-fill', error: 'bi-exclamation-circle-fill' }[type] || 'bi-info-circle-fill';
+            var box = $('alertSystemContainer');
+            if (!box) {
+                box = document.createElement('div');
+                box.className = 'alert-system-container';
+                box.id = 'alertSystemContainer';
+                document.body.prepend(box);
+            }
+            var a = document.createElement('div');
+            a.className = 'system-alert alert-' + type;
+            a.setAttribute('role', 'alert');
+            a.innerHTML = '<div class="alert-content"><div class="alert-icon"><i class="bi ' + icon + '"></i></div><div class="alert-message"></div></div><button type="button" class="alert-close-btn" aria-label="Close"><i class="bi bi-x"></i></button>';
+            a.querySelector('.alert-message').textContent = msg;
+            box.appendChild(a);
+            a.querySelector('.alert-close-btn').addEventListener('click', function () { a.remove(); });
+            setTimeout(function () { a.remove(); }, 3500);
         }
-    })();
-    {% endif %}
 
-    function goToStep(n) {
-        tabPanes.forEach((p,i) => p.classList.toggle('active', i===n));
-        stepEls.forEach((s,i) => {
-            s.classList.remove('active','completed','has-error');
-            if(i < n) s.classList.add(stepValidity[i]===false ? 'has-error' : 'completed');
-            if(i === n) s.classList.add('active');
+        /* Attributes the Django widgets may not carry */
+        [].forEach.call(form.querySelectorAll('input:not([type=hidden]):not([type=file]):not([type=checkbox]), select, textarea'), function (c) {
+            if (!c.hasAttribute('autocomplete')) c.setAttribute('autocomplete', 'off');
+            if (c.tagName === 'INPUT' && !c.hasAttribute('enterkeyhint')) c.setAttribute('enterkeyhint', 'next');
         });
-        prevBtn.style.display = n===0 ? 'none' : '';
-        if(n === TOTAL_STEPS-1){
-            nextBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>{{ save_button|default:"Save Service" }}';
-            nextBtn.classList.add('btn-success');
-            nextBtn.classList.remove('btn-primary');
-        } else {
-            nextBtn.innerHTML = 'Next <i class="bi bi-arrow-right ms-1"></i>';
-            nextBtn.classList.remove('btn-success');
-            nextBtn.classList.add('btn-primary');
-        }
-        stepCounter.textContent = `Step ${n+1} of ${TOTAL_STEPS}`;
-        currentStep = n;
-        document.querySelector('.wizard-header')?.scrollIntoView({behavior:'smooth',block:'nearest'});
-    }
+        ['base_price', 'min_price', 'max_price', 'revision_limit', 'delivery_days'].forEach(function (n) {
+            var c = el(n);
+            if (c && !c.hasAttribute('inputmode')) c.setAttribute('inputmode', 'numeric');
+        });
 
-    // Clicking a completed step jumps back to it
-    stepEls.forEach((s,i) => {
-        s.addEventListener('click', () => { if(i < currentStep || stepValidity[i]!==false) goToStep(i); });
-    });
-
-    /* ── Per-step validation ── */
-    function validateStep(n) {
-        const errors = [];
-        const mark = (id, ok, msg) => {
-            const el = document.getElementById(id);
-            if(!el) return;
-            el.classList.toggle('is-invalid',!ok);
-            el.classList.toggle('is-valid', ok && (el.value||'').trim().length>0);
-            if(!ok) errors.push(msg);
+        /* ---------- Validation ---------- */
+        var RULES = {
+            title: function (c) { return c.value.trim() ? '' : 'Enter a title for your service.'; },
+            service_type: function (c) { return c.value ? '' : 'Choose a service type.'; },
+            category: function (c) { return c.value ? '' : 'Choose a category.'; },
+            experience_level: function (c) { return c.value ? '' : 'Choose your experience level.'; },
+            pricing_type: function (c) { return c.value ? '' : 'Choose a pricing type.'; },
+            base_price: function (c) { return digits(c.value) >= 1 ? '' : 'Enter your price in naira.'; },
+            min_price: function (c) { return digits(c.value) >= 1 ? '' : 'Enter the lowest price.'; },
+            max_price: function (c) {
+                var mx = digits(c.value), mn = digits(val('min_price'));
+                if (mx < 1) return 'Enter the highest price.';
+                return mn && mx <= mn ? 'Enter a price above the lowest.' : '';
+            },
+            availability: function (c) { return c.value ? '' : 'Choose your availability.'; },
+            delivery_method: function (c) { return c.value ? '' : 'Choose how you deliver.'; },
+            description: function (c) { return c.value.trim() ? '' : 'Describe your service.'; }
         };
 
-        if(n===0){
-            mark('id_title',          !!document.getElementById('id_title')?.value.trim(),          'Service title is required.');
-            mark('id_service_type',   !!document.getElementById('id_service_type')?.value,           'Service type is required.');
-            mark('id_category',       !!document.getElementById('id_category')?.value,               'Category is required.');
-            mark('id_experience_level',!!document.getElementById('id_experience_level')?.value,      'Experience level is required.');
-            mark('id_availability',   !!document.getElementById('id_availability')?.value,           'Availability is required.');
-            mark('id_delivery_method',!!document.getElementById('id_delivery_method')?.value,        'Delivery method is required.');
+        function control(f) {
+            return f.querySelector('input:not([type=hidden]):not([type=file]):not([type=checkbox]), select, textarea');
         }
 
-        if(n===1){
-            mark('id_pricing_type',   !!pricingType?.value,                                          'Pricing type is required.');
-            const isNeg = pricingType?.value === 'negotiable';
-            if(!isNeg){
-                const bp = basePriceInput?.value.replace(/[^\d]/g,'');
-                if(!bp||parseInt(bp,10)<1){ errors.push('A valid base price is required.'); basePriceInput?.classList.add('is-invalid'); }
-                else basePriceInput?.classList.replace('is-invalid','is-valid');
-            } else {
-                const mn = minPriceInput?.value.replace(/[^\d]/g,'');
-                const mx = maxPriceInput?.value.replace(/[^\d]/g,'');
-                if(!mn||parseInt(mn,10)<1){ errors.push('Minimum price is required for negotiable pricing.'); minPriceInput?.classList.add('is-invalid'); }
-                else minPriceInput?.classList.remove('is-invalid');
-                if(!mx||parseInt(mx,10)<1){ errors.push('Maximum price is required for negotiable pricing.'); maxPriceInput?.classList.add('is-invalid'); }
-                else maxPriceInput?.classList.remove('is-invalid');
-                if(mn&&mx&&parseInt(mn,10)>=parseInt(mx,10)){ errors.push('Maximum price must be greater than minimum price.'); maxPriceInput?.classList.add('is-invalid'); }
+        // Hidden panes do not count as hidden: only a hidden field box does
+        function isHidden(c) {
+            var h = c.closest('[hidden]');
+            while (h && h.classList.contains('sfm-pane')) h = h.parentElement ? h.parentElement.closest('[hidden]') : null;
+            return !!h;
+        }
+
+        function check(c) {
+            if (!c || c.disabled || isHidden(c) || !RULES[c.name]) return '';
+            return RULES[c.name](c);
+        }
+
+        // The hint stays attached; the error id joins it only while an error shows
+        function flag(f, msg) {
+            var c = control(f), fb = f.querySelector('.invalid-feedback'), hint = f.querySelector('.auth-hint');
+            f.classList.toggle('has-error', !!msg);
+            if (!c) return;
+            c.setAttribute('aria-invalid', msg ? 'true' : 'false');
+            if (msg && fb) fb.textContent = msg;
+            var ids = [];
+            if (hint && hint.id) ids.push(hint.id);
+            if (msg && fb) ids.push(fb.id);
+            if (ids.length) c.setAttribute('aria-describedby', ids.join(' '));
+            else c.removeAttribute('aria-describedby');
+        }
+
+        var fields = [].slice.call(form.querySelectorAll('.auth-field')).filter(function (f) {
+            var c = control(f);
+            return c && RULES[c.name];
+        });
+
+        // Server errors: describe them to assistive tech from the first paint
+        [].forEach.call(form.querySelectorAll('.auth-field'), function (f) {
+            var c = control(f), fb = f.querySelector('.invalid-feedback');
+            if (!c) return;
+            var hint = f.querySelector('.auth-hint'), ids = [];
+            if (hint && hint.id) ids.push(hint.id);
+            if (f.classList.contains('has-error') && fb) { ids.push(fb.id); c.setAttribute('aria-invalid', 'true'); }
+            if (ids.length) c.setAttribute('aria-describedby', ids.join(' '));
+        });
+
+        fields.forEach(function (f) {
+            var c = control(f);
+            c.addEventListener('blur', function () { if (c.value) flag(f, check(c)); });
+            function clear() { if (f.classList.contains('has-error') && !check(c)) flag(f, ''); }
+            c.addEventListener('input', clear);
+            c.addEventListener('change', clear);
+        });
+
+        function stepFields(n) {
+            return fields.filter(function (f) { return panes[n].contains(f); });
+        }
+
+        function validateStep(n) {
+            var first = null;
+            stepFields(n).forEach(function (f) {
+                var c = control(f), msg = check(c);
+                if (msg || f.classList.contains('has-error')) flag(f, msg);
+                if (msg && !first) first = c;
+            });
+            bad[n] = !!first;
+            passed[n] = !first;
+            return first;
+        }
+
+        function focusEl(c) {
+            var d = c.closest('details');
+            if (d) d.open = true;
+            c.focus();
+        }
+
+        /* ---------- Steps ---------- */
+        function paint() {
+            stepBtns.forEach(function (b, i) {
+                var active = i === cur, done = !active && passed[i], err = !active && bad[i];
+                b.classList.toggle('is-active', active);
+                b.classList.toggle('is-done', !!done);
+                b.classList.toggle('is-bad', !!err);
+                b.disabled = i > reached;
+                if (active) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
+                var ic = b.querySelector('i');
+                ic.hidden = !(done || err);
+                ic.className = 'bi ' + (err ? 'bi-exclamation-circle-fill' : 'bi-check-circle-fill');
+            });
+            prevBtn.hidden = cur === 0;
+            if (!busy) nextBtn.textContent = cur === LAST ? finalLabel : 'Continue';
+        }
+
+        function goTo(n, moveFocus) {
+            cur = n;
+            if (n > reached) reached = n;
+            panes.forEach(function (p, i) { p.hidden = i !== n; });
+            form.setAttribute('data-step', String(n));
+            paint();
+            if (moveFocus) {
+                card.scrollIntoView({ block: 'start', behavior: calm ? 'auto' : 'smooth' });
+                panes[n].querySelector('.sfm-cardhead').focus({ preventScroll: true });
             }
         }
 
-        if(n===2){
-            mark('id_description',    !!document.getElementById('id_description')?.value.trim(),    'Service description is required.');
+        function next() {
+            var first = validateStep(cur);
+            paint();
+            if (first) { focusEl(first); return; }
+            goTo(cur + 1, true);
         }
 
-        // Tabs 3 & 4 are optional — always pass
-        return errors;
-    }
+        stepBtns.forEach(function (b, i) {
+            b.addEventListener('click', function () { if (i <= reached && i !== cur) goTo(i, true); });
+        });
+        prevBtn.addEventListener('click', function () { if (cur > 0) goTo(cur - 1, true); });
 
-    prevBtn.addEventListener('click', () => { if(currentStep>0) goToStep(currentStep-1); });
-
-    nextBtn.addEventListener('click', () => {
-        const errors = validateStep(currentStep);
-        if(errors.length){
-            clientErrorList.innerHTML = errors.map(e=>`<li>${e}</li>`).join('');
-            clientErrorBanner.classList.add('visible');
-            stepValidity[currentStep] = false;
-            goToStep(currentStep);
-            showErrorToast('Please fix the highlighted errors.');
-            return;
+        /* ---------- Pricing type ---------- */
+        var pricing = el('pricing_type');
+        function syncPricing() {
+            var neg = !!pricing && pricing.value === 'negotiable';
+            $('basePriceBox').hidden = neg;
+            $('rangeBox').hidden = !neg;
+            var hint = $('hint-base_price');
+            if (hint) hint.textContent = pricing && pricing.value === 'hourly' ? 'Your rate for one hour. Numbers only.' : 'Numbers only.';
         }
-        clientErrorBanner.classList.remove('visible');
-        stepValidity[currentStep] = true;
-        if(currentStep === TOTAL_STEPS-1) submitForm();
-        else goToStep(currentStep+1);
-    });
+        if (pricing) pricing.addEventListener('change', syncPricing);
+        syncPricing();
 
-    goToStep(currentStep);
+        // New services start with the usual values; they can change them under "Delivery time and revisions"
+        if (form.getAttribute('data-draft') === '1') {
+            var rev = el('revision_limit'), days = el('delivery_days');
+            if (rev && rev.value === '') rev.value = 2;
+            if (days && days.value === '') days.value = 7;
+        }
 
-    /* ══════════════════════════════
-       Pricing type toggle
-    ══════════════════════════════ */
-    function syncPricingType(){
-        const isNeg = pricingType?.value === 'negotiable';
-        if(basePriceField)  basePriceField.style.display  = isNeg ? 'none' : '';
-        if(negoPriceFields) negoPriceFields.style.display = isNeg ? 'flex' : 'none';
-    }
-    if(pricingType){ syncPricingType(); pricingType.addEventListener('change', syncPricingType); }
-
-    /* ══════════════════════════════
-       Image compressor + preview + background upload
-    ══════════════════════════════ */
-    const compressor = new FastImageCompressor();
-    let isProcessingImages = false;
-    const IMG_MAX_FILES=5, IMG_MAX_EACH=5*1024*1024, IMG_MAX_TOTAL=25*1024*1024;
-    const IMG_TYPES=['image/jpeg','image/jpg','image/png'];
-
-    if(imageDropZone){
-        imageDropZone.addEventListener('dragover', e=>{e.preventDefault();imageDropZone.classList.add('drag-over');});
-        imageDropZone.addEventListener('dragleave',()=>imageDropZone.classList.remove('drag-over'));
-        imageDropZone.addEventListener('drop',e=>{
-            e.preventDefault();imageDropZone.classList.remove('drag-over');
-            if(imageField&&e.dataTransfer.files.length){const dt=new DataTransfer();Array.from(e.dataTransfer.files).slice(0,IMG_MAX_FILES).forEach(f=>dt.items.add(f));imageField.files=dt.files;imageField.dispatchEvent(new Event('change'));}
+        /* ---------- Text areas grow with their content ---------- */
+        function grow(t) {
+            var min = t.id === 'id_description' ? 150 : 96;
+            t.style.height = 'auto';
+            t.style.height = Math.min(Math.max(t.scrollHeight, min), 500) + 'px';
+        }
+        var areas = [].slice.call(form.querySelectorAll('textarea'));
+        areas.forEach(function (t) {
+            t.addEventListener('input', function () { grow(t); });
+            if (t.value) grow(t);
         });
-    }
-
-    if(imageField){
-        imageField.addEventListener('change', async function(){
-            if(isProcessingImages)return;
-            const raw=Array.from(this.files);
-            if(!raw.length){clearPreviews();return;}
-            if(raw.length>IMG_MAX_FILES){showErrorToast(`Maximum ${IMG_MAX_FILES} images allowed.`);this.value='';clearPreviews();return;}
-            for(const f of raw){
-                if(!IMG_TYPES.includes(f.type)){showErrorToast(`"${f.name}" is not supported. Use JPG or PNG.`);this.value='';clearPreviews();return;}
-                if(f.size>IMG_MAX_EACH){showErrorToast(`"${f.name}" exceeds the 5 MB limit.`);this.value='';clearPreviews();return;}
-            }
-            const rawTotal=raw.reduce((s,f)=>s+f.size,0);
-            if(rawTotal>IMG_MAX_TOTAL){showErrorToast('Total image size exceeds 25 MB.');this.value='';clearPreviews();return;}
-
-            isProcessingImages=true;
-            clearPreviews();
-            // silent — // silent remove
-            // silent innerHTML
-
-            try{
-                const compressed=await Promise.all(raw.map(f=>compressor.compress(f)));
-                const dt=new DataTransfer();compressed.forEach(f=>dt.items.add(f));this.files=dt.files;
-                const compTotal=compressed.reduce((s,f)=>s+f.size,0);
-                const pct=((rawTotal-compTotal)/rawTotal*100);
-                // silent done
-                // silent innerHTML
-                setTimeout(()=>imgCompressStatus.classList.add('d-none'),5000);
-
-                imageStatsBar.classList.remove('d-none');
-                document.getElementById('numFiles').textContent=compressed.length;
-                document.getElementById('totalSize').textContent=FastImageCompressor.fmtSize(compTotal);
-                const savedStat=document.getElementById('imgSavedStat');
-                if(pct>5){savedStat?.classList.remove('d-none');const sp=document.getElementById('imgSavedPct');if(sp)sp.textContent=pct.toFixed(0)+'%';}
-
-                compressed.forEach((f,i)=>buildPreview(f,i,raw[i],pct>5));
-
-                // Start background upload immediately after compression
-                startBackgroundUpload(compressed);
-            }catch(err){
-                // silent warn
-                // silent innerHTML
-                setTimeout(()=>imgCompressStatus.classList.add('d-none'),3500);
-                raw.forEach((f,i)=>buildPreview(f,i,f,false));
-                imageStatsBar.classList.remove('d-none');
-                document.getElementById('numFiles').textContent=raw.length;
-                document.getElementById('totalSize').textContent=FastImageCompressor.fmtSize(rawTotal);
-                startBackgroundUpload(raw);
-            }finally{isProcessingImages=false;}
-        });
-    }
-
-    function clearPreviews(){
-        imagePreview.innerHTML='';
-        imageStatsBar.classList.add('d-none');
-        imgCompressStatus.classList.add('d-none');
-        bgUploadStatus.classList.add('d-none');
-        bgUploadToken=null;
-    }
-
-    function buildPreview(file,index,original,wasCompressed){
-        const reader=new FileReader();
-        reader.onload=e=>{
-            const card=document.createElement('div');card.className='preview-card'+(index===0?' primary':'');
-            const img=document.createElement('img');img.src=e.target.result;img.title=file.name;card.appendChild(img);
-            if(index===0){const b=document.createElement('span');b.className='primary-badge';b.textContent='Primary';card.appendChild(b);}
-            if(wasCompressed&&file.size<original.size){const b=document.createElement('span');b.className='compress-badge';b.textContent='✓';card.appendChild(b);}
-            const info=document.createElement('div');info.className='preview-info';info.title=file.name;
-            info.textContent=`${file.name.length>13?file.name.slice(0,12)+'…':file.name} · ${FastImageCompressor.fmtSize(file.size)}`;
-            card.appendChild(info);imagePreview.appendChild(card);
-        };
-        reader.readAsDataURL(file);
-    }
-
-    /* ══════════════════════════════
-       Background Image Upload
-    ══════════════════════════════ */
-    let bgUploadToken=null;
-    let bgUploadXHR=null;
-    let bgUploadDone=false;
-
-    function startBackgroundUpload(files){
-        if(bgUploadXHR){bgUploadXHR.abort();bgUploadXHR=null;}
-        bgUploadToken=null;bgUploadDone=false;
-
-        bgUploadStatus.className='bg-upload-status uploading';
-        bgUploadStatus.classList.remove('d-none');
-        bgUploadSpinner.style.display='';
-        bgUploadFill.style.width='0%';
-        bgUploadText.textContent=`Uploading ${files.length} image${files.length!==1?'s':''} in the background…`;
-
-        const fd=new FormData();
-        files.forEach(f=>fd.append('images',f));
-        fd.append('csrfmiddlewaretoken',document.querySelector('[name=csrfmiddlewaretoken]').value);
-
-        const xhr=new XMLHttpRequest();bgUploadXHR=xhr;
-
-        xhr.upload.addEventListener('progress',e=>{
-            if(e.lengthComputable)bgUploadFill.style.width=Math.round(e.loaded/e.total*100)+'%';
-        });
-        xhr.addEventListener('load',()=>{
-            bgUploadXHR=null;bgUploadDone=true;
-            try{
-                const data=JSON.parse(xhr.responseText);
-                if(xhr.status>=200&&xhr.status<300&&data.token){
-                    bgUploadToken=data.token;
-                    bgUploadFill.style.width='100%';
-                    bgUploadStatus.className='bg-upload-status done';
-                    bgUploadSpinner.style.display='none';
-                    bgUploadText.textContent=`${files.length} image${files.length!==1?'s':''} uploaded — submit will be instant!`;
-                    // Silent: images pre-uploaded (no announcement)
-                }else{bgUploadStatus.classList.add('d-none');}
-            }catch(_){bgUploadStatus.classList.add('d-none');}
-        });
-        xhr.addEventListener('error',()=>{bgUploadXHR=null;bgUploadStatus.classList.add('d-none');});
-        xhr.addEventListener('abort',()=>{bgUploadXHR=null;bgUploadStatus.classList.add('d-none');});
-        xhr.open('POST','/ajax/upload-images-temp/');
-        xhr.setRequestHeader('X-Requested-With','XMLHttpRequest');
-        xhr.send(fd);
-    }
-
-    /* ══════════════════════════════
-       Document upload + preview
-    ══════════════════════════════ */
-    const DOC_MAX_FILES=10, DOC_MAX_EACH=10*1024*1024, DOC_MAX_TOTAL=50*1024*1024;
-    const DOC_TYPES=['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','image/jpeg','image/jpg','image/png'];
-    const docTypeLabels={
-        'application/pdf':{icon:'bi-filetype-pdf',cls:'pdf',label:'PDF'},
-        'application/msword':{icon:'bi-filetype-doc',cls:'word',label:'DOC'},
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document':{icon:'bi-filetype-docx',cls:'word',label:'DOCX'},
-        'image/jpeg':{icon:'bi-filetype-jpg',cls:'img',label:'JPG'},
-        'image/jpg': {icon:'bi-filetype-jpg',cls:'img',label:'JPG'},
-        'image/png': {icon:'bi-filetype-png',cls:'img',label:'PNG'},
-    };
-
-    if(docDropZone){
-        docDropZone.addEventListener('dragover', e=>{e.preventDefault();docDropZone.classList.add('drag-over');});
-        docDropZone.addEventListener('dragleave',()=>docDropZone.classList.remove('drag-over'));
-        docDropZone.addEventListener('drop',e=>{
-            e.preventDefault();docDropZone.classList.remove('drag-over');
-            if(docField&&e.dataTransfer.files.length){const dt=new DataTransfer();Array.from(e.dataTransfer.files).slice(0,DOC_MAX_FILES).forEach(f=>dt.items.add(f));docField.files=dt.files;docField.dispatchEvent(new Event('change'));}
-        });
-    }
-
-    if(docField){
-        docField.addEventListener('change', async function(){
-            const raw=Array.from(this.files);
-            docPreview.innerHTML='';
-            if(!raw.length){docStatsBar.classList.add('d-none');return;}
-            if(raw.length>DOC_MAX_FILES){showErrorToast(`Maximum ${DOC_MAX_FILES} documents allowed.`);this.value='';return;}
-            for(const f of raw){
-                if(!DOC_TYPES.includes(f.type)){showErrorToast(`"${f.name}" is not supported. Allowed: PDF, DOC, DOCX, JPG, PNG.`);this.value='';docPreview.innerHTML='';return;}
-                if(f.size>DOC_MAX_EACH){showErrorToast(`"${f.name}" exceeds the 10 MB per file limit.`);this.value='';docPreview.innerHTML='';return;}
-            }
-            const rawTotal=raw.reduce((s,f)=>s+f.size,0);
-            if(rawTotal>DOC_MAX_TOTAL){showErrorToast('Total document size exceeds 50 MB.');this.value='';docPreview.innerHTML='';return;}
-
-            // Compress image files (JPG, PNG, WebP) — pass PDFs/DOCs through untouched
-            const DOC_IMG_TYPES=['image/jpeg','image/jpg','image/png','image/webp'];
-            let files=raw;
-            const hasImages=raw.some(f=>DOC_IMG_TYPES.includes(f.type));
-            if(hasImages){
-                const docCompressStatus=document.getElementById('imageCompressStatus');
-                // silent doc compress
-                try{
-                    const processed=await Promise.all(raw.map(f=>DOC_IMG_TYPES.includes(f.type)?compressor.compress(f):Promise.resolve(f)));
-                    const dt=new DataTransfer();processed.forEach(f=>dt.items.add(f));this.files=dt.files;
-                    files=processed;
-                    const savedBytes=rawTotal-files.reduce((s,f)=>s+f.size,0);
-                    if(docCompressStatus){
-                        // silent doc done
-                        // silent doc innerHTML
-                    }
-                }catch(e){
-                    // silent doc compress error
-                }
-            }
-
-            const total=files.reduce((s,f)=>s+f.size,0);
-            docStatsBar.classList.remove('d-none');
-            document.getElementById('numDocuments').textContent=files.length;
-            document.getElementById('totalDocSize').textContent=FastImageCompressor.fmtSize(total);
-
-            files.forEach((f,i)=>{
-                const orig=raw[i];
-                const wasCompressed=DOC_IMG_TYPES.includes(orig?.type)&&orig&&f.size<orig.size;
-                const meta=docTypeLabels[f.type]||{icon:'bi-file-earmark',cls:'def',label:'FILE'};
-                const card=document.createElement('div');card.className='doc-card';
-                card.innerHTML=`
-                    <i class="bi ${meta.icon} doc-icon ${meta.cls}" title="${meta.label}"></i>
-                    <div class="doc-meta">
-                        <div class="doc-name" title="${f.name}">${f.name.length>38?f.name.slice(0,37)+'…':f.name}</div>
-                        <div class="doc-size">${meta.label} · ${FastImageCompressor.fmtSize(f.size)}${wasCompressed?` <span style="color:#198754;font-weight:600;">✓ optimised</span>`:''}</div>
-                    </div>`;
-                docPreview.appendChild(card);
+        // A textarea inside a closed <details> measures 0, so size it when the section opens
+        [].forEach.call(form.querySelectorAll('details.auth-more'), function (d) {
+            d.addEventListener('toggle', function () {
+                if (d.open) [].forEach.call(d.querySelectorAll('textarea'), function (t) { if (t.value) grow(t); });
             });
         });
-    }
 
-    /* ══════════════════════════════
-       Form Submission
-    ══════════════════════════════ */
-    let isSubmitting=false;
+        /* ---------- Files ---------- */
+        var IMG_TYPES = ['image/jpeg', 'image/jpg', 'image/png'];
+        var DOC_TYPES = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].concat(IMG_TYPES);
 
-    function submitForm(){
-        if(isSubmitting)return;
-
-        // Re-validate all required tabs before submitting
-        const allErrors=[];
-        for(let i=0;i<TOTAL_STEPS;i++){
-            const e=validateStep(i);
-            if(e.length){stepValidity[i]=false;allErrors.push(...e);}else stepValidity[i]=true;
-        }
-        if(allErrors.length){
-            clientErrorList.innerHTML=allErrors.map(e=>`<li>${e}</li>`).join('');
-            clientErrorBanner.classList.add('visible');
-            for(let i=0;i<TOTAL_STEPS;i++){if(stepValidity[i]===false){goToStep(i);break;}}
-            showErrorToast('Please fix the highlighted errors before submitting.');
-            return;
-        }
-        clientErrorBanner.classList.remove('visible');
-
-        isSubmitting=true;
-        nextBtn.disabled=true;
-        showOverlay();
-
-        const hasImages=imageField?.files.length>0;
-        const totalBytes=hasImages?Array.from(imageField.files).reduce((s,f)=>s+f.size,0):0;
-        const formData=new FormData(form);
-
-        if(bgUploadToken){
-            formData.delete('images');
-            formData.append('bg_upload_token',bgUploadToken);
-        }
-
-        const doSubmit=()=>{
-            let progress=0;
-            const duration=hasImages&&!bgUploadToken?Math.max(2000,totalBytes/(500*1024)*1000):1200;
-            progressBar.style.width='0%';
-            progressText.textContent=bgUploadToken?'Finalizing your service…':(hasImages?'Uploading images…':'Processing your service…');
-            statusText.textContent=bgUploadToken?'Images already uploaded — finishing up…':(hasImages?`Uploading ${imageField.files.length} image${imageField.files.length!==1?'s':''}…`:'Saving your service listing…');
-            const interval=setInterval(()=>{
-                progress=Math.min(progress+2,95);
-                progressBar.style.width=progress+'%';
-                if(progress>=90){clearInterval(interval);progressText.textContent='Finalizing…';submitFormData(formData);}
-            },duration/50);
+        var Compressor = {
+            MAX_BYTES: 1024 * 1024, MAX_DIM: 1920, QUALITY: 0.85,
+            compress: function (file) {
+                var self = this;
+                if (file.size <= self.MAX_BYTES) return Promise.resolve({ file: file, saved: false });
+                return new Promise(function (resolve) {
+                    var url = URL.createObjectURL(file), img = new Image();
+                    img.onload = function () {
+                        var w = img.width, h = img.height;
+                        if (w > self.MAX_DIM || h > self.MAX_DIM) {
+                            var r = Math.min(self.MAX_DIM / w, self.MAX_DIM / h);
+                            w = Math.round(w * r); h = Math.round(h * r);
+                        }
+                        var c = document.createElement('canvas');
+                        c.width = w; c.height = h;
+                        var ctx = c.getContext('2d');
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(0, 0, w, h);
+                        ctx.drawImage(img, 0, 0, w, h);
+                        URL.revokeObjectURL(url);
+                        c.toBlob(function (b) {
+                            // Keep the original when the result is not smaller
+                            if (!b || b.size >= file.size) return resolve({ file: file, saved: false });
+                            resolve({ file: new File([b], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }), saved: true });
+                        }, 'image/jpeg', self.QUALITY);
+                    };
+                    img.onerror = function () { URL.revokeObjectURL(url); resolve({ file: file, saved: false }); };
+                    img.src = url;
+                });
+            }
         };
 
-        if(bgUploadXHR&&!bgUploadDone){
-            statusText.textContent='Waiting for background upload…';
-            let waited=0;
-            const poll=setInterval(()=>{
-                waited+=200;
-                if(bgUploadDone||waited>=10000){clearInterval(poll);doSubmit();}
-            },200);
-        }else{doSubmit();}
-    }
+        function docIcon(name) {
+            var ext = (name.split('.').pop() || '').toLowerCase();
+            return { pdf: 'bi-filetype-pdf', doc: 'bi-filetype-doc', docx: 'bi-filetype-docx', jpg: 'bi-filetype-jpg', jpeg: 'bi-filetype-jpg', png: 'bi-filetype-png' }[ext] || 'bi-file-earmark';
+        }
 
-    function submitFormData(formData){
-        const url=form.getAttribute('action')||window.location.href;
-        fetch(url,{method:'POST',body:formData,headers:{'X-Requested-With':'XMLHttpRequest'}})
-        .then(r=>r.text().then(text=>{let data;try{data=JSON.parse(text);}catch(_){throw new Error('Unexpected server response.');}return{ok:r.ok,data};}))
-        .then(result=>{
-            progressBar.style.width='100%';
-            if(result.ok&&(result.data.status==='success'||result.data.success)){
-                progressBar.classList.replace('bg-primary','bg-success');
-                progressText.textContent='Success!';
-                statusText.textContent=result.data.message||'Service saved!';
-                setTimeout(()=>{window.location.href=result.data.redirect_url||'{% url "manage_listings" %}';},1000);
-            }else{throw new Error(result.data.message||result.data.error||'Failed to save service.');}
-        })
-        .catch(err=>{
-            progressBar.classList.add('bg-danger');
-            progressText.textContent='Error';
-            statusText.textContent=err.message;
-            showErrorToast(err.message||'Failed to save service. Please try again.');
-            setTimeout(()=>{hideOverlay();isSubmitting=false;nextBtn.disabled=false;progressBar.classList.remove('bg-danger');progressBar.style.width='0%';},3000);
+        /* One picker for both drop zones: kind "image" draws thumbnails, kind "file" draws rows */
+        function Picker(o) {
+            var self = this, files = [], urls = [], working = false;
+            self.files = function () { return files; };
+            self.firstUrl = function () { return urls[0] || ''; };
+            self.working = function () { return working; };
+
+            function say(kind, text) {
+                o.note.className = 'auth-hint' + (kind ? ' auth-hint--' + kind : '');
+                o.note.textContent = text;
+            }
+            function sync() {
+                try {
+                    var dt = new DataTransfer();
+                    files.forEach(function (f) { dt.items.add(f); });
+                    o.input.files = dt.files;
+                    return true;
+                } catch (err) { return false; }
+            }
+            function describe() {
+                if (!files.length) { say('', o.idle); return; }
+                var total = 0, orig = 0;
+                files.forEach(function (f) { total += f.size; orig += f._orig || f.size; });
+                var pct = orig ? Math.round((orig - total) / orig * 100) : 0;
+                say('', files.length + ' of ' + o.max + ' ready, ' + fmt(total) + (pct > 5 ? '. Resized to save ' + pct + '%.' : '.'));
+            }
+            function removeBtn(i, f) {
+                var x = document.createElement('button');
+                x.type = 'button';
+                x.className = 'sfm-thumb-x';
+                x.setAttribute('aria-label', 'Remove ' + (o.kind === 'image' ? o.label.toLowerCase() + ' ' + (i + 1) : shortName(f.name)));
+                x.innerHTML = '<i class="bi bi-x-lg" aria-hidden="true"></i>';
+                x.addEventListener('click', function () { remove(i); });
+                return x;
+            }
+            function draw() {
+                urls.forEach(function (u) { URL.revokeObjectURL(u); });
+                urls = [];
+                o.list.textContent = '';
+                files.forEach(function (f, i) {
+                    var li = document.createElement('li');
+                    if (o.kind === 'image') {
+                        var u = URL.createObjectURL(f);
+                        urls.push(u);
+                        li.className = 'sfm-thumb';
+                        var img = new Image();
+                        img.src = u; img.alt = o.label + ' ' + (i + 1); img.width = 96; img.height = 96;
+                        li.appendChild(img);
+                        if (i === 0) {
+                            var tag = document.createElement('span');
+                            tag.className = 'sfm-thumb-tag';
+                            tag.textContent = 'Main';
+                            li.appendChild(tag);
+                        }
+                        li.appendChild(removeBtn(i, f));
+                        var s = document.createElement('span');
+                        s.textContent = fmt(f.size);
+                        li.appendChild(s);
+                    } else {
+                        li.className = 'sfm-doc';
+                        var ic = document.createElement('i');
+                        ic.className = 'bi ' + docIcon(f.name);
+                        ic.setAttribute('aria-hidden', 'true');
+                        li.appendChild(ic);
+                        var t = document.createElement('span');
+                        t.className = 'sfm-doc-text';
+                        var nm = document.createElement('span');
+                        nm.className = 'sfm-doc-name';
+                        nm.textContent = f.name;
+                        var sz = document.createElement('span');
+                        sz.className = 'sfm-doc-size';
+                        sz.textContent = fmt(f.size);
+                        t.appendChild(nm); t.appendChild(sz);
+                        li.appendChild(t);
+                        li.appendChild(removeBtn(i, f));
+                    }
+                    o.list.appendChild(li);
+                });
+                o.list.hidden = !files.length;
+            }
+            function remove(i) {
+                files.splice(i, 1);
+                sync(); draw(); describe();
+                o.onChange();
+            }
+            self.reset = function () { files = []; sync(); draw(); describe(); o.onChange(); };
+            self.restoreInput = function () { if (files.length) sync(); };
+
+            async function add(list, fromDrop) {
+                if (working) return;
+                var before = files.slice(), problem = '', ok = [];
+                Array.prototype.slice.call(list).forEach(function (f) {
+                    var dup = files.some(function (g) { return g.name === f.name && (g._orig || g.size) === f.size; });
+                    if (o.types.indexOf(f.type) === -1 && !o.ext.test(f.name)) problem = o.typeMsg + ' Skipped ' + shortName(f.name) + '.';
+                    else if (f.size > o.perFile) problem = shortName(f.name) + ' is over ' + fmt(o.perFile) + '.';
+                    else if (!dup) ok.push(f);
+                });
+                var room = o.max - files.length;
+                if (ok.length > room) { problem = 'You can add up to ' + o.max + '.'; ok = ok.slice(0, room); }
+                if (!ok.length) {
+                    sync();
+                    if (problem) say('bad', problem); else describe();
+                    return;
+                }
+                working = true;
+                say('', 'Preparing\u2026');
+                var out = [];
+                for (var k = 0; k < ok.length; k++) {
+                    var f = ok[k], file = f;
+                    if (/^image\/(jpeg|jpg|png)$/.test(f.type)) file = (await Compressor.compress(f)).file;
+                    file._orig = f.size;
+                    out.push(file);
+                }
+                files = files.concat(out);
+                var sum = files.reduce(function (s, f) { return s + f.size; }, 0);
+                if (o.total && sum > o.total) {
+                    files = before;
+                    problem = 'Files are over ' + fmt(o.total) + ' in total.';
+                }
+                if (!sync()) {
+                    if (fromDrop) {
+                        files = before;
+                        say('bad', 'Could not attach those. Use the Choose button instead.');
+                        working = false;
+                        return;
+                    }
+                    files = Array.prototype.slice.call(o.input.files); // the input already holds the originals
+                }
+                draw();
+                describe();
+                if (problem) say('bad', problem);
+                working = false;
+                o.onChange();
+            }
+
+            o.input.addEventListener('change', function () { add(o.input.files, false); });
+            o.box.addEventListener('dragover', function (e) { e.preventDefault(); o.box.classList.add('drag'); });
+            o.box.addEventListener('dragleave', function () { o.box.classList.remove('drag'); });
+            o.box.addEventListener('drop', function (e) {
+                e.preventDefault();
+                o.box.classList.remove('drag');
+                if (e.dataTransfer.files.length) add(e.dataTransfer.files, true);
+            });
+        }
+
+        /* Background upload: images start uploading as soon as they are chosen */
+        var bg = { xhr: null, token: null };
+        function startBg(list) {
+            if (bg.xhr) { bg.xhr.abort(); bg.xhr = null; }
+            bg.token = null;
+            if (!list.length) return;
+            var fd = new FormData();
+            list.forEach(function (f) { fd.append('images', f); });
+            fd.append('csrfmiddlewaretoken', csrf());
+            var x = new XMLHttpRequest();
+            bg.xhr = x;
+            x.addEventListener('load', function () {
+                if (bg.xhr !== x) return;
+                bg.xhr = null;
+                try {
+                    var d = JSON.parse(x.responseText);
+                    if (x.status >= 200 && x.status < 300 && d.token) bg.token = d.token;
+                } catch (err) { /* no token: the form uploads the images itself */ }
+            });
+            x.addEventListener('error', function () { if (bg.xhr === x) bg.xhr = null; });
+            x.open('POST', '/ajax/upload-images-temp/');
+            x.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            x.send(fd);
+        }
+
+        var imgInput = el('images'), docInput = el('documents');
+        var images = imgInput ? new Picker({
+            input: imgInput, box: $('imageBox'), list: $('imageThumbs'), note: $('imageNote'), kind: 'image',
+            types: IMG_TYPES, ext: /\.(jpe?g|png)$/i, typeMsg: 'Use JPG or PNG.',
+            max: 5, perFile: 5 * 1024 * 1024, total: 25 * 1024 * 1024, label: 'Image',
+            idle: 'The first image is the main one.',
+            onChange: function () { startBg(images.files()); refresh(); }
+        }) : null;
+        var docs = docInput ? new Picker({
+            input: docInput, box: $('docBox'), list: $('docList'), note: $('docNote'), kind: 'file',
+            types: DOC_TYPES, ext: /\.(pdf|docx?|jpe?g|png)$/i, typeMsg: 'Use PDF, DOC, DOCX, JPG or PNG.',
+            max: 10, perFile: 10 * 1024 * 1024, total: 50 * 1024 * 1024, label: 'Document',
+            idle: 'Add anything that shows your skills.',
+            onChange: function () {}
+        }) : null;
+
+        /* ---------- Preview ---------- */
+        function optText(s) { return s && s.value && s.selectedIndex >= 0 ? s.options[s.selectedIndex].text.trim() : ''; }
+
+        function refresh() {
+            var t = val('title');
+            $('pvTitle').textContent = t || 'Your service title';
+            $('pvTitle').classList.toggle('empty', !t);
+
+            var p = '';
+            if (pricing && pricing.value === 'negotiable') {
+                var mn = digits(val('min_price')), mx = digits(val('max_price'));
+                if (mn && mx) p = naira(mn) + ' \u2013 ' + naira(mx);
+                else if (mn) p = 'From ' + naira(mn);
+            } else {
+                var bp = digits(val('base_price'));
+                if (bp) p = naira(bp);
+            }
+            $('pvPrice').hidden = !p;
+            $('pvPrice').textContent = p;
+
+            var meta = [optText(el('service_type')), optText(el('category'))].filter(Boolean).join(' \u00B7 ');
+            $('pvMeta').hidden = !meta;
+            $('pvMeta').textContent = meta;
+
+            var chips = [];
+            var nation = el('serves_nationwide');
+            if (nation && nation.checked) chips.push('Nationwide');
+            var dd = digits(val('delivery_days'));
+            if (dd) chips.push('Done in ' + dd + (dd === 1 ? ' day' : ' days'));
+            var rl = val('revision_limit');
+            if (rl !== '') chips.push(digits(rl) + (digits(rl) === 1 ? ' revision' : ' revisions'));
+            $('pvChips').hidden = !chips.length;
+            $('pvChips').textContent = '';
+            chips.forEach(function (c) {
+                var li = document.createElement('li');
+                li.textContent = c;
+                $('pvChips').appendChild(li);
+            });
+
+            var u = (images && images.firstUrl()) || form.getAttribute('data-image-url') || '';
+            var im = $('pvImg');
+            im.hidden = !u;
+            $('pvIcon').hidden = !!u;
+            if (u && im.getAttribute('src') !== u) im.setAttribute('src', u);
+        }
+
+        /* ---------- Draft (new services only) ---------- */
+        var DKEY = 'os_service_draft_v1', DTTL = 7 * 24 * 3600 * 1000;
+        var DRAFT_ON = form.getAttribute('data-draft') === '1' && !form.querySelector('.has-error');
+        var TEXTS = ['title', 'service_type', 'category', 'experience_level', 'pricing_type', 'base_price', 'min_price', 'max_price', 'availability', 'delivery_method', 'delivery_time', 'delivery_days', 'revision_limit', 'description', 'what_you_get', 'skills_offered', 'tools_used', 'requirements', 'extra_services', 'languages', 'contact_instructions', 'portfolio_url', 'certifications'];
+        var CHECKS = ['serves_nationwide'];
+        var timer = null;
+
+        function readDraft() { try { return JSON.parse(localStorage.getItem(DKEY)); } catch (err) { return null; } }
+        function clearDraft() { try { localStorage.removeItem(DKEY); } catch (err) {} }
+        function writeDraft() {
+            if (!DRAFT_ON || restoring) return;
+            var f = {}, c = {};
+            TEXTS.forEach(function (n) { var e = el(n); if (e && e.value) f[n] = e.value; });
+            CHECKS.forEach(function (n) { var e = el(n); if (e) c[n] = !!e.checked; });
+            if (!f.title && !f.description && !f.base_price) { clearDraft(); return; }
+            try { localStorage.setItem(DKEY, JSON.stringify({ t: Date.now(), f: f, c: c })); } catch (err) {}
+        }
+        function saveDraft() {
+            if (!DRAFT_ON) return;
+            clearTimeout(timer);
+            timer = setTimeout(writeDraft, 600);
+        }
+
+        function restoreDraft() {
+            var d = DRAFT_ON ? readDraft() : null;
+            if (!d || !d.f || Date.now() - d.t > DTTL) { if (d) clearDraft(); return; }
+            restoring = true;
+            TEXTS.forEach(function (n) {
+                var e = el(n);
+                if (e && d.f[n] !== undefined) e.value = d.f[n];
+            });
+            CHECKS.forEach(function (n) { var e = el(n); if (e && d.c && n in d.c) e.checked = d.c[n]; });
+            // Open any optional section whose fields now differ from what the server sent
+            [].forEach.call(form.querySelectorAll('details.auth-more'), function (det) {
+                var changed = [].some.call(det.querySelectorAll('input, textarea, select'), function (c) { return c.value !== c.defaultValue; });
+                if (changed) det.open = true;
+            });
+            syncPricing();
+            areas.forEach(function (t) { if (t.value) grow(t); });
+            $('draftBanner').hidden = false;
+            restoring = false;
+        }
+
+        $('draftReset').addEventListener('click', function () {
+            clearDraft();
+            form.reset();
+            if (el('revision_limit')) el('revision_limit').value = 2;
+            if (el('delivery_days')) el('delivery_days').value = 7;
+            if (images) images.reset();
+            if (docs) docs.reset();
+            areas.forEach(function (t) { t.style.height = ''; });
+            syncPricing(); refresh();
+            passed = {}; bad = {}; reached = 0;
+            $('draftBanner').hidden = true;
+            goTo(0, true);
         });
-    }
-});
+
+        form.addEventListener('input', function () { refresh(); saveDraft(); });
+        form.addEventListener('change', function () { refresh(); saveDraft(); });
+
+        /* ---------- Submit ---------- */
+        function setBar(pct) {
+            barFill.style.width = pct + '%';
+            barBox.setAttribute('aria-valuenow', String(pct));
+        }
+        function setBusy(text) {
+            busy = true;
+            nextBtn.disabled = true;
+            nextBtn.setAttribute('aria-busy', 'true');
+            nextBtn.innerHTML = '<span class="spinner-border" aria-hidden="true"></span><span>' + text + '</span>';
+        }
+        function idle() {
+            busy = false;
+            overlay.hidden = true;
+            setBar(0);
+            nextBtn.disabled = false;
+            nextBtn.removeAttribute('aria-busy');
+            paint();
+        }
+        function alertSubmit(msg) {
+            $('submitAlertText').textContent = msg;
+            $('submitAlert').hidden = false;
+        }
+        function fail(msg) {
+            idle();
+            alertSubmit(msg);
+            toast('error', msg);
+        }
+
+        // If the view returns field errors as {name: [messages]}, show each one on its field
+        function showFieldErrors(errs) {
+            if (!errs || typeof errs !== 'object') return false;
+            var first = null, firstStep = -1;
+            Object.keys(errs).forEach(function (name) {
+                var c = el(name);
+                var f = c && c.closest ? c.closest('.auth-field') : null;
+                if (!f) return;
+                var m = [].concat(errs[name])[0];
+                flag(f, typeof m === 'string' ? m : 'Check this field.');
+                var pane = f.closest('.sfm-pane'), s = pane ? panes.indexOf(pane) : -1;
+                if (!first) { first = c; firstStep = s; }
+                if (s > -1) { bad[s] = true; passed[s] = false; }
+            });
+            if (!first) return false;
+            reached = LAST;
+            goTo(firstStep > -1 ? firstStep : 0, false);
+            focusEl(first);
+            return true;
+        }
+
+        function send() {
+            var fd = new FormData(form);
+            var imgOnServer = !!(bg.token && images && images.files().length);
+            if (imgOnServer) {
+                fd.delete('images');
+                fd.append('bg_upload_token', bg.token);
+            }
+            var pending = (images && !imgOnServer ? images.files().length : 0) + (docs ? docs.files().length : 0);
+            var showBar = pending > 0;
+            if (showBar) {
+                setBar(0);
+                overlay.hidden = false;
+            }
+            var x = new XMLHttpRequest();
+            x.open('POST', form.getAttribute('action') || window.location.href);
+            x.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            x.upload.addEventListener('progress', function (e) {
+                if (showBar && e.lengthComputable) setBar(Math.round(e.loaded / e.total * 100));
+            });
+            x.addEventListener('load', function () {
+                var d = null;
+                try { d = JSON.parse(x.responseText); } catch (err) {}
+                if (!d) { fail('Unexpected server response. Please try again.'); return; }
+                if (x.status >= 200 && x.status < 300 && (d.success || d.status === 'success')) {
+                    setBar(100);
+                    clearDraft();
+                    toast('success', d.message || 'Your service has been saved.');
+                    nextBtn.innerHTML = '<span class="spinner-border" aria-hidden="true"></span><span>Saved</span>';
+                    setTimeout(function () { window.location.href = d.redirect_url || '{% url "manage_listings" %}'; }, 800);
+                } else {
+                    var shown = showFieldErrors(d.errors);
+                    if (shown) { idle(); toast('error', 'Some fields need attention.'); }
+                    else fail(d.error || d.message || 'Could not save your service. Please try again.');
+                }
+            });
+            x.addEventListener('error', function () { fail('Network error. Check your connection and try again.'); });
+            x.send(fd);
+        }
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (busy) return;
+
+            // Enter in a field moves to the next step; only the last step sends
+            if (cur < LAST) { next(); return; }
+
+            if ((images && images.working()) || (docs && docs.working())) {
+                $('imageNote').className = 'auth-hint auth-hint--bad';
+                $('imageNote').textContent = 'Still preparing your files. Try again in a second.';
+                return;
+            }
+
+            var firstStep = -1, firstEl = null;
+            for (var i = 0; i < LAST; i++) {
+                var c = validateStep(i);
+                if (c && firstStep < 0) { firstStep = i; firstEl = c; }
+            }
+            if (firstStep >= 0) {
+                goTo(firstStep, false);
+                focusEl(firstEl);
+                return;
+            }
+
+            $('submitAlert').hidden = true;
+            setBusy('Saving\u2026');
+            if (bg.xhr) {
+                // Wait up to 10 seconds for images that are still uploading, then send
+                var waited = 0;
+                var poll = setInterval(function () {
+                    waited += 200;
+                    if (!bg.xhr || waited >= 10000) { clearInterval(poll); send(); }
+                }, 200);
+                return;
+            }
+            send();
+        });
+
+        // Coming back with the Back button restores the page from cache
+        window.addEventListener('pageshow', function (e) {
+            if (!e.persisted) return;
+            idle();
+            if (images) { images.restoreInput(); startBg(images.files()); }
+            if (docs) docs.restoreInput();
+        });
+
+        /* ---------- Start ---------- */
+        restoreDraft();
+
+        // Editing a saved service: every step is open from the start
+        if (form.getAttribute('data-edit') === '1') reached = LAST;
+
+        // After a server error, open the step that holds the first problem and land on it
+        var serverErr = form.querySelector('.has-error');
+        var startStep = 0;
+        if (serverErr) {
+            var pane = serverErr.closest('.sfm-pane');
+            startStep = pane ? panes.indexOf(pane) : 0;
+            reached = LAST;
+        }
+        goTo(startStep, false);
+        refresh();
+        if (serverErr) {
+            var sc = control(serverErr);
+            if (sc) focusEl(sc);
+        }
+    })();
 </script>
 {% endblock %}
 {% block 'Footer' %}{% endblock %}

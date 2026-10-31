@@ -1,454 +1,493 @@
 {% extends 'base.html' %}
 {% load static %}
-<title>{% block title %}SignUp{% endblock %}</title>
+
+{% block title %}Create your account{% endblock %}
+
+{% block page_css %}
+<style>
+/* Auth pages, shared design core (same look as home, profile menu and store pages).
+   Identical in login, signup_options and signup: change it in all three together. */
+.ax {
+    --ox-navy: var(--primary-color);
+    --ox-orange: var(--accent-color);
+    --ox-teal: var(--bs-teal, var(--primary-color));
+    --ox-green: var(--bs-success, var(--primary-color));
+    --ox-purple: var(--bs-purple, var(--primary-color));
+    display: flex; flex-direction: column; align-items: center; gap: var(--gap-sections);
+    padding-bottom: var(--sp-6);
+    color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-body);
+}
+.ax [hidden] { display: none !important; }
+.ax a { text-decoration: none; }
+.ax p { margin: 0; }
+.t-navy { --tint: var(--ox-navy); } .t-orange { --tint: var(--ox-orange); } .t-teal { --tint: var(--ox-teal); }
+.t-green { --tint: var(--ox-green); } .t-purple { --tint: var(--ox-purple); }
+.ox-ico { display: grid; place-items: center; flex: none; width: 2rem; height: 2rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-base); }
+.ox-tint { position: relative; isolation: isolate; }
+.ox-tint::before, .auth-alert::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .ox-tint::before, [data-bs-theme="dark"] .auth-alert::before { opacity: .09; }
+
+/* Navy header band: full-bleed, tucks under the navbar; the form card sits below it */
+.ax-head { align-self: stretch; display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); margin: -2rem -1rem 0; padding: calc(2rem + var(--sp-4)) var(--sp-5) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); text-align: center; }
+.auth-logo { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin-bottom: var(--sp-1); border-radius: var(--radius-full); background: var(--bs-white); }
+.auth-logo img { width: 1.75rem; height: 1.75rem; object-fit: contain; }
+.auth-title { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-snug); }
+.auth-sub { font-size: var(--font-size-sm); line-height: var(--lh-snug); opacity: .85; }
+@media (min-width: 768px) { .auth-title { font-size: var(--font-size-3xl); } .auth-sub { font-size: var(--font-size-base); } }
+
+/* Card */
+.auth-card { position: relative; z-index: 1; display: flex; flex-direction: column; gap: var(--gap-sections); width: 100%; max-width: 25rem; margin: 0; padding: var(--pad-l); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); box-shadow: var(--shadow-md); }
+.auth-form { display: flex; flex-direction: column; gap: var(--gap-fields); }
+
+/* Fields (42px controls) */
+.auth-field { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.auth-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+@media (max-width: 399.98px) { .auth-pair { grid-template-columns: 1fr; } }
+.auth-label { font-size: var(--font-size-sm); font-weight: 600; }
+.auth-label-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); }
+.auth-opt { font-weight: 400; color: var(--text-secondary); }
+.auth-hint { display: flex; align-items: flex-start; gap: var(--sp-1); font-size: var(--font-size-xs); line-height: var(--lh-snug); color: var(--text-secondary); }
+.auth-hint--ok { color: var(--bs-success); }
+.auth-hint--bad { color: var(--bs-danger); font-weight: 600; }
+.ax .form-control { box-sizing: border-box; width: 100%; min-height: var(--h-control-lg); padding: 0 var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--background-color); color: var(--text-primary); font-size: var(--font-size-base); }
+.ax .form-control:focus { outline: 2px solid var(--accent-color); outline-offset: 1px; border-color: var(--accent-color); box-shadow: none; background-color: var(--background-color); color: var(--text-primary); }
+/* Browser autofill: keep the field dark in dark mode (browsers paint it white with dark text) */
+[data-bs-theme="dark"] .ax .form-control { color-scheme: dark; }
+.ax .form-control:-webkit-autofill, .ax .form-control:-webkit-autofill:hover, .ax .form-control:-webkit-autofill:focus { -webkit-text-fill-color: var(--text-primary); caret-color: var(--text-primary); -webkit-box-shadow: 0 0 0 1000px var(--background-color) inset; box-shadow: 0 0 0 1000px var(--background-color) inset; transition: background-color 9999s ease-out 0s; }
+.ax .form-control:autofill { -webkit-text-fill-color: var(--text-primary); caret-color: var(--text-primary); box-shadow: 0 0 0 1000px var(--background-color) inset; }
+.ax .invalid-feedback { display: none; margin: 0; font-size: var(--font-size-xs); font-weight: 600; color: var(--bs-danger); }
+.auth-field.has-error .invalid-feedback { display: block; }
+.auth-field.has-error .form-control { border-color: var(--bs-danger); }
+@supports (-webkit-touch-callout: none) { .ax .form-control { font-size: 16px; } }
+.auth-pw { position: relative; }
+.auth-pw .form-control { padding-right: 2.75rem; }
+.auth-pw-toggle { position: absolute; top: 0; right: 0; bottom: 0; display: grid; place-items: center; width: 2.75rem; padding: 0; border: 0; background: none; color: var(--text-secondary); cursor: pointer; touch-action: manipulation; }
+.auth-check { display: flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; font-size: var(--font-size-sm); cursor: pointer; }
+.auth-check input { flex: none; width: 1.125rem; height: 1.125rem; margin: 0; accent-color: var(--primary-color); }
+.auth-more summary { display: flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; font-size: var(--font-size-sm); font-weight: 600; list-style: none; cursor: pointer; touch-action: manipulation; }
+.auth-more summary::-webkit-details-marker { display: none; }
+.auth-more summary .auth-opt { margin-left: auto; }
+.auth-more summary .bi { transition: transform .2s ease; }
+.auth-more[open] summary .bi { transform: rotate(90deg); }
+.auth-more-body { display: flex; flex-direction: column; gap: var(--gap-fields); padding-top: var(--sp-1); }
+
+/* Messages */
+.auth-alert { position: relative; isolation: isolate; display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-md); font-size: var(--font-size-sm); line-height: var(--lh-snug); --tint: var(--bs-danger); }
+.auth-alert i { margin-top: 1px; color: var(--bs-danger); }
+.auth-alert--success { --tint: var(--bs-success); }
+.auth-alert--success i { color: var(--bs-success); }
+
+/* Buttons: the same pill as the other pages, navy on auth pages */
+.ax-btn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-4); border: 2px solid var(--bs-white); border-radius: 22px; background: var(--primary-color); color: var(--bs-white); font: inherit; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); text-align: center; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); cursor: pointer; touch-action: manipulation; }
+.ax a.ax-btn:not(.ax-btn-neutral) { color: var(--bs-white); }
+.ax-btn:disabled { opacity: .7; cursor: default; }
+.ax-btn .spinner-border { width: 1rem; height: 1rem; border-width: .15em; }
+.ax-btn svg { flex: none; width: 1.25rem; height: 1.25rem; }
+.ax-btn-neutral, .ax a.ax-btn-neutral { border: 1px solid var(--border-color); background: var(--card-background); color: var(--text-primary); box-shadow: none; }
+.auth-last { margin-left: auto; padding: 0 var(--sp-2); border-radius: var(--radius-full); background: var(--hover-bg); font-size: var(--font-size-xs); font-weight: 600; }
+
+/* Divider, footer, perks */
+.auth-divider { display: flex; align-items: center; gap: var(--sp-3); font-size: var(--font-size-sm); color: var(--text-secondary); }
+.auth-divider::before, .auth-divider::after { content: ""; flex: 1; height: 1px; background: var(--border-color); }
+.auth-foot { font-size: var(--font-size-sm); line-height: var(--lh-snug); text-align: center; color: var(--text-secondary); }
+.auth-foot--quiet { margin-top: calc(-1 * var(--sp-1)); }
+.auth-link { font-weight: 600; }
+.auth-foot .auth-link { display: inline-block; margin: calc(-1 * var(--sp-1)); padding: var(--sp-1); }
+.auth-foot--quiet .auth-link { font-weight: 400; text-decoration: underline; }
+.auth-option { display: flex; flex-direction: column; gap: var(--sp-1); }
+.auth-option .auth-hint { justify-content: center; text-align: center; }
+.ax-perks { display: flex; flex-direction: column; gap: var(--sp-1); margin: 0; padding: var(--sp-1) 0 0; list-style: none; }
+.ax-perk { display: flex; align-items: flex-start; gap: var(--sp-2); font-size: var(--font-size-xs); line-height: var(--lh-snug); color: var(--text-secondary); }
+.ax-perk i { flex: none; margin-top: 1px; color: var(--ox-green); }
+
+.ax a:focus-visible, .ax button:focus-visible, .ax summary:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; border-radius: var(--radius-sm); }
+@media (hover: hover) { .ax-btn-neutral:hover { background: var(--hover-bg); } .auth-link:hover { text-decoration: underline; } }
+@media (prefers-reduced-motion: reduce) { .auth-more summary .bi { transition: none; } }
+</style>
+{% endblock %}
+
 {% block 'Body' %}
-<div class="container">
-    <div class="row justify-content-center align-items-center min-vh-100">
-        <div class="col-md-8 col-lg-6 col-xl-5">
-            <div class="card">
-                <div class="card-body p-4 p-lg-5">
-                    
-                    <!-- Logo Section -->
-                    <div class="text-center mb-4">
-                        <div class="logo-container">
-                            <img src="{% static 'images/logoicon.png' %}" alt="OpenSell Logo" class="logo-img">
+<div class="ox ax">
+
+    <div class="auth-head ax-head">
+            <div class="auth-logo">
+                <img src="{% static 'images/logoicon.png' %}" alt="OpenSell" width="28" height="28">
+            </div>
+            <h1 class="auth-title">Create your account</h1>
+            <p class="auth-sub">Free to join. Choose a username and password to start.</p>
+        </div>
+
+    <div class="auth-card">
+
+        {# action="" posts back to the current URL, so a ?ref= link keeps working if the form is re-shown with errors #}
+        <form method="post" action="" class="auth-form" data-auth-form novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="auth-alert" role="alert">
+                    <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+                    <span>{{ form.non_field_errors.0 }}</span>
+                </div>
+            {% endif %}
+
+            {# ---- Username ---- #}
+            <div class="auth-field{% if form.username.errors %} has-error{% endif %}">
+                <label for="id_username" class="auth-label">Username</label>
+                <input type="text"
+                       class="form-control"
+                       id="id_username"
+                       name="username"
+                       value="{{ form.username.value|default:'' }}"
+                       pattern="[A-Za-z0-9@.+_\-]+"
+                       maxlength="150"
+                       autocomplete="username"
+                       enterkeyhint="next"
+                       autocapitalize="none"
+                       autocorrect="off"
+                       spellcheck="false"
+                       data-hint="hint-username"
+                       aria-describedby="hint-username{% if form.username.errors %} err-username{% endif %}"
+                       {% if form.username.errors %}aria-invalid="true"{% endif %}
+                       required>
+                <p class="auth-hint" id="hint-username">Letters, numbers and . _ - @ + only. No spaces.</p>
+                <div class="invalid-feedback" id="err-username">{{ form.username.errors.0 }}</div>
+            </div>
+
+            {# ---- Email: optional, but it is the only way to recover a forgotten password ---- #}
+            <div class="auth-field{% if form.email.errors %} has-error{% endif %}">
+                <label for="id_email" class="auth-label">Email <span class="auth-opt">(optional)</span></label>
+                <input type="email"
+                       class="form-control"
+                       id="id_email"
+                       name="email"
+                       value="{{ form.email.value|default:'' }}"
+                       inputmode="email"
+                       autocomplete="email"
+                       enterkeyhint="next"
+                       autocapitalize="none"
+                       autocorrect="off"
+                       spellcheck="false"
+                       data-hint="hint-email"
+                       aria-describedby="hint-email{% if form.email.errors %} err-email{% endif %}"
+                       {% if form.email.errors %}aria-invalid="true"{% endif %}>
+                <p class="auth-hint" id="hint-email">Add one so you can recover your account if you forget your password.</p>
+                <div class="invalid-feedback" id="err-email">{{ form.email.errors.0 }}</div>
+            </div>
+
+            {# ---- Password. With JS the confirm field below is hidden and mirrored from this one ---- #}
+            <div class="auth-field{% if form.password1.errors or form.password2.errors %} has-error{% endif %}">
+                <label for="id_password1" class="auth-label">Password</label>
+                <div class="auth-pw">
+                    <input type="password"
+                           class="form-control"
+                           id="id_password1"
+                           name="password1"
+                           minlength="6"
+                           autocomplete="new-password"
+                           enterkeyhint="go"
+                           data-hint="hint-password1"
+                           aria-describedby="hint-password1{% if form.password1.errors or form.password2.errors %} err-password1{% endif %}"
+                           {% if form.password1.errors or form.password2.errors %}aria-invalid="true"{% endif %}
+                           required>
+                    <button type="button"
+                            class="auth-pw-toggle"
+                            data-pw-toggle
+                            aria-label="Show password"
+                            aria-pressed="false"
+                            hidden>
+                        <i class="bi bi-eye" aria-hidden="true"></i>
+                    </button>
+                </div>
+                <p class="auth-hint" id="hint-password1">
+                    <i class="bi bi-circle" aria-hidden="true"></i>
+                    <span>At least 6 characters</span>
+                </p>
+                <div class="invalid-feedback" id="err-password1">{% if form.password1.errors %}{{ form.password1.errors.0 }}{% elif form.password2.errors %}{{ form.password2.errors.0 }}{% endif %}</div>
+            </div>
+
+            {# Without JS this field stays visible and the form works as before #}
+            <div class="auth-field" data-confirm>
+                <label for="id_password2" class="auth-label">Confirm password</label>
+                <input type="password"
+                       class="form-control"
+                       id="id_password2"
+                       name="password2"
+                       autocomplete="new-password"
+                       enterkeyhint="go"
+                       required>
+            </div>
+
+            {# ---- Optional extras, one tap away. Opens by itself when it holds a value, an error, or a referral link ---- #}
+            <details class="auth-more"{% if form.first_name.value or form.last_name.value or form.referral_code.value or referral_code or form.first_name.errors or form.last_name.errors or form.referral_code.errors %} open{% endif %}>
+                <summary>
+                    <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                    <span>Add your name or a referral code</span>
+                    <span class="auth-opt">Optional</span>
+                </summary>
+
+                <div class="auth-more-body">
+                    <div class="auth-pair">
+                        <div class="auth-field{% if form.first_name.errors %} has-error{% endif %}">
+                            <label for="id_first_name" class="auth-label">First name</label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="id_first_name"
+                                   name="first_name"
+                                   value="{{ form.first_name.value|default:'' }}"
+                                   autocomplete="given-name"
+                                   enterkeyhint="next"
+                                   autocapitalize="words"
+                                   {% if form.first_name.errors %}aria-invalid="true" aria-describedby="err-first_name"{% endif %}>
+                            <div class="invalid-feedback" id="err-first_name">{{ form.first_name.errors.0 }}</div>
                         </div>
-                        <h2 class="mt-3 mb-0">Create Account</h2>
-                        <p class="text-muted">Join our community today</p>
+
+                        <div class="auth-field{% if form.last_name.errors %} has-error{% endif %}">
+                            <label for="id_last_name" class="auth-label">Last name</label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="id_last_name"
+                                   name="last_name"
+                                   value="{{ form.last_name.value|default:'' }}"
+                                   autocomplete="family-name"
+                                   enterkeyhint="next"
+                                   autocapitalize="words"
+                                   {% if form.last_name.errors %}aria-invalid="true" aria-describedby="err-last_name"{% endif %}>
+                            <div class="invalid-feedback" id="err-last_name">{{ form.last_name.errors.0 }}</div>
+                        </div>
                     </div>
 
-                    <form method="POST" action="" class="needs-validation" novalidate>
-                        {% csrf_token %}
-                        
-                        <div class="form-floating mb-3">
-                            <input type="text" 
-                                   class="form-control {% if form.username.errors %}is-invalid{% endif %}" 
-                                   id="id_username" 
-                                   name="username" 
-                                   placeholder="Username"
-                                   value="{{ form.username.value|default:'' }}"
-                                   required>
-                            <label for="id_username">Username</label>
-                            {% if form.username.errors %}
-                                <div class="invalid-feedback">
-                                    {{ form.username.errors.0 }}
-                                </div>
-                            {% else %}
-                                <div class="form-help-text">
-                                    {{ form.username.help_text }}
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <input type="text" 
-                                           class="form-control {% if form.first_name.errors %}is-invalid{% endif %}" 
-                                           id="id_first_name" 
-                                           name="first_name" 
-                                           placeholder="First Name"
-                                           value="{{ form.first_name.value|default:'' }}">
-                                    <label for="id_first_name">First Name</label>
-                                    {% if form.first_name.errors %}
-                                        <div class="invalid-feedback">
-                                            {{ form.first_name.errors.0 }}
-                                        </div>
-                                    {% else %}
-                                        <div class="form-help-text">Optional</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <input type="text" 
-                                           class="form-control {% if form.last_name.errors %}is-invalid{% endif %}" 
-                                           id="id_last_name" 
-                                           name="last_name" 
-                                           placeholder="Last Name"
-                                           value="{{ form.last_name.value|default:'' }}">
-                                    <label for="id_last_name">Last Name</label>
-                                    {% if form.last_name.errors %}
-                                        <div class="invalid-feedback">
-                                            {{ form.last_name.errors.0 }}
-                                        </div>
-                                    {% else %}
-                                        <div class="form-help-text">Optional</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-floating mb-3">
-                            <input type="email" 
-                                   class="form-control {% if form.email.errors %}is-invalid{% endif %}" 
-                                   id="id_email" 
-                                   name="email" 
-                                   placeholder="Email Address"
-                                   value="{{ form.email.value|default:'' }}">
-                            <label for="id_email">Email Address</label>
-                            {% if form.email.errors %}
-                                <div class="invalid-feedback">
-                                    {{ form.email.errors.0 }}
-                                </div>
-                            {% else %}
-                                <div class="form-help-text">Optional - for account recovery and notifications</div>
-                            {% endif %}
-                        </div>
-
-                        
-                        <div class="form-floating mb-3">
-                            <input type="text" 
-                                class="form-control {% if form.referral_code.errors %}is-invalid{% endif %}" 
-                                id="id_referral_code" 
-                                name="referral_code" 
-                                placeholder="Referral Code"
-                                value="{{ form.referral_code.value|default:referral_code|default:'' }}">
-                            <label for="id_referral_code">Referral Code (Optional)</label>
-                            {% if form.referral_code.errors %}
-                                <div class="invalid-feedback">
-                                    {{ form.referral_code.errors.0 }}
-                                </div>
-                            {% else %}
-                                <div class="form-help-text">
-                                    {% if referral_code %}
-                                        <i class="bi bi-check-circle-fill text-success"></i> Referral code applied
-                                    {% else %}
-                                        Have a referral code? Enter it here for benefits
-                                    {% endif %}
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <div class="form-floating mb-3 position-relative">
-                            <input type="password" 
-                                   class="form-control password-input {% if form.password1.errors %}is-invalid{% endif %}" 
-                                   id="id_password1" 
-                                   name="password1" 
-                                   placeholder="Password"
-                                   required>
-                            <label for="id_password1">Password</label>
-                            <button type="button" class="btn btn-link btn-toggle-password" aria-label="Toggle password visibility">
-                                <i class="bi bi-eye-slash"></i>
-                            </button>
-                            {% if form.password1.errors %}
-                                <div class="invalid-feedback">
-                                    {{ form.password1.errors.0 }}
-                                </div>
-                            {% else %}
-                                <div class="form-help-text">
-                                    Choose any password - minimum 6 characters
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <div class="form-floating mb-4 position-relative">
-                            <input type="password" 
-                                   class="form-control password-input {% if form.password2.errors %}is-invalid{% endif %}" 
-                                   id="id_password2" 
-                                   name="password2" 
-                                   placeholder="Confirm Password"
-                                   required>
-                            <label for="id_password2">Confirm Password</label>
-                            <button type="button" class="btn btn-link btn-toggle-password" aria-label="Toggle password visibility">
-                                <i class="bi bi-eye-slash"></i>
-                            </button>
-                            {% if form.password2.errors %}
-                                <div class="invalid-feedback">
-                                    {{ form.password2.errors.0 }}
-                                </div>
-                            {% else %}
-                                <div class="form-help-text">
-                                    Enter the same password for confirmation
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <button type="submit" class="btn btn-primary w-100 py-2 mb-3">Create Account</button>
-
-                        <p class="text-center mt-4 mb-0">Already have an account? 
-                            <a href="{% url 'login' %}" class="text-decoration-none">Sign in</a>
-                        </p>
-                    </form>
+                    <div class="auth-field{% if form.referral_code.errors %} has-error{% endif %}">
+                        <label for="id_referral_code" class="auth-label">Referral code</label>
+                        <input type="text"
+                               class="form-control"
+                               id="id_referral_code"
+                               name="referral_code"
+                               value="{% firstof form.referral_code.value referral_code %}"
+                               autocomplete="off"
+                               enterkeyhint="go"
+                               autocapitalize="none"
+                               autocorrect="off"
+                               spellcheck="false"
+                               data-hint="hint-referral"
+                               aria-describedby="hint-referral{% if form.referral_code.errors %} err-referral_code{% endif %}"
+                               {% if form.referral_code.errors %}aria-invalid="true"{% endif %}>
+                        <p class="auth-hint" id="hint-referral" aria-live="polite"><span>Got a code from a friend? Add it here.</span></p>
+                        <div class="invalid-feedback" id="err-referral_code">{{ form.referral_code.errors.0 }}</div>
+                    </div>
                 </div>
-            </div>
-        </div>
+            </details>
+
+            <button class="ax-btn" type="submit">Create free account</button>
+
+            <p class="auth-foot">By creating an account you agree to our
+                <a href="{% url 'terms' %}" class="auth-link text-primary">Terms</a> and
+                <a href="{% url 'privacy' %}" class="auth-link text-primary">Privacy Policy</a>.</p>
+           
+        </form>
+
+        <p class="auth-foot">
+            Already have an account?
+            <a href="{% url 'login' %}{% if referral_code %}?ref={{ referral_code|urlencode }}{% endif %}" class="auth-link text-primary">Sign in</a>
+        </p>
+        <p class="auth-foot auth-foot--quiet">
+            <a href="{% url 'signup' %}{% if referral_code %}?ref={{ referral_code|urlencode }}{% endif %}" class="auth-link text-primary">Other sign-up options</a>
+            <span aria-hidden="true">&middot;</span>
+            <a href="{% url 'product_list' %}" class="auth-link text-primary">Browse first</a>
+        </p>
+
     </div>
 </div>
 
-<style>
-    /* Logo styling */
-    .logo-container {
-        width: 80px;
-        height: 80px;
-        margin: 0 auto;
-        background-color: white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        border: 2px solid var(--border-color);
-    }
-
-    .logo-img {
-        width: 50px;
-        height: 50px;
-        object-fit: contain;
-    }
-
-    /* Form control styling */
-    .form-control {
-        border-width: 2px;
-        border-style: solid;
-        border-color: var(--border-color);
-        transition: border-color 0.3s ease, box-shadow 0.3s ease;
-    }
-
-    .form-control:focus {
-        border-color: var(--accent-color);
-        box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.2);
-    }
-
-    .form-control.is-invalid {
-        border-color: #dc3545;
-        box-shadow: none;
-    }
-
-    .form-control.is-invalid:focus {
-        border-color: #dc3545;
-        box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.2);
-    }
-
-    .form-control.is-valid {
-        border-color: #198754;
-        box-shadow: none;
-    }
-
-    .form-control.is-valid:focus {
-        border-color: #198754;
-        box-shadow: 0 0 0 3px rgba(25, 135, 84, 0.2);
-    }
-
-    .invalid-feedback {
-        display: block;
-        width: 100%;
-        margin-top: 0.25rem;
-        font-size: 0.875rem;
-        color: #dc3545;
-    }
-
-    .valid-feedback {
-        display: block;
-        width: 100%;
-        margin-top: 0.25rem;
-        font-size: 0.875rem;
-        color: #198754;
-    }
-
-    .form-help-text {
-        font-size: 0.8rem;
-        margin-top: 0.5rem;
-        color: var(--text-secondary);
-        padding-left: 0.5rem;
-        line-height: 1.4;
-    }
-
-    /* Password Toggle */
-    .btn-toggle-password {
-        position: absolute;
-        right: 10px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--text-secondary);
-        z-index: 5;
-        padding: 0.25rem;
-        border: none;
-        background: none;
-    }
-
-    .btn-toggle-password:hover {
-        color: var(--accent-color);
-    }
-
-    /* Dark Theme Adjustments */
-    [data-bs-theme="dark"] .logo-container {
-        background-color: white;
-        border-color: var(--border-color);
-    }
-
-    [data-bs-theme="dark"] .form-control:focus {
-        border-color: var(--accent-color);
-        box-shadow: 0 0 0 3px rgba(205, 127, 50, 0.2);
-    }
-
-    /* Responsive Adjustments */
-    @media (max-width: 576px) {
-        .card-body {
-            padding: 1.5rem;
-        }
-        
-        .form-floating > label {
-            font-size: 0.9rem;
-        }
-
-        .logo-container {
-            width: 60px;
-            height: 60px;
-        }
-
-        .logo-img {
-            width: 35px;
-            height: 35px;
-        }
-    }
-</style>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Password toggle functionality
-        document.querySelectorAll('.btn-toggle-password').forEach(button => {
-            button.addEventListener('click', function() {
-                const input = this.closest('.form-floating').querySelector('input');
-                const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
-                input.setAttribute('type', type);
-                this.querySelector('i').classList.toggle('bi-eye');
-                this.querySelector('i').classList.toggle('bi-eye-slash');
-            });
+    /* Registration: one password field (confirm is mirrored), show/hide, inline validation,
+       live referral check, double-submit guard. Without JS the confirm field stays visible. */
+    (function () {
+        'use strict';
+
+        var form = document.querySelector('form[data-auth-form]');
+        if (!form) return;
+
+        var submit = form.querySelector('button[type="submit"]');
+        var label = submit.textContent;
+        var more = form.querySelector('.auth-more');
+        var pw1 = document.getElementById('id_password1');
+        var pw2 = document.getElementById('id_password2');
+        var confirmBox = form.querySelector('[data-confirm]');
+        var toggle = form.querySelector('[data-pw-toggle]');
+        var pwHint = document.getElementById('hint-password1');
+        var USERNAME_OK = /^[A-Za-z0-9@.+_\-]+$/;
+
+        // One password field: hide confirm and keep it equal to Password (the eye covers typos)
+        function mirror() { pw2.value = pw1.value; }
+        confirmBox.hidden = true;
+        mirror();
+
+        // Show / hide password (button is revealed here, so it never shows without JS)
+        toggle.hidden = false;
+        toggle.addEventListener('click', function () {
+            var show = pw1.type === 'password';
+            pw1.type = show ? 'text' : 'password';
+            toggle.setAttribute('aria-pressed', String(show));
+            toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+            var icon = toggle.querySelector('i');
+            icon.classList.toggle('bi-eye', !show);
+            icon.classList.toggle('bi-eye-slash', show);
+            pw1.focus();
         });
 
-        // Form validation
-        const form = document.querySelector('.needs-validation');
-        if (form) {
-            form.addEventListener('submit', function(event) {
-                if (!form.checkValidity()) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                }
-                form.classList.add('was-validated');
-            }, false);
+        // Live length hint: circle turns into a tick at 6 characters
+        function lengthHint() {
+            var ok = pw1.value.length >= 6;
+            pwHint.classList.toggle('auth-hint--ok', ok);
+            var icon = pwHint.querySelector('i');
+            icon.classList.toggle('bi-check-circle-fill', ok);
+            icon.classList.toggle('bi-circle', !ok);
         }
+        lengthHint();
 
-        // Real-time validation feedback
-        const inputs = document.querySelectorAll('.form-control');
-        inputs.forEach(input => {
-            input.addEventListener('blur', function() {
-                validateField(this);
-            });
-
-            input.addEventListener('input', function() {
-                if (this.classList.contains('is-invalid')) {
-                    validateField(this);
-                }
-            });
-        });
-
-        //Referral
-        const referralField = document.getElementById('id_referral_code');
-        if (referralField) {
-            // Show if code is pre-filled from URL
-            if (referralField.value) {
-                referralField.classList.add('is-valid');
+        // One rule per field; returns the message to show, or '' when the value is fine.
+        // Fields without a rule only show server errors.
+        var rules = {
+            username: function (v) {
+                if (!v) return 'Choose a username';
+                if (!USERNAME_OK.test(v)) return 'Use letters, numbers and . _ - @ + only, with no spaces';
+                return '';
+            },
+            password1: function (v) {
+                if (!v) return 'Choose a password';
+                if (v.length < 6) return 'Use at least 6 characters';
+                return '';
+            },
+            email: function (v, input) {
+                return v && !input.checkValidity() ? 'Enter a valid email, or leave it blank' : '';
             }
-            
-            // Optional: Real-time validation via AJAX
-            let referralTimeout;
-            referralField.addEventListener('input', function() {
-                clearTimeout(referralTimeout);
-                const code = this.value.trim();
-                
-                if (!code) {
-                    this.classList.remove('is-valid', 'is-invalid');
-                    return;
-                }
-                
-                referralTimeout = setTimeout(() => {
-                    fetch(`/api/validate-referral-code/?code=${encodeURIComponent(code)}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.valid) {
-                                referralField.classList.remove('is-invalid');
-                                referralField.classList.add('is-valid');
-                            } else {
-                                referralField.classList.remove('is-valid');
-                                referralField.classList.add('is-invalid');
-                            }
-                        })
-                        .catch(() => {
-                            // Don't mark invalid on network error
-                        });
-                }, 500);
-            });
+        };
+
+        function check(input) {
+            var rule = rules[input.name];
+            return rule ? rule(input.value, input) : '';
         }
 
-        // Password confirmation validation
-        const password1 = document.getElementById('id_password1');
-        const password2 = document.getElementById('id_password2');
-
-        if (password1 && password2) {
-            password2.addEventListener('input', function() {
-                if (this.value && password1.value) {
-                    if (this.value === password1.value) {
-                        this.classList.remove('is-invalid');
-                        this.classList.add('is-valid');
-                        const feedback = this.parentNode.querySelector('.invalid-feedback');
-                        if (feedback && !feedback.classList.contains('django-error')) {
-                            feedback.style.display = 'none';
-                        }
-                    } else {
-                        this.classList.remove('is-valid');
-                        this.classList.add('is-invalid');
-                        let feedback = this.parentNode.querySelector('.invalid-feedback');
-                        if (!feedback || feedback.classList.contains('django-error')) {
-                            feedback = document.createElement('div');
-                            feedback.className = 'invalid-feedback js-feedback';
-                            this.parentNode.appendChild(feedback);
-                        }
-                        feedback.textContent = 'Passwords do not match';
-                        feedback.style.display = 'block';
-                    }
-                }
-            });
-
-            password1.addEventListener('input', function() {
-                if (password2.value && this.value !== password2.value) {
-                    password2.classList.add('is-invalid');
-                    password2.classList.remove('is-valid');
-                }
-            });
-        }
-
-        function validateField(field) {
-            if (field.value.trim()) {
-                if (field.checkValidity()) {
-                    field.classList.remove('is-invalid');
-                    field.classList.add('is-valid');
-                } else {
-                    field.classList.remove('is-valid');
-                    field.classList.add('is-invalid');
-                }
+        // aria-describedby keeps the hint and adds the error id only while an error shows,
+        // so a cleared error is never read out again.
+        function flag(field, msg) {
+            var input = field.querySelector('input');
+            var out = field.querySelector('.invalid-feedback');
+            var bad = !!msg;
+            var base = input.getAttribute('data-hint') || '';
+            field.classList.toggle('has-error', bad);
+            input.setAttribute('aria-invalid', String(bad));
+            out.textContent = msg;
+            if (bad) {
+                input.setAttribute('aria-describedby', (base + ' ' + out.id).trim());
+            } else if (base) {
+                input.setAttribute('aria-describedby', base);
             } else {
-                field.classList.remove('is-valid', 'is-invalid');
+                input.removeAttribute('aria-describedby');
             }
         }
 
-        // Username validation
-        const usernameField = document.getElementById('id_username');
-        if (usernameField) {
-            usernameField.addEventListener('input', function() {
-                const value = this.value;
-                const validPattern = /^[a-zA-Z0-9@.+\-_]+$/;
-                
-                if (value && !validPattern.test(value)) {
-                    this.setCustomValidity('Only letters, digits and @/./+/-/_ allowed');
-                } else if (value && value.length < 1) {
-                    this.setCustomValidity('Username is required');
-                } else {
-                    this.setCustomValidity('');
-                }
+        var fields = Array.prototype.slice.call(form.querySelectorAll('.auth-field:not([data-confirm])'));
+
+        fields.forEach(function (f) {
+            var input = f.querySelector('input');
+
+            // Check on leaving a field, only when something was typed (no nagging while tabbing through)
+            input.addEventListener('blur', function () {
+                if (input.value && rules[input.name]) flag(f, check(input));
             });
+
+            // Clear an error as soon as the field becomes valid
+            input.addEventListener('input', function () {
+                if (f.classList.contains('has-error') && !check(input)) flag(f, '');
+            });
+        });
+
+        pw1.addEventListener('input', function () { mirror(); lengthHint(); });
+
+        // Referral code: live check, cosmetic only (the server still decides)
+        var ref = document.getElementById('id_referral_code');
+        var refField = ref.closest('.auth-field');
+        var refHint = document.getElementById('hint-referral');
+        var banner = document.getElementById('ref-applied');
+        var HINT_DEFAULT = 'Got a code from a friend? Add it here.';
+        var timer = null;
+        var seq = 0;
+
+        function setHint(kind, text) {
+            refHint.className = 'auth-hint' + (kind ? ' auth-hint--' + kind : '');
+            while (refHint.firstChild) refHint.removeChild(refHint.firstChild);
+            if (kind) {
+                var i = document.createElement('i');
+                i.className = 'bi ' + (kind === 'ok' ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill');
+                i.setAttribute('aria-hidden', 'true');
+                refHint.appendChild(i);
+            }
+            var s = document.createElement('span');
+            s.textContent = text;
+            refHint.appendChild(s);
         }
-    });
+
+        ref.addEventListener('input', function () {
+            clearTimeout(timer);
+            var mine = ++seq;                       // a late reply for an older value is ignored
+            if (banner) banner.hidden = true;       // the live hint below takes over once the code is edited
+            if (refField.classList.contains('has-error')) flag(refField, '');
+            setHint(null, HINT_DEFAULT);
+            var code = ref.value.trim();
+            if (!code) return;
+            timer = setTimeout(function () {
+                fetch('/api/validate-referral-code/?code=' + encodeURIComponent(code), { credentials: 'same-origin' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (mine !== seq) return;
+                        if (data.valid) setHint('ok', 'Code applied');
+                        else setHint('bad', 'We don\u2019t recognise this code. Check it, or leave it blank.');
+                    })
+                    .catch(function () { /* offline: say nothing */ });
+            }, 500);
+        });
+
+        form.addEventListener('submit', function (e) {
+            mirror();
+            var first = null;
+            fields.forEach(function (f) {
+                var input = f.querySelector('input');
+                var msg = check(input);
+                if (msg || f.classList.contains('has-error')) flag(f, msg);
+                if (msg && !first) first = input;
+            });
+            if (first) {
+                e.preventDefault();
+                if (more && !more.open && more.contains(first)) more.open = true;
+                first.focus();
+                return;
+            }
+
+            // Delay so the browser has already collected the form data
+            setTimeout(function () {
+                submit.disabled = true;
+                submit.setAttribute('aria-busy', 'true');
+                submit.innerHTML = '<span class="spinner-border" aria-hidden="true"></span><span>Creating account\u2026</span>';
+            }, 0);
+        });
+
+        // Coming back with the Back button restores the page from cache
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted) {
+                submit.disabled = false;
+                submit.removeAttribute('aria-busy');
+                submit.textContent = label;
+            }
+        });
+
+        // Focus: first server error, else the empty username on devices with a real pointer
+        var serverError = form.querySelector('.has-error input');
+        var username = form.querySelector('input[name="username"]');
+        if (serverError) serverError.focus();
+        else if (username && !username.value && window.matchMedia('(pointer: fine)').matches) username.focus();
+    })();
 </script>
 {% endblock %}
 {% block 'Footer'%}{% endblock %}

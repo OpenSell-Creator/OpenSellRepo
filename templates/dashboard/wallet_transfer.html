@@ -6,528 +6,330 @@
 
 {% block page_css %}
 <style>
-/* ── Base ── */
-.dashboard-container {
-    background-color: var(--background-color);
-    min-height: 100vh;
+/* Highlight colour for hover, selection and links: navy in light mode, orange in dark mode (no blue) */
+:root, [data-bs-theme="light"] { --hl: var(--primary-color); --hl-edge: var(--primary-color); --hl-soft: var(--primary-soft); }
+[data-bs-theme="dark"] { --hl: var(--accent-text); --hl-edge: var(--accent-color); --hl-soft: var(--accent-soft); }
+/* Buttons: same pill as the login page. Hover fills with the brand orange. */
+.ox-btn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-4); border: 2px solid var(--bs-white); border-radius: var(--radius-full); background: var(--primary-color); color: var(--bs-white); font: inherit; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); text-align: center; text-decoration: none; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); cursor: pointer; touch-action: manipulation; }
+.ox-btn:disabled { opacity: .7; cursor: default; }
+.ox-btn .spinner-border { width: 1rem; height: 1rem; border-width: .15em; }
+.ox-btn-sm { min-height: 2.5rem; width: auto; padding: 0 var(--sp-4); font-size: var(--font-size-sm); }
+.ox-btn-auto { display: inline-flex; width: auto; padding: 0 var(--sp-5); }
+.ox-btn.ox-btn-neutral { border: 1px solid var(--border-color); background: var(--card-background); color: var(--text-primary); box-shadow: none; }
+.ox-btn:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+@media (hover: hover) {
+    .ox-btn.ox-btn:not(:disabled):hover { background: var(--accent-color); color: var(--on-accent); }
+    .ox-btn.ox-btn-neutral:not(:disabled):hover { background: var(--hover-bg); color: var(--text-primary); border-color: var(--hl-edge); }
 }
-
-/* ── Header ── */
-.dashboard-header {
-    background-color: var(--primary-color);
-    margin: -2rem -1rem 2rem -1rem;
-    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
-    position: relative;
-    overflow: hidden;
-}
-
-.dashboard-title {
-    color: white;
-    font-weight: 700;
-    font-size: 2rem;
-    display: flex;
-    align-items: center;
-}
-
-.dashboard-subtitle {
-    color: rgba(255,255,255,0.85);
-    font-size: 1rem;
-    margin-bottom: 0;
-}
-
-.btn-back-header {
-    background-color: transparent;
-    color: white;
-    border: 2px solid rgba(255,255,255,0.3);
-    padding: 0.75rem 1.5rem;
-    border-radius: var(--radius-md);
-    font-weight: 500;
-    transition: all 0.3s ease;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-}
-.btn-back-header:hover {
-    background-color: rgba(255,255,255,0.1);
-    border-color: rgba(255,255,255,0.5);
-    color: white;
-}
-
-/* ── Balance pill in header ── */
-.balance-display {
-    background-color: var(--background-color);
-    border-radius: var(--radius-lg);
-    padding: 1.25rem;
-    text-align: center;
-}
-.balance-label  { color: var(--primary-text); font-size: .85rem; display: block; margin-bottom: .5rem; }
-.balance-amount { color: var(--primary-text); font-size: 2rem; font-weight: 700; margin-bottom: 0; }
-
-/* ── Cards ── */
-.dashboard-card {
-    background-color: var(--card-background);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    box-shadow: 0 2px 10px rgba(0,0,0,.05);
-}
-
-/* ── Inputs ── */
-.custom-input {
-    border: 1px solid var(--border-color);
-    border-radius: .375rem;
-    padding: .625rem .75rem;
-    font-size: .95rem;
-    transition: border-color .15s ease, box-shadow .15s ease;
-    background-color: var(--card-background);
+/* Shared core (assets/home-kit.css subset) */
+.ox {
+    --ox-navy: var(--primary-color);
+    --ox-orange: var(--accent-color);
+    --ox-green: var(--bs-success, var(--primary-color));
+    --ox-red: var(--bs-danger, var(--accent-color));
     color: var(--text-primary);
-    width: 100%;
+    font-size: var(--font-size-base);
+    line-height: var(--lh-body);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-4));
 }
-.custom-input:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 .25rem rgba(0,51,102,.25);
-    outline: 0;
-}
-.custom-input::placeholder { color: var(--text-muted); font-size: .95rem; }
+.ox a { text-decoration: none; }
+.ox [hidden] { display: none !important; }
+.t-navy { --tint: var(--ox-navy); } .t-orange { --tint: var(--ox-orange); } .t-green { --tint: var(--ox-green); } .t-red { --tint: var(--ox-red); }
+.ox-ico { display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-xl); }
+.ox-wash { position: relative; isolation: isolate; }
+.ox-wash::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .ox-wash::before { opacity: .09; }
+.ox a:focus-visible, .ox button:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
 
-.input-group .input-group-text {
-    border: 1px solid var(--border-color);
-    background-color: var(--hover-bg);
-    color: var(--text-primary);
-}
-.input-group .custom-input  { border-left: 0; }
-.input-group:focus-within .input-group-text { border-color: var(--primary-color); }
+/* Header */
+.ox-head { margin: -2rem -1rem var(--gap-sections); padding: calc(2rem + var(--sp-4)) var(--sp-4) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); }
+.ox-head-in { display: grid; gap: var(--sp-4); max-width: 40rem; margin: 0 auto; }
+.ox-head-l { display: flex; align-items: center; gap: var(--sp-2); }
+.ox-back { display: grid; place-items: center; flex: none; width: 2.75rem; height: 2.75rem; margin-left: calc(var(--sp-2) * -1); border-radius: var(--radius-full); color: var(--bs-white); font-size: var(--font-size-xl); }
+.ox-title { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-tight); }
+.ox-sub { margin: var(--sp-1) 0 0; font-size: var(--font-size-sm); color: rgba(255, 255, 255, .85); }
+.ox-bal { padding: var(--pad-l); border-radius: var(--radius-lg); background: var(--card-background); color: var(--text-primary); }
+.ox-bal-l { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.ox-total { margin: 0; font-size: var(--font-size-3xl); font-weight: 600; line-height: var(--lh-tight); }
 
-/* ── Quick-amount chips ── */
-.quick-amount-btn {
-    font-size: .8rem;
-    padding: .45rem .9rem;
-    border-radius: .4rem;
-    transition: all .2s ease;
-    border: 1px solid var(--border-color);
-    background-color: var(--hover-bg);
-    color: var(--text-primary);
-    cursor: pointer;
-}
-.quick-amount-btn:hover,
-.quick-amount-btn.active {
-    background-color: var(--primary-color);
-    color: white;
-    border-color: var(--primary-color);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,.1);
-}
+/* Cards */
+.ox-main { display: flex; flex-direction: column; gap: var(--gap-sections); max-width: 40rem; margin: 0 auto; }
+.ox-card { padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); }
+.ox-h2 { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-tight); }
+.ox-pill { display: inline-flex; align-items: center; gap: var(--sp-1); padding: 0 var(--sp-2); border: 1px solid var(--tint); border-radius: var(--radius-full); font-size: var(--font-size-xs); font-weight: 600; line-height: var(--lh-body); white-space: nowrap; }
 
-/* ── Confirm table rows ── */
-.confirm-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: .65rem 1rem;
-    border-bottom: 1px solid var(--border-color);
-}
-.confirm-row:last-child { border-bottom: none; }
+/* Form */
+.tf-field { margin-bottom: var(--gap-fields); }
+.tf-lab { display: block; margin: 0 0 var(--gap-label); font-size: var(--font-size-sm); font-weight: 600; color: var(--text-primary); }
+.tf-opt { font-weight: 400; color: var(--text-secondary); }
+.tf-input, .tf-note { display: flex; align-items: stretch; overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--background-color); }
+.tf-input span { display: grid; place-items: center; padding: 0 var(--sp-3); border-right: 1px solid var(--border-color); background: var(--hover-bg); color: var(--text-secondary); font-weight: 600; }
+.tf-input input, .tf-note input, .tf-note textarea { box-sizing: border-box; flex: 1 1 auto; width: 100%; min-width: 0; min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-3); border: 0; border-radius: 0; background: transparent; box-shadow: none; color: var(--text-primary); font: inherit; font-size: var(--font-size-base); }
+.tf-note textarea { min-height: 4.5rem; padding: var(--sp-2) var(--sp-3); resize: vertical; }
+.tf-input:focus-within, .tf-note:focus-within { outline: 2px solid var(--accent-color); outline-offset: 1px; border-color: var(--accent-color); }
+[data-bs-theme="dark"] .tf-input input, [data-bs-theme="dark"] .tf-note input, [data-bs-theme="dark"] .tf-note textarea { color-scheme: dark; }
+.tf-input input:focus, .tf-note input:focus, .tf-note textarea:focus { outline: 0; box-shadow: none; }
+.tf-input.is-bad { border-color: var(--error-text); }
+.tf-input input:-webkit-autofill, .tf-note input:-webkit-autofill { -webkit-text-fill-color: var(--text-primary); box-shadow: 0 0 0 1000px var(--background-color) inset; }
+.tf-err { margin: var(--sp-1) 0 0; font-size: var(--font-size-xs); font-weight: 600; color: var(--error-text); }
+.tf-chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(4.5rem, 1fr)); gap: var(--sp-2); margin-top: var(--sp-2); }
+.tf-chip { min-height: 2.5rem; padding: 0 var(--sp-2); border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--card-background); color: var(--text-primary); font: inherit; font-size: var(--font-size-sm); font-weight: 600; cursor: pointer; touch-action: manipulation; }
+.tf-chip[aria-pressed="true"] { border-color: var(--hl-edge); background: var(--hl-soft); color: var(--hl); }
+.tf-found { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); margin-top: var(--sp-2); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--tint); border-radius: var(--r-card-s); font-size: var(--font-size-base); }
+.tf-found b { font-weight: 600; }
+.tf-found small { font-size: var(--font-size-sm); color: var(--text-secondary); }
 
-/* ── Recipient lookup pill ── */
-.lookup-pill {
-    border-radius: .5rem;
-    padding: .5rem .9rem;
-    display: flex;
-    align-items: center;
-    gap: .5rem;
-    font-size: .87rem;
-}
-.lookup-pill.found    { background-color: rgba(25,135,84,.1);  border: 1px solid rgba(25,135,84,.3);  color: #198754; }
-.lookup-pill.missing  { background-color: rgba(220,53,69,.1);  border: 1px solid rgba(220,53,69,.3);  color: #dc3545; }
+/* Confirm stage */
+.tf-person { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); padding: var(--pad-s) var(--pad-m); border: 1px solid var(--tint); border-radius: var(--r-card-s); }
+.tf-person-t { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; gap: var(--sp-1); line-height: var(--lh-tight); }
+.tf-person-t b { overflow: hidden; font-size: var(--font-size-base); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.tf-person-t small { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.tf-sum { margin: 0 0 var(--sp-4); border: 1px solid var(--border-color); border-radius: var(--r-card-s); }
+.tf-sum div { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3); border-top: 1px solid var(--border-color); }
+.tf-sum div:first-child { border-top: 0; }
+.tf-sum dt { font-size: var(--font-size-sm); font-weight: 400; color: var(--text-secondary); }
+.tf-sum dd { margin: 0; font-size: var(--font-size-base); font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+.tf-sum dd small { display: block; font-size: var(--font-size-xs); font-weight: 400; color: var(--text-secondary); }
+.tf-sum .tf-big { font-size: var(--font-size-3xl); line-height: var(--lh-tight); }
+.tf-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--sp-2); }
+.tf-actions form { margin: 0; }
 
-/* ── Primary action button ── */
-.btn-primary-custom {
-    background-color: var(--primary-color);
-    color: white;
-    border: none;
-    padding: .75rem 1.5rem;
-    border-radius: var(--radius-md);
-    font-weight: 500;
-    transition: all .3s ease;
-    width: 100%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: .4rem;
-    cursor: pointer;
-}
-.btn-primary-custom:hover {
-    background-color: var(--primary-hover, #002244);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0,0,0,.2);
-    color: white;
-}
+/* Recent transfers */
+/* Cards, same as the profile page: 2.25rem icon, title, one-line subtitle; padding grows from 768px */
+.ox-card { padding: var(--pad-m); }
+@media (min-width: 768px) { .ox-card { padding: var(--pad-l); } }
+.ox-sec-h { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.ox-sec-h .ox-ico, .dep-sum .ox-ico { width: 2.25rem; height: 2.25rem; }
+.ox-sec-t { flex: 1 1 auto; min-width: 0; }
+.ox-sec-t .ox-h2 { margin: 0; }
+.ox-card-sub { margin: var(--sp-1) 0 0; font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+.ox-list { display: flex; flex-direction: column; }
+.ox-item { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; padding: var(--sp-2) 0; border-top: 1px solid var(--border-color); }
+.ox-item:first-child { border-top: 0; padding-top: 0; }
+.ox-item:last-child { padding-bottom: 0; }
+.ox-item .ox-ico { width: 2rem; height: 2rem; font-size: var(--font-size-lg); }
+.ox-item-t { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; gap: var(--sp-1); line-height: var(--lh-tight); }
+.ox-item-t b, .ox-item-t small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ox-item-t b { font-size: var(--font-size-sm); font-weight: 600; }
+.ox-item-t small { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.ox-end { display: flex; flex-direction: column; align-items: flex-end; gap: var(--sp-1); flex: none; line-height: var(--lh-tight); }
+.ox-amt { font-size: var(--font-size-base); font-weight: 600; white-space: nowrap; }
+.ox-amt.is-neg { color: var(--error-text); }
+.ox-end small { font-size: var(--font-size-xs); color: var(--text-secondary); }
 
-.btn-success-custom {
-    background-color: #198754;
-    color: white;
-    border: none;
-    padding: .75rem 1.5rem;
-    border-radius: var(--radius-md);
-    font-weight: 500;
-    transition: all .3s ease;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: .4rem;
-    cursor: pointer;
-}
-.btn-success-custom:hover {
-    background-color: #146c43;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0,0,0,.2);
-    color: white;
-}
-
-.btn-outline-custom {
-    background-color: transparent;
-    color: var(--text-primary);
-    border: 1px solid var(--border-color);
-    padding: .75rem 1.5rem;
-    border-radius: var(--radius-md);
-    font-weight: 500;
-    transition: all .3s ease;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: .4rem;
-    cursor: pointer;
-    text-decoration: none;
-}
-.btn-outline-custom:hover {
-    background-color: var(--hover-bg);
-    color: var(--text-primary);
-    border-color: var(--primary-color);
-}
-
-/* ── Recent transfers list ── */
-.transfer-item {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: .9rem 1.25rem;
-    border-bottom: 1px solid var(--border-color);
-    transition: background .15s;
-}
-.transfer-item:last-child { border-bottom: none; }
-.transfer-item:hover      { background-color: var(--hover-bg); }
-
-.transfer-icon {
-    width: 40px; height: 40px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-    font-size: 1.1rem;
-}
-.transfer-icon.out { background-color: rgba(220,53,69,.12); color: #dc3545; }
-.transfer-icon.in  { background-color: rgba(25,135,84,.12);  color: #198754; }
-
-/* ── Alerts ── */
-.deposit-alert {
-    padding: 1rem;
-    border-radius: .375rem;
-}
-.deposit-alert-light {
-    background-color: var(--hover-bg);
-    border: 1px solid var(--border-color);
-    color: var(--text-secondary);
-}
-
-/* ── Responsive ── */
-@media (max-width: 768px) {
-    .dashboard-header { margin: -1rem -.5rem 1.5rem -.5rem; }
-    .dashboard-title  { font-size: 1.25rem; }
-    .balance-amount   { font-size: 1.75rem; }
-    .btn-back-header span { display: none; }
-}
+@supports (-webkit-touch-callout: none) { .tf-input input, .tf-note input, .tf-note textarea { font-size: 1rem; } }
+@media (hover: hover) { .tf-chip:hover { border-color: var(--hl-edge); } }
+@media (min-width: 768px) { .ox-head-in { gap: var(--sp-5); } .ox-ico { width: 2.5rem; height: 2.5rem; } .ox-item .ox-ico { width: 2rem; height: 2rem; } }
 </style>
 {% endblock %}
 
 {% block 'Body' %}
-<div class="dashboard-container px-2 px-md-3 py-4" style="max-width:680px;margin:auto;">
+<div class="ox">
 
-  <!-- ════════════════════════════════════════
-       PAGE HEADER
-       ════════════════════════════════════════ -->
-  <div class="dashboard-header p-4">
-    <div class="d-flex align-items-center gap-3 mb-4">
-      <a href="{% url 'dashboard_home' %}" class="btn-back-header">
-        <i class="bi bi-arrow-left me-1"></i>
-        <span>Back</span>
-      </a>
-    </div>
+    <header class="ox-head">
+        <div class="ox-head-in">
+            <div class="ox-head-l">
+                <a href="{% url 'dashboard_home' %}" class="ox-back" aria-label="Back to dashboard"><i class="bi bi-arrow-left" aria-hidden="true"></i></a>
+                <div>
+                    <h1 class="ox-title">Send money</h1>
+                    <p class="ox-sub">Transfer funds instantly to any wallet user</p>
+                </div>
+            </div>
+            <div class="ox-bal">
+                <span class="ox-bal-l">Your balance</span>
+                <p class="ox-total">₦{{ account.balance|floatformat:2|intcomma }}</p>
+            </div>
+        </div>
+    </header>
 
-    <div class="row align-items-end g-3">
-      <div class="col-md-7">
-        <h1 class="dashboard-title mb-1">
-          <i class="bi bi-send-fill me-3"></i> Send Money
-        </h1>
-        <p class="dashboard-subtitle">Transfer funds instantly to any wallet user</p>
-      </div>
-      <div class="col-md-5">
-        <div class="balance-display">
-          <span class="balance-label">Your Balance</span>
-          <p class="balance-amount">₦{{ account.balance|floatformat:2|intcomma }}</p>
-        </div>
-      </div>
-    </div>
-  </div>
+    <div class="ox-main">
 
-  <!-- ════════════════════════════════════════
-       FLASH MESSAGES
-       ════════════════════════════════════════ -->
-  {% for message in messages %}
-  <div class="alert alert-{{ message.tags }} alert-dismissible fade show rounded-3 py-2 mb-3" role="alert">
-    <i class="bi bi-info-circle me-1"></i> {{ message }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-  </div>
-  {% endfor %}
+        <section class="ox-card" aria-labelledby="tfTitle">
 
-  <!-- ════════════════════════════════════════
-       MAIN CARD
-       ════════════════════════════════════════ -->
-  <div class="dashboard-card mb-4">
-    <div class="p-4">
+            {% if stage == "confirm" %}
+            <div class="ox-sec-h">
+                <span class="ox-ico t-green"><i class="bi bi-shield-check" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="tfTitle">Confirm transfer</h2><p class="ox-card-sub">Double-check the details before sending.</p></div>
+                <span class="ox-pill ox-wash t-navy">Step 2 of 2</span>
+            </div>
 
-      {% if stage == "confirm" %}
-      <!-- ───────────────────────────────────
-           STAGE 2 — Confirm
-           ─────────────────────────────────── -->
-      <div class="text-center mb-4">
-        <div class="rounded-circle d-inline-flex p-3 mb-2"
-             style="background-color:rgba(255,193,7,.15);">
-          <i class="bi bi-send-fill fs-3" style="color:#ffc107;"></i>
-        </div>
-        <h5 class="fw-semibold mb-1">Confirm Transfer</h5>
-        <p class="text-muted small mb-0">Double-check the details before sending</p>
-      </div>
+            <div class="tf-person ox-wash t-green">
+                <span class="ox-ico"><i class="bi bi-person-fill" aria-hidden="true"></i></span>
+                <span class="tf-person-t">
+                    <b>{{ recipient.user.get_full_name|default:recipient.user.username }}</b>
+                    <small>@{{ recipient.user.username }}</small>
+                </span>
+                <span class="ox-pill ox-wash t-green"><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Verified</span>
+            </div>
 
-      <!-- Recipient row -->
-      <div class="deposit-alert deposit-alert-light d-flex align-items-center gap-3 mb-3">
-        <div class="transfer-icon in">
-          <i class="bi bi-person-fill"></i>
-        </div>
-        <div class="flex-grow-1">
-          <div class="fw-semibold">
-            {{ recipient.user.get_full_name|default:recipient.user.username }}
-          </div>
-          <div class="text-muted small">@{{ recipient.user.username }}</div>
-        </div>
-        <span class="badge" style="background-color:rgba(25,135,84,.15);color:#198754;border:1px solid rgba(25,135,84,.3);">
-          <i class="bi bi-check-circle-fill me-1"></i>Verified
-        </span>
-      </div>
+            <dl class="tf-sum">
+                <div><dt>Sending</dt><dd class="tf-big">₦{{ amount|floatformat:2|intcomma }}</dd></div>
+                <div><dt>Balance after transfer</dt><dd>₦{{ balance_after|floatformat:2|intcomma }}<small>from ₦{{ account.balance|floatformat:2|intcomma }}</small></dd></div>
+                {% if note %}<div><dt>Note</dt><dd>{{ note }}</dd></div>{% endif %}
+            </dl>
 
-      <!-- Details table -->
-      <div class="dashboard-card mb-4" style="overflow:hidden;">
-        <div class="confirm-row">
-          <span class="text-muted small">Sending</span>
-          <span class="fw-bold fs-5">₦{{ amount|floatformat:2|intcomma }}</span>
-        </div>
-        <div class="confirm-row">
-          <span class="text-muted small">Balance after transfer</span>
-          <span class="fw-semibold small text-muted">
-            ₦{{ account.balance|floatformat:2|intcomma }}
-            &rarr;
-            ₦{{ balance_after|floatformat:2|intcomma }}
-          </span>
-        </div>
-        {% if note %}
-        <div class="confirm-row">
-          <span class="text-muted small">Note</span>
-          <span class="text-end" style="max-width:65%;">{{ note }}</span>
-        </div>
+            <div class="tf-actions">
+                <a href="{% url 'wallet_transfer' %}" class="ox-btn ox-btn-neutral">Cancel</a>
+                <form method="post" action="{% url 'wallet_transfer' %}" id="executeForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="execute">
+                    <input type="hidden" name="token" value="{{ token }}">
+                    <button type="submit" id="sendBtn" class="ox-btn"><i class="bi bi-send-fill me-2" aria-hidden="true"></i>Send ₦{{ amount|floatformat:2|intcomma }}</button>
+                </form>
+            </div>
+
+            {% else %}
+            <div class="ox-sec-h">
+                <span class="ox-ico t-navy"><i class="bi bi-send-fill" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="tfTitle">Transfer details</h2><p class="ox-card-sub">Who are you sending to, and how much?</p></div>
+                <span class="ox-pill ox-wash t-navy">Step 1 of 2</span>
+            </div>
+
+            <form method="post" action="{% url 'wallet_transfer' %}" id="transferForm" autocomplete="off">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="confirm">
+
+                <div class="tf-field">
+                    <label class="tf-lab" id="identLab" for="id_identifier">Send to</label>
+                    <div class="tf-input" id="identifierWrap">{{ form.identifier }}</div>
+                    {% if form.identifier.errors %}<p class="tf-err" id="identifierErr" role="alert">{{ form.identifier.errors.0 }}</p>{% endif %}
+                    <div id="lookupLive" aria-live="polite">
+                        <div id="recipientFound" class="tf-found ox-wash t-green" hidden>
+                            <i class="bi bi-person-check-fill" aria-hidden="true"></i>
+                            <b id="foundName"></b>
+                            <small id="foundEmail"></small>
+                        </div>
+                        <div id="recipientNotFound" class="tf-found ox-wash t-red" hidden>
+                            <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+                            <span id="notFoundMsg"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tf-field">
+                    <label class="tf-lab" id="amountLab" for="id_transfer_amount">Amount</label>
+                    <div class="tf-input" id="amountWrap"><span aria-hidden="true">₦</span>{{ form.amount }}</div>
+                    {% if form.amount.errors %}<p class="tf-err" id="amountErr" role="alert">{{ form.amount.errors.0 }}</p>{% endif %}
+                    <div class="tf-chips" role="group" aria-label="Quick amounts">
+                        <button type="button" class="tf-chip quick-chip" data-val="500" aria-pressed="false">₦500</button>
+                        <button type="button" class="tf-chip quick-chip" data-val="1000" aria-pressed="false">₦1,000</button>
+                        <button type="button" class="tf-chip quick-chip" data-val="2000" aria-pressed="false">₦2,000</button>
+                        <button type="button" class="tf-chip quick-chip" data-val="5000" aria-pressed="false">₦5,000</button>
+                        <button type="button" class="tf-chip quick-chip" data-val="10000" aria-pressed="false">₦10,000</button>
+                    </div>
+                </div>
+
+                <div class="tf-field">
+                    <label class="tf-lab" id="noteLab" for="id_note">Note <span class="tf-opt">(optional)</span></label>
+                    <div class="tf-note">{{ form.note }}</div>
+                </div>
+
+                <button type="submit" id="confirmBtn" class="ox-btn">Continue</button>
+            </form>
+            {% endif %}
+
+        </section>
+
+        {% if recent_sent or recent_received %}
+        <section class="ox-card" aria-labelledby="rtTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-navy"><i class="bi bi-clock-history" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="rtTitle">Recent transfers</h2></div>
+            </div>
+            <div class="ox-list">
+                {% for t in recent_sent %}
+                <div class="ox-item">
+                    <span class="ox-ico ox-wash t-red"><i class="bi bi-arrow-up-right" aria-hidden="true"></i></span>
+                    <span class="ox-item-t">
+                        <b>To @{{ t.recipient.user.username }}</b>
+                        <small>{{ t.created_at|date:"M d · g:i A" }}{% if t.note %} · {{ t.note }}{% endif %}</small>
+                    </span>
+                    <span class="ox-end">
+                        <span class="ox-amt is-neg">−₦{{ t.amount|floatformat:0|intcomma }}</span>
+                        <small>{{ t.reference|slice:":8"|upper }}</small>
+                    </span>
+                </div>
+                {% endfor %}
+
+                {% for t in recent_received %}
+                <div class="ox-item">
+                    <span class="ox-ico ox-wash t-green"><i class="bi bi-arrow-down-left" aria-hidden="true"></i></span>
+                    <span class="ox-item-t">
+                        <b>From @{{ t.sender.user.username }}</b>
+                        <small>{{ t.created_at|date:"M d · g:i A" }}{% if t.note %} · {{ t.note }}{% endif %}</small>
+                    </span>
+                    <span class="ox-end">
+                        <span class="ox-amt">+₦{{ t.amount|floatformat:0|intcomma }}</span>
+                        <small>{{ t.reference|slice:":8"|upper }}</small>
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
         {% endif %}
-      </div>
-
-      <!-- Actions -->
-      <div class="d-flex gap-2">
-        <a href="{% url 'wallet_transfer' %}" class="btn-outline-custom flex-fill">
-          <i class="bi bi-x-lg"></i> Cancel
-        </a>
-        <form method="post" action="{% url 'wallet_transfer' %}"
-              class="flex-fill" id="executeForm">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="execute">
-          <input type="hidden" name="token"  value="{{ token }}">
-          <button type="submit" id="sendBtn" class="btn-success-custom w-100">
-            <i class="bi bi-send-fill"></i> Send Money
-          </button>
-        </form>
-      </div>
-
-      {% else %}
-      <!-- ───────────────────────────────────
-           STAGE 1 — Input form
-           ─────────────────────────────────── -->
-
-      <form method="post" action="{% url 'wallet_transfer' %}"
-            id="transferForm" autocomplete="off">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="confirm">
-
-        <!-- Recipient -->
-        <div class="mb-3">
-          <label class="form-label fw-semibold" for="id_identifier">
-            Send to <span class="text-danger">*</span>
-          </label>
-          <div class="input-group">
-            <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
-            {{ form.identifier }}
-          </div>
-          {% if form.identifier.errors %}
-          <div class="text-danger small mt-1">
-            <i class="bi bi-exclamation-circle me-1"></i>{{ form.identifier.errors.0 }}
-          </div>
-          {% endif %}
-
-          <!-- Live lookup result -->
-          <div id="recipientFound" class="lookup-pill found mt-2 d-none">
-            <i class="bi bi-person-check-fill"></i>
-            <span id="foundName" class="fw-semibold"></span>
-            <span id="foundEmail" class="ms-1" style="opacity:.7;font-size:.8rem;"></span>
-          </div>
-          <div id="recipientNotFound" class="lookup-pill missing mt-2 d-none">
-            <i class="bi bi-exclamation-circle"></i>
-            <span id="notFoundMsg"></span>
-          </div>
-        </div>
-
-        <!-- Amount -->
-        <div class="mb-3">
-          <label class="form-label fw-semibold" for="id_transfer_amount">
-            Amount <span class="text-danger">*</span>
-          </label>
-          <div class="input-group">
-            <span class="input-group-text fw-bold">₦</span>
-            {{ form.amount }}
-          </div>
-          {% if form.amount.errors %}
-          <div class="text-danger small mt-1">
-            <i class="bi bi-exclamation-circle me-1"></i>{{ form.amount.errors.0 }}
-          </div>
-          {% endif %}
-
-          <!-- Quick-amount chips — hardcoded list, NO |split filter -->
-          <div class="d-flex gap-2 flex-wrap mt-2">
-            <button type="button" class="quick-amount-btn quick-chip" data-val="500">₦500</button>
-            <button type="button" class="quick-amount-btn quick-chip" data-val="1000">₦1,000</button>
-            <button type="button" class="quick-amount-btn quick-chip" data-val="2000">₦2,000</button>
-            <button type="button" class="quick-amount-btn quick-chip" data-val="5000">₦5,000</button>
-            <button type="button" class="quick-amount-btn quick-chip" data-val="10000">₦10,000</button>
-          </div>
-        </div>
-
-        <!-- Note -->
-        <div class="mb-4">
-          <label class="form-label fw-semibold">
-            Note <span class="text-muted fw-normal">(optional)</span>
-          </label>
-          {{ form.note }}
-        </div>
-
-        <button type="submit" id="confirmBtn" class="btn-primary-custom">
-          <i class="bi bi-arrow-right-circle"></i> Continue
-        </button>
-      </form>
-      {% endif %}
 
     </div>
-  </div><!-- /main card -->
-
-  <!-- ════════════════════════════════════════
-       RECENT TRANSFERS
-       ════════════════════════════════════════ -->
-  {% if recent_sent or recent_received %}
-  <div class="dashboard-card">
-    <div class="p-4 pb-2">
-      <h6 class="fw-semibold mb-0">Recent Transfers</h6>
-    </div>
-
-    {% for t in recent_sent %}
-    <div class="transfer-item">
-      <div class="transfer-icon out">
-        <i class="bi bi-arrow-up-right"></i>
-      </div>
-      <div class="flex-grow-1 overflow-hidden">
-        <div class="fw-semibold small text-truncate">To @{{ t.recipient.user.username }}</div>
-        <div class="text-muted text-truncate" style="font-size:.72rem;">
-          {{ t.created_at|date:"M d · g:i A" }}
-          {% if t.note %}<span class="mx-1">·</span>{{ t.note }}{% endif %}
-        </div>
-      </div>
-      <div class="text-end flex-shrink-0">
-        <div class="fw-semibold small" style="color:#dc3545;">−₦{{ t.amount|floatformat:0|intcomma }}</div>
-        <div class="text-muted" style="font-size:.68rem;">{{ t.reference|slice:":8"|upper }}</div>
-      </div>
-    </div>
-    {% endfor %}
-
-    {% for t in recent_received %}
-    <div class="transfer-item">
-      <div class="transfer-icon in">
-        <i class="bi bi-arrow-down-left"></i>
-      </div>
-      <div class="flex-grow-1 overflow-hidden">
-        <div class="fw-semibold small text-truncate">From @{{ t.sender.user.username }}</div>
-        <div class="text-muted text-truncate" style="font-size:.72rem;">
-          {{ t.created_at|date:"M d · g:i A" }}
-          {% if t.note %}<span class="mx-1">·</span>{{ t.note }}{% endif %}
-        </div>
-      </div>
-      <div class="text-end flex-shrink-0">
-        <div class="fw-semibold small" style="color:#198754;">+₦{{ t.amount|floatformat:0|intcomma }}</div>
-        <div class="text-muted" style="font-size:.68rem;">{{ t.reference|slice:":8"|upper }}</div>
-      </div>
-    </div>
-    {% endfor %}
-
-  </div>
-  {% endif %}
-
-</div><!-- /container -->
-{% endblock %}
-
-
-{% block extra_js %}
+</div>
 <script>
 (function () {
   'use strict';
 
+  const finePointer = () => window.matchMedia('(pointer: fine)').matches;
+
+  /* Find each widget by its form name, so a different generated id cannot break the page */
+  const byName = (n) => document.querySelector('#transferForm [name="' + n + '"]');
+  const identEl  = byName('identifier');
+  const amountEl = byName('amount');
+  const noteEl   = byName('note');
+  [[identEl, 'identLab'], [amountEl, 'amountLab'], [noteEl, 'noteLab']].forEach(([el, labId]) => {
+    const lab = document.getElementById(labId);
+    if (!el || !lab) return;
+    if (!el.id) el.id = 'tf_' + el.name;
+    lab.setAttribute('for', el.id);
+  });
+
+  /* ── Server-side errors: link them to their field ── */
+  [[identEl, 'identifierErr', 'identifierWrap'], [amountEl, 'amountErr', 'amountWrap']].forEach(([field, errId, wrapId]) => {
+    const err = document.getElementById(errId);
+    if (!field || !err) return;
+    field.setAttribute('aria-invalid', 'true');
+    field.setAttribute('aria-describedby', errId);
+    document.getElementById(wrapId).classList.add('is-bad');
+  });
+
   /* ── Live recipient lookup ── */
-  const input       = document.getElementById('id_identifier');
+  const input       = identEl;
   const found       = document.getElementById('recipientFound');
   const notFound    = document.getElementById('recipientNotFound');
   const foundName   = document.getElementById('foundName');
   const foundEmail  = document.getElementById('foundEmail');
   const notFoundMsg = document.getElementById('notFoundMsg');
   let timer;
+  let seq = 0;
 
   if (input) {
     input.addEventListener('input', function () {
       clearTimeout(timer);
-      found    && found.classList.add('d-none');
-      notFound && notFound.classList.add('d-none');
+      found.hidden = true;
+      notFound.hidden = true;
       const q = this.value.trim();
+      const mine = ++seq;
       if (q.length < 2) return;
 
       timer = setTimeout(() => {
         fetch(`{% url 'lookup_transfer_user' %}?q=${encodeURIComponent(q)}`)
           .then(r => r.json())
           .then(d => {
+            if (mine !== seq) return; // a newer keystroke owns the result
             if (d.found) {
               foundName.textContent  = d.full_name + ' (@' + d.username + ')';
               foundEmail.textContent = d.email;
-              found.classList.remove('d-none');
-              notFound.classList.add('d-none');
+              found.hidden = false;
+              notFound.hidden = true;
             } else {
               notFoundMsg.textContent = d.message || 'No account found';
-              notFound.classList.remove('d-none');
-              found.classList.add('d-none');
+              notFound.hidden = false;
+              found.hidden = true;
             }
           })
           .catch(() => {});
@@ -536,35 +338,58 @@
   }
 
   /* ── Quick-amount chips ── */
-  document.querySelectorAll('.quick-chip').forEach(btn => {
+  const chips = document.querySelectorAll('.quick-chip');
+
+  function syncChips() {
+    const current = amountEl ? parseFloat(amountEl.value) : NaN;
+    chips.forEach(b => b.setAttribute('aria-pressed', parseFloat(b.dataset.val) === current ? 'true' : 'false'));
+  }
+
+  chips.forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
-      e.stopPropagation();
-      const el = document.getElementById('id_transfer_amount');
-      if (el) {
-        el.value = btn.dataset.val;
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        el.focus();
-      }
-      document.querySelectorAll('.quick-chip').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+      if (!amountEl) return;
+      amountEl.value = btn.dataset.val;
+      amountEl.dispatchEvent(new Event('input', { bubbles: true }));
+      if (finePointer()) amountEl.focus();
     });
   });
+  if (amountEl) {
+    amountEl.addEventListener('input', syncChips);
+    syncChips();
+  }
 
   /* ── Prevent double-submit on both forms ── */
+  const labels = {};
   ['transferForm', 'executeForm'].forEach(id => {
     const form = document.getElementById(id);
     if (!form) return;
+    const btn = form.querySelector('[type="submit"]');
+    if (btn) labels[id] = btn.innerHTML;
     form.addEventListener('submit', function () {
-      const btn = this.querySelector('[type="submit"]');
       if (!btn || btn.disabled) return;
-      btn.disabled  = true;
-      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Processing…';
+      // Disable after the browser has collected the form data
+      setTimeout(() => {
+        btn.disabled  = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Processing…';
+      }, 0);
+    });
+  });
+
+  // Back button restores the page with a spinner button still disabled
+  window.addEventListener('pageshow', (e) => {
+    if (!e.persisted) return;
+    Object.keys(labels).forEach(id => {
+      const btn = document.getElementById(id).querySelector('[type="submit"]');
+      if (btn) { btn.disabled = false; btn.innerHTML = labels[id]; }
     });
   });
 
 })();
 </script>
 {% endblock %}
+
+
+
 
 {% block 'Footer' %}{% endblock %}

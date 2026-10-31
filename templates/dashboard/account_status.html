@@ -1,668 +1,243 @@
 {% extends "base.html" %}
 {% load static %}
 
+{% block title %}Account Status{% endblock %}
+
+{% block page_css %}
+<style>
+/* Highlight colour for hover, selection and links: navy in light mode, orange in dark mode (no blue) */
+:root, [data-bs-theme="light"] { --hl: var(--primary-color); --hl-edge: var(--primary-color); --hl-soft: var(--primary-soft); }
+[data-bs-theme="dark"] { --hl: var(--accent-text); --hl-edge: var(--accent-color); --hl-soft: var(--accent-soft); }
+/* Buttons: same pill as login, profile and the wallet pages. Hover fills with the brand orange. */
+.ox-btn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-4); border: 2px solid var(--bs-white); border-radius: var(--radius-full); background: var(--primary-color); color: var(--bs-white); font: inherit; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); text-align: center; text-decoration: none; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); cursor: pointer; touch-action: manipulation; }
+.ox-btn:disabled { opacity: .7; cursor: default; }
+.ox-btn .spinner-border { width: 1rem; height: 1rem; border-width: .15em; }
+.ox-btn-sm { min-height: 2.5rem; width: auto; padding: 0 var(--sp-4); font-size: var(--font-size-sm); }
+.ox-btn.ox-btn-neutral { border: 1px solid var(--border-color); background: var(--card-background); color: var(--text-primary); box-shadow: none; }
+.ox-btn.ox-btn-light { border-color: var(--bs-white); background: var(--bs-white); color: var(--primary-color); box-shadow: none; }
+.ox-btn.ox-btn-ghost { border-color: var(--bs-white); background: transparent; color: var(--bs-white); box-shadow: none; }
+.ox-btn:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+@media (hover: hover) {
+    .ox-btn.ox-btn:not(:disabled):hover { background: var(--accent-color); color: var(--on-accent); }
+    .ox-btn.ox-btn-neutral:not(:disabled):hover { background: var(--hover-bg); color: var(--text-primary); border-color: var(--hl-edge); }
+}
+/* Shared core */
+.ox {
+    --ox-navy: var(--primary-color);
+    --ox-orange: var(--accent-color);
+    --ox-green: var(--bs-success, var(--primary-color));
+    --ox-red: var(--bs-danger, var(--accent-color));
+    --ox-purple: var(--bs-purple, var(--primary-color));
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+    line-height: var(--lh-body);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-4));
+}
+.ox a { text-decoration: none; }
+.ox p { margin: 0; }
+.ox [hidden] { display: none !important; }
+.t-navy { --tint: var(--ox-navy); } .t-orange { --tint: var(--ox-orange); } .t-green { --tint: var(--ox-green); } .t-red { --tint: var(--ox-red); } .t-purple { --tint: var(--ox-purple); }
+.ox-ico { display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-lg); }
+.t-orange .ox-ico, .t-orange.ox-ico { color: var(--on-accent); }
+.ox-wash { position: relative; isolation: isolate; }
+.ox-wash::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .ox-wash::before { opacity: .09; }
+.ox a:focus-visible, .ox button:focus-visible, .ox summary:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+
+/* Header */
+.ox-head { margin: -2rem -1rem var(--gap-sections); padding: calc(2rem + var(--sp-4)) var(--sp-4) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); }
+.ox-head-in { display: grid; gap: var(--sp-4); max-width: var(--ox-w); margin: 0 auto; }
+.ox-head-l { display: flex; align-items: center; gap: var(--sp-2); }
+.ox-back { display: grid; place-items: center; flex: none; width: 2.75rem; height: 2.75rem; margin-left: calc(var(--sp-2) * -1); border-radius: var(--radius-full); color: var(--bs-white); font-size: var(--font-size-xl); }
+.ox-title { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-tight); }
+.ox-sub { margin: var(--sp-1) 0 0; font-size: var(--font-size-sm); color: rgba(255, 255, 255, .85); }
+.ox-bal { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--pad-l); border-radius: var(--radius-lg); background: var(--card-background); color: var(--text-primary); }
+.ox-bal-l { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.ox-total { margin: 0; font-size: var(--font-size-3xl); font-weight: 600; line-height: var(--lh-tight); }
+.ox-link { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1); min-height: 2.75rem; padding: 0 var(--sp-2); color: var(--hl); font-size: var(--font-size-sm); font-weight: 600; }
+@media (hover: hover) { .ox-link:hover { text-decoration: underline; } }
+
+/* Layout and cards (same as the profile page: icon, title, one-line subtitle) */
+.ox-main { display: flex; flex-direction: column; gap: var(--gap-sections); max-width: var(--ox-w); margin: 0 auto; }
+.ox-card { padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); }
+@media (min-width: 768px) { .ox-card { padding: var(--pad-l); } }
+.ox-sec-h { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.ox-sec-t { flex: 1 1 auto; min-width: 0; }
+.ox-h2 { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-tight); }
+.ox-card-sub { margin: var(--sp-1) 0 0; font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+.ox-pill { display: inline-flex; align-items: center; gap: var(--sp-1); padding: 0 var(--sp-2); border: 1px solid var(--tint); border-radius: var(--radius-full); font-size: var(--font-size-xs); font-weight: 600; line-height: var(--lh-body); white-space: nowrap; }
+.ox-alert { display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-md); font-size: var(--font-size-sm); line-height: var(--lh-snug); --tint: var(--ox-red); }
+.ox-alert i { margin-top: 1px; color: var(--error-text); }
+.ox-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-cards); }
+.ox-tile { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); line-height: var(--lh-tight); }
+.ox-tile .ox-ico { width: 2rem; height: 2rem; margin-bottom: var(--sp-1); }
+.ox-tile b { font-size: var(--font-size-xl); font-weight: 600; overflow-wrap: anywhere; }
+.ox-tile span { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.ox-tile small { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.ox-dl { margin: 0; border: 1px solid var(--border-color); border-radius: var(--r-card-s); }
+.ox-dl div { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3); border-top: 1px solid var(--border-color); }
+.ox-dl div:first-child { border-top: 0; }
+.ox-dl dt { font-size: var(--font-size-sm); font-weight: 400; color: var(--text-secondary); }
+.ox-dl dd { margin: 0; font-size: var(--font-size-base); font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+@media (hover: hover) { a.ox-tile:hover, a.ox-row:hover { border-color: var(--hl-edge); } }
+.ox-row { display: flex; align-items: center; gap: var(--sp-3); min-height: 2.75rem; padding: var(--pad-s) var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-base); font-weight: 600; }
+.ox-row .ox-ico { width: 2rem; height: 2rem; }
+.ox-row .bi-chevron-right { margin-left: auto; color: var(--text-secondary); }
+@media (min-width: 768px) { .ox-head-in { gap: var(--sp-5); } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+.ox { --ox-w: 48rem; }
+
+.as-who { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.as-who .ox-ico { width: 3rem; height: 3rem; font-size: var(--font-size-xl); }
+.as-who-t { min-width: 0; line-height: var(--lh-snug); }
+.as-name { margin: 0; font-size: var(--font-size-xl); font-weight: 600; }
+.as-desc { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.as-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-cards); }
+@media (min-width: 768px) { .as-tiles.is-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.as-tiles .ox-tile b { font-size: var(--font-size-lg); }
+.as-sub { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.as-sub-t { flex: 1 1 14rem; min-width: 0; font-size: var(--font-size-base); }
+.as-sub-t p + p { margin-top: var(--sp-1); font-size: var(--font-size-sm); color: var(--text-secondary); }
+.as-dl { margin-top: var(--sp-3); }
+.as-warn { margin-top: var(--sp-3); }
+.as-acts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-cards); }
+a.ox-tile { color: var(--text-primary); }
+.as-acts .ox-tile span:last-child { font-size: var(--font-size-sm); font-weight: 600; color: var(--text-primary); }
+@media (min-width: 768px) { .as-acts { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+</style>
+{% endblock %}
+
 {% block 'Body'%}
-<div class="dashboard-container">
-    <!-- Account Status Header -->
-    <div class="dashboard-header">
-        <div class="container">
-            <div class="row align-items-center py-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h1 class="dashboard-title">
-                        <i class="bi bi-person-badge me-2"></i>Account Status
-                    </h1>
-                    <a href="{% url 'dashboard_home' %}" class="btn btn-back">
-                        <i class="bi bi-arrow-left me-2"></i>Back
-                    </a>
-                </div>
-                <p class="dashboard-subtitle">Manage your account tier and benefits</p>
-            </div>
-        
-    
+<div class="ox">
 
-            <!-- Account Status Content -->
-            <div class="container">
-                <!-- Current Status Overview -->
-                <div class="row g-3 mb-3">
-                    <div class="col-12">
-                        <div class="status-overview-card">
-                            <div class="card-body">
-                                <div class="row align-items-center">
-                                    <div class="col-12 col-md-3 text-center mb-3 mb-md-0">
-                                        <div class="status-icon-large {{ account.effective_status.tier_type }}">
-                                            <i class="bi {% if account.effective_status.tier_type == 'pro' %}bi-star-fill{% else %}bi-person-fill{% endif %}"></i>
-                                        </div>
-                                        <h3 class="status-title mt-2">{{ account.effective_status.name }}</h3>
-                                        <p class="status-description">{{ account.effective_status.description }}</p>
-                                    </div>
-                                    <div class="col-12 col-md-9">
-                                        <div class="row g-2">
-                                            <!-- Max Listings -->
-                                            <div class="col-6 col-lg-3">
-                                                <div class="detail-item">
-                                                    <div class="detail-icon">
-                                                        <i class="bi bi-box-seam"></i>
-                                                    </div>
-                                                    <div class="detail-content">
-                                                        <h6>Max Listings</h6>
-                                                        <p>
-                                                            {% if account.effective_status.max_listings %}
-                                                                {{ account.effective_status.max_listings }}
-                                                            {% else %}
-                                                                Unlimited
-                                                            {% endif %}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Boost Discount -->
-                                            <div class="col-6 col-lg-3">
-                                                <div class="detail-item">
-                                                    <div class="detail-icon">
-                                                        <i class="bi bi-percent"></i>
-                                                    </div>
-                                                    <div class="detail-content">
-                                                        <h6>Boost Discount</h6>
-                                                        <p>{{ account.effective_status.boost_discount|default:0 }}%</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Priority Support -->
-                                            <div class="col-6 col-lg-3">
-                                                <div class="detail-item">
-                                                    <div class="detail-icon">
-                                                        <i class="bi bi-headset"></i>
-                                                    </div>
-                                                    <div class="detail-content">
-                                                        <h6>Support</h6>
-                                                        <p>
-                                                            {% if account.effective_status.tier_type == 'pro' %}
-                                                                Priority
-                                                            {% else %}
-                                                                Standard
-                                                            {% endif %}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Account Balance -->
-                                            <div class="col-6 col-lg-3">
-                                                <div class="detail-item">
-                                                    <div class="detail-icon">
-                                                        <i class="bi bi-wallet2"></i>
-                                                    </div>
-                                                    <div class="detail-content">
-                                                        <h6>Balance</h6>
-                                                        <p>₦{{ account.balance|floatformat:0 }}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+    <header class="ox-head">
+        <div class="ox-head-in">
+            <div class="ox-head-l">
+                <a href="{% url 'dashboard_home' %}" class="ox-back" aria-label="Back to dashboard"><i class="bi bi-arrow-left" aria-hidden="true"></i></a>
+                <div>
+                    <h1 class="ox-title">Account status</h1>
+                    <p class="ox-sub">Manage your account tier and benefits</p>
                 </div>
             </div>
         </div>
-    </div>
+    </header>
 
-        <!-- Subscription Status -->
+    <div class="ox-main">
+
+        {# ---- Current tier ---- #}
+        <section class="ox-card" aria-labelledby="tierTitle">
+            <div class="as-who">
+                <span class="ox-ico {% if account.effective_status.tier_type == 'pro' %}t-orange{% else %}t-navy{% endif %}"><i class="bi {% if account.effective_status.tier_type == 'pro' %}bi-star-fill{% else %}bi-person-fill{% endif %}" aria-hidden="true"></i></span>
+                <div class="as-who-t">
+                    <h2 class="as-name" id="tierTitle">{{ account.effective_status.name }}</h2>
+                    <p class="as-desc">{{ account.effective_status.description }}</p>
+                </div>
+            </div>
+            <div class="as-tiles is-4">
+                <div class="ox-tile">
+                    <span class="ox-ico t-navy"><i class="bi bi-box-seam" aria-hidden="true"></i></span>
+                    <span>Max listings</span>
+                    <b>{% if account.effective_status.max_listings %}{{ account.effective_status.max_listings }}{% else %}Unlimited{% endif %}</b>
+                </div>
+                <div class="ox-tile">
+                    <span class="ox-ico t-green"><i class="bi bi-percent" aria-hidden="true"></i></span>
+                    <span>Boost discount</span>
+                    <b>{{ account.effective_status.boost_discount|default:0 }}%</b>
+                </div>
+                <div class="ox-tile">
+                    <span class="ox-ico t-purple"><i class="bi bi-headset" aria-hidden="true"></i></span>
+                    <span>Support</span>
+                    <b>{% if account.effective_status.tier_type == 'pro' %}Priority{% else %}Standard{% endif %}</b>
+                </div>
+                <div class="ox-tile">
+                    <span class="ox-ico t-orange"><i class="bi bi-wallet2" aria-hidden="true"></i></span>
+                    <span>Balance</span>
+                    <b>₦{{ account.balance|floatformat:"0g" }}</b>
+                </div>
+            </div>
+        </section>
+
+        {# ---- Subscription ---- #}
         {% if account.subscription_info %}
-        <div class="row g-3 mb-3">
-            <div class="col-12">
-                <div class="dashboard-card">
-                    <div class="card-header">
-                        <h5 class="card-title">
-                            <i class="bi bi-calendar-check me-2"></i>Subscription Status
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        {% if account.subscription_info.active %}
-                        <div class="row align-items-center">
-                            <div class="col-12 col-md-8">
-                                <h6 class="subscription-status">
-                                    <i class="bi bi-check-circle-fill text-success me-2"></i>
-                                    Active Subscription
-                                </h6>
-                                <p class="subscription-details">
-                                    Your {{ account.subscription_info.type|title }} subscription is active until 
-                                    <strong>{{ account.subscription_info.end_date|date:"F d, Y" }}</strong>
-                                </p>
-                                <div class="row g-2 mt-2">
-                                    <div class="col-4">
-                                        <small class="text-muted d-block">Days Remaining</small>
-                                        <strong>{{ days_until_expiry|default:"N/A" }}</strong>
-                                    </div>
-                                    <div class="col-4">
-                                        <small class="text-muted d-block">Type</small>
-                                        <strong>{{ account.subscription_info.type|title }}</strong>
-                                    </div>
-                                    <div class="col-4">
-                                        <small class="text-muted d-block">Auto Renewal</small>
-                                        <strong>
-                                            {% if account.subscription_info.auto_renewal %}
-                                                <span class="text-success">Enabled</span>
-                                            {% else %}
-                                                <span class="text-warning">Disabled</span>
-                                            {% endif %}
-                                        </strong>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-4 text-md-end mt-2 mt-md-0">
-                                <a href="{% url 'subscription_management' %}" class="btn btn-outline-primary btn-sm">
-                                    <i class="bi bi-gear me-2"></i>Manage
-                                </a>
-                                {% if days_until_expiry and days_until_expiry <= 7 %}
-                                <div class="alert alert-warning py-1 px-2 mt-2 mb-0">
-                                    <small><i class="bi bi-exclamation-triangle me-1"></i>Expires in {{ days_until_expiry }} day{{ days_until_expiry|pluralize }}</small>
-                                </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        {% else %}
-                        <div class="row align-items-center">
-                            <div class="col-12 col-md-8">
-                                <h6 class="subscription-status">
-                                    <i class="bi bi-x-circle-fill text-muted me-2"></i>
-                                    No Active Subscription
-                                </h6>
-                                <p class="subscription-details mb-0">
-                                    Upgrade to Pro to unlock unlimited listings, boost discounts, and priority support.
-                                </p>
-                            </div>
-                            <div class="col-12 col-md-4 text-md-end mt-2 mt-md-0">
-                                <a href="{% url 'subscription_management' %}" class="btn btn-primary btn-sm">
-                                    <i class="bi bi-star-fill me-2"></i>Upgrade to Pro
-                                </a>
-                            </div>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
+        <section class="ox-card" aria-labelledby="subTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-navy"><i class="bi bi-calendar-check" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="subTitle">Subscription status</h2></div>
+                {% if account.subscription_info.active %}<span class="ox-pill ox-wash t-green"><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Active</span>{% endif %}
             </div>
-        </div>
+
+            {% if account.subscription_info.active %}
+            <div class="as-sub">
+                <div class="as-sub-t">
+                    <p>Your {{ account.subscription_info.type|title }} subscription is active until <strong>{{ account.subscription_info.end_date|date:"F d, Y" }}</strong>.</p>
+                </div>
+                <a href="{% url 'subscription_management' %}" class="ox-btn ox-btn-neutral ox-btn-sm"><i class="bi bi-gear" aria-hidden="true"></i>Manage</a>
+            </div>
+            <dl class="ox-dl as-dl">
+                <div><dt>Days remaining</dt><dd>{{ days_until_expiry|default:"N/A" }}</dd></div>
+                <div><dt>Type</dt><dd>{{ account.subscription_info.type|title }}</dd></div>
+                <div><dt>Auto renewal</dt><dd>{% if account.subscription_info.auto_renewal %}Enabled{% else %}Disabled{% endif %}</dd></div>
+            </dl>
+            {% if days_until_expiry and days_until_expiry <= 7 %}
+            <p class="ox-alert ox-wash as-warn" role="status"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i><span>Expires in {{ days_until_expiry }} day{{ days_until_expiry|pluralize }}</span></p>
+            {% endif %}
+            {% else %}
+            <div class="as-sub">
+                <div class="as-sub-t">
+                    <p><b>No active subscription</b></p>
+                    <p>Upgrade to Pro to unlock unlimited listings, boost discounts, and priority support.</p>
+                </div>
+                <a href="{% url 'subscription_management' %}" class="ox-btn ox-btn-sm"><i class="bi bi-star-fill" aria-hidden="true"></i>Upgrade to Pro</a>
+            </div>
+            {% endif %}
+        </section>
         {% endif %}
 
-        <!-- Account Statistics -->
-        <div class="row g-3 mb-3">
-            <div class="col-6 col-lg-3">
-                <div class="dashboard-card stats-card">
-                    <div class="card-body text-center">
-                        <div class="stat-icon listings">
-                            <i class="bi bi-box-seam"></i>
-                        </div>
-                        <h4 class="stat-number">{{ total_listings|default:0 }}</h4>
-                        <p class="stat-label">Total Listings</p>
-                        {% if account.effective_status.max_listings %}
-                        <small class="text-muted">{{ total_listings|default:0 }}/{{ account.effective_status.max_listings }}</small>
-                        {% endif %}
-                    </div>
-                </div>
+        {# ---- Numbers ---- #}
+        <div class="as-tiles is-4">
+            <div class="ox-tile">
+                <span class="ox-ico t-navy"><i class="bi bi-box-seam" aria-hidden="true"></i></span>
+                <b>{{ total_listings|default:0 }}</b>
+                <span>Total listings</span>
+                {% if account.effective_status.max_listings %}<small>{{ total_listings|default:0 }}/{{ account.effective_status.max_listings }}</small>{% endif %}
             </div>
-
-            <div class="col-6 col-lg-3">
-                <div class="dashboard-card stats-card">
-                    <div class="card-body text-center">
-                        <div class="stat-icon boosts">
-                            <i class="bi bi-rocket-takeoff"></i>
-                        </div>
-                        <h4 class="stat-number">{{ total_boosts|default:0 }}</h4>
-                        <p class="stat-label">Total Boosts</p>
-                        <small class="text-muted">{{ active_boosts|default:0 }} active</small>
-                    </div>
-                </div>
+            <div class="ox-tile">
+                <span class="ox-ico t-orange"><i class="bi bi-rocket-takeoff" aria-hidden="true"></i></span>
+                <b>{{ total_boosts|default:0 }}</b>
+                <span>Total boosts</span>
+                <small>{{ active_boosts|default:0 }} active</small>
             </div>
-
-            <div class="col-6 col-lg-3">
-                <div class="dashboard-card stats-card">
-                    <div class="card-body text-center">
-                        <div class="stat-icon transactions">
-                            <i class="bi bi-graph-up"></i>
-                        </div>
-                        <h4 class="stat-number">{{ total_transactions|default:0 }}</h4>
-                        <p class="stat-label">Transactions</p>
-                        <small class="text-muted">₦{{ total_spent|default:0|floatformat:0 }}</small>
-                    </div>
-                </div>
+            <div class="ox-tile">
+                <span class="ox-ico t-green"><i class="bi bi-graph-up" aria-hidden="true"></i></span>
+                <b>{{ total_transactions|default:0 }}</b>
+                <span>Transactions</span>
+                <small>₦{{ total_spent|default:0|floatformat:"0g" }}</small>
             </div>
-
-            <div class="col-6 col-lg-3">
-                <div class="dashboard-card stats-card">
-                    <div class="card-body text-center">
-                        <div class="stat-icon savings">
-                            <i class="bi bi-piggy-bank"></i>
-                        </div>
-                        <h4 class="stat-number">₦{{ total_savings|default:0|floatformat:0 }}</h4>
-                        <p class="stat-label">Total Savings</p>
-                        <small class="text-muted">From Pro</small>
-                    </div>
-                </div>
+            <div class="ox-tile">
+                <span class="ox-ico t-purple"><i class="bi bi-piggy-bank" aria-hidden="true"></i></span>
+                <b>₦{{ total_savings|default:0|floatformat:"0g" }}</b>
+                <span>Total savings</span>
+                <small>From Pro</small>
             </div>
         </div>
 
-        <!-- Quick Actions -->
-        <div class="row g-3">
-            <div class="col-12">
-                <div class="dashboard-card">
-                    <div class="card-header">
-                        <h5 class="card-title">
-                            <i class="bi bi-lightning-fill me-2"></i>Quick Actions
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row g-2">
-                            {% if not account.is_subscription_active %}
-                            <div class="col-6 col-lg-3">
-                                <a href="{% url 'subscription_management' %}" class="action-card">
-                                    <i class="bi bi-star-fill"></i>
-                                    <span>Upgrade to Pro</span>
-                                </a>
-                            </div>
-                            {% endif %}
-
-                            <div class="col-6 col-lg-3">
-                                <a href="{% url 'deposit_with_monnify' %}" class="action-card">
-                                    <i class="bi bi-wallet2"></i>
-                                    <span>Add Funds</span>
-                                </a>
-                            </div>
-
-                            <div class="col-6 col-lg-3">
-                                <a href="{% url 'transaction_history' %}" class="action-card">
-                                    <i class="bi bi-clock-history"></i>
-                                    <span>Transactions</span>
-                                </a>
-                            </div>
-
-                            <div class="col-6 col-lg-3">
-                                <a href="{% url 'my_store' %}" class="action-card">
-                                    <i class="bi bi-shop"></i>
-                                    <span>My Store</span>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        {# ---- Quick actions ---- #}
+        <section class="ox-card" aria-labelledby="qaTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-orange"><i class="bi bi-lightning-fill" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="qaTitle">Quick actions</h2></div>
             </div>
-        </div>
+            <div class="as-acts">
+                {% if not account.is_subscription_active %}
+                <a href="{% url 'subscription_management' %}" class="ox-tile"><span class="ox-ico t-orange"><i class="bi bi-star-fill" aria-hidden="true"></i></span><span>Upgrade to Pro</span></a>
+                {% endif %}
+                <a href="{% url 'deposit_with_monnify' %}" class="ox-tile"><span class="ox-ico t-navy"><i class="bi bi-wallet2" aria-hidden="true"></i></span><span>Add funds</span></a>
+                <a href="{% url 'transaction_history' %}" class="ox-tile"><span class="ox-ico t-green"><i class="bi bi-clock-history" aria-hidden="true"></i></span><span>Transactions</span></a>
+                <a href="{% url 'my_store' %}" class="ox-tile"><span class="ox-ico t-purple"><i class="bi bi-shop" aria-hidden="true"></i></span><span>My store</span></a>
+            </div>
+        </section>
+
     </div>
 </div>
-
-<style>
-    /* Base Typography */
-    .dashboard-container {
-        background-color: var(--background-color);
-        min-height: 100vh;
-        font-size: 0.9rem;
-    }
-
-    /* Header */
-    .dashboard-header {
-        background-color: var(--primary-color);
-        margin: 0rem -1rem 1.5rem -1rem;
-        border-radius: 0 0 1rem 1rem;
-    }
-
-    .dashboard-title {
-        color: white;
-        font-weight: 700;
-        font-size: 1.5rem;
-        margin-bottom: 0.25rem;
-    }
-
-    .dashboard-subtitle {
-        color: rgba(255, 255, 255, 0.85);
-        font-size: 0.9rem;
-        margin-bottom: 0;
-    }
-
-    .btn-back {
-        background-color: transparent;
-        color: white;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        padding: 0.75rem 1.5rem;
-        border-radius: var(--radius-md);
-        font-weight: 500;
-        transition: all 0.3s ease;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-    }
-
-    .btn-back:hover {
-        background-color: rgba(255, 255, 255, 0.1);
-        border-color: rgba(255, 255, 255, 0.5);
-        color: white;
-    }
-
-    /* Status Overview Card */
-    .status-overview-card {
-
-    }
-
-    .status-icon-large {
-        width: 70px;
-        height: 70px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2rem;
-        margin: 0 auto;
-    }
-
-    .status-icon-large.free {
-        background-color: var(--hover-bg);
-        color: var(--text-secondary);
-        border: 2px solid var(--border-color);
-    }
-
-    .status-icon-large.pro {
-        background: linear-gradient(135deg, var(--accent-color) 0%, var(--primary-color) 100%);
-        color: white;
-        border: 2px solid var(--accent-color);
-    }
-
-    .status-title {
-        color: white;
-        font-weight: 700;
-        font-size: 1.5rem;
-        margin-bottom: 0.25rem;
-    }
-
-    .status-description {
-        color: rgba(255, 255, 255, 0.85);
-        font-size: 0.8rem;
-        margin-bottom: 0;
-    }
-
-    .detail-item {
-        display: flex;
-        align-items: center;
-        padding: 0.75rem;
-        background-color: var(--hover-bg);
-        border-radius: 0.5rem;
-        border: 1px solid var(--border-color);
-        height: 100%;
-        transition: all 0.3s ease;
-    }
-
-    .detail-item:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 2px 8px var(--shadow-color);
-    }
-
-    .detail-icon {
-        width: 35px;
-        height: 35px;
-        border-radius: 0.5rem;
-        background-color: var(--primary-color);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 0.75rem;
-        font-size: 1rem;
-        flex-shrink: 0;
-    }
-
-    .detail-content h6 {
-        color: var(--text-secondary);
-        font-weight: 600;
-        margin-bottom: 0.125rem;
-        font-size: 0.75rem;
-    }
-
-    .detail-content p {
-        color: var(--text-primary);
-        margin-bottom: 0;
-        font-weight: 600;
-        font-size: 1rem;
-    }
-
-    /* Dashboard Cards */
-    .dashboard-card {
-        background-color: var(--card-background);
-        border: 1px solid var(--border-color);
-        border-radius: 0.75rem;
-        box-shadow: 0 2px 8px var(--shadow-color);
-        height: 100%;
-    }
-
-    .card-header {
-        background-color: transparent;
-        border-bottom: 1px solid var(--border-color);
-        padding: 0.875rem 1rem;
-    }
-
-    .card-title {
-        color: var(--text-primary);
-        font-weight: 600;
-        margin-bottom: 0;
-        font-size: 1.2rem;
-        display: flex;
-        align-items: center;
-    }
-
-    .card-body {
-        padding: 1rem;
-    }
-
-    /* Subscription Status */
-    .subscription-status {
-        color: var(--text-primary);
-        font-weight: 600;
-        margin-bottom: 0.5rem;
-        font-size: 1rem;
-    }
-
-    .subscription-details {
-        color: var(--text-secondary);
-        font-size: 0.9rem;
-        margin-bottom: 1rem;
-    }
-
-    /* Stats Cards */
-    .stats-card {
-        transition: all 0.3s ease;
-    }
-
-    .stats-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 4px 12px var(--shadow-color);
-    }
-
-    .stat-icon {
-        width: 45px;
-        height: 45px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-        margin: 0 auto 0.75rem;
-    }
-
-    .stat-icon.listings {
-        background-color: rgba(0, 77, 153, 0.1);
-        color: var(--info);
-    }
-
-    .stat-icon.boosts {
-        background-color: rgba(255, 102, 0, 0.1);
-        color: var(--accent-color);
-    }
-
-    .stat-icon.transactions {
-        background-color: rgba(40, 167, 69, 0.1);
-        color: var(--success);
-    }
-
-    .stat-icon.savings {
-        background-color: rgba(255, 102, 0, 0.1);
-        color: var(--warning);
-    }
-
-    .stat-number {
-        color: var(--text-primary);
-        font-weight: 700;
-        font-size: 1.75rem;
-        margin-bottom: 0.25rem;
-    }
-
-    .stat-label {
-        color: var(--text-secondary);
-        font-weight: 500;
-        font-size: 0.8rem;
-        margin-bottom: 0.25rem;
-    }
-
-    /* Quick Actions */
-    .action-card {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem 0.5rem;
-        background-color: var(--card-background);
-        border: 1px solid var(--border-color);
-        border-radius: 0.5rem;
-        text-decoration: none;
-        color: var(--text-primary);
-        transition: all 0.3s ease;
-        height: 100%;
-        min-height: 80px;
-    }
-
-    .action-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 3px 10px var(--shadow-color);
-        color: var(--text-primary);
-        border-color: var(--primary-color);
-    }
-
-    .action-card i {
-        font-size: 1.5rem;
-        color: var(--primary-text);
-        margin-bottom: 0.5rem;
-    }
-
-    .action-card span {
-        font-size: 0.8rem;
-        font-weight: 500;
-        text-align: center;
-    }
-
-    /* Responsive Design */
-    @media (max-width: 768px) {
-        .dashboard-title {
-            font-size: 1.25rem;
-        }
-
-        
-
-        .status-icon-large {
-            width: 60px;
-            height: 60px;
-            font-size: 1.75rem;
-        }
-
-        .status-title {
-            font-size: 1rem;
-        }
-
-        .detail-item {
-            padding: 0.6rem;
-        }
-
-        .detail-icon {
-            width: 30px;
-            height: 30px;
-            font-size: 0.9rem;
-            margin-right: 0.5rem;
-        }
-
-        .detail-content h6 {
-            font-size: 0.7rem;
-        }
-
-        .detail-content p {
-            font-size: 0.85rem;
-        }
-
-        .stat-number {
-            font-size: 1.5rem;
-        }
-
-        .stat-icon {
-            width: 40px;
-            height: 40px;
-            font-size: 1.1rem;
-        }
-    }
-
-    @media (max-width: 576px) {
-        .dashboard-header {
-            margin: -1rem -0.5rem 1rem -0.5rem;
-        }
-
-        .dashboard-title {
-            font-size: 1.1rem;
-        }
-
-        .dashboard-subtitle {
-            font-size: 0.75rem;
-        }
-    }
-</style>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Animate numbers on scroll
-    const animateNumbers = () => {
-        const numbers = document.querySelectorAll('.stat-number');
-        
-        numbers.forEach(number => {
-            const text = number.textContent.replace(/[^\d]/g, '');
-            if (!text) return;
-            
-            const finalValue = parseInt(text);
-            let currentValue = 0;
-            const increment = finalValue / 30;
-            
-            const updateNumber = () => {
-                if (currentValue < finalValue) {
-                    currentValue += increment;
-                    const formatted = Math.floor(currentValue).toLocaleString();
-                    number.textContent = number.textContent.includes('₦') ? '₦' + formatted : formatted;
-                    requestAnimationFrame(updateNumber);
-                } else {
-                    const formatted = finalValue.toLocaleString();
-                    number.textContent = number.textContent.includes('₦') ? '₦' + formatted : formatted;
-                }
-            };
-            
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        updateNumber();
-                        observer.unobserve(entry.target);
-                    }
-                });
-            });
-            
-            observer.observe(number);
-        });
-    };
-
-    animateNumbers();
-});
-</script>
 {% endblock %}
 {% block 'Footer'%}{% endblock %}

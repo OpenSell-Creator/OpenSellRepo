@@ -1,95 +1,96 @@
 {% extends 'messages/base.html' %}
 
-{% block messages_content %}
+{% block title %}{{ conversation.get_content_title }} - OpenSell{% endblock %}
 
-{# ── Back link ──────────────────────────────────────────────────────────── #}
-<div class="mb-3">
-    <a href="{% url 'inbox' %}" class="back-button text-decoration-none">
-        <i class="fas fa-arrow-left me-1"></i> Back to Inbox
-    </a>
-</div>
-
-{# ── Content summary card ─────────────────────────────────────────────────── #}
-<div class="content-summary card mb-3">
-    <div class="card-body py-3">
-        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-
-            <div class="flex-grow-1">
-                {# Type + status badges #}
-                <div class="d-flex flex-wrap gap-1 align-items-center mb-2">
-                    <span class="badge content-type-badge
-                        {% if conversation.content_type.model == 'product_listing' %}badge-product
-                        {% elif conversation.content_type.model == 'servicelisting' %}badge-service
-                        {% elif conversation.content_type.model == 'buyerrequest' %}badge-request
-                        {% endif %}">
-                        <i class="fas
-                            {% if conversation.content_type.model == 'product_listing' %}fa-box
-                            {% elif conversation.content_type.model == 'servicelisting' %}fa-briefcase
-                            {% elif conversation.content_type.model == 'buyerrequest' %}fa-search
-                            {% endif %} me-1"></i>
-                        {{ conversation.get_content_type_display }}
-                    </span>
-                    {% if linked_inquiry %}
-                        <span class="badge badge-status-{{ linked_inquiry.status }}">
-                            Inquiry: {{ linked_inquiry.get_status_display }}
-                        </span>
-                    {% elif linked_response %}
-                        <span class="badge badge-status-{{ linked_response.status }}">
-                            Response: {{ linked_response.get_status_display }}
-                        </span>
+{# ── Navy header band: back, the other person, what the chat is about ───────── #}
+{% block messages_header %}
+<style>
+.cv-head { margin: -2rem -1rem 0; padding: calc(2rem + var(--sp-4)) var(--sp-4) var(--sp-4); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); }
+.cv-head-in { display: flex; align-items: center; gap: var(--sp-3); max-width: 46rem; margin: 0 auto; }
+.cv-back { display: grid; place-items: center; flex: none; width: 2.5rem; height: 2.5rem; border-radius: var(--radius-full); background: rgba(255, 255, 255, .14); color: var(--bs-white); font-size: var(--font-size-lg); text-decoration: none; }
+.cv-av { display: grid; place-items: center; flex: none; width: 2.75rem; height: 2.75rem; border: 2px solid rgba(255, 255, 255, .55); border-radius: var(--radius-full); background: var(--av, var(--accent-color)); color: var(--bs-white); font-size: var(--font-size-lg); font-weight: 600; text-transform: uppercase; }
+.av-0 { --av: #2d5a8c; } .av-1 { --av: var(--bs-teal, #20a39e); } .av-2 { --av: var(--bs-purple, #6f42c1); } .av-3 { --av: var(--bs-success); } .av-4 { --av: var(--bs-indigo, #4c5fd5); } .av-5 { --av: var(--bs-pink, #c2437a); }
+.cv-head-txt { display: flex; flex: 1 1 auto; flex-direction: column; gap: 2px; min-width: 0; }
+.cv-head h1 { display: flex; align-items: center; gap: var(--sp-1); margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-snug); }
+.cv-head h1 .who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cv-head h1 i { flex: none; font-size: var(--font-size-base); }
+.cv-head small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--font-size-sm); opacity: .85; }
+.cv-back:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+@media (hover: hover) { .cv-back:hover { background: rgba(255, 255, 255, .24); color: var(--bs-white); } }
+@media (min-width: 768px) { .cv-head h1 { font-size: var(--font-size-2xl); } }
+</style>
+<header class="cv-head">
+    <div class="cv-head-in">
+        <a href="{% url 'inbox' %}" class="cv-back back-button" aria-label="Back to inbox"><i class="bi bi-arrow-left" aria-hidden="true"></i></a>
+        <span class="cv-av" id="cvAvatar" aria-hidden="true"><i class="bi bi-person-fill"></i></span>
+        <div class="cv-head-txt">
+            <h1 id="cvName">
+                {% for participant in conversation.participants.all %}
+                    {% if participant != request.user.profile %}
+                        <span class="who">{{ participant.user.username }}</span>
+                        {% if participant.business_verification_status == 'verified' %}<i class="bi bi-patch-check-fill" title="Verified Business" aria-label="Verified business"></i>{% endif %}
                     {% endif %}
-                </div>
-
-                <h5 class="content-title mb-1">{{ conversation.get_content_title }}</h5>
-
-                <small class="owner-info">
-                    {% if conversation.content_type.model == 'product_listing' %}
-                        Seller: <strong>{{ conversation.content_object.seller.user.username }}</strong>
-                        {% if conversation.content_object.seller_is_verified_business %}
-                            <i class="fas fa-check-circle text-primary ms-1" title="Verified"></i>
-                        {% endif %}
-                    {% elif conversation.content_type.model == 'servicelisting' %}
-                        Provider: <strong>{{ conversation.content_object.provider.user.username }}</strong>
-                        {% if conversation.content_object.provider_is_verified_business %}
-                            <i class="fas fa-check-circle text-primary ms-1" title="Verified"></i>
-                        {% endif %}
-                    {% elif conversation.content_type.model == 'buyerrequest' %}
-                        Posted by: <strong>{{ conversation.content_object.buyer.user.username }}</strong>
-                    {% endif %}
-                </small>
-            </div>
-
-            <div class="text-end">
-                {% if conversation.content_type.model == 'product_listing' %}
-                    <div class="summary-price">{{ formatted_price }}</div>
-                    <small class="text-muted d-block">Product Price</small>
-                {% elif conversation.content_type.model == 'servicelisting' %}
-                    <div class="summary-price">{{ conversation.content_object.price_display }}</div>
-                    <small class="text-muted d-block">Service Rate</small>
-                {% elif conversation.content_type.model == 'buyerrequest' %}
-                    <div class="summary-price">{{ conversation.content_object.budget_display }}</div>
-                    <small class="text-muted d-block">Budget</small>
-                {% endif %}
-                {% if conversation.content_object %}
-                    <a href="{{ conversation.content_object.get_absolute_url }}"
-                       class="btn btn-sm btn-outline-primary mt-2" target="_blank">
-                        <i class="fas fa-external-link-alt me-1"></i>View Listing
-                    </a>
-                {% endif %}
-            </div>
-
+                {% empty %}
+                    <span class="who">Conversation</span>
+                {% endfor %}
+            </h1>
+            <small class="content-title">{{ conversation.get_content_title }}</small>
         </div>
     </div>
-</div>
+</header>
+{% endblock %}
 
-{# ── Encryption notice ──────────────────────────────────────────────────────── #}
-<div class="enc-bar mb-3">
-    <i class="fas fa-lock me-2"></i>
-    <span>End-to-end encrypted &mdash; only you and your conversation partner can read these messages.</span>
+{% block messages_content %}
+
+<div class="cv">
+
+{# ── Listing context card ──────────────────────────────────────────────────── #}
+<div class="content-summary cv-card">
+    <span class="cv-ico {% if conversation.content_type.model == 'product_listing' %}t-navy{% elif conversation.content_type.model == 'servicelisting' %}t-green{% else %}t-orange{% endif %}" aria-hidden="true">
+        {% if conversation.content_type.model == 'product_listing' %}<i class="bi bi-box-seam-fill"></i>
+        {% elif conversation.content_type.model == 'servicelisting' %}<i class="bi bi-briefcase-fill"></i>
+        {% elif conversation.content_type.model == 'buyerrequest' %}<i class="bi bi-search"></i>
+        {% else %}<i class="bi bi-chat-dots-fill"></i>{% endif %}
+    </span>
+    <div class="cv-summary-txt">
+        <div class="cv-chips">
+            <span class="content-type-badge {% if conversation.content_type.model == 'product_listing' %}badge-product{% elif conversation.content_type.model == 'servicelisting' %}badge-service{% elif conversation.content_type.model == 'buyerrequest' %}badge-request{% endif %}">{{ conversation.get_content_type_display }}</span>
+            {% if linked_inquiry %}
+                <span class="badge-status-{{ linked_inquiry.status }}">Inquiry: {{ linked_inquiry.get_status_display }}</span>
+            {% elif linked_response %}
+                <span class="badge-status-{{ linked_response.status }}">Response: {{ linked_response.get_status_display }}</span>
+            {% endif %}
+        </div>
+        <div class="cv-price-row">
+            {% if conversation.content_type.model == 'product_listing' %}
+                <span class="summary-price">{{ formatted_price }}</span><small>Product price</small>
+            {% elif conversation.content_type.model == 'servicelisting' %}
+                <span class="summary-price">{{ conversation.content_object.price_display }}</span><small>Service rate</small>
+            {% elif conversation.content_type.model == 'buyerrequest' %}
+                <span class="summary-price">{{ conversation.content_object.budget_display }}</span><small>Budget</small>
+            {% endif %}
+        </div>
+        <small class="owner-info">
+            {% if conversation.content_type.model == 'product_listing' %}
+                Seller: <strong>{{ conversation.content_object.seller.user.username }}</strong>
+                {% if conversation.content_object.seller_is_verified_business %}<i class="bi bi-patch-check-fill" title="Verified" aria-label="Verified business"></i>{% endif %}
+            {% elif conversation.content_type.model == 'servicelisting' %}
+                Provider: <strong>{{ conversation.content_object.provider.user.username }}</strong>
+                {% if conversation.content_object.provider_is_verified_business %}<i class="bi bi-patch-check-fill" title="Verified" aria-label="Verified business"></i>{% endif %}
+            {% elif conversation.content_type.model == 'buyerrequest' %}
+                Posted by: <strong>{{ conversation.content_object.buyer.user.username }}</strong>
+            {% endif %}
+        </small>
+    </div>
+    {% if conversation.content_object %}
+        <a href="{{ conversation.content_object.get_absolute_url }}" class="cv-btn cv-btn-ghost" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i><span>View listing</span></a>
+    {% endif %}
 </div>
 
 {# ── Chat thread ────────────────────────────────────────────────────────────── #}
-<div class="chat-container mb-3" id="chatContainer">
+<div class="chat-container" id="chatContainer" role="log" aria-live="polite" aria-label="Conversation">
+    <div class="enc-bar"><i class="bi bi-lock-fill" aria-hidden="true"></i><span>End-to-end encrypted &mdash; only you and your conversation partner can read these messages.</span></div>
+
     {% for msg in messages %}
 
         {% if msg.inquiry_type == 'SERVICE_INQUIRY_CARD' %}
@@ -103,92 +104,81 @@
         {% endif %}
 
     {% empty %}
-        <div class="empty-chat text-center py-4">
-            <i class="fas fa-comments fa-3x mb-3 text-muted"></i>
-            <p class="text-muted">Start the conversation by sending a message below.</p>
+        <div class="empty-chat">
+            <span class="cv-empty-ico" aria-hidden="true"><i class="bi bi-chat-dots"></i></span>
+            <p>Start the conversation by sending a message below.</p>
         </div>
     {% endfor %}
 </div>
 
 {# ── Reply composer ──────────────────────────────────────────────────────────── #}
-<div class="composer card">
-    <div class="card-body">
-        <form method="post" id="messageForm">
-            {% csrf_token %}
+<div class="composer cv-card">
+    <form method="post" id="messageForm" class="cv-form">
+        {% csrf_token %}
 
-            {# Show inquiry_type selector only for non-plain conversations where it makes sense #}
-            {% if not is_buyer and conversation.content_type.model == 'servicelisting' %}
-                {# Provider replying — no type dropdown, just plain reply #}
-            {% elif is_buyer or conversation.content_type.model == 'buyerrequest' and request.user.profile != conversation.content_object.buyer %}
-                <div class="mb-2">
-                    {{ form.inquiry_type }}
-                </div>
-            {% endif %}
-
-            <div class="composer-body">
-                {{ form.content }}
-                <div class="composer-footer mt-2 d-flex justify-content-between align-items-center">
-                    <small class="text-muted enc-note">
-                        <i class="fas fa-lock me-1"></i>Messages are encrypted
-                    </small>
-                    <button type="submit" class="btn send-btn">
-                        <i class="fas fa-paper-plane me-1"></i>Send
-                    </button>
-                </div>
+        {# Show inquiry_type selector only for non-plain conversations where it makes sense #}
+        {% if not is_buyer and conversation.content_type.model == 'servicelisting' %}
+            {# Provider replying — no type dropdown, just plain reply #}
+        {% elif is_buyer or conversation.content_type.model == 'buyerrequest' and request.user.profile != conversation.content_object.buyer %}
+            <div class="cv-select">
+                {{ form.inquiry_type }}
             </div>
-        </form>
-    </div>
+        {% endif %}
+
+        <div class="composer-body">
+            <div class="cv-input">
+                {{ form.content }}
+                <button type="submit" class="send-btn" aria-label="Send message"><i class="bi bi-send-fill" aria-hidden="true"></i><span class="send-label">Send</span></button>
+            </div>
+            <small class="enc-note"><i class="bi bi-lock-fill" aria-hidden="true"></i> Messages are encrypted</small>
+        </div>
+    </form>
+</div>
+
 </div>
 
 {# ── Inquiry Response Modal (provider only, pending inquiry) ─────────────────── #}
 {% if linked_inquiry and not is_buyer and linked_inquiry.status == 'pending' %}
 <div class="modal fade" id="inquiryResponseModal" tabindex="-1" aria-labelledby="inquiryResponseModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="background-color: var(--card-background); border-color: var(--border-color);">
-            <div class="modal-header" style="border-color: var(--border-color);">
-                <h5 class="modal-title" id="inquiryResponseModalLabel" style="color: var(--text-primary);">
-                    <i class="fas fa-reply me-2"></i>Respond to Inquiry
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-content irm">
+            <div class="modal-header irm-head">
+                <h5 class="modal-title" id="inquiryResponseModalLabel"><i class="bi bi-reply-fill" aria-hidden="true"></i>Respond to inquiry</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="post"
                   action="{% url 'services:respond_to_inquiry' linked_inquiry.pk %}"
                   id="inquiryResponseForm">
                 {% csrf_token %}
-                <div class="modal-body">
+                <div class="modal-body irm-body">
 
-                    <div class="mb-3">
-                        <label class="form-label fw-medium" style="color: var(--text-primary);">Your Response</label>
-                        <textarea name="provider_response" class="form-control" rows="4" required
-                                  placeholder="Describe how you can help, your availability, and any questions..."
-                                  style="background:var(--card-background);color:var(--text-primary);border-color:var(--border-color);"></textarea>
+                    <div class="irm-field">
+                        <label class="irm-label" for="irmResponse">Your response</label>
+                        <textarea id="irmResponse" name="provider_response" class="form-control" rows="4" required
+                                  placeholder="Describe how you can help, your availability, and any questions..."></textarea>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-medium" style="color: var(--text-primary);">Your Quote <span class="text-muted fw-normal">(optional)</span></label>
+                    <div class="irm-field">
+                        <label class="irm-label" for="irmQuote">Your quote <span>(optional)</span></label>
                         <div class="input-group">
-                            <span class="input-group-text" style="background:var(--card-background);color:var(--text-primary);border-color:var(--border-color);">₦</span>
-                            <input type="number" name="provider_quote" class="form-control"
-                                   placeholder="0.00" step="0.01" min="0"
-                                   style="background:var(--card-background);color:var(--text-primary);border-color:var(--border-color);">
+                            <span class="input-group-text">₦</span>
+                            <input type="number" id="irmQuote" name="provider_quote" class="form-control"
+                                   placeholder="0.00" step="0.01" min="0">
                         </div>
                     </div>
 
-                    <div class="mb-1">
-                        <label class="form-label fw-medium" style="color: var(--text-primary);">Update Status</label>
-                        <select name="status" class="form-select"
-                                style="background:var(--card-background);color:var(--text-primary);border-color:var(--border-color);">
+                    <div class="irm-field">
+                        <label class="irm-label" for="irmStatus">Update status</label>
+                        <select id="irmStatus" name="status" class="form-select">
                             <option value="responded">Responded</option>
                             <option value="negotiating">Negotiating</option>
                         </select>
                     </div>
 
                 </div>
-                <div class="modal-footer" style="border-color: var(--border-color);">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary btn-sm">
-                        <i class="fas fa-paper-plane me-1"></i>Send Response
-                    </button>
+                <div class="modal-footer irm-foot">
+                    <button type="button" class="cv-btn cv-btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="cv-btn cv-btn-primary"><i class="bi bi-send-fill" aria-hidden="true"></i>Send response</button>
                 </div>
             </form>
         </div>
@@ -198,63 +188,92 @@
 
 {# ── Styles ──────────────────────────────────────────────────────────────────── #}
 <style>
-.back-button     { color: var(--primary-color); font-size: 0.88rem; font-weight: 500; transition: color 0.2s; }
-.back-button:hover { color: var(--accent-color); }
+/* Conversation: shared OpenSell design (navy header band, token cards, solid icon badges, pill buttons). */
+.cv { display: flex; flex-direction: column; gap: var(--sp-3); max-width: 46rem; margin: 0 auto; font-size: var(--font-size-base); line-height: var(--lh-body); }
+.cv p { margin: 0; }
+.t-navy { --tint: var(--primary-color); } .t-orange { --tint: var(--accent-color); } .t-green { --tint: var(--bs-success); }
 
-.content-summary { border: 1px solid var(--border-color); background: var(--card-background); border-radius: 0.75rem; box-shadow: 0 1px 6px var(--shadow-color); }
-.content-title   { color: var(--text-primary); font-weight: 600; font-size: 1.05rem; }
-.owner-info      { color: var(--text-secondary); font-size: 0.82rem; }
-.summary-price   { color: var(--accent-color); font-weight: 700; font-size: 1.05rem; }
+.cv-card { box-sizing: border-box; border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); box-shadow: var(--shadow-md); }
 
-.enc-bar {
-    background: rgba(var(--primary-rgb), 0.07);
-    border: 1px solid rgba(var(--primary-rgb), 0.2);
-    border-radius: 0.5rem;
-    padding: 0.5rem 0.85rem;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-}
-.enc-bar i { color: var(--primary-color); }
-[data-bs-theme="dark"] .enc-bar { background: rgba(var(--primary-rgb), 0.18); }
+/* Listing context card */
+.content-summary { display: flex; align-items: center; gap: var(--sp-3); padding: var(--pad-s) var(--pad-m); }
+.cv-ico { display: grid; place-items: center; flex: none; width: 2.5rem; height: 2.5rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-base); }
+.cv-summary-txt { display: flex; flex: 1 1 auto; flex-direction: column; gap: 2px; min-width: 0; }
+.cv-chips { display: flex; flex-wrap: wrap; gap: var(--sp-1); align-items: center; }
+.cv-price-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2); }
+.summary-price { color: var(--accent-color); font-weight: 700; font-size: var(--font-size-lg); line-height: var(--lh-snug); }
+.cv-price-row small, .owner-info { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.owner-info strong { color: var(--text-primary); font-weight: 600; }
+.owner-info i { color: color-mix(in srgb, var(--primary-color) 55%, var(--text-primary)); }
+.content-summary .cv-btn { flex: none; min-height: 2.5rem; padding: 0 var(--sp-4); }
+@media (max-width: 575.98px) { .content-summary .cv-btn { width: 2.5rem; padding: 0; } .content-summary .cv-btn span { display: none; } }
 
-/* ── Chat container ───────────────────────────────────────────────────────── */
-.chat-container {
-    height: 500px;
-    min-height: 320px;
-    overflow-y: auto;
-    padding: 1rem;
-    border: 1px solid var(--border-color);
-    border-radius: 0.75rem;
-    background: var(--chat-bg);
-    scroll-behavior: smooth;
-}
-/* Thin scrollbar */
+/* Chat */
+.chat-container { height: clamp(20rem, calc(100dvh - 26rem), 40rem); overflow-y: auto; padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--chat-bg); scroll-behavior: smooth; }
 .chat-container::-webkit-scrollbar { width: 5px; }
 .chat-container::-webkit-scrollbar-track { background: transparent; }
 .chat-container::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+.enc-bar { display: flex; align-items: flex-start; gap: var(--sp-2); width: fit-content; max-width: 100%; margin: 0 auto var(--sp-4); padding: var(--sp-1) var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); font-size: var(--font-size-xs); line-height: var(--lh-snug); color: var(--text-secondary); text-align: left; }
+.enc-bar i { margin-top: 1px; flex: none; }
+.empty-chat { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2); min-height: 10rem; text-align: center; font-size: var(--font-size-sm); color: var(--text-secondary); }
+.cv-empty-ico { display: grid; place-items: center; width: 3.5rem; height: 3.5rem; border-radius: var(--radius-full); background: var(--hover-bg); font-size: var(--font-size-2xl); }
 
-.empty-chat { color: var(--text-secondary); }
+/* Composer: one rounded field with the send button inside */
+.composer { padding: var(--pad-s) var(--pad-m); }
+.cv-form { display: flex; flex-direction: column; gap: var(--sp-2); margin: 0; }
+.composer-body { display: flex; flex-direction: column; gap: var(--sp-1); }
+.cv-input { display: flex; align-items: flex-end; gap: var(--sp-2); padding: var(--sp-1); border: 1px solid var(--border-color); border-radius: 1.5rem; background: var(--background-color); }
+.cv-input:focus-within { border-color: var(--primary-color); outline: 2px solid var(--accent-color); outline-offset: 1px; }
+.cv-input textarea { flex: 1 1 auto; display: block; box-sizing: border-box; min-width: 0; max-height: 9rem; min-height: 2.5rem; margin: 0; padding: .5rem var(--sp-3); border: 0; border-radius: 1.25rem; background: transparent; color: var(--text-primary); font: inherit; font-size: var(--font-size-base); line-height: 1.5; resize: none; outline: none; box-shadow: none; }
+.cv-select select, .irm .form-control, .irm .form-select, .irm .input-group-text { box-sizing: border-box; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--card-background); color: var(--text-primary); font: inherit; font-size: var(--font-size-base); }
+.cv-select select { display: block; width: 100%; min-height: var(--h-control-lg); padding: 0 var(--sp-3); }
+.cv-select select:focus, .irm .form-control:focus, .irm .form-select:focus { border-color: var(--primary-color); outline: 2px solid var(--accent-color); outline-offset: 1px; box-shadow: none; }
+.send-btn { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); min-width: 2.5rem; height: 2.5rem; margin: 0; padding: 0 var(--sp-4); border: 0; border-radius: var(--radius-full); background: var(--accent-color); color: var(--bs-white); font: inherit; font-size: var(--font-size-sm); font-weight: 600; cursor: pointer; touch-action: manipulation; }
+.send-btn:disabled { opacity: .7; cursor: default; }
+@media (max-width: 575.98px) { .send-label { display: none; } .send-btn { width: 2.5rem; padding: 0; } }
+.enc-note { padding-left: var(--sp-3); font-size: var(--font-size-xs); color: var(--text-secondary); }
 
-/* ── Composer ─────────────────────────────────────────────────────────────── */
-.composer { border: 1px solid var(--border-color); background: var(--card-background); border-radius: 0.75rem; box-shadow: 0 2px 8px var(--shadow-color); }
-.composer-body textarea { width: 100%; border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.65rem 0.85rem; background: var(--card-background); color: var(--text-primary); resize: vertical; min-height: 90px; font-size: 0.92rem; }
-.composer-body textarea:focus { border-color: var(--primary-color); outline: none; box-shadow: 0 0 0 2px rgba(0,51,102,0.15); }
-.enc-note { font-size: 0.75rem; }
-.send-btn { background: var(--accent-color); border-color: var(--accent-color); color: #fff; font-weight: 500; font-size: 0.88rem; padding: 0.45rem 1.1rem; transition: all 0.2s; }
-.send-btn:hover { background: var(--primary-color); border-color: var(--primary-color); transform: translateY(-1px); }
-select.form-select { background: var(--card-background); color: var(--text-primary); border-color: var(--border-color); font-size: 0.88rem; }
-select.form-select:focus { border-color: var(--primary-color); box-shadow: 0 0 0 0.2rem rgba(0,51,102,0.2); }
+/* Buttons */
+.cv-btn { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: 2.75rem; margin: 0; padding: 0 var(--sp-5); border: 1px solid transparent; border-radius: 22px; font: inherit; font-size: var(--font-size-sm); font-weight: 600; line-height: var(--lh-tight); white-space: nowrap; text-decoration: none; cursor: pointer; touch-action: manipulation; }
+.cv-btn-primary { border: 2px solid var(--bs-white); background: var(--accent-color); color: var(--bs-white); box-shadow: 0 4px 12px rgba(0, 0, 0, .2); }
+.cv-btn-primary:disabled { opacity: .7; cursor: default; }
+.cv-btn-ghost { border-color: var(--border-color); background: var(--card-background); color: var(--text-primary); }
+a.cv-btn-ghost, a.cv-btn-ghost:hover { color: var(--text-primary); }
 
-[data-bs-theme="dark"] .composer-body textarea { background: rgba(255,255,255,0.05); }
+/* Inquiry response modal (Bootstrap markup and behavior kept) */
+.irm.modal-content { overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); color: var(--text-primary); box-shadow: var(--shadow-md); }
+.irm-head { border: 0; background: var(--primary-color); color: var(--bs-white); }
+.irm-head .modal-title { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--font-size-lg); font-weight: 600; }
+.irm-body { display: flex; flex-direction: column; gap: var(--sp-4); padding: var(--pad-l); }
+.irm-field { display: flex; flex-direction: column; gap: var(--sp-1); }
+.irm-label { margin: 0; font-size: var(--font-size-sm); font-weight: 600; color: var(--text-primary); }
+.irm-label span { font-weight: 400; color: var(--text-secondary); }
+.irm .form-control, .irm .form-select { min-height: var(--h-control-lg); padding: var(--sp-2) var(--sp-3); }
+.irm textarea.form-control { min-height: 6rem; }
+.irm .input-group-text { padding: 0 var(--sp-3); }
+.irm-foot { gap: var(--sp-2); border-top: 1px solid var(--border-color); }
 
-@media (max-width: 576px) { .chat-container { height: 400px; } }
+.cv a:focus-visible, .cv button:focus-visible, .irm button:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+@media (hover: hover) { .cv-btn-ghost:hover { background: var(--hover-bg); border-color: var(--primary-color); } }
+@media (prefers-reduced-motion: reduce) { .chat-container { scroll-behavior: auto; } }
 </style>
 
 {# ── Scripts ─────────────────────────────────────────────────────────────────── #}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+
+    /* ── Header avatar: initial and color from the other person's name ──── */
+    const who = document.querySelector('#cvName .who');
+    const avatar = document.getElementById('cvAvatar');
+    if (who && avatar) {
+        const name = who.textContent.trim();
+        if (name && name !== 'Conversation') {
+            let h = 0;
+            for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 6;
+            avatar.textContent = name.charAt(0);
+            avatar.classList.add('av-' + h);
+        }
+    }
 
     /* ── Scroll to bottom ───────────────────────────────────────────────── */
     const chat = document.getElementById('chatContainer');
@@ -268,13 +287,41 @@ document.addEventListener('DOMContentLoaded', function () {
             if (this.value && this.value !== 'CUSTOM') {
                 contentTextarea.value = this.options[this.selectedIndex].text;
                 contentTextarea.focus();
+                grow();
             }
         });
     }
 
-    /* ── Theme-adapt form controls ──────────────────────────────────────── */
-    document.querySelectorAll('textarea').forEach(el => el.classList.add('form-control'));
+    /* ── Theme-adapt form controls (not the composer field, which has its own look) ── */
+    document.querySelectorAll('textarea').forEach(el => { if (!el.closest('.cv-input')) el.classList.add('form-control'); });
     document.querySelectorAll('select').forEach(el => el.classList.add('form-select'));
+
+    /* ── Composer: grows with the text, one row to start ────────────────── */
+    function grow() {
+        if (!contentTextarea) return;
+        contentTextarea.style.height = 'auto';
+        contentTextarea.style.height = Math.min(contentTextarea.scrollHeight, 144) + 'px';
+    }
+    if (contentTextarea) {
+        contentTextarea.rows = 1;
+        contentTextarea.addEventListener('input', grow);
+        grow();
+    }
+
+    /* ── Guard the composer against double-sending ──────────────────────── */
+    const messageForm = document.getElementById('messageForm');
+    if (messageForm) {
+        const sendBtn = messageForm.querySelector('.send-btn');
+        const sendLabel = sendBtn ? sendBtn.innerHTML : '';
+        messageForm.addEventListener('submit', function () {
+            if (!sendBtn) return;
+            /* delay so the browser has already collected the form data */
+            setTimeout(function () { sendBtn.disabled = true; sendBtn.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>'; }, 0);
+        });
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted && sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = sendLabel; }
+        });
+    }
 
     /* ── Accept / Decline AJAX (buyer acting on seller response card) ───── */
     document.querySelectorAll('.accept-decline-form').forEach(function (frm) {
@@ -300,11 +347,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.success) {
                     const actionsDiv = frm.closest('.structured-card-actions');
                     const cls   = data.status === 'accepted' ? 'status-notice--accepted' : 'status-notice--declined';
-                    const icon  = data.status === 'accepted' ? 'fa-check-circle' : 'fa-times-circle';
+                    const icon  = data.status === 'accepted' ? 'bi-check-circle-fill' : 'bi-x-circle-fill';
                     const label = data.status === 'accepted' ? 'accepted' : 'declined';
                     actionsDiv.innerHTML = `
                         <div class="structured-card-status-notice ${cls}">
-                            <i class="fas ${icon} me-1"></i> You ${label} this response.
+                            <i class="bi ${icon} me-1"></i> You ${label} this response.
                         </div>`;
                     const badge = frm.closest('.message-card-bubble').querySelector('[class*="badge-status-"]');
                     if (badge) {
@@ -391,12 +438,13 @@ document.addEventListener('DOMContentLoaded', function () {
         <div id="${id}" class="toast align-items-center text-bg-${type} border-0 position-fixed bottom-0 end-0 m-3"
              role="alert" aria-live="assertive" style="z-index:9999">
             <div class="d-flex">
-                <div class="toast-body">${msg}</div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                <div class="toast-body"></div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
         </div>`;
         document.body.insertAdjacentHTML('beforeend', html);
         const el = document.getElementById(id);
+        el.querySelector('.toast-body').textContent = msg;
         new bootstrap.Toast(el, { delay: 4000 }).show();
         el.addEventListener('hidden.bs.toast', () => el.remove());
     }

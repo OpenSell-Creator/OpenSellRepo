@@ -1,41 +1,77 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Unsubscribed | OpenSell{% endblock %}
 
+{% block page_css %}
+<style>
+/* Auth pages, shared design core (same as login, password reset and verify email). */
+.ax {
+    --ox-navy: var(--primary-color);
+    --ox-orange: var(--accent-color);
+    --ox-teal: var(--bs-teal, var(--primary-color));
+    display: flex; flex-direction: column; align-items: center; gap: var(--gap-sections);
+    padding-bottom: var(--sp-6);
+    color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-body);
+}
+.ax a { text-decoration: none; }
+.ax p { margin: 0; }
+.t-teal { --tint: var(--ox-teal); }
+.ox-ico { display: grid; place-items: center; flex: none; width: 2rem; height: 2rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-base); }
+
+/* Navy header band: full-bleed, tucks under the navbar; the card sits below it */
+.ax .ax-head { align-self: stretch; display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); margin: -2rem -1rem 0; padding: calc(2rem + var(--sp-4)) var(--sp-5) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); text-align: center; }
+.auth-logo { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin-bottom: var(--sp-1); border-radius: var(--radius-full); background: var(--bs-white); }
+.auth-logo img { width: 1.75rem; height: 1.75rem; object-fit: contain; }
+.auth-title { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-snug); }
+.auth-sub { font-size: var(--font-size-sm); line-height: var(--lh-snug); opacity: .85; }
+@media (min-width: 768px) { .auth-title { font-size: var(--font-size-3xl); } .auth-sub { font-size: var(--font-size-base); } }
+
+/* Card */
+.ax .auth-card { position: relative; z-index: 1; display: flex; flex-direction: column; gap: var(--gap-sections); width: 100%; max-width: 25rem; margin: 0; padding: var(--pad-l); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); box-shadow: var(--shadow-md); }
+.ax-state { display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); text-align: center; }
+.ax-state .ox-ico { width: 3.5rem; height: 3.5rem; font-size: var(--font-size-3xl); }
+.ax-state strong { overflow-wrap: anywhere; }
+.auth-fine { font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+.auth-alert { position: relative; isolation: isolate; display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-md); font-size: var(--font-size-sm); line-height: var(--lh-snug); --tint: var(--accent-color); }
+.auth-alert::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .auth-alert::before { opacity: .09; }
+.auth-alert i { margin-top: 1px; color: var(--tint); }
+
+/* Buttons: the same pill as the other pages, navy on auth pages */
+.ax-btn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-4); border: 2px solid var(--bs-white); border-radius: 22px; background: var(--primary-color); color: var(--bs-white); font: inherit; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); text-align: center; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); cursor: pointer; touch-action: manipulation; }
+.ax a.ax-btn { color: var(--bs-white); }
+
+.ax a:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; border-radius: var(--radius-sm); }
+</style>
+{% endblock %}
+
 {% block 'Body' %}
-<div class="container my-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header bg-info text-white">
-                    <h4 class="mb-0">Unsubscribed</h4>
-                </div>
-                <div class="card-body text-center">
-                    <div class="mb-4">
-                        <i class="fas fa-envelope-open text-info" style="font-size: 3rem;"></i>
-                    </div>
-                    <h5 class="card-title">You have been unsubscribed from all emails</h5>
-                    <p class="card-text">
-                        Your email address <strong>{{ user.email }}</strong> has been unsubscribed from all marketing emails, announcements, and notifications.
-                    </p>
-                    
-                    <div class="alert alert-warning mt-4">
-                        <p class="mb-0">
-                            <strong>Note:</strong> You will still receive essential emails such as password resets and security notifications.
-                        </p>
-                    </div>
-                    
-                    <div class="mt-4">
-                        <p>
-                            Changed your mind? You can update your preferences at any time.
-                        </p>
-                        <a href="{% url 'email_preferences' %}?user={{ user.id }}&token={{ preferences.unsubscribe_token }}" class="btn btn-primary">
-                            Manage Email Preferences
-                        </a>
-                    </div>
-                </div>
-            </div>
+<div class="ox ax">
+
+    <div class="auth-head ax-head">
+        <div class="auth-logo">
+            <img src="{% static 'images/logoicon.png' %}" alt="OpenSell" width="28" height="28">
         </div>
+        <h1 class="auth-title">Unsubscribed</h1>
+        <p class="auth-sub">You won't get our emails anymore</p>
+    </div>
+
+    <div class="auth-card">
+        <div class="ax-state">
+            <span class="ox-ico t-teal" aria-hidden="true"><i class="bi bi-envelope-slash-fill"></i></span>
+            <p><strong>You have been unsubscribed from all emails</strong></p>
+            <p class="auth-fine">Your email address <strong>{{ user.email }}</strong> has been unsubscribed from all marketing emails, announcements, and notifications.</p>
+        </div>
+
+        <div class="auth-alert" role="note">
+            <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+            <span><strong>Note:</strong> You will still receive essential emails such as password resets and security notifications.</span>
+        </div>
+
+        <p class="auth-fine" style="text-align:center;">Changed your mind? You can update your preferences at any time.</p>
+        <a href="{% url 'email_preferences' %}?user={{ user.id }}&token={{ preferences.unsubscribe_token }}" class="ax-btn">Manage email preferences</a>
     </div>
 </div>
 {% endblock %}
+{% block 'Footer' %}{% endblock %}

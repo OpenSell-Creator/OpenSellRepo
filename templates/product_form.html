@@ -1,1731 +1,1296 @@
 {% extends 'base.html' %}
 
+{% block title %}{{ title }}{% endblock %}
+
 {% block page_css %}
 <style>
-    /* ══════════════════════════════════════
-       Tab Wizard — Progress Header
-    ══════════════════════════════════════ */
-    .wizard-header {
-        padding: 1.25rem 1.5rem 0;
-        background: var(--card-background);
-        border-bottom: 1px solid var(--border-color);
-    }
-    .wizard-steps {
-        display: flex;
-        align-items: center;
-        gap: 0;
-        overflow-x: auto;
-        scrollbar-width: none;
-        padding-bottom: 0;
-    }
-    .wizard-steps::-webkit-scrollbar { display: none; }
+/* Same design core as profile_update, login and signup (shared .ox wrapper, hue tints, 42px controls,
+   autofill fix, navy pill buttons). Product form only: the .pfm-* rules at the end. */
+.ox {
+    --ox-navy: var(--primary-color);
+    --ox-orange: var(--accent-color);
+    --ox-teal: var(--bs-teal, var(--primary-color));
+    --ox-green: var(--bs-success, var(--primary-color));
+    --ox-purple: var(--bs-purple, var(--primary-color));
+    display: flex; flex-direction: column; gap: var(--gap-sections);
+    color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-body);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-4));
+}
+.ox [hidden] { display: none !important; }
+.ox a { text-decoration: none; }
+.ox p { margin: 0; }
+.t-navy { --tint: var(--ox-navy); } .t-orange { --tint: var(--ox-orange); } .t-teal { --tint: var(--ox-teal); }
+.t-green { --tint: var(--ox-green); } .t-purple { --tint: var(--ox-purple); }
+.ox-ico { display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-lg); }
+.ox-tint, .auth-alert { position: relative; isolation: isolate; }
+.ox-tint::before, .auth-alert::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .ox-tint::before, [data-bs-theme="dark"] .auth-alert::before { opacity: .09; }
+.ox-card { border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); }
 
-    .wizard-step {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.35rem;
-        cursor: pointer;
-        flex: 1;
-        min-width: 80px;
-        padding-bottom: 0.75rem;
-        border-bottom: 3px solid transparent;
-        transition: border-color 0.25s, color 0.25s;
-        position: relative;
-        color: var(--text-secondary);
-        font-size: 0.78rem;
-        font-weight: 500;
-        user-select: none;
-    }
-    .wizard-step + .wizard-step::before {
-        content: '';
-        position: absolute;
-        left: -50%;
-        top: 17px;
-        width: 100%;
-        height: 2px;
-        background: var(--border-color);
-        z-index: 0;
-        transition: background 0.3s;
-    }
-    .wizard-step.completed + .wizard-step::before { background: var(--accent-color, #0d6efd); }
+/* Header: navy band, full-bleed, tucks under the navbar */
+.ox-head { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); margin: -2rem -1rem 0; padding: calc(2rem + var(--sp-4)) var(--sp-5) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); text-align: center; }
+.ox-title { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-snug); }
+.ox-lead { max-width: 32rem; font-size: var(--font-size-sm); line-height: var(--lh-snug); opacity: .85; }
+@media (min-width: 768px) { .ox-title { font-size: var(--font-size-3xl); } .ox-lead { font-size: var(--font-size-base); } }
 
-    .wizard-step .step-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1rem;
-        border: 2px solid var(--border-color);
-        background: var(--card-background);
-        z-index: 1;
-        transition: all 0.25s;
-    }
-    .wizard-step.active {
-        color: var(--accent-color, #0d6efd);
-        border-bottom-color: var(--accent-color, #0d6efd);
-    }
-    .wizard-step.active .step-icon {
-        border-color: var(--accent-color, #0d6efd);
-        background: var(--accent-color, #0d6efd);
-        color: #fff;
-    }
-    .wizard-step.completed { color: #198754; }
-    .wizard-step.completed .step-icon {
-        border-color: #198754;
-        background: #198754;
-        color: #fff;
-    }
-    .wizard-step.has-error { color: #dc3545; }
-    .wizard-step.has-error .step-icon { border-color: #dc3545; background: #dc3545; color: #fff; }
+/* Form primitives (42px controls, same as the auth pages) */
+.auth-field { display: flex; flex-direction: column; gap: var(--gap-label); min-width: 0; }
+.auth-label { font-size: var(--font-size-sm); font-weight: 600; }
+.auth-opt { font-weight: 400; color: var(--text-secondary); }
+.auth-hint { display: flex; align-items: flex-start; gap: var(--sp-1); font-size: var(--font-size-xs); line-height: var(--lh-snug); color: var(--text-secondary); }
+.auth-hint--ok { color: var(--bs-success); }
+.auth-hint--bad { color: var(--bs-danger); font-weight: 600; }
+.ox .has-error .auth-hint { display: none; }
+.ox .form-control, .ox .form-select { box-sizing: border-box; width: 100%; min-height: var(--h-control-lg); padding: 0 var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--background-color); color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-tight); }
+.ox .form-select { padding-right: 2.25rem; }
+.ox textarea.form-control { min-height: 9.5rem; padding: var(--sp-2) var(--sp-3); line-height: var(--lh-body); resize: vertical; }
+.ox .form-control:focus, .ox .form-select:focus { outline: 2px solid var(--accent-color); outline-offset: 1px; border-color: var(--accent-color); box-shadow: none; background-color: var(--background-color); color: var(--text-primary); }
+.ox .form-control:disabled, .ox .form-select:disabled { opacity: .7; }
+/* Browser autofill: keep the field dark in dark mode (browsers paint it white with dark text) */
+[data-bs-theme="dark"] .ox .form-control, [data-bs-theme="dark"] .ox .form-select { color-scheme: dark; }
+.ox .form-control:-webkit-autofill, .ox .form-control:-webkit-autofill:hover, .ox .form-control:-webkit-autofill:focus, .ox .form-select:-webkit-autofill, .ox .form-select:-webkit-autofill:hover, .ox .form-select:-webkit-autofill:focus { -webkit-text-fill-color: var(--text-primary); caret-color: var(--text-primary); -webkit-box-shadow: 0 0 0 1000px var(--background-color) inset; box-shadow: 0 0 0 1000px var(--background-color) inset; transition: background-color 9999s ease-out 0s; }
+.ox .form-control:autofill, .ox .form-select:autofill { -webkit-text-fill-color: var(--text-primary); caret-color: var(--text-primary); box-shadow: 0 0 0 1000px var(--background-color) inset; }
+.ox .invalid-feedback { display: none; margin: 0; font-size: var(--font-size-xs); font-weight: 600; color: var(--bs-danger); }
+.ox .has-error .invalid-feedback { display: block; }
+.ox .has-error .form-control, .ox .has-error .form-select { border-color: var(--bs-danger); }
+.ox .has-error .form-control { background-image: none; }
+@supports (-webkit-touch-callout: none) { .ox .form-control, .ox .form-select { font-size: 16px; } }
+.auth-check { display: flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; margin: 0; font-size: var(--font-size-sm); cursor: pointer; }
+.auth-check .form-check-input { flex: none; width: 1.125rem; height: 1.125rem; margin: 0; cursor: pointer; accent-color: var(--primary-color); }
+.auth-check .form-check-input:checked { background-color: var(--primary-color); border-color: var(--primary-color); }
+[data-bs-theme="dark"] .auth-check .form-check-input:checked { border-color: var(--text-secondary); }
+.ox .form-select option { background-color: var(--background-color); color: var(--text-primary); }
+.auth-more > summary { display: flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; font-size: var(--font-size-sm); font-weight: 600; list-style: none; cursor: pointer; touch-action: manipulation; }
+.auth-more > summary::-webkit-details-marker { display: none; }
+.auth-more > summary .auth-opt { margin-left: auto; }
+.auth-more > summary .bi { transition: transform .2s ease; }
+.auth-more[open] > summary .bi { transform: rotate(90deg); }
+.auth-more-body { display: flex; flex-direction: column; gap: var(--gap-fields); padding-top: var(--sp-1); }
 
-    .step-label { font-size: 0.72rem; text-align: center; line-height: 1.2; }
+/* Messages */
+.auth-alert { display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-md); font-size: var(--font-size-sm); line-height: var(--lh-snug); --tint: var(--bs-danger); }
+.auth-alert i { margin-top: 1px; color: var(--bs-danger); }
+.auth-alert--success { --tint: var(--bs-success); }
+.auth-alert--success i { color: var(--bs-success); }
 
-    /* ══════════════════════════════════════
-       Tab Panes
-    ══════════════════════════════════════ */
-    .tab-pane-wizard {
-        display: none;
-        animation: fadeInTab 0.25s ease;
-    }
-    .tab-pane-wizard.active { display: block; }
-    @keyframes fadeInTab {
-        from { opacity: 0; transform: translateY(6px); }
-        to   { opacity: 1; transform: translateY(0); }
-    }
+/* Buttons: the same navy pill as the auth pages and the profile Save button */
+.ox-btn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-4); border: 2px solid var(--bs-white); border-radius: 22px; background: var(--primary-color); color: var(--bs-white); font: inherit; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); text-align: center; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.ox-btn:disabled { opacity: .7; cursor: default; }
+.ox-btn .spinner-border { width: 1rem; height: 1rem; border-width: .15em; }
+.ox-btn-neutral { border: 1px solid var(--border-color); background: var(--card-background); color: var(--text-primary); box-shadow: none; }
 
-    /* ══════════════════════════════════════
-       Nav Buttons
-    ══════════════════════════════════════ */
-    .wizard-nav {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-        padding-top: 1.1rem;
-        border-top: 1px solid var(--border-color);
-        margin-top: 1.5rem;
-    }
-    /* Buttons: auto width, never full-width */
-    .wizard-nav .btn {
-        flex: 0 0 auto;
-        width: auto;
-        min-width: 90px;
-        max-width: 160px;
-        padding: 0.55rem 1.1rem;
-        font-size: 0.875rem;
-        font-weight: 600;
-        border-radius: var(--radius-md, 0.5rem);
-        white-space: nowrap;
-    }
-    .wizard-nav .btn-submit {
-        min-width: 110px;
-        max-width: 200px;
-    }
-    .step-counter {
-        font-size: 0.78rem;
-        color: var(--text-secondary);
-        text-align: center;
-        flex: 1;
-        white-space: nowrap;
-    }
-    /* Mobile: keep buttons compact */
-    @media (max-width: 400px) {
-        .wizard-nav .btn { min-width: 76px; padding: 0.5rem 0.75rem; font-size: 0.8rem; }
-        .step-counter { font-size: 0.7rem; }
-    }
+/* Links */
+.auth-link { font-weight: 600; }
+.auth-hint .auth-link, .pfm-linkbtn { display: inline-block; margin: calc(-1 * var(--sp-1)); padding: var(--sp-1); }
+.pfm-linkbtn { border: 0; background: none; font: inherit; font-weight: 600; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 
-    /* ══════════════════════════════════════
-       Image Upload — background upload state
-    ══════════════════════════════════════ */
-    .bg-upload-status {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        padding: 0.55rem 0.85rem;
-        border-radius: var(--radius-md);
-        font-size: 0.8rem;
-        margin-top: 0.5rem;
-        transition: all 0.3s;
-    }
-    .bg-upload-status.uploading  { background:#e7f3ff; color:#0d6efd; border:1px solid #b8d4ff; }
-    .bg-upload-status.done       { background:#d1f2e4; color:#198754; border:1px solid #a3dcc0; }
-    .bg-upload-status.error      { background:#fff3cd; color:#856404; border:1px solid #ffe08a; }
+.ox a:focus-visible, .ox button:focus-visible, .ox summary:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; border-radius: var(--radius-sm); }
+@media (hover: hover) {
+    .ox-btn-neutral:hover { background: var(--hover-bg); }
+    .auth-link:hover { text-decoration: underline; }
+    .pfm-thumb-x:hover { background: var(--hover-bg); }
+}
+@media (prefers-reduced-motion: reduce) { .auth-more > summary .bi { transition: none; } }
 
-    .upload-progress-bar-wrap {
-        height: 4px;
-        border-radius: 2px;
-        background: rgba(0,0,0,0.08);
-        overflow: hidden;
-        margin-top: 4px;
-    }
-    .upload-progress-fill {
-        height: 100%;
-        width: 0%;
-        background: #0d6efd;
-        border-radius: 2px;
-        transition: width 0.3s ease;
-    }
+/* ---- Product form only ---- */
+.pfm-body { display: flex; flex-direction: column; gap: var(--gap-sections); width: 100%; max-width: 60rem; margin: 0 auto; }
+.pfm-grid { display: flex; flex-direction: column; gap: var(--gap-sections); }
+.pfm-main { display: flex; flex-direction: column; gap: var(--gap-sections); min-width: 0; }
 
-    /* ══════════════════════════════════════
-       Keep original styles intact below
-    ══════════════════════════════════════ */
-    .section-card {
-        background: var(--card-background);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-md);
-        padding: 1.5rem;
-        transition: border-color 0.3s ease;
-    }
-    .section-card:hover { border-color: var(--accent-color); }
+/* Steps: four named stages */
+.pfm-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
+.pfm-step { display: flex; flex-direction: column; gap: var(--sp-1); width: 100%; min-height: 2.75rem; padding: 0; border: 0; background: none; font: inherit; font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); text-align: left; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.pfm-step:disabled { cursor: default; }
+.pfm-step-bar { display: block; height: var(--sp-1); border-radius: var(--radius-full); background: var(--border-color); }
+.pfm-step-label { display: flex; align-items: center; gap: var(--sp-1); min-width: 0; }
+.pfm-step-label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pfm-step-label i { flex: none; }
+.pfm-step.is-done .pfm-step-bar, .pfm-step.is-active .pfm-step-bar { background: var(--bs-success); }
+.pfm-step.is-done { color: var(--text-primary); }
+.pfm-step.is-done .pfm-step-label i { color: var(--bs-success); }
+.pfm-step.is-active { font-weight: 600; color: var(--text-primary); }
+.pfm-step.is-bad { color: var(--bs-danger); }
+.pfm-step.is-bad .pfm-step-bar { background: var(--bs-danger); }
 
-    .section-title {
-        color: var(--text-primary);
-        font-weight: 600;
-        font-size: 1.05rem;
-        border-bottom: 1px solid var(--border-color);
-        padding-bottom: 0.5rem;
-    }
-    .section-title i { color: var(--accent-color); }
+/* Card and panes */
+.pfm-card { display: flex; flex-direction: column; gap: var(--gap-sections); padding: var(--pad-m); scroll-margin-top: calc(var(--navbar-height-mobile) + var(--sp-2)); }
+@media (min-width: 768px) { .pfm-card { padding: var(--pad-l); scroll-margin-top: calc(var(--navbar-height) + var(--sp-2)); } }
+.pfm-pane { display: flex; flex-direction: column; gap: var(--gap-sections); }
+.pfm-cardhead { display: flex; align-items: center; gap: var(--sp-3); }
+.pfm-cardhead:focus { outline: none; }
+.pfm-count { font-size: var(--font-size-xs); line-height: var(--lh-snug); color: var(--text-secondary); }
+.pfm-h { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-snug); }
+.pfm-sub { font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+.pfm-fields { display: flex; flex-direction: column; gap: var(--gap-fields); }
+/* A conditional group inside a step: set apart by a rule, not by a second card */
+.pfm-group { display: flex; flex-direction: column; gap: var(--gap-fields); padding-top: var(--gap-sections); border-top: 1px solid var(--border-color); }
+.pfm-h2 { margin: 0; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-snug); }
+.pfm-checks { display: flex; flex-direction: column; }
+.pfm-ai { display: flex; flex-direction: column; gap: var(--sp-1); }
 
-    /* ════════════════════════════════════════════════════════════════
-       SHARED HYBRID FIELD SYSTEM
-       • text/email/tel/number inputs  →  floating label
-       • <select>                      →  floating label (always floated)
-       • textarea / date               →  standard label-above
-       • Image / upload zones          →  UNTOUCHED
-    ════════════════════════════════════════════════════════════════ */
+/* Step navigation: Back is quiet, Continue fills the row */
+.pfm-nav { display: flex; gap: var(--sp-2); }
+.pfm-nav .ox-btn { flex: 1 1 auto; width: auto; }
+.pfm-nav .pfm-back { flex: 0 0 auto; padding: 0 var(--sp-4); }
 
-    /* 1. Base controls */
-    .form-control, .form-select {
-        border-width: 2px;
-        border-style: solid;
-        border-color: var(--border-color);
-        border-radius: var(--radius-md, 0.45rem);
-        font-size: 0.9375rem;
-        color: var(--text-primary);
-        background-color: var(--card-background);
-        transition: border-color 0.25s ease, box-shadow 0.25s ease;
-    }
-    .form-control:focus, .form-select:focus {
-        border-color: var(--accent-color);
-        box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.18);
-        outline: none;
-        background-color: var(--card-background);
-    }
-    .form-control.is-invalid, .form-select.is-invalid { border-color: #dc3545 !important; box-shadow: none !important; }
-    .form-control.is-valid,   .form-select.is-valid   { border-color: #198754 !important; box-shadow: none !important; }
-    [data-bs-theme="dark"] .form-control,
-    [data-bs-theme="dark"] .form-select {
-        background-color: var(--dark-card-background, #1e2330);
-        border-color: var(--dark-border-color, #3a3f52);
-        color: var(--dark-text-primary, #e9ecef);
-    }
-    [data-bs-theme="dark"] .form-control:focus,
-    [data-bs-theme="dark"] .form-select:focus { background-color: var(--dark-card-background, #1e2330); }
+/* Photos: same dashed drop zone as the profile photo */
+.pfm-photo { overflow: hidden; border: 2px dashed var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); }
+.pfm-photo:focus-within, .pfm-photo.drag { border-color: var(--accent-color); }
+.pfm-drop { position: relative; display: flex; align-items: center; gap: var(--sp-3); padding: var(--pad-m); cursor: pointer; }
+.pfm-drop > i { flex: none; font-size: var(--font-size-3xl); color: var(--accent-color); }
+.pfm-drop-text { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; line-height: var(--lh-tight); }
+.pfm-drop strong { font-size: var(--font-size-base); font-weight: 600; }
+.pfm-drop small { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.pfm-drop input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; padding: 0; opacity: 0; cursor: pointer; }
+.pfm-thumbs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); margin: 0; padding: var(--sp-3); list-style: none; border-top: 1px solid var(--border-color); }
+@media (min-width: 768px) { .pfm-thumbs { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.pfm-thumb { position: relative; display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; font-size: var(--font-size-xs); color: var(--text-secondary); }
+.pfm-thumb img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--hover-bg); }
+.pfm-thumb-tag { position: absolute; top: var(--sp-1); left: var(--sp-1); padding: 0 var(--sp-2); border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); font-size: var(--font-size-xs); font-weight: 600; color: var(--text-primary); }
+.pfm-thumb-x { position: absolute; top: var(--sp-1); right: var(--sp-1); display: grid; place-items: center; min-width: var(--h-control-sm); min-height: var(--h-control-sm); padding: 0; border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-base); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.pfm-current { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
+.pfm-current li { position: relative; min-width: 0; }
 
-    /* 2. Standard label */
-    .form-label {
-        display: block;
-        font-size: 0.8125rem;
-        font-weight: 600;
-        color: var(--text-secondary);
-        margin-bottom: 0.4rem;
-        letter-spacing: 0.01em;
-    }
-    .form-label .req { color: #dc3545; margin-left: 2px; font-size: 0.75rem; font-weight: 700; }
-    .form-label .opt {
-        display: inline-block;
-        font-size: 0.68rem; font-weight: 500;
-        color: var(--text-secondary); background: var(--border-color);
-        border-radius: 4px; padding: 1px 6px; margin-left: 5px;
-    }
-    [data-bs-theme="dark"] .form-label { color: var(--dark-text-secondary, #9ca3af); }
-    [data-bs-theme="dark"] .form-label .opt { background: var(--dark-border-color, #3a3f52); }
+/* Live preview: beside the form on desktop, on the last step on phones */
+.pfm-side { display: none; }
+.pfm-form[data-step="3"] .pfm-side { display: block; }
+.pfm-preview { gap: var(--gap-fields); }
+.pfm-pv-label { font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+.pfm-pv-img { display: grid; place-items: center; aspect-ratio: 4 / 3; overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--hover-bg); font-size: var(--font-size-3xl); color: var(--text-secondary); }
+.pfm-pv-img img { width: 100%; height: 100%; object-fit: cover; }
+.pfm-pv-title { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-snug); overflow-wrap: anywhere; }
+.pfm-pv-title.empty { font-weight: 400; color: var(--text-secondary); }
+.pfm-pv-price { font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-snug); color: var(--accent-text); }
+.pfm-pv-meta { font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); overflow-wrap: anywhere; }
+.pfm-chips { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin: 0; padding: 0; list-style: none; }
+.pfm-chips li { padding: 0 var(--sp-2); border: 1px solid var(--border-color); border-radius: var(--radius-full); font-size: var(--font-size-sm); line-height: var(--lh-body); }
+@media (min-width: 992px) {
+    .pfm-grid { display: grid; grid-template-columns: minmax(0, 1fr) 18rem; align-items: start; }
+    .pfm-side { display: block; position: sticky; top: calc(var(--navbar-height) + var(--sp-4)); }
+}
 
-    /* 3. Floating labels */
-    .form-floating { position: relative; }
-    .form-floating > .form-control,
-    .form-floating > .form-select {
-        height: calc(3.5rem + 4px);
-        padding: 1.2rem 0.875rem 0.4rem;
-        line-height: 1.25;
-    }
-    .form-floating > textarea.form-control {
-        height: auto; min-height: 7rem;
-        padding-top: 1.75rem; resize: vertical; line-height: 1.55;
-    }
-    .form-floating > label {
-        position: absolute; top: 0; left: 0;
-        height: 100%; padding: 1rem 0.875rem;
-        pointer-events: none; border: 1px solid transparent;
-        transform-origin: 0 0;
-        transition: transform 0.15s ease, color 0.15s ease, opacity 0.15s ease;
-        font-size: 0.9375rem; font-weight: 400;
-        color: var(--text-secondary);
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
-    }
-    .form-floating > .form-control:focus ~ label,
-    .form-floating > .form-control:not(:placeholder-shown) ~ label {
-        transform: scale(0.78) translateY(-0.6rem) translateX(0.08rem);
-        color: var(--accent-color); opacity: 1; font-weight: 600;
-    }
-    .form-floating > .form-select { padding-top: 1.625rem; padding-bottom: 0.5rem; }
-    .form-floating > .form-select ~ label {
-        transform: scale(0.78) translateY(-0.6rem) translateX(0.08rem);
-        color: var(--accent-color); opacity: 1; font-weight: 600;
-    }
-    .form-floating > label .req { color: #dc3545; margin-left: 2px; font-size: inherit; }
-    .form-floating > label .opt {
-        display: inline-block; font-size: 0.7rem; font-weight: 400;
-        color: var(--text-secondary); background: var(--border-color);
-        border-radius: 3px; padding: 1px 4px; margin-left: 3px;
-    }
-    [data-bs-theme="dark"] .form-floating > label { color: var(--dark-text-secondary, #9ca3af); }
-    [data-bs-theme="dark"] .form-floating > .form-control:focus ~ label,
-    [data-bs-theme="dark"] .form-floating > .form-control:not(:placeholder-shown) ~ label,
-    [data-bs-theme="dark"] .form-floating > .form-select ~ label { color: var(--accent-color); }
-
-    /* 4. Textarea */
-    textarea.form-control {
-        min-height: 6.5rem; resize: vertical;
-        padding: 0.75rem 0.875rem; line-height: 1.55;
-    }
-    .form-floating textarea.form-control { padding-top: 1.75rem; }
-
-    /* 5. Placeholder */
-    .form-control::placeholder {
-        color: var(--text-secondary); opacity: 0.6;
-        font-size: 0.875rem; font-style: italic;
-    }
-    [data-bs-theme="dark"] .form-control::placeholder { opacity: 0.38; }
-
-    /* 6. Date input */
-    input[type="date"].form-control {
-        height: calc(2.75rem + 4px); padding: 0.55rem 0.875rem; cursor: pointer;
-    }
-
-    /* 7. Helper text */
-    .form-text {
-        display: block; font-size: 0.75rem; line-height: 1.45;
-        margin-top: 0.3rem; color: var(--text-secondary) !important;
-        padding-left: 0.1rem;
-    }
-    [data-bs-theme="dark"] .form-text { color: var(--dark-text-secondary, #9ca3af) !important; }
-
-    /* 8. Error messages */
-    .field-error-msg {
-        display: flex; align-items: center; gap: 5px;
-        font-size: 0.78rem; color: #dc3545; margin-top: 0.3rem;
-        animation: errorSlide 0.2s ease;
-    }
-    @keyframes errorSlide {
-        from { opacity: 0; transform: translateY(-4px); }
-        to   { opacity: 1; transform: translateY(0); }
-    }
-
-    /* 9. Form checks */
-    .form-check-input { border-width: 2px; border-color: var(--border-color); cursor: pointer; }
-    .form-check-input:checked { background-color: var(--accent-color, var(--primary-color)); border-color: var(--accent-color, var(--primary-color)); }
-    .form-check-label { font-size: 0.875rem; color: var(--text-primary); cursor: pointer; }
-    [data-bs-theme="dark"] .form-check-label { color: var(--dark-text-primary, #e9ecef); }
-
-    /* 10. Section cards */
-    .section-card {
-        background: var(--card-background);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-md, 0.5rem);
-        padding: 1.5rem;
-        transition: border-color 0.25s ease;
-    }
-    .section-card:hover { border-color: var(--accent-color); }
-    .section-title {
-        color: var(--text-primary);
-        font-weight: 700; font-size: 1rem;
-        border-bottom: 1px solid var(--border-color);
-        padding-bottom: 0.6rem; letter-spacing: 0.01em;
-    }
-    .section-title i { color: var(--accent-color); }
-    [data-bs-theme="dark"] .section-card { background: var(--dark-card-background, #1e2330); border-color: var(--dark-border-color, #3a3f52); }
-    [data-bs-theme="dark"] .section-card:hover { border-color: var(--accent-color); }
-    [data-bs-theme="dark"] .section-title { color: var(--dark-text-primary, #e9ecef); border-color: var(--dark-border-color, #3a3f52); }
-
-    /* 11. Responsive */
-    @media (max-width: 768px) { .section-card { padding: 1.125rem; } .card-body { padding: 1rem !important; } }
-    @media (max-width: 480px) {
-        .section-card { padding: 1rem; }
-        .form-floating > .form-control, .form-floating > .form-select { height: calc(3.25rem + 4px); }
-        .form-label { font-size: 0.78rem; }
-        .form-text  { font-size: 0.72rem; }
-    }
-
-    .upload-zone {
-        border: 2px dashed var(--border-color); border-radius: var(--radius-md);
-        padding: 1.25rem; background: var(--card-background);
-        transition: border-color 0.25s, background 0.25s; cursor: pointer;
-    }
-    .upload-zone:hover, .upload-zone.drag-over { border-color: var(--accent-color); background: rgba(184,115,51,0.04); }
-    .upload-zone .upload-label { display:flex; flex-direction:column; align-items:center; gap:0.4rem; cursor:pointer; text-align:center; }
-    .upload-zone .upload-icon  { font-size:2rem; color:var(--accent-color); opacity:0.8; }
-    .upload-zone .upload-title { font-size:0.875rem; font-weight:600; color:var(--text-primary); }
-    .upload-zone .upload-hint  { font-size:0.75rem; color:var(--text-secondary); }
-    .upload-zone .upload-meta  { display:flex; flex-wrap:wrap; justify-content:center; gap:0.4rem; margin-top:0.5rem; }
-    .upload-badge {
-        font-size:0.7rem; padding:2px 8px; border-radius:20px;
-        background:rgba(184,115,51,0.1); color:var(--accent-color);
-        border:1px solid rgba(184,115,51,0.25); font-weight:500;
-    }
-    .upload-zone input[type="file"] { display:none; }
-
-    .image-preview-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:10px; margin-top:0.75rem; }
-    .preview-card { position:relative; border-radius:6px; overflow:hidden; border:2px solid var(--border-color); background:#f8f9fa; transition:border-color 0.2s; }
-    .preview-card.primary { border-color:var(--primary-color,#0d6efd); }
-    .preview-card img { width:100%; height:80px; object-fit:cover; display:block; }
-    .preview-card .preview-info { padding:3px 5px; font-size:0.65rem; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; background:var(--card-background); }
-    .preview-card .primary-badge  { position:absolute; top:3px; right:3px; font-size:0.6rem; padding:1px 5px; background:var(--primary-color,#0d6efd); color:#fff; border-radius:3px; }
-    .preview-card .compress-badge { position:absolute; top:3px; left:3px; font-size:0.6rem; padding:1px 5px; background:#198754; color:#fff; border-radius:3px; }
-
-    .upload-stats { display:flex; align-items:center; justify-content:space-between; padding:0.4rem 0.75rem; border-radius:var(--radius-md); background:rgba(0,0,0,0.03); margin-top:0.5rem; font-size:0.775rem; color:var(--text-secondary); }
-    .upload-stats .stat-item { display:flex; align-items:center; gap:4px; }
-
-    .compress-status { display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.75rem; border-radius:var(--radius-md); font-size:0.8rem; margin-top:0.5rem; }
-    .compress-status.running { background:#e7f3ff; color:#0d6efd; border:1px solid #b8d4ff; }
-    .compress-status.done    { background:#d1f2e4; color:#198754; border:1px solid #a3dcc0; }
-    .compress-status.warn    { background:#fff3cd; color:#856404; border:1px solid #ffe08a; }
-
-    .loading-overlay {
-        position:fixed; inset:0; background:rgba(255,255,255,0.95);
-        backdrop-filter:blur(3px); z-index:1050;
-        display:flex; align-items:center; justify-content:center;
-        opacity:0; pointer-events:none; transition:opacity 0.3s ease;
-    }
-    .loading-overlay.show { opacity:1; pointer-events:all; }
-    .loading-content {
-        text-align:center; padding:2rem; background:white; border-radius:14px;
-        box-shadow:0 12px 40px rgba(0,0,0,0.12); width:min(90vw,420px);
-        border:1px solid rgba(0,0,0,0.08);
-    }
-    [data-bs-theme="dark"] .loading-overlay { background:rgba(33,37,41,0.95); }
-    [data-bs-theme="dark"] .loading-content { background:#2d3748; color:#fff; border-color:rgba(255,255,255,0.1); }
-
-    .form-error-banner { background:#fff5f5; border:1px solid #f5c6cb; border-radius:var(--radius-md); padding:0.875rem 1rem; font-size:0.85rem; color:#721c24; display:none; }
-    .form-error-banner.visible { display:flex; align-items:flex-start; gap:0.5rem; }
-    .form-error-banner ul { margin:0; padding-left:1.1rem; }
-    [data-bs-theme="dark"] .form-error-banner { background:#3d1a1e; border-color:#7a2d37; color:#f8d7da; }
-
-    .btn-primary {
-        background:linear-gradient(135deg,var(--primary-color) 0%,var(--secondary-color) 100%);
-        border:none; font-weight:600; padding:0.875rem 2rem;
-        border-radius:var(--radius-md); transition:all 0.3s ease;
-    }
-    .btn-primary:hover { transform:translateY(-2px); box-shadow:0 4px 14px rgba(13,110,253,0.3); }
-
-    #generateDescriptionBtn { font-size:0.75rem; padding:0.25rem 0.6rem; border-radius:0.375rem; transition:all 0.2s ease; }
-    #generateDescriptionBtn:hover { transform:translateY(-1px); box-shadow:0 2px 6px rgba(0,0,0,0.1); }
-
-
-    [data-bs-theme="dark"] .section-card  { background:var(--dark-card-background); border-color:var(--dark-border-color); }
-    [data-bs-theme="dark"] .section-card:hover { border-color:var(--dark-accent-color); }
-    [data-bs-theme="dark"] .upload-zone  { background:var(--dark-card-background); }
-    [data-bs-theme="dark"] .preview-card { background:#3d4451; }
-    [data-bs-theme="dark"] .upload-stats { background:rgba(255,255,255,0.05); }
-
-    @media (max-width:768px) { .section-card { padding:1rem; margin-bottom:1.25rem; } .card-body { padding:1rem !important; } }
-    @media (max-width:576px) { .form-label .d-flex { flex-direction:column; align-items:flex-start !important; gap:0.5rem; } }
-    @media (max-width:480px) { .wizard-step .step-label { display:none; } .wizard-step { min-width:50px; } }
+/* Busy overlay: only while photos upload (same as the profile page) */
+.pfm-overlay { position: fixed; inset: 0; z-index: 1060; display: grid; place-items: center; padding: var(--sp-4); background: rgba(0, 0, 0, .55); }
+.pfm-box { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); max-width: 20rem; padding: var(--pad-l); border-radius: var(--r-card); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-sm); text-align: center; }
+.pfm-box strong { font-size: var(--font-size-base); }
 </style>
 {% endblock %}
 
 {% block 'Body' %}
-<!-- Loading Overlay -->
-<div id="loadingOverlay" class="loading-overlay">
-    <div class="loading-content">
-        <div class="spinner-border text-primary mb-3" role="status"><span class="visually-hidden">Loading...</span></div>
-        <div id="uploadProgressText" class="fw-bold mb-2">Processing your listing...</div>
-        <div id="uploadProgressBar" class="progress mb-2" style="height:8px;">
-            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width:0%"></div>
-        </div>
-        <div id="uploadStatusText" class="text-muted small">Please wait, we're submitting your product details</div>
-    </div>
-</div>
+<div class="ox">
 
-<div class="container py-3">
-    <div class="row justify-content-center">
-        <div class="col-lg-9">
-            <div class="card">
-                <!-- Wizard Header -->
-                <div class="wizard-header">
-                    <h3 class="mb-1">{{ title }}</h3>
-                    <p class="text-muted mb-3 small">Fill in each section and click Next to continue</p>
+    <header class="ox-head">
+        <h1 class="ox-title">{{ title }}</h1>
+        <p class="ox-lead">Free to list, no commission on sales. Fields marked optional can be left blank.</p>
+    </header>
 
-                    <div class="wizard-steps" id="wizardSteps">
-                        <div class="wizard-step active" data-step="0">
-                            <div class="step-icon"><i class="bi bi-info-circle"></i></div>
-                            <span class="step-label">Basic Info</span>
-                        </div>
-                        <div class="wizard-step" data-step="1">
-                            <div class="step-icon"><i class="bi bi-currency-exchange"></i></div>
-                            <span class="step-label">Pricing</span>
-                        </div>
-                        <div class="wizard-step" data-step="2">
-                            <div class="step-icon"><i class="bi bi-card-text"></i></div>
-                            <span class="step-label">Description</span>
-                        </div>
-                        <div class="wizard-step" data-step="3">
-                            <div class="step-icon"><i class="bi bi-image"></i></div>
-                            <span class="step-label">Images</span>
-                        </div>
-                    </div>
+    <div class="pfm-body">
+
+    <nav aria-label="Listing steps">
+        <ol class="pfm-steps" id="pfmSteps">
+            <li><button type="button" class="pfm-step" data-step="0"><span class="pfm-step-bar"></span><span class="pfm-step-label"><i class="bi" hidden aria-hidden="true"></i><span>Basics</span></span></button></li>
+            <li><button type="button" class="pfm-step" data-step="1"><span class="pfm-step-bar"></span><span class="pfm-step-label"><i class="bi" hidden aria-hidden="true"></i><span>Price</span></span></button></li>
+            <li><button type="button" class="pfm-step" data-step="2"><span class="pfm-step-bar"></span><span class="pfm-step-label"><i class="bi" hidden aria-hidden="true"></i><span>Details</span></span></button></li>
+            <li><button type="button" class="pfm-step" data-step="3"><span class="pfm-step-bar"></span><span class="pfm-step-label"><i class="bi" hidden aria-hidden="true"></i><span>Photos</span></span></button></li>
+        </ol>
+    </nav>
+
+    {# No Django messages here: base.html already renders them #}
+    {# action="" posts back to the current URL. A normal submit is used so the success message survives the redirect. #}
+    <form method="post" action="" enctype="multipart/form-data" id="productForm" class="pfm-grid pfm-form" novalidate
+          data-step="0"
+          data-draft="{% if not form.instance.pk %}1{% endif %}"
+          data-image-url="{% if form.instance.pk %}{% with first=form.instance.images.first %}{% if first %}{{ first.image.url }}{% endif %}{% endwith %}{% endif %}">
+        {% csrf_token %}
+        <input type="hidden" name="bg_upload_token" id="bgToken" value="">
+
+        <div class="pfm-main">
+            <div class="ox-card pfm-card" id="pfmCard">
+
+                {% if form.errors %}
+                <div class="auth-alert" role="alert">
+                    <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+                    <span>{% if form.non_field_errors %}{{ form.non_field_errors.0 }}{% else %}Some fields need attention. We opened the first one.{% endif %}</span>
+                </div>
+                {% endif %}
+
+                <div class="auth-alert auth-alert--success" id="draftBanner" role="status" hidden>
+                    <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+                    <span>We restored your unsaved draft. Photos are not kept in drafts. <button type="button" class="auth-link text-primary pfm-linkbtn" id="draftReset">Start over</button></span>
                 </div>
 
-                <div class="card-body p-4">
-
-                    <!-- Server-side error banner -->
-                    {% if form.errors %}
-                    <div class="form-error-banner visible mb-4" id="serverErrorBanner">
-                        <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
+                {# ================= Step 1: Basics ================= #}
+                <section class="pfm-pane" data-pane="0" aria-labelledby="h-basics">
+                    <div class="pfm-cardhead t-navy" tabindex="-1">
+                        <span class="ox-ico"><i class="bi bi-tag-fill" aria-hidden="true"></i></span>
                         <div>
-                            <strong>Please fix the following errors:</strong>
-                            <ul class="mt-1 mb-0">
-                                {% for field in form %}{% for error in field.errors %}<li>{{ field.label }}: {{ error }}</li>{% endfor %}{% endfor %}
-                                {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
-                            </ul>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <!-- Client-side error banner -->
-                    <div class="form-error-banner mb-4" id="clientErrorBanner">
-                        <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
-                        <div>
-                            <strong>Please fix the following errors:</strong>
-                            <ul id="clientErrorList" class="mt-1 mb-0"></ul>
+                            <p class="pfm-count">Step 1 of 4</p>
+                            <h2 class="pfm-h" id="h-basics">What are you selling?</h2>
+                            <p class="pfm-sub">Buyers search by title, category and condition.</p>
                         </div>
                     </div>
 
-                    <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate id="productForm">
-                        {% csrf_token %}
-
-                        <!-- ══ TAB 1: Basic Info ══ -->
-                        <div class="tab-pane-wizard active" id="tab-0">
-                            <div class="section-card">
-                                <h4 class="section-title mb-4"><i class="bi bi-info-circle-fill me-2"></i>Basic Product Setup</h4>
-
-                                <div class="mb-3">
-                                    <div class="form-floating">
-                                        {{ form.title }}
-                                        <label for="id_title">Product Title <span class="req">*</span></label>
-                                    </div>
-                                    {% if form.title.errors %}{% for e in form.title.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}{% endif %}
-                                    <div class="form-text">Max 255 characters. E.g. "Samsung 55" QLED TV 4K"</div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <div class="form-floating">
-                                        {{ form.category }}
-                                        <label for="id_category">Category <span class="req">*</span></label>
-                                    </div>
-                                    {% for e in form.category.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                </div>
-
-                                <div class="mb-3">
-                                    <div class="form-floating">
-                                        {{ form.subcategory }}
-                                        <label for="id_subcategory">Subcategory <span class="req">*</span></label>
-                                    </div>
-                                    {% for e in form.subcategory.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text">Select a category first to load subcategories.</div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <div class="form-floating">
-                                        {{ form.brand }}
-                                        <label for="id_brand">Brand <span class="opt">Optional</span></label>
-                                    </div>
-                                    {% for e in form.brand.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                </div>
-
-                                <div class="mb-0">
-                                    <div class="form-floating">
-                                        {{ form.condition }}
-                                        <label for="id_condition">Condition <span class="req">*</span></label>
-                                    </div>
-                                    {% for e in form.condition.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                </div>
-                                <!-- ══ Condition Details (used items only) ══ -->
-                                <div id="condition-details-section" style="display:none;">
-                                    <hr class="my-3">
-                                    <h6 class="fw-semibold mb-3" style="color:var(--text-primary);"><i class="bi bi-info-square me-2" style="color:var(--accent-color);"></i>Used Item Details</h6>
-
-                                    <div class="mb-3">
-                                        <div class="form-floating">
-                                            {{ form.reason_for_selling }}
-                                            <label for="id_reason_for_selling">Reason for Selling <span class="opt">Optional</span></label>
-                                        </div>
-                                        {% for e in form.reason_for_selling.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    </div>
-
-                                    <div class="form-check form-switch mb-2">
-                                        {{ form.original_accessories_included }}
-                                        <label class="form-check-label" for="id_original_accessories_included">Original accessories included</label>
-                                    </div>
-                                </div>
-
-                                <!-- ══ Receipt / Proof of Purchase (used items only) ══ -->
-                                <div id="receipt-section" style="display:none;">
-                                    <hr class="my-3">
-                                    <h6 class="fw-semibold mb-3" style="color:var(--text-primary);"><i class="bi bi-receipt me-2" style="color:var(--accent-color);"></i>Proof of Purchase</h6>
-
-                                    <div class="form-check form-switch mb-2">
-                                        {{ form.has_receipt }}
-                                        <label class="form-check-label" for="id_has_receipt">I have a receipt or proof of ownership</label>
-                                    </div>
-
-                                    <div id="receipt-details" style="display:none;" class="mt-3">
-                                        <div class="mb-3">
-                                            <div class="form-floating">
-                                                {{ form.receipt_visibility }}
-                                                <label for="id_receipt_visibility">Who can see the receipt?</label>
-                                            </div>
-                                        </div>
-                                        <div class="mb-3">
-                                            <div class="form-floating">
-                                                {{ form.receipt_type }}
-                                                <label for="id_receipt_type">Type of Proof</label>
-                                            </div>
-                                        </div>
-                                        <div class="mb-3">
-                                            <div class="form-floating">
-                                                {{ form.receipt_notes }}
-                                                <label for="id_receipt_notes">Notes <span class="opt">Optional</span></label>
-                                            </div>
-                                        </div>
-                                        {% if form.instance.pk and form.instance.receipts.all %}
-                                        <div class="mb-3">
-                                            <p class="form-text fw-semibold mb-2" style="color:var(--text-primary);">Current Receipt Images:</p>
-                                            <div class="image-preview-grid">
-                                                {% for r in form.instance.receipts.all %}
-                                                <div class="preview-card">
-                                                    <img src="{{ r.image.url }}" alt="Receipt">
-                                                    <div class="preview-info">{{ r.get_receipt_type_display }}</div>
-                                                </div>
-                                                {% endfor %}
-                                            </div>
-                                            <p class="form-text mt-2">Upload new receipt images to replace existing ones.</p>
-                                        </div>
-                                        {% endif %}
-
-                                        <!-- Receipt upload zone -->
-                                        <div class="mb-3">
-                                            <label class="form-label">Upload Receipt Images <span class="opt">Optional · Max 3</span></label>
-                                            <div class="upload-zone" id="receiptDropZone">
-                                                <label class="upload-label" for="id_receipt_images">
-                                                    <i class="bi bi-cloud-arrow-up upload-icon"></i>
-                                                    <span class="upload-title">Click to select or drag &amp; drop</span>
-                                                    <span class="upload-hint">Receipt photos, invoices, or warranty cards</span>
-                                                    <div class="upload-meta">
-                                                        <span class="upload-badge"><i class="bi bi-filetype-jpg me-1"></i>JPG</span>
-                                                        <span class="upload-badge"><i class="bi bi-filetype-png me-1"></i>PNG</span>
-                                                        <span class="upload-badge">Max 3 images</span>
-                                                        <span class="upload-badge">5MB each</span>
-                                                    </div>
-                                                </label>
-                                                {{ form.receipt_images }}
-                                            </div>
-                                            <!-- Receipt preview grid (populated by JS, no visual status shown) -->
-                                            <div class="image-preview-grid" id="receiptPreviewContainer"></div>
-                                            <div id="receiptUploadStats" class="upload-stats d-none">
-                                                <div class="stat-item"><i class="bi bi-images"></i><span id="receiptNumFiles">0</span>/3 files</div>
-                                                <div class="stat-item"><i class="bi bi-hdd"></i><span id="receiptTotalSize">0 KB</span> total</div>
-                                            </div>
-                                            <div class="form-text"><i class="bi bi-shield-exclamation me-1"></i>Tip: Cover your personal name and address on the receipt before uploading.</div>
-                                            {% for e in form.receipt_images.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="pfm-fields">
+                        <div class="auth-field{% if form.title.errors %} has-error{% endif %}">
+                            <label for="id_title" class="auth-label">Title</label>
+                            {{ form.title }}
+                            <p class="auth-hint" id="hint-title">Include the brand and model. Example: Samsung 55-inch QLED TV.</p>
+                            <div class="invalid-feedback" id="err-title">{{ form.title.errors.0 }}</div>
                         </div>
 
-                        <!-- ══ TAB 2: Pricing & Availability ══ -->
-                        <div class="tab-pane-wizard" id="tab-1">
-                            <div class="section-card">
-                                <h4 class="section-title mb-4"><i class="bi bi-currency-exchange me-2"></i>Pricing &amp; Availability</h4>
-
-                                <div class="mb-3">
-                                    <div class="form-floating">
-                                    <input type="text" name="formatted_price"
-                                        class="form-control {% if form.formatted_price.errors %}is-invalid{% endif %}"
-                                        id="id_formatted_price"
-                                        placeholder="e.g. ₦ 50,000"
-                                        value="{{ form.formatted_price.value|default:'' }}"
-                                        autocomplete="off">
-                                        <label for="id_formatted_price">Price (₦) <span class="req">*</span></label>
-                                    </div>
-                                    {% for e in form.formatted_price.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text">Enter in Naira (₦). Numbers only, e.g. ₦ 50,000</div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <div class="form-floating">
-                                        {{ form.listing_type }}
-                                        <label for="id_listing_type">Listing Type <span class="req">*</span></label>
-                                    </div>
-                                    {% for e in form.listing_type.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    {% if is_verified_business %}
-                                        <div class="form-text text-success"><i class="bi bi-check-circle me-1"></i>As a verified business you have access to all listing types including permanent.</div>
-                                    {% else %}
-                                        <div class="form-text"><i class="bi bi-info-circle me-1"></i><a href="{% url 'business_verification_form' %}" class="text-decoration-none">Apply for business verification</a> to unlock permanent listings.</div>
-                                    {% endif %}
-                                </div>
-
-                                <div class="mb-3" id="quantityContainer">
-                                    <div class="form-floating">
-                                        {{ form.quantity }}
-                                        <label for="id_quantity">Quantity Available <span class="req">*</span></label>
-                                    </div>
-                                    {% for e in form.quantity.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text">Number of units available. Minimum: 1</div>
-                                </div>
-
-                                <!-- ══ Bundle Info (quantity > 1) ══ -->
-                                <div id="bundle-info-section" style="display:none;" class="mb-3">
-                                    <div class="form-floating">
-                                        {{ form.bundle_description }}
-                                        <label for="id_bundle_description">Bundle Description <span class="opt">Optional</span></label>
-                                    </div>
-                                    <div class="form-text">Describe what items are included in this bundle.</div>
-                                    {% for e in form.bundle_description.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                </div>
-
-                                <div class="form-check form-switch mb-2">
-                                    {{ form.is_always_available }}
-                                    <label class="form-check-label" for="id_is_always_available">Always Available</label>
-                                </div>
-                                <div class="form-text">Products marked always available won't be removed automatically.</div>
-
-                                <!-- ══ Listing Preferences ══ -->
-                                <hr class="my-3">
-                                <h6 class="fw-semibold mb-3" style="color:var(--text-primary);"><i class="bi bi-sliders me-2" style="color:var(--accent-color);"></i>Listing Preferences</h6>
-
-                                <div class="form-check form-switch mb-2">
-                                    {{ form.negotiable }}
-                                    <label class="form-check-label" for="id_negotiable">Price is negotiable</label>
-                                </div>
-
-                                <div class="form-check form-switch mb-2">
-                                    {{ form.delivery_available }}
-                                    <label class="form-check-label" for="id_delivery_available">Delivery available</label>
-                                </div>
-
-                                <div class="form-check form-switch mb-2">
-                                    {{ form.inspection_allowed }}
-                                    <label class="form-check-label" for="id_inspection_allowed">Inspection allowed before purchase</label>
-                                </div>
-                                <div id="inspection-location-wrapper" style="display:none;" class="mb-3 mt-2">
-                                    <div class="form-floating">
-                                        {{ form.inspection_location }}
-                                        <label for="id_inspection_location">Inspection Location</label>
-                                    </div>
-                                    {% for e in form.inspection_location.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                </div>
-
-                                <div class="form-check form-switch mb-2">
-                                    {{ form.swap_accepted }}
-                                    <label class="form-check-label" for="id_swap_accepted">Open to swapping</label>
-                                </div>
-                                <div id="swap-preference-wrapper" style="display:none;" class="mb-3 mt-2">
-                                    <div class="form-floating">
-                                        {{ form.swap_preference }}
-                                        <label for="id_swap_preference">What would you accept as a swap?</label>
-                                    </div>
-                                    {% for e in form.swap_preference.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                </div>
-                            </div>
+                        <div class="auth-field{% if form.category.errors %} has-error{% endif %}">
+                            <label for="id_category" class="auth-label">Category</label>
+                            {{ form.category }}
+                            <div class="invalid-feedback" id="err-category">{{ form.category.errors.0 }}</div>
                         </div>
 
-                        <!-- ══ TAB 3: Description ══ -->
-                        <div class="tab-pane-wizard" id="tab-2">
-                            <div class="section-card">
-                                <h4 class="section-title mb-4"><i class="bi bi-card-text me-2"></i>Product Description</h4>
+                        <div class="auth-field{% if form.subcategory.errors %} has-error{% endif %}">
+                            <label for="id_subcategory" class="auth-label">Subcategory</label>
+                            {{ form.subcategory }}
+                            <p class="auth-hint" id="hint-subcategory">Choose a category first and the subcategories load here.</p>
+                            <div class="invalid-feedback" id="err-subcategory">{{ form.subcategory.errors.0 }}</div>
+                        </div>
 
-                                <div class="mb-3">
-                                    <label class="form-label d-flex justify-content-between align-items-center" for="id_description">
-                                        <span>Description <span class="req">*</span></span>
-                                        <button type="button" id="generateDescriptionBtn" class="btn btn-outline-primary btn-sm">
-                                            <i class="bi bi-magic me-1"></i>Generate with AI
-                                        </button>
+                        <div class="auth-field{% if form.brand.errors %} has-error{% endif %}">
+                            <label for="id_brand" class="auth-label">Brand <span class="auth-opt">(optional)</span></label>
+                            {{ form.brand }}
+                            <div class="invalid-feedback" id="err-brand">{{ form.brand.errors.0 }}</div>
+                        </div>
+
+                        <div class="auth-field{% if form.condition.errors %} has-error{% endif %}">
+                            <label for="id_condition" class="auth-label">Condition</label>
+                            {{ form.condition }}
+                            <div class="invalid-feedback" id="err-condition">{{ form.condition.errors.0 }}</div>
+                        </div>
+
+                        {# Used items only #}
+                        <div class="pfm-group" id="usedGroup" hidden>
+                            <h3 class="pfm-h2">About the used item</h3>
+
+                            <div class="auth-field{% if form.reason_for_selling.errors %} has-error{% endif %}">
+                                <label for="id_reason_for_selling" class="auth-label">Reason for selling <span class="auth-opt">(optional)</span></label>
+                                {{ form.reason_for_selling }}
+                                <div class="invalid-feedback" id="err-reason_for_selling">{{ form.reason_for_selling.errors.0 }}</div>
+                            </div>
+
+                            <label class="auth-check">
+                                {{ form.original_accessories_included }}
+                                <span>Original accessories included</span>
+                            </label>
+                        </div>
+                    </div>
+                </section>
+
+                {# ================= Step 2: Price ================= #}
+                <section class="pfm-pane" data-pane="1" aria-labelledby="h-price">
+                    <div class="pfm-cardhead t-green" tabindex="-1">
+                        <span class="ox-ico"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
+                        <div>
+                            <p class="pfm-count">Step 2 of 4</p>
+                            <h2 class="pfm-h" id="h-price">Price and availability</h2>
+                            <p class="pfm-sub">Set what you want for it and how many you have.</p>
+                        </div>
+                    </div>
+
+                    <div class="pfm-fields">
+                        <div class="auth-field{% if form.formatted_price.errors %} has-error{% endif %}">
+                            <label for="id_formatted_price" class="auth-label">Price in naira</label>
+                            <input type="text" class="form-control" id="id_formatted_price" name="formatted_price"
+                                   value="{{ form.formatted_price.value|default:'' }}"
+                                   placeholder="₦ 50,000"
+                                   inputmode="numeric" autocomplete="off" enterkeyhint="next">
+                            <p class="auth-hint" id="hint-price">Numbers only. We add the commas.</p>
+                            <div class="invalid-feedback" id="err-formatted_price">{{ form.formatted_price.errors.0 }}</div>
+                        </div>
+
+                        <div class="auth-field{% if form.listing_type.errors %} has-error{% endif %}">
+                            <label for="id_listing_type" class="auth-label">Listing type</label>
+                            {{ form.listing_type }}
+                            {% if is_verified_business %}
+                                <p class="auth-hint auth-hint--ok" id="hint-listing_type"><i class="bi bi-check-circle-fill" aria-hidden="true"></i><span>Your business is verified, so every listing type is open to you, including permanent.</span></p>
+                            {% else %}
+                                <p class="auth-hint" id="hint-listing_type"><span><a href="{% url 'business_verification_form' %}" class="auth-link text-primary">Apply for business verification</a> to unlock permanent listings.</span></p>
+                            {% endif %}
+                            <div class="invalid-feedback" id="err-listing_type">{{ form.listing_type.errors.0 }}</div>
+                        </div>
+
+                        <div class="auth-field">
+                            <label class="auth-check">
+                                {{ form.is_always_available }}
+                                <span>Always available</span>
+                            </label>
+                            <p class="auth-hint" id="hint-always">Tick this if you always have it in stock. You won't need to enter a quantity.</p>
+                        </div>
+
+                        <div class="auth-field{% if form.quantity.errors %} has-error{% endif %}" id="quantityBox">
+                            <label for="id_quantity" class="auth-label">Quantity available</label>
+                            {{ form.quantity }}
+                            <p class="auth-hint" id="hint-quantity">How many units you have. At least 1.</p>
+                            <div class="invalid-feedback" id="err-quantity">{{ form.quantity.errors.0 }}</div>
+                        </div>
+
+                        <div class="auth-field{% if form.bundle_description.errors %} has-error{% endif %}" id="bundleBox" hidden>
+                            <label for="id_bundle_description" class="auth-label">What is in the bundle? <span class="auth-opt">(optional)</span></label>
+                            {{ form.bundle_description }}
+                            <div class="invalid-feedback" id="err-bundle_description">{{ form.bundle_description.errors.0 }}</div>
+                        </div>
+
+                        <details class="auth-more"{% if form.negotiable.value or form.delivery_available.value or form.inspection_allowed.value or form.swap_accepted.value or form.inspection_location.errors or form.swap_preference.errors %} open{% endif %}>
+                            <summary>
+                                <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                                <span>Listing preferences</span>
+                                <span class="auth-opt">Optional</span>
+                            </summary>
+                            <div class="auth-more-body">
+                                <div class="pfm-checks">
+                                    <label class="auth-check">
+                                        {{ form.negotiable }}
+                                        <span>Price is negotiable</span>
                                     </label>
-                                    <div class="position-relative">
-                                        {{ form.description }}
-                                        <div id="aiGenerationStatus" class="position-absolute top-0 end-0 me-2 mt-2 d-none">
-                                            <div class="spinner-border spinner-border-sm text-primary" role="status" style="width:1rem;height:1rem;"><span class="visually-hidden">Generating...</span></div>
-                                        </div>
-                                    </div>
-                                    {% for e in form.description.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text"><i class="bi bi-lightbulb me-1"></i>Fill in the product title first, then click "Generate with AI" for an automated description you can edit.</div>
-                                    <div id="aiGenerationMessage" class="mt-2 d-none">
-                                        <div class="alert alert-success py-2 small mb-0" id="aiSuccessMessage"><i class="bi bi-check-circle me-1"></i>AI description generated! Feel free to edit and customize it.</div>
-                                        <div class="alert alert-warning py-2 small mb-0" id="aiErrorMessage"><i class="bi bi-exclamation-triangle me-1"></i><span id="aiErrorText">Could not generate description.</span></div>
-                                    </div>
+                                    <label class="auth-check">
+                                        {{ form.delivery_available }}
+                                        <span>Delivery available</span>
+                                    </label>
+                                    <label class="auth-check">
+                                        {{ form.inspection_allowed }}
+                                        <span>Buyers can inspect before paying</span>
+                                    </label>
                                 </div>
+
+                                <div class="auth-field{% if form.inspection_location.errors %} has-error{% endif %}" id="inspectBox" hidden>
+                                    <label for="id_inspection_location" class="auth-label">Where can they inspect it?</label>
+                                    {{ form.inspection_location }}
+                                    <div class="invalid-feedback" id="err-inspection_location">{{ form.inspection_location.errors.0 }}</div>
+                                </div>
+
+                                <label class="auth-check">
+                                    {{ form.swap_accepted }}
+                                    <span>Open to swapping</span>
+                                </label>
+
+                                <div class="auth-field{% if form.swap_preference.errors %} has-error{% endif %}" id="swapBox" hidden>
+                                    <label for="id_swap_preference" class="auth-label">What would you accept in a swap?</label>
+                                    {{ form.swap_preference }}
+                                    <div class="invalid-feedback" id="err-swap_preference">{{ form.swap_preference.errors.0 }}</div>
+                                </div>
+
                             </div>
+                        </details>
+                    </div>
+                </section>
+
+                {# ================= Step 3: Details ================= #}
+                <section class="pfm-pane" data-pane="2" aria-labelledby="h-details">
+                    <div class="pfm-cardhead t-purple" tabindex="-1">
+                        <span class="ox-ico"><i class="bi bi-card-text" aria-hidden="true"></i></span>
+                        <div>
+                            <p class="pfm-count">Step 3 of 4</p>
+                            <h2 class="pfm-h" id="h-details">Describe it</h2>
+                            <p class="pfm-sub">Say what buyers would ask you: size, colour, what is included, any faults.</p>
+                        </div>
+                    </div>
+
+                    <div class="pfm-fields">
+                        <div class="auth-field{% if form.description.errors %} has-error{% endif %}">
+                            <label for="id_description" class="auth-label">Description</label>
+                            {{ form.description }}
+                            <p class="auth-hint" id="hint-description">Be honest about the condition. It saves both of you time.</p>
+                            <div class="invalid-feedback" id="err-description">{{ form.description.errors.0 }}</div>
                         </div>
 
-                        <!-- ══ TAB 4: Images ══ -->
-                        <div class="tab-pane-wizard" id="tab-3">
-                            <div class="section-card">
-                                <h4 class="section-title mb-3"><i class="bi bi-image me-2"></i>Product Images</h4>
+                        <div class="pfm-ai">
+                            <button type="button" class="ox-btn ox-btn-neutral" id="generateDescriptionBtn">Draft with AI</button>
+                            <p class="auth-hint" id="aiNote" aria-live="polite" hidden></p>
+                        </div>
+                    </div>
+                </section>
 
-                                {% if form.instance.pk and form.instance.images.all %}
-                                <div class="mb-3">
-                                    <p class="form-text fw-semibold mb-2">Current Images:</p>
-                                    <div class="row g-2">
-                                        {% for img in form.instance.images.all %}
-                                        <div class="col-3">
-                                            <div class="position-relative">
-                                                <img src="{{ img.image.url }}" class="img-thumbnail w-100" style="height:70px;object-fit:cover;" alt="Product image">
-                                                {% if img.is_primary %}<span class="badge bg-primary position-absolute top-0 end-0" style="font-size:0.6rem;">Primary</span>{% endif %}
-                                            </div>
-                                        </div>
-                                        {% endfor %}
+                {# ================= Step 4: Photos ================= #}
+                <section class="pfm-pane" data-pane="3" aria-labelledby="h-photos">
+                    <div class="pfm-cardhead t-orange" tabindex="-1">
+                        <span class="ox-ico"><i class="bi bi-camera-fill" aria-hidden="true"></i></span>
+                        <div>
+                            <p class="pfm-count">Step 4 of 4</p>
+                            <h2 class="pfm-h" id="h-photos">Add photos</h2>
+                            <p class="pfm-sub">Clear photos in good light help buyers decide.</p>
+                        </div>
+                    </div>
+
+                    <div class="pfm-fields">
+                        {% if form.instance.pk and form.instance.images.all %}
+                        <div class="auth-field">
+                            <span class="auth-label">Current photos</span>
+                            <ul class="pfm-current">
+                                {% for img in form.instance.images.all %}
+                                <li class="pfm-thumb">
+                                    <img src="{{ img.image.url }}" alt="Current photo {{ forloop.counter }}" width="96" height="96">
+                                    {% if img.is_primary %}<span class="pfm-thumb-tag">Main</span>{% endif %}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            <p class="auth-hint">Choose new photos to replace these, or leave this empty to keep them.</p>
+                        </div>
+                        {% endif %}
+
+                        <div class="auth-field{% if form.images.errors %} has-error{% endif %}">
+                            <label for="id_images" class="auth-label">Photos</label>
+                            <div class="pfm-photo" id="imageBox">
+                                <div class="pfm-drop ox-tint t-orange">
+                                    <i class="bi bi-camera" aria-hidden="true"></i>
+                                    <div class="pfm-drop-text">
+                                        <strong>Choose photos</strong>
+                                        <small>JPG or PNG, up to 5 photos, 5 MB each. We resize them for you.</small>
                                     </div>
-                                    <p class="form-text mt-2">Upload new images to replace existing ones, or leave empty to keep current.</p>
+                                    {{ form.images }}
+                                </div>
+                                <ul class="pfm-thumbs" id="imageThumbs" hidden></ul>
+                            </div>
+                            <p class="auth-hint" id="imageNote" aria-live="polite">The first photo is the main one.</p>
+                            <div class="invalid-feedback" id="err-images">{{ form.images.errors.0 }}</div>
+                        </div>
+
+                        {# Used items only #}
+                        <div class="pfm-group" id="proofGroup" hidden>
+                            <h3 class="pfm-h2">Proof of purchase</h3>
+                            <p class="pfm-sub">Optional. A receipt helps buyers trust a used item.</p>
+
+                            <label class="auth-check">
+                                {{ form.has_receipt }}
+                                <span>I have a receipt or proof of ownership</span>
+                            </label>
+
+                            <div class="pfm-fields" id="receiptBox" hidden>
+                                <div class="auth-field{% if form.receipt_visibility.errors %} has-error{% endif %}">
+                                    <label for="id_receipt_visibility" class="auth-label">Who can see the receipt?</label>
+                                    {{ form.receipt_visibility }}
+                                    <div class="invalid-feedback" id="err-receipt_visibility">{{ form.receipt_visibility.errors.0 }}</div>
+                                </div>
+
+                                <div class="auth-field{% if form.receipt_type.errors %} has-error{% endif %}">
+                                    <label for="id_receipt_type" class="auth-label">Type of proof</label>
+                                    {{ form.receipt_type }}
+                                    <div class="invalid-feedback" id="err-receipt_type">{{ form.receipt_type.errors.0 }}</div>
+                                </div>
+
+                                <div class="auth-field{% if form.receipt_notes.errors %} has-error{% endif %}">
+                                    <label for="id_receipt_notes" class="auth-label">Notes <span class="auth-opt">(optional)</span></label>
+                                    {{ form.receipt_notes }}
+                                    <div class="invalid-feedback" id="err-receipt_notes">{{ form.receipt_notes.errors.0 }}</div>
+                                </div>
+
+                                {% if form.instance.pk and form.instance.receipts.all %}
+                                <div class="auth-field">
+                                    <span class="auth-label">Current receipts</span>
+                                    <ul class="pfm-current">
+                                        {% for r in form.instance.receipts.all %}
+                                        <li class="pfm-thumb">
+                                            <img src="{{ r.image.url }}" alt="Receipt {{ forloop.counter }}" width="96" height="96">
+                                            <span>{{ r.get_receipt_type_display }}</span>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                    <p class="auth-hint">Choose new receipt photos to replace these.</p>
                                 </div>
                                 {% endif %}
 
-                                <!-- Drop zone -->
-                                <div class="upload-zone" id="imageDropZone">
-                                    <label class="upload-label" for="id_images">
-                                        <i class="bi bi-cloud-arrow-up upload-icon"></i>
-                                        <span class="upload-title">Click to select or drag &amp; drop images</span>
-                                        <span class="upload-hint">First image will be set as primary</span>
-                                        <div class="upload-meta">
-                                            <span class="upload-badge"><i class="bi bi-filetype-jpg me-1"></i>JPG</span>
-                                            <span class="upload-badge"><i class="bi bi-filetype-png me-1"></i>PNG</span>
-                                            <span class="upload-badge">Max 5 images</span>
-                                            <span class="upload-badge">5MB each · 25MB total</span>
+                                <div class="auth-field{% if form.receipt_images.errors %} has-error{% endif %}">
+                                    <label for="id_receipt_images" class="auth-label">Receipt photos <span class="auth-opt">(optional)</span></label>
+                                    <div class="pfm-photo" id="receiptBoxDrop">
+                                        <div class="pfm-drop ox-tint t-orange">
+                                            <i class="bi bi-receipt" aria-hidden="true"></i>
+                                            <div class="pfm-drop-text">
+                                                <strong>Choose receipt photos</strong>
+                                                <small>Receipts, invoices or warranty cards. JPG or PNG, up to 3.</small>
+                                            </div>
+                                            {{ form.receipt_images }}
                                         </div>
-                                    </label>
-                                    {{ form.images }}
-                                </div>
-
-                                <!-- Preview grid (silent compression/upload — no visible status shown) -->
-                                <!-- Hidden elements kept for JS compatibility -->
-                                <div id="compressionStatus" class="compress-status running d-none" aria-hidden="true" style="display:none!important;"></div>
-                                <div id="bgUploadStatus" class="bg-upload-status d-none" aria-hidden="true" style="display:none!important;">
-                                    <div id="bgUploadSpinner"></div>
-                                    <div><span id="bgUploadText"></span>
-                                        <div><div id="bgUploadProgressFill"></div></div>
+                                        <ul class="pfm-thumbs" id="receiptThumbs" hidden></ul>
                                     </div>
+                                    <p class="auth-hint" id="receiptNote" aria-live="polite">Cover your name and address before uploading.</p>
+                                    <div class="invalid-feedback" id="err-receipt_images">{{ form.receipt_images.errors.0 }}</div>
                                 </div>
-
-                                <!-- Preview grid -->
-                                <div class="image-preview-grid" id="imagePreviewContainer"></div>
-
-                                <!-- Stats -->
-                                <div id="imageUploadStats" class="upload-stats d-none">
-                                    <div class="stat-item"><i class="bi bi-images"></i><span id="numFiles">0</span>/5 files</div>
-                                    <div class="stat-item"><i class="bi bi-hdd"></i><span id="totalSize">0 KB</span> total</div>
-                                    <div class="stat-item text-success d-none" id="savedStat"><i class="bi bi-arrow-down-circle"></i><span id="savedPercent">0%</span> saved</div>
-                                </div>
-
-                                {% for e in form.images.errors %}<div class="field-error-msg mt-2"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
                             </div>
                         </div>
+                    </div>
+                </section>
 
-                        <!-- ══ Wizard navigation ══ -->
-                        <div class="wizard-nav">
-                            <button type="button" class="btn btn-outline-secondary" id="prevBtn" style="display:none;">
-                                <i class="bi bi-arrow-left me-1"></i>Back
-                            </button>
-                            <div class="step-counter" id="stepCounter">Step 1 of 4</div>
-                            <button type="button" class="btn btn-primary" id="nextBtn">
-                                Next <i class="bi bi-arrow-right ms-1"></i>
-                            </button>
-                        </div>
-
-                        <script>
-                        /* ══════════════════════════════════════════════
-                        Condition / Receipt / Inspection / Swap / Bundle
-                        Show-hide logic — vanilla JS
-                        ══════════════════════════════════════════════ */
-                        (function () {
-                            var conditionSelect       = document.getElementById('id_condition');
-                            var conditionDetails      = document.getElementById('condition-details-section');
-                            var receiptSection        = document.getElementById('receipt-section');
-                            var hasReceiptCheck       = document.getElementById('id_has_receipt');
-                            var receiptDetails        = document.getElementById('receipt-details');
-                            var inspectionCheck       = document.getElementById('id_inspection_allowed');
-                            var inspectionWrapper     = document.getElementById('inspection-location-wrapper');
-                            var swapCheck             = document.getElementById('id_swap_accepted');
-                            var swapWrapper           = document.getElementById('swap-preference-wrapper');
-                            var quantityField         = document.getElementById('id_quantity');
-                            var bundleSection         = document.getElementById('bundle-info-section');
-
-                            function show(el) { if (el) el.style.display = ''; }
-                            function hide(el) { if (el) el.style.display = 'none'; }
-
-                            // ── Condition ──────────────────────────────────────────────────────────
-                            function onConditionChange() {
-                                var isUsed = conditionSelect && conditionSelect.value === 'used';
-                                if (isUsed) { show(conditionDetails); show(receiptSection); }
-                                else        { hide(conditionDetails); hide(receiptSection); }
-                            }
-                            if (conditionSelect) {
-                                conditionSelect.addEventListener('change', onConditionChange);
-                                onConditionChange(); // run on page load for edit forms
-                            }
-
-                            // ── Has Receipt ────────────────────────────────────────────────────────
-                            function onReceiptChange() {
-                                if (hasReceiptCheck && hasReceiptCheck.checked) show(receiptDetails);
-                                else hide(receiptDetails);
-                            }
-                            if (hasReceiptCheck) {
-                                hasReceiptCheck.addEventListener('change', onReceiptChange);
-                                onReceiptChange();
-                            }
-
-                            // ── Inspection ─────────────────────────────────────────────────────────
-                            function onInspectionChange() {
-                                if (inspectionCheck && inspectionCheck.checked) show(inspectionWrapper);
-                                else hide(inspectionWrapper);
-                            }
-                            if (inspectionCheck) {
-                                inspectionCheck.addEventListener('change', onInspectionChange);
-                                onInspectionChange();
-                            }
-
-                            // ── Swap ───────────────────────────────────────────────────────────────
-                            function onSwapChange() {
-                                if (swapCheck && swapCheck.checked) show(swapWrapper);
-                                else hide(swapWrapper);
-                            }
-                            if (swapCheck) {
-                                swapCheck.addEventListener('change', onSwapChange);
-                                onSwapChange();
-                            }
-
-                            // ── Bundle (quantity > 1) ──────────────────────────────────────────────
-                            function onQuantityChange() {
-                                var qty = quantityField ? parseInt(quantityField.value, 10) : 1;
-                                if (qty > 1) show(bundleSection);
-                                else         hide(bundleSection);
-                            }
-                            if (quantityField) {
-                                quantityField.addEventListener('input', onQuantityChange);
-                                quantityField.addEventListener('change', onQuantityChange);
-                                onQuantityChange();
-                            }
-                        })();
-                        </script>
-                    </form>
+                <div class="pfm-nav">
+                    <button type="button" class="ox-btn ox-btn-neutral pfm-back" id="prevBtn" hidden>Back</button>
+                    <button type="submit" class="ox-btn" id="nextBtn" data-final="{{ save|default:'Publish listing' }}">Continue</button>
                 </div>
             </div>
         </div>
+
+        {# ---- Preview. Shown beside the form on desktop, and on the last step on phones. ---- #}
+        <aside class="pfm-side" aria-label="Listing preview">
+            <div class="ox-card pfm-card pfm-preview">
+                <p class="pfm-pv-label">How buyers will see it</p>
+                <div class="pfm-pv-img">
+                    <img id="pvImg" src="" alt="" width="320" height="240" hidden>
+                    <i class="bi bi-image" id="pvIcon" aria-hidden="true"></i>
+                </div>
+                <p class="pfm-pv-title empty" id="pvTitle">Your title</p>
+                <p class="pfm-pv-price" id="pvPrice" hidden></p>
+                <p class="pfm-pv-meta" id="pvMeta" hidden></p>
+                <ul class="pfm-chips" id="pvChips" hidden></ul>
+            </div>
+        </aside>
+    </form>
+
     </div>
+
+    {# Shown only while photos upload, so a slow connection never looks like a frozen page #}
+    <div class="pfm-overlay" id="pfmOverlay" role="status" aria-live="polite" hidden>
+        <div class="pfm-box">
+            <span class="spinner-border" aria-hidden="true"></span>
+            <strong>Uploading your photos…</strong>
+            <span>Keep this page open. This can take a moment on a slow connection.</span>
+        </div>
+    </div>
+
 </div>
 
 
-
 <script>
-/* ═══════════════════════════════════════════
-   FastImageCompressor  (canvas-based, 1MB target)
-═══════════════════════════════════════════ */
-class FastImageCompressor {
-    constructor() { this.maxUploadSize = 1024*1024; this.quality = 0.85; this.maxDimension = 1920; }
-    async compress(file) {
-        if (file.size <= this.maxUploadSize) return file;
-        try { return await this._doCompress(file); }
-        catch(e) { console.warn('Compression failed, using original:', e); return file; }
-    }
-    _doCompress(file) {
-        return new Promise((res, rej) => {
-            const reader = new FileReader();
-            reader.onload = e => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    let {w, h} = this._dims(img);
-                    canvas.width = w; canvas.height = h;
-                    const ctx = canvas.getContext('2d');
-                    ctx.fillStyle = '#FFF'; ctx.fillRect(0,0,w,h); ctx.drawImage(img,0,0,w,h);
-                    canvas.toBlob(blob => {
-                        res(new File([blob], file.name.replace(/\.\w+$/,'.jpg'), {type:'image/jpeg'}));
-                    }, 'image/jpeg', this.quality);
-                };
-                img.onerror = () => rej(new Error('Image load failed'));
-                img.src = e.target.result;
-            };
-            reader.onerror = () => rej(new Error('File read failed'));
-            reader.readAsDataURL(file);
+    /* Product form: four steps, inline validation per step, dependent selects, price format,
+       AI draft, photo resize with per-photo remove, background upload, unsaved-draft restore.
+       The form submits normally so server messages survive the redirect. */
+    (function () {
+        'use strict';
+
+        var $ = function (id) { return document.getElementById(id); };
+        var form = $('productForm');
+        var card = $('pfmCard');
+        var panes = [].slice.call(form.querySelectorAll('.pfm-pane'));
+        var stepBtns = [].slice.call(document.querySelectorAll('.pfm-step'));
+        var prevBtn = $('prevBtn'), nextBtn = $('nextBtn');
+        var LAST = panes.length - 1;
+        var finalLabel = nextBtn.getAttribute('data-final');
+        var calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var cur = 0, reached = 0, busy = false, restoring = false;
+        var bad = {}, passed = {};
+
+        function el(name) { return form.elements[name] || null; }
+        function val(name) { var e = el(name); return e && e.value ? e.value.trim() : ''; }
+        function csrf() { return form.querySelector('[name=csrfmiddlewaretoken]').value; }
+        function fmt(b) {
+            if (b < 1024) return b + ' B';
+            if (b < 1048576) return (b / 1024).toFixed(0) + ' KB';
+            return (b / 1048576).toFixed(1) + ' MB';
+        }
+        function shortName(n) { return n.length > 24 ? n.slice(0, 23) + '\u2026' : n; }
+
+        /* Attributes the Django widgets may not carry */
+        [].forEach.call(form.querySelectorAll('input:not([type=hidden]):not([type=file]):not([type=checkbox]), select, textarea'), function (c) {
+            if (!c.hasAttribute('autocomplete')) c.setAttribute('autocomplete', 'off');
+            if (c.tagName === 'INPUT' && !c.hasAttribute('enterkeyhint')) c.setAttribute('enterkeyhint', 'next');
         });
-    }
-    _dims(img) {
-        let w = img.width, h = img.height;
-        if (w > this.maxDimension || h > this.maxDimension) {
-            const r = Math.min(this.maxDimension/w, this.maxDimension/h);
-            w = Math.round(w*r); h = Math.round(h*r);
-        }
-        return {w, h};
-    }
-    static fmtSize(b) {
-        if (b < 1024) return b+' B';
-        if (b < 1048576) return (b/1024).toFixed(1)+' KB';
-        return (b/1048576).toFixed(1)+' MB';
-    }
-}
 
-/* ═══════════════════════════════════════════
-   DOM Ready
-═══════════════════════════════════════════ */
-document.addEventListener('DOMContentLoaded', function () {
-
-    /* ── Core refs ── */
-    const form              = document.getElementById('productForm');
-    const categorySelect    = document.getElementById('id_category');
-    const subcategorySelect = document.getElementById('id_subcategory');
-    const brandSelect       = document.getElementById('id_brand');
-    const imageField        = document.querySelector('input[name="images"]');
-    const imagePreview      = document.getElementById('imagePreviewContainer');
-    const statsBar          = document.getElementById('imageUploadStats');
-    const numFilesEl        = document.getElementById('numFiles');
-    const totalSizeEl       = document.getElementById('totalSize');
-    const savedStat         = document.getElementById('savedStat');
-    const savedPercentEl    = document.getElementById('savedPercent');
-    const loadingOverlay    = document.getElementById('loadingOverlay');
-    const progressBar       = document.querySelector('#uploadProgressBar .progress-bar');
-    const progressText      = document.getElementById('uploadProgressText');
-    const statusText        = document.getElementById('uploadStatusText');
-    const dropZone          = document.getElementById('imageDropZone');
-    const compressStatus    = document.getElementById('compressionStatus');
-    const listingTypeSelect = document.getElementById('id_listing_type');
-    const quantityContainer = document.getElementById('quantityContainer');
-    const quantityField     = document.getElementById('id_quantity');
-    const clientErrorBanner = document.getElementById('clientErrorBanner');
-    const clientErrorList   = document.getElementById('clientErrorList');
-    const bgUploadStatus    = document.getElementById('bgUploadStatus');
-    const bgUploadText      = document.getElementById('bgUploadText');
-    const bgUploadSpinner   = document.getElementById('bgUploadSpinner');
-    const bgUploadFill      = document.getElementById('bgUploadProgressFill');
-
-    /* ── System Alert (matches base.html alert-system-container) ── */
-    function showSystemAlert(type, msg) {
-        const iconMap = { success: 'bi-check-circle-fill', error: 'bi-exclamation-circle-fill', warning: 'bi-exclamation-triangle-fill' };
-        const icon = iconMap[type] || 'bi-info-circle-fill';
-        let container = document.getElementById('alertSystemContainer');
-        if (!container) {
-            container = document.createElement('div');
-            container.className = 'alert-system-container';
-            container.id = 'alertSystemContainer';
-            document.body.prepend(container);
-        }
-        const el = document.createElement('div');
-        el.className = `system-alert alert-${type}`;
-        el.setAttribute('role', 'alert');
-        el.setAttribute('data-auto-dismiss', '3500');
-        el.innerHTML = `<div class="alert-content"><div class="alert-icon"><i class="bi ${icon}"></i></div><div class="alert-message">${msg}</div></div><button type="button" class="alert-close-btn" aria-label="Close"><i class="bi bi-x"></i></button>`;
-        container.appendChild(el);
-        // Trigger base.html's alerts.js dismiss logic if available, else self-dismiss
-        el.querySelector('.alert-close-btn').addEventListener('click', () => el.remove());
-        setTimeout(() => el.remove(), 3500);
-    }
-    function showErrorToast(msg)   { showSystemAlert('error',   msg); }
-    function showSuccessToast(msg) { showSystemAlert('success', msg); }
-
-    /* ── Overlay ── */
-    function showOverlay() { loadingOverlay.classList.add('show'); }
-    function hideOverlay() { loadingOverlay.classList.remove('show'); }
-
-    /* ══════════════════════════════════════
-       TAB WIZARD
-    ══════════════════════════════════════ */
-    const TOTAL_STEPS = 4;
-    let currentStep = 0;
-    let stepValidity = [false, false, false, true]; // images tab is optional
-
-    const prevBtn     = document.getElementById('prevBtn');
-    const nextBtn     = document.getElementById('nextBtn');
-    const stepCounter = document.getElementById('stepCounter');
-    const stepEls     = document.querySelectorAll('.wizard-step');
-    const tabPanes    = document.querySelectorAll('.tab-pane-wizard');
-
-    // If server returned errors, try to jump to the first broken tab
-    {% if form.errors %}
-    (function detectErrorTab() {
-        const fieldTabMap = {
-            // Tab 0 — Basic Info
-            'id_title': 0, 'id_category': 0, 'id_subcategory': 0, 'id_brand': 0, 'id_condition': 0,
-            'id_reason_for_selling': 0, 'id_original_accessories_included': 0,
-            'id_has_receipt': 0, 'id_receipt_visibility': 0,
-            // Tab 1 — Pricing & Availability
-            'id_formatted_price': 1, 'id_listing_type': 1, 'id_quantity': 1,
-            'id_bundle_description': 1, 'id_negotiable': 1, 'id_delivery_available': 1,
-            'id_inspection_allowed': 1, 'id_inspection_location': 1,
-            'id_swap_accepted': 1, 'id_swap_preference': 1,
-            // Tab 2 — Description
-            'id_description': 2,
-            // Tab 3 — Images
-            'id_images': 3,
+        /* ---------- Validation ---------- */
+        var RULES = {
+            title: function (c) { return c.value.trim() ? '' : 'Enter a title for your listing.'; },
+            category: function (c) { return c.value ? '' : 'Choose a category.'; },
+            subcategory: function (c) { return c.options.length > 1 && !c.value ? 'Choose a subcategory.' : ''; },
+            condition: function (c) { return c.value ? '' : 'Choose the condition.'; },
+            formatted_price: function (c) {
+                var n = parseInt(c.value.replace(/\D/g, ''), 10);
+                return n >= 1 ? '' : 'Enter a price in naira.';
+            },
+            listing_type: function (c) { return c.value ? '' : 'Choose a listing type.'; },
+            quantity: function (c) { return parseInt(c.value, 10) >= 1 ? '' : 'Enter at least 1.'; },
+            description: function (c) { return c.value.trim() ? '' : 'Describe what you are selling.'; }
         };
-        const invalidEls = document.querySelectorAll('.is-invalid, .field-error-msg');
-        if (invalidEls.length) {
-            for (const [id, tab] of Object.entries(fieldTabMap)) {
-                if (document.getElementById(id)?.classList.contains('is-invalid')) {
-                    currentStep = tab;
-                    break;
-                }
+
+        function control(f) {
+            return f.querySelector('input:not([type=hidden]):not([type=file]):not([type=checkbox]), select, textarea');
+        }
+
+        function isHidden(c) {
+            var h = c.closest('[hidden]');
+            while (h && h.classList.contains('pfm-pane')) h = h.parentElement ? h.parentElement.closest('[hidden]') : null;
+            return !!h;
+        }
+
+        function check(c) {
+            if (!c || c.disabled || isHidden(c) || !RULES[c.name]) return '';
+            return RULES[c.name](c);
+        }
+
+        // The hint stays attached; the error id joins it only while an error shows
+        function flag(f, msg) {
+            var c = control(f), fb = f.querySelector('.invalid-feedback'), hint = f.querySelector('.auth-hint');
+            f.classList.toggle('has-error', !!msg);
+            if (!c) return;
+            c.setAttribute('aria-invalid', msg ? 'true' : 'false');
+            if (msg && fb) fb.textContent = msg;
+            var ids = [];
+            if (hint && hint.id) ids.push(hint.id);
+            if (msg && fb) ids.push(fb.id);
+            if (ids.length) c.setAttribute('aria-describedby', ids.join(' '));
+            else c.removeAttribute('aria-describedby');
+        }
+
+        var fields = [].slice.call(form.querySelectorAll('.auth-field')).filter(function (f) {
+            var c = control(f);
+            return c && RULES[c.name];
+        });
+
+        // Server errors: describe them to assistive tech from the first paint
+        [].forEach.call(form.querySelectorAll('.auth-field'), function (f) {
+            var c = control(f), fb = f.querySelector('.invalid-feedback');
+            if (!c) return;
+            var hint = f.querySelector('.auth-hint'), ids = [];
+            if (hint && hint.id) ids.push(hint.id);
+            if (f.classList.contains('has-error') && fb) { ids.push(fb.id); c.setAttribute('aria-invalid', 'true'); }
+            if (ids.length) c.setAttribute('aria-describedby', ids.join(' '));
+        });
+
+        fields.forEach(function (f) {
+            var c = control(f);
+            c.addEventListener('blur', function () { if (c.value) flag(f, check(c)); });
+            function clear() { if (f.classList.contains('has-error') && !check(c)) flag(f, ''); }
+            c.addEventListener('input', clear);
+            c.addEventListener('change', clear);
+        });
+
+        function stepFields(n) {
+            return fields.filter(function (f) { return panes[n].contains(f); });
+        }
+
+        function validateStep(n) {
+            var first = null;
+            stepFields(n).forEach(function (f) {
+                var c = control(f), msg = check(c);
+                if (msg || f.classList.contains('has-error')) flag(f, msg);
+                if (msg && !first) first = c;
+            });
+            bad[n] = !!first;
+            passed[n] = !first;
+            return first;
+        }
+
+        function focusEl(c) {
+            var d = c.closest('details');
+            if (d) d.open = true;
+            c.focus();
+        }
+
+        /* ---------- Steps ---------- */
+        function paint() {
+            stepBtns.forEach(function (b, i) {
+                var active = i === cur, done = !active && passed[i], err = !active && bad[i];
+                b.classList.toggle('is-active', active);
+                b.classList.toggle('is-done', !!done);
+                b.classList.toggle('is-bad', !!err);
+                b.disabled = i > reached;
+                if (active) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
+                var ic = b.querySelector('i');
+                ic.hidden = !(done || err);
+                ic.className = 'bi ' + (err ? 'bi-exclamation-circle-fill' : 'bi-check-circle-fill');
+            });
+            prevBtn.hidden = cur === 0;
+            nextBtn.textContent = cur === LAST ? finalLabel : 'Continue';
+        }
+
+        function goTo(n, moveFocus) {
+            cur = n;
+            if (n > reached) reached = n;
+            panes.forEach(function (p, i) { p.hidden = i !== n; });
+            form.setAttribute('data-step', String(n));
+            paint();
+            if (moveFocus) {
+                card.scrollIntoView({ block: 'start', behavior: calm ? 'auto' : 'smooth' });
+                panes[n].querySelector('.pfm-cardhead').focus({ preventScroll: true });
             }
         }
-    })();
-    {% endif %}
 
-    function goToStep(n) {
-        tabPanes.forEach((p, i) => p.classList.toggle('active', i === n));
-        stepEls.forEach((s, i) => {
-            s.classList.remove('active', 'completed', 'has-error');
-            if (i < n) s.classList.add(stepValidity[i] === false ? 'has-error' : 'completed');
-            if (i === n) s.classList.add('active');
+        function next() {
+            var first = validateStep(cur);
+            paint();
+            if (first) { focusEl(first); return; }
+            goTo(cur + 1, true);
+        }
+
+        stepBtns.forEach(function (b, i) {
+            b.addEventListener('click', function () { if (i <= reached && i !== cur) goTo(i, true); });
         });
-        prevBtn.style.display = n === 0 ? 'none' : '';
-        if (n === TOTAL_STEPS - 1) {
-            nextBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>{{ save }}';
-            nextBtn.classList.add('btn-success');
-            nextBtn.classList.remove('btn-primary');
-        } else {
-            nextBtn.innerHTML = 'Next <i class="bi bi-arrow-right ms-1"></i>';
-            nextBtn.classList.add('btn-primary');
-            nextBtn.classList.remove('btn-success');
+        prevBtn.addEventListener('click', function () { if (cur > 0) goTo(cur - 1, true); });
+
+        /* ---------- Conditional sections ---------- */
+        var condSel = el('condition'), listSel = el('listing_type'), qty = el('quantity');
+
+        function syncCondition() {
+            var used = condSel && condSel.value === 'used';
+            $('usedGroup').hidden = !used;
+            $('proofGroup').hidden = !used;
         }
-        stepCounter.textContent = `Step ${n+1} of ${TOTAL_STEPS}`;
-        currentStep = n;
-        // Scroll to top of card
-        document.querySelector('.wizard-header')?.scrollIntoView({behavior:'smooth', block:'nearest'});
-    }
-
-    // Clickable step headers (only allow going back or to completed)
-    stepEls.forEach((s, i) => {
-        s.addEventListener('click', () => {
-            if (i < currentStep || stepValidity[i] !== false) goToStep(i);
-        });
-    });
-
-    /* ── Per-step validation ── */
-    function validateStep(n) {
-        const errors = [];
-        const mark = (el, ok) => {
-            if (!el) return;
-            el.classList.toggle('is-invalid', !ok);
-            el.classList.toggle('is-valid',   ok && (el.value||'').trim().length > 0);
-        };
-        if (n === 0) {
-            const titleEl = document.getElementById('id_title');
-            const catEl   = document.getElementById('id_category');
-            const condEl  = document.getElementById('id_condition');
-            if (!titleEl?.value.trim())  { errors.push('Product title is required.'); mark(titleEl, false); } else mark(titleEl, true);
-            if (!catEl?.value)           { errors.push('Please select a category.'); mark(catEl, false); } else mark(catEl, true);
-            if (!condEl?.value)          { errors.push('Please select a condition.'); mark(condEl, false); } else mark(condEl, true);
+        function bindToggle(name, boxId) {
+            var c = el(name), box = $(boxId);
+            if (!c || !box) return function () {};
+            function s() { box.hidden = !c.checked; }
+            c.addEventListener('change', s);
+            s();
+            return s;
         }
-        if (n === 1) {
-            const priceEl = document.getElementById('id_formatted_price');
-            const listEl  = document.getElementById('id_listing_type');
-            const rawPrice = priceEl?.value.replace(/[^\d]/g,'');
-            if (!rawPrice || parseInt(rawPrice,10) < 1) { errors.push('A valid price is required.'); mark(priceEl, false); } else mark(priceEl, true);
-            if (!listEl?.value) { errors.push('Please select a listing type.'); mark(listEl, false); } else mark(listEl, true);
+        // Permanent listings and "Always available" items have no stock count to enter.
+        // The field is hidden and not required; a blank one is set to 1 so the server still gets a number.
+        var alwaysChk = el('is_always_available');
+        function syncQuantity() {
+            var perm = listSel && listSel.value === 'permanent';
+            var skip = !!perm || !!(alwaysChk && alwaysChk.checked);
+            $('quantityBox').hidden = skip;
+            if (qty) {
+                qty.required = !skip;
+                if (perm || (skip && !(parseInt(qty.value, 10) >= 1))) qty.value = 1;
+            }
+            var n = qty ? parseInt(qty.value, 10) : 1;
+            $('bundleBox').hidden = !(n > 1) || skip;
         }
-        if (n === 2) {
-            const descEl = document.getElementById('id_description');
-            if (!descEl?.value.trim()) { errors.push('Product description is required.'); mark(descEl, false); } else mark(descEl, true);
+
+        if (condSel) condSel.addEventListener('change', syncCondition);
+        if (listSel) listSel.addEventListener('change', syncQuantity);
+        if (alwaysChk) alwaysChk.addEventListener('change', syncQuantity);
+        if (qty) { qty.addEventListener('input', syncQuantity); qty.addEventListener('change', syncQuantity); }
+        bindToggle('has_receipt', 'receiptBox');
+        bindToggle('inspection_allowed', 'inspectBox');
+        bindToggle('swap_accepted', 'swapBox');
+
+        function syncAll() {
+            syncCondition(); syncQuantity();
+            ['has_receipt', 'inspection_allowed', 'swap_accepted'].forEach(function (n) {
+                var c = el(n);
+                if (c) c.dispatchEvent(new Event('change'));
+            });
         }
-        // Tab 3 (images) — optional, always passes
-        return errors;
-    }
+        // New listings start at one unit
+        if (qty && !qty.value && form.getAttribute('data-draft') === '1') qty.value = 1;
+        syncAll();
 
-    prevBtn.addEventListener('click', () => { if (currentStep > 0) goToStep(currentStep - 1); });
+        /* ---------- Category, subcategory, brand ---------- */
+        var catSel = el('category'), subSel = el('subcategory'), brandSel = el('brand');
+        var seq = {};
 
-    nextBtn.addEventListener('click', () => {
-        const errors = validateStep(currentStep);
-        if (errors.length) {
-            clientErrorList.innerHTML = errors.map(e=>`<li>${e}</li>`).join('');
-            clientErrorBanner.classList.add('visible');
-            stepValidity[currentStep] = false;
-            goToStep(currentStep); // refresh step icon
-            showErrorToast('Please fix the highlighted errors.');
-            return;
+        function fillOpts(sel, list, placeholder, selected) {
+            sel.textContent = '';
+            var o = document.createElement('option');
+            o.value = '';
+            o.textContent = placeholder;
+            sel.appendChild(o);
+            list.forEach(function (it) {
+                var op = document.createElement('option');
+                op.value = it.id;
+                op.textContent = it.name;
+                if (selected && String(it.id) === String(selected)) op.selected = true;
+                sel.appendChild(op);
+            });
         }
-        clientErrorBanner.classList.remove('visible');
-        stepValidity[currentStep] = true;
 
-        if (currentStep === TOTAL_STEPS - 1) {
-            // Final submit
-            submitForm();
-        } else {
-            goToStep(currentStep + 1);
+        function loadOptions(sel, url, placeholder, selected, focusAfter) {
+            var mine = (seq[sel.id] || 0) + 1;
+            seq[sel.id] = mine;
+            var before = sel.innerHTML;
+            fillOpts(sel, [], 'Loading\u2026', '');
+            sel.disabled = true;
+            return fetch(url, { credentials: 'same-origin' })
+                .then(function (r) { if (!r.ok) throw new Error('bad response'); return r.json(); })
+                .then(function (list) { if (mine === seq[sel.id]) fillOpts(sel, list, placeholder, selected); })
+                .catch(function () {
+                    if (mine !== seq[sel.id]) return;
+                    if (selected) sel.innerHTML = before;
+                    else fillOpts(sel, [], 'Could not load. Choose again.', '');
+                })
+                .then(function () {
+                    if (mine !== seq[sel.id]) return;
+                    sel.disabled = false;
+                    if (focusAfter && !sel.value) sel.focus();
+                });
         }
-    });
 
-    // Init
-    goToStep(currentStep);
+        function loadSubs(catId, selSub, selBrand, focusAfter) {
+            return loadOptions(subSel, '/ajax/load-subcategories/?category=' + encodeURIComponent(catId), 'Select a subcategory', selSub, focusAfter)
+                .then(function () {
+                    if (selSub && selBrand) {
+                        return loadOptions(brandSel, '/ajax/load-brands/?subcategory=' + encodeURIComponent(selSub), 'Select a brand', selBrand, false);
+                    }
+                });
+        }
 
-    /* ══════════════════════════════════════
-       Listing type: hide quantity for permanent
-    ══════════════════════════════════════ */
-    function syncListingType() {
-        if (!listingTypeSelect || !quantityContainer) return;
-        const isPerm = listingTypeSelect.value === 'permanent';
-        quantityContainer.style.display = isPerm ? 'none' : 'block';
-        if (quantityField) quantityField.required = !isPerm;
-        if (isPerm && quantityField) quantityField.value = 1;
-    }
-    if (listingTypeSelect) { syncListingType(); listingTypeSelect.addEventListener('change', syncListingType); }
+        if (catSel && subSel && brandSel) {
+            catSel.addEventListener('change', function () {
+                seq[subSel.id] = (seq[subSel.id] || 0) + 1;
+                seq[brandSel.id] = (seq[brandSel.id] || 0) + 1;
+                subSel.disabled = brandSel.disabled = false;
+                fillOpts(subSel, [], 'Select a subcategory', '');
+                fillOpts(brandSel, [], 'Select a brand', '');
+                if (catSel.value) loadSubs(catSel.value, null, null, true);
+            });
+            subSel.addEventListener('change', function () {
+                seq[brandSel.id] = (seq[brandSel.id] || 0) + 1;
+                brandSel.disabled = false;
+                fillOpts(brandSel, [], 'Select a brand', '');
+                if (subSel.value) loadOptions(brandSel, '/ajax/load-brands/?subcategory=' + encodeURIComponent(subSel.value), 'Select a brand', null, false);
+            });
+        }
 
-    /* ── Category → Subcategory AJAX ── */
-    if (categorySelect) {
-        categorySelect.addEventListener('change', function () {
-            const id = this.value;
-            subcategorySelect.innerHTML = '<option value="">Select Subcategory</option>';
-            if (brandSelect) brandSelect.innerHTML = '<option value="">Select Brand</option>';
-            if (!id) return;
-            fetch(`/ajax/load-subcategories/?category=${id}`)
-                .then(r => r.json())
-                .then(data => data.forEach(s => {
-                    const o = document.createElement('option'); o.value = s.id; o.textContent = s.name;
-                    subcategorySelect.appendChild(o);
-                }))
-                .catch(() => showErrorToast('Error loading subcategories. Please try again.'));
-        });
-    }
-    if (subcategorySelect) {
-        subcategorySelect.addEventListener('change', function () {
-            const id = this.value;
-            if (brandSelect) brandSelect.innerHTML = '<option value="">Select Brand</option>';
-            if (!id) return;
-            fetch(`/ajax/load-brands/?subcategory=${id}`)
-                .then(r => r.json())
-                .then(data => data.forEach(b => {
-                    const o = document.createElement('option'); o.value = b.id; o.textContent = b.name;
-                    brandSelect.appendChild(o);
-                }))
-                .catch(() => showErrorToast('Error loading brands. Please try again.'));
-        });
-    }
+        /* ---------- Price ---------- */
+        var price = el('formatted_price');
+        function fmtPrice(v) {
+            v = v.replace(/\D/g, '');
+            return v ? '\u20A6 ' + parseInt(v, 10).toLocaleString('en-NG') : '';
+        }
+        if (price) {
+            price.addEventListener('input', function () {
+                var pos = price.selectionStart || 0;
+                var digits = price.value.slice(0, pos).replace(/\D/g, '').length;
+                price.value = fmtPrice(price.value);
+                var n = 0, i = 0;
+                while (i < price.value.length && n < digits) { if (/\d/.test(price.value.charAt(i))) n++; i++; }
+                try { price.setSelectionRange(i, i); } catch (err) {}
+            });
+            price.addEventListener('blur', function () { price.value = fmtPrice(price.value); });
+        }
 
-    /* ── Price formatter ── */
-    const priceInput = document.getElementById('id_formatted_price');
-    if (priceInput) {
-        const fmt = v => { v = v.replace(/[^\d]/g,''); return v ? '₦ ' + parseInt(v,10).toLocaleString('en-NG') : ''; };
-        priceInput.addEventListener('input', e => e.target.value = fmt(e.target.value));
-        priceInput.addEventListener('blur',  e => e.target.value = fmt(e.target.value));
-    }
+        /* ---------- AI description ---------- */
+        var genBtn = $('generateDescriptionBtn'), aiNote = $('aiNote'), desc = el('description');
+        var remaining = {% if ai_descriptions_remaining != None %}{{ ai_descriptions_remaining }}{% else %}null{% endif %};
 
-    /* ── AI Description ── */
-    const generateBtn      = document.getElementById('generateDescriptionBtn');
-    const descTextarea     = document.getElementById('id_description');
-    const titleInput       = document.getElementById('id_title');
-    const conditionSelect  = document.getElementById('id_condition');
-    const aiStatus         = document.getElementById('aiGenerationStatus');
-    const aiMessage        = document.getElementById('aiGenerationMessage');
-    const aiSuccess        = document.getElementById('aiSuccessMessage');
-    const aiError          = document.getElementById('aiErrorMessage');
-    const aiErrorText      = document.getElementById('aiErrorText');
-
-    if (generateBtn) {
-        const remaining = {{ ai_descriptions_remaining|default:"null" }};
-        let currentRemaining = remaining;
-
-        const updateBtn = n => {
-            if (n !== null && n <= 0) {
-                generateBtn.disabled = true;
-                generateBtn.classList.replace('btn-outline-primary', 'btn-outline-secondary');
-                generateBtn.innerHTML = '<i class="bi bi-clock me-1"></i>Daily limit reached';
-            } else if (n === null) {
-                generateBtn.innerHTML = '<i class="bi bi-magic me-1"></i>Generate with AI';
+        function aiSay(kind, text) {
+            aiNote.hidden = !text;
+            aiNote.className = 'auth-hint' + (kind ? ' auth-hint--' + kind : '');
+            aiNote.textContent = text || '';
+        }
+        function paintAi() {
+            if (remaining !== null && remaining <= 0) {
+                genBtn.disabled = true;
+                genBtn.textContent = 'Daily limit reached';
             } else {
-                generateBtn.disabled = false;
-                generateBtn.classList.replace('btn-outline-secondary', 'btn-outline-primary');
-                generateBtn.innerHTML = `<i class="bi bi-magic me-1"></i>Generate with AI (${n} left today)`;
+                genBtn.disabled = false;
+                genBtn.textContent = remaining === null ? 'Draft with AI' : 'Draft with AI (' + remaining + ' left today)';
             }
-        };
-        updateBtn(remaining);
+        }
+        function grow(t) {
+            t.style.height = 'auto';
+            t.style.height = Math.min(Math.max(t.scrollHeight, 150), 500) + 'px';
+        }
+        paintAi();
 
-        generateBtn.addEventListener('click', () => {
-            const title = titleInput?.value.trim();
-            if (!title) { showErrorToast('Please enter a product title first (Step 1).'); return; }
-            if (title.length < 3) { showErrorToast('Title should be at least 3 characters.'); return; }
-            generateBtn.disabled = true;
-            generateBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating…';
-            aiStatus.classList.remove('d-none');
-            aiMessage.classList.add('d-none');
+        genBtn.addEventListener('click', function () {
+            var t = val('title');
+            if (t.length < 3) { aiSay('bad', 'Add a title in the first step so the draft can use it.'); return; }
+            genBtn.disabled = true;
+            genBtn.innerHTML = '<span class="spinner-border" aria-hidden="true"></span><span>Writing\u2026</span>';
+            aiSay('', '');
+            function label(s) { return s && s.selectedIndex >= 0 && s.value ? s.options[s.selectedIndex].text : ''; }
             fetch('/ajax/generate-ai-description/', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value, 'X-Requested-With': 'XMLHttpRequest'},
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf(), 'X-Requested-With': 'XMLHttpRequest' },
                 body: JSON.stringify({
-                    title,
-                    category:    categorySelect?.options[categorySelect.selectedIndex]?.text || '',
-                    subcategory: subcategorySelect?.options[subcategorySelect.selectedIndex]?.text || '',
-                    brand:       brandSelect?.options[brandSelect.selectedIndex]?.text || '',
-                    condition:   conditionSelect?.value || '',
+                    title: t,
+                    category: label(catSel),
+                    subcategory: label(subSel),
+                    brand: label(brandSel),
+                    condition: condSel ? condSel.value : '',
                     generate_comprehensive: true
                 })
             })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    descTextarea.value = data.description;
-                    if (data.remaining_today !== undefined) {
-                        currentRemaining = data.remaining_today;
-                        updateBtn(currentRemaining);
-                    }
-                    showSuccessToast(data.message || 'Description generated!');
-                    aiMessage.classList.remove('d-none'); aiSuccess.style.display = 'block'; aiError.style.display = 'none';
-                    descTextarea.focus(); adjustTextarea(descTextarea);
-                    setTimeout(() => aiMessage.classList.add('d-none'), 10000);
-                } else {
-                    if (data.error?.includes('Daily limit')) { currentRemaining = 0; updateBtn(0); }
-                    throw new Error(data.error || 'Failed to generate');
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (!d.success) {
+                    if (d.error && d.error.indexOf('Daily limit') !== -1) remaining = 0;
+                    throw new Error(d.error || 'Could not write a draft.');
                 }
+                desc.value = d.description;
+                if (d.remaining_today !== undefined) remaining = d.remaining_today;
+                grow(desc);
+                desc.dispatchEvent(new Event('input', { bubbles: true }));
+                aiSay('ok', 'Draft ready. Edit it so it sounds like you.');
+                desc.focus();
             })
-            .catch(err => {
-                aiMessage.classList.remove('d-none'); aiSuccess.style.display = 'none'; aiError.style.display = 'block';
-                aiErrorText.textContent = err.message || 'Failed. Please write one manually.';
-                showErrorToast('Failed to generate description.');
-                setTimeout(() => aiMessage.classList.add('d-none'), 12000);
-            })
-            .finally(() => {
-                aiStatus.classList.add('d-none');
-                // Only restore button if limit hasn't been reached
-                if (currentRemaining === null || currentRemaining > 0) {
-                    updateBtn(currentRemaining);
-                }
-            });
-        });
-    }
-
-    function adjustTextarea(el) {
-        el.style.height = 'auto';
-        el.style.height = Math.min(Math.max(el.scrollHeight, 150), 500) + 'px';
-        el.style.overflowY = el.scrollHeight > 500 ? 'auto' : 'hidden';
-    }
-    if (descTextarea) {
-        descTextarea.addEventListener('input', () => adjustTextarea(descTextarea));
-        if (descTextarea.value) adjustTextarea(descTextarea);
-    }
-
-    /* ══════════════════════════════════════
-       Image compressor + preview + drag/drop
-    ══════════════════════════════════════ */
-    const compressor = new FastImageCompressor();
-    let compressedFiles = [];
-    let isProcessingImages = false;
-
-    const MAX_FILES = 5, MAX_PER_FILE = 5*1024*1024, MAX_TOTAL = 25*1024*1024;
-    const VALID_TYPES = ['image/jpeg','image/jpg','image/png'];
-
-    /* drag & drop */
-    if (dropZone) {
-        dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-        dropZone.addEventListener('dragleave', ()  => dropZone.classList.remove('drag-over'));
-        dropZone.addEventListener('drop', e => {
-            e.preventDefault(); dropZone.classList.remove('drag-over');
-            if (imageField && e.dataTransfer.files.length) {
-                const dt = new DataTransfer();
-                Array.from(e.dataTransfer.files).slice(0, MAX_FILES).forEach(f => dt.items.add(f));
-                imageField.files = dt.files;
-                imageField.dispatchEvent(new Event('change'));
-            }
-        });
-    }
-
-    if (imageField) {
-        imageField.addEventListener('change', async function () {
-            if (isProcessingImages) return;
-            const raw = Array.from(this.files);
-            if (!raw.length) { clearPreviews(); return; }
-
-            if (raw.length > MAX_FILES) { showErrorToast(`Maximum ${MAX_FILES} images allowed.`); this.value=''; clearPreviews(); return; }
-            for (const f of raw) {
-                if (!VALID_TYPES.includes(f.type)) { showErrorToast(`"${f.name}" is not a supported format. Use JPG or PNG.`); this.value=''; clearPreviews(); return; }
-                if (f.size > MAX_PER_FILE) { showErrorToast(`"${f.name}" exceeds 5MB.`); this.value=''; clearPreviews(); return; }
-            }
-            const rawTotal = raw.reduce((s,f)=>s+f.size, 0);
-            if (rawTotal > MAX_TOTAL) { showErrorToast('Total size exceeds 25MB.'); this.value=''; clearPreviews(); return; }
-
-            isProcessingImages = true;
-            clearPreviews();
-            // Silent compression — no running indicator shown
-            // silent
-            // silent
-
-            try {
-                compressedFiles = await Promise.all(raw.map(f => compressor.compress(f)));
-                const dt = new DataTransfer();
-                compressedFiles.forEach(f => dt.items.add(f));
-                this.files = dt.files;
-
-                const compTotal = compressedFiles.reduce((s,f)=>s+f.size, 0);
-                const pct = ((rawTotal - compTotal) / rawTotal * 100);
-
-                // compressStatus silenced — no visual feedback shown
-
-                statsBar.classList.remove('d-none');
-                numFilesEl.textContent  = compressedFiles.length;
-                totalSizeEl.textContent = FastImageCompressor.fmtSize(compTotal);
-                if (pct > 5) { savedStat.classList.remove('d-none'); savedPercentEl.textContent = pct.toFixed(0)+'%'; }
-
-                compressedFiles.forEach((f,i) => buildPreview(f, i, raw[i], pct > 5));
-
-                // ── Start background upload right after compression ──
-                startBackgroundUpload(compressedFiles);
-
-            } catch(err) {
-                // compressStatus warn hidden
-                // silent warn
-            // silent timeout removed
-                raw.forEach((f,i) => buildPreview(f, i, f, false));
-                statsBar.classList.remove('d-none');
-                numFilesEl.textContent  = raw.length;
-                totalSizeEl.textContent = FastImageCompressor.fmtSize(rawTotal);
-                // Still attempt background upload with originals
-                startBackgroundUpload(raw);
-            } finally {
-                isProcessingImages = false;
-            }
-        });
-    }
-
-    /* ══════════════════════════════════════
-       Receipt Image Drag-and-Drop + Silent Compression + Preview
-    ══════════════════════════════════════ */
-    const receiptField        = document.querySelector('input[name="receipt_images"]');
-    const receiptDropZone     = document.getElementById('receiptDropZone');
-    const receiptPreview      = document.getElementById('receiptPreviewContainer');
-    const receiptStats        = document.getElementById('receiptUploadStats');
-    const receiptNumFilesEl   = document.getElementById('receiptNumFiles');
-    const receiptTotalSizeEl  = document.getElementById('receiptTotalSize');
-
-    const MAX_RECEIPT_FILES   = 3;
-    const MAX_RECEIPT_SIZE    = 5 * 1024 * 1024;
-
-    if (receiptDropZone) {
-        receiptDropZone.addEventListener('dragover',  e => { e.preventDefault(); receiptDropZone.classList.add('drag-over'); });
-        receiptDropZone.addEventListener('dragleave', ()  => receiptDropZone.classList.remove('drag-over'));
-        receiptDropZone.addEventListener('drop', e => {
-            e.preventDefault(); receiptDropZone.classList.remove('drag-over');
-            if (receiptField && e.dataTransfer.files.length) {
-                const dt = new DataTransfer();
-                Array.from(e.dataTransfer.files).slice(0, MAX_RECEIPT_FILES).forEach(f => dt.items.add(f));
-                receiptField.files = dt.files;
-                receiptField.dispatchEvent(new Event('change'));
-            }
-        });
-    }
-
-    if (receiptField) {
-        receiptField.addEventListener('change', async function () {
-            const raw = Array.from(this.files);
-            if (receiptPreview) receiptPreview.innerHTML = '';
-            if (receiptStats) receiptStats.classList.add('d-none');
-            if (!raw.length) return;
-
-            if (raw.length > MAX_RECEIPT_FILES) {
-                showErrorToast(`Maximum ${MAX_RECEIPT_FILES} receipt images allowed.`);
-                this.value = ''; return;
-            }
-            for (const f of raw) {
-                if (f.size > MAX_RECEIPT_SIZE) {
-                    showErrorToast(`"${f.name}" exceeds 5MB.`);
-                    this.value = ''; return;
-                }
-                if (!VALID_TYPES.includes(f.type)) {
-                    showErrorToast(`"${f.name}" is not supported. Use JPG or PNG.`);
-                    this.value = ''; return;
-                }
-            }
-
-            // Silent compression (no status shown)
-            let finalFiles = raw;
-            try {
-                const compressed = await Promise.all(raw.map(f => compressor.compress(f)));
-                const dt = new DataTransfer();
-                compressed.forEach(f => dt.items.add(f));
-                this.files = dt.files;
-                finalFiles = compressed;
-            } catch (_) { /* compression failed silently, use originals */ }
-
-            // Show preview cards
-            const totalSize = finalFiles.reduce((s, f) => s + f.size, 0);
-            finalFiles.forEach((f, i) => {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    const card = document.createElement('div');
-                    card.className = 'preview-card' + (i === 0 ? ' primary' : '');
-                    const img = document.createElement('img');
-                    img.src = e.target.result; img.title = f.name;
-                    card.appendChild(img);
-                    if (i === 0) {
-                        const badge = document.createElement('span');
-                        badge.className = 'primary-badge'; badge.textContent = 'Main';
-                        card.appendChild(badge);
-                    }
-                    const info = document.createElement('div');
-                    info.className = 'preview-info'; info.title = f.name;
-                    info.textContent = `${f.name.length > 14 ? f.name.slice(0, 13) + '…' : f.name} · ${FastImageCompressor.fmtSize(f.size)}`;
-                    card.appendChild(info);
-                    if (receiptPreview) receiptPreview.appendChild(card);
-                };
-                reader.readAsDataURL(f);
-            });
-
-            if (receiptStats) {
-                receiptStats.classList.remove('d-none');
-                if (receiptNumFilesEl) receiptNumFilesEl.textContent = finalFiles.length;
-                if (receiptTotalSizeEl) receiptTotalSizeEl.textContent = FastImageCompressor.fmtSize(totalSize);
-            }
-        });
-    }
-
-    function clearPreviews() {
-        imagePreview.innerHTML = '';
-        statsBar.classList.add('d-none');
-        savedStat.classList.add('d-none');
-            // silent hide
-        bgUploadStatus.classList.add('d-none');
-        bgUploadToken = null;
-    }
-
-    function buildPreview(file, index, original, wasCompressed) {
-        const reader = new FileReader();
-        reader.onload = e => {
-            const card = document.createElement('div');
-            card.className = 'preview-card' + (index===0?' primary':'');
-            const img = document.createElement('img');
-            img.src = e.target.result; img.title = file.name;
-            card.appendChild(img);
-            if (index === 0) {
-                const badge = document.createElement('span'); badge.className='primary-badge'; badge.textContent='Primary'; card.appendChild(badge);
-            }
-            if (wasCompressed && file.size < original.size) {
-                const cb = document.createElement('span'); cb.className='compress-badge'; cb.textContent='✓'; card.appendChild(cb);
-            }
-            const info = document.createElement('div'); info.className='preview-info'; info.title=file.name;
-            info.textContent = `${file.name.length>14?file.name.slice(0,13)+'…':file.name} · ${FastImageCompressor.fmtSize(file.size)}`;
-            card.appendChild(info);
-            imagePreview.appendChild(card);
-        };
-        reader.readAsDataURL(file);
-    }
-
-    /* ══════════════════════════════════════
-       Background Image Upload
-       Strategy: POST images to a dedicated
-       /ajax/upload-images-temp/ endpoint.
-       The server stores them temporarily and
-       returns a token. On final submit we pass
-       the token so the server reuses the files
-       instead of uploading again.
-       If your backend doesn't support this yet,
-       the form falls back to normal upload.
-    ══════════════════════════════════════ */
-    let bgUploadToken    = null;  // temporary upload token from server
-    let bgUploadXHR      = null;  // so we can abort if user re-selects
-    let bgUploadDone     = false;
-
-    function startBackgroundUpload(files) {
-        // Abort any in-progress upload
-        if (bgUploadXHR) { bgUploadXHR.abort(); bgUploadXHR = null; }
-        bgUploadToken = null;
-        bgUploadDone  = false;
-
-        // Silent background upload — no UI status shown
-        bgUploadFill.style.width = '0%';
-
-        const fd = new FormData();
-        files.forEach(f => fd.append('images', f));
-        fd.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
-
-        const xhr = new XMLHttpRequest();
-        bgUploadXHR = xhr;
-
-        xhr.upload.addEventListener('progress', e => {
-            if (e.lengthComputable) {
-                const pct = Math.round(e.loaded / e.total * 100);
-                bgUploadFill.style.width = pct + '%';
-            }
+            .catch(function (err) { aiSay('bad', err.message || 'Could not write a draft. Please write it yourself.'); })
+            .then(paintAi);
         });
 
-        xhr.addEventListener('load', () => {
-            bgUploadXHR = null;
-            bgUploadDone = true;
-            try {
-                const data = JSON.parse(xhr.responseText);
-                if (xhr.status >= 200 && xhr.status < 300 && data.token) {
-                    bgUploadToken = data.token;
-                    bgUploadFill.style.width = '100%';
-                    // Silent: background upload complete — no announcement
-                } else {
-                    // Endpoint may not exist yet — fail silently, form submits normally
-                    bgUploadStatus.classList.add('d-none');
-                }
-            } catch(_) {
-                // Endpoint doesn't exist or non-JSON — silent fallback
-                bgUploadStatus.classList.add('d-none');
+        desc.addEventListener('input', function () { grow(desc); });
+        if (desc.value) grow(desc);
+
+        /* ---------- Photos ---------- */
+        var TYPES = ['image/jpeg', 'image/jpg', 'image/png'];
+
+        var Compressor = {
+            MAX_BYTES: 1024 * 1024, MAX_DIM: 1920, QUALITY: 0.85,
+            compress: function (file) {
+                var self = this;
+                if (file.size <= self.MAX_BYTES) return Promise.resolve({ file: file, saved: false });
+                return new Promise(function (resolve) {
+                    var url = URL.createObjectURL(file), img = new Image();
+                    img.onload = function () {
+                        var w = img.width, h = img.height;
+                        if (w > self.MAX_DIM || h > self.MAX_DIM) {
+                            var r = Math.min(self.MAX_DIM / w, self.MAX_DIM / h);
+                            w = Math.round(w * r); h = Math.round(h * r);
+                        }
+                        var c = document.createElement('canvas');
+                        c.width = w; c.height = h;
+                        var ctx = c.getContext('2d');
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(0, 0, w, h);
+                        ctx.drawImage(img, 0, 0, w, h);
+                        URL.revokeObjectURL(url);
+                        c.toBlob(function (b) {
+                            // Keep the original when the result is not smaller
+                            if (!b || b.size >= file.size) return resolve({ file: file, saved: false });
+                            resolve({ file: new File([b], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }), saved: true });
+                        }, 'image/jpeg', self.QUALITY);
+                    };
+                    img.onerror = function () { URL.revokeObjectURL(url); resolve({ file: file, saved: false }); };
+                    img.src = url;
+                });
             }
-        });
-
-        xhr.addEventListener('error', () => {
-            bgUploadXHR = null;
-            bgUploadStatus.classList.add('d-none'); // silent fallback
-        });
-
-        xhr.addEventListener('abort', () => { bgUploadXHR = null; bgUploadStatus.classList.add('d-none'); });
-
-        xhr.open('POST', '/ajax/upload-images-temp/');
-        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.send(fd);
-    }
-
-    /* ══════════════════════════════════════
-       Form Submission
-    ══════════════════════════════════════ */
-    let isSubmitting = false;
-
-    function submitForm() {
-        if (isSubmitting) return;
-
-        // Run all step validations
-        const allErrors = [];
-        for (let i = 0; i < TOTAL_STEPS - 1; i++) {
-            const e = validateStep(i);
-            if (e.length) { stepValidity[i] = false; allErrors.push(...e); } else stepValidity[i] = true;
-        }
-
-        if (allErrors.length) {
-            clientErrorList.innerHTML = allErrors.map(e=>`<li>${e}</li>`).join('');
-            clientErrorBanner.classList.add('visible');
-            // Jump to first broken step
-            for (let i = 0; i < TOTAL_STEPS; i++) { if (stepValidity[i] === false) { goToStep(i); break; } }
-            showErrorToast('Please fix the highlighted errors before submitting.');
-            return;
-        }
-        clientErrorBanner.classList.remove('visible');
-
-        isSubmitting = true;
-        nextBtn.disabled = true;
-        showOverlay();
-
-        const hasImages   = imageField?.files.length > 0;
-        const totalBytes  = hasImages ? Array.from(imageField.files).reduce((s,f)=>s+f.size,0) : 0;
-        const formData    = new FormData(form);
-
-        // If background upload is complete, pass the token to skip re-uploading
-        if (bgUploadToken) {
-            // Remove the actual image files from FormData and pass the token instead
-            formData.delete('images');
-            formData.append('bg_upload_token', bgUploadToken);
-        }
-
-        // Wait for in-flight background upload to finish before submitting
-        // (max wait: 10 s — then just submit with files)
-        const doSubmit = () => {
-            progressBar.style.width = '0%';
-            progressText.textContent = hasImages ? 'Uploading images…' : 'Processing your listing…';
-            statusText.textContent   = hasImages
-                ? `Uploading ${imageField.files.length} image${imageField.files.length!==1?'s':''}…`
-                : 'Creating product listing…';
-
-            // Animate to 80% immediately, then let submitFormData complete it
-            let progress = 0;
-            const interval = setInterval(() => {
-                progress = Math.min(progress + 4, 80);
-                progressBar.style.width = progress + '%';
-                if (progress >= 80) clearInterval(interval);
-            }, 60);
-
-            // Submit straight away — don't wait for fake progress
-            submitFormData(formData);
         };
 
-        if (bgUploadXHR && !bgUploadDone) {
-            // Wait up to 10 s for the background upload
-            let waited = 0;
-            statusText.textContent = 'Waiting for background upload to complete…';
-            const poll = setInterval(() => {
-                waited += 200;
-                if (bgUploadDone || waited >= 10000) {
-                    clearInterval(poll);
-                    doSubmit();
-                }
-            }, 200);
-        } else {
-            doSubmit();
-        }
-    }
+        function Picker(o) {
+            var self = this, files = [], urls = [], working = false;
+            self.files = function () { return files; };
+            self.firstUrl = function () { return urls[0] || ''; };
+            self.working = function () { return working; };
 
-    function submitFormData(formData) {
-        const url = form.getAttribute('action') || window.location.href;
-        fetch(url, {method:'POST', body:formData, headers:{'X-Requested-With':'XMLHttpRequest'}})
-        .then(r => {
-            const contentType = r.headers.get('Content-Type') || '';
-            // If server returned JSON, parse it
-            if (contentType.includes('application/json')) {
-                return r.json().then(data => ({ok: r.ok, isJson: true, data, status: r.status}));
+            function say(kind, text) {
+                o.note.className = 'auth-hint' + (kind ? ' auth-hint--' + kind : '');
+                o.note.textContent = text;
             }
-            // Server returned HTML (e.g. a redirect page or form re-render with errors)
-            return r.text().then(html => ({ok: r.ok, isJson: false, html, status: r.status}));
-        })
-        .then(result => {
-            if (result.isJson) {
-                // JSON response — standard success/error handling
-                if (result.ok && result.data.redirect_url) {
-                    progressBar.style.width = '100%';
-                    progressBar.classList.replace('bg-primary','bg-success');
-                    progressText.textContent = 'Success!';
-                    statusText.textContent = result.data.message || 'Product saved!';
-                    showSuccessToast(result.data.message || 'Product created successfully!');
-                    setTimeout(() => { window.location.href = result.data.redirect_url; }, 1000);
-                } else if (!result.ok) {
-                    throw new Error(result.data.message || 'Server returned an error. Please try again.');
-                } else {
-                    // JSON but no redirect_url — treat as success, go home
-                    progressBar.style.width = '100%';
-                    progressBar.classList.replace('bg-primary','bg-success');
-                    progressText.textContent = 'Success!';
-                    setTimeout(() => { window.location.href = '{% url "home" %}'; }, 1000);
-                }
-            } else {
-                // HTML response — server likely did a normal redirect or returned form errors
-                if (result.status === 200 || result.status === 302) {
-                    // Product was saved — server returned the redirect target page as HTML
-                    // This happens when the view does HttpResponseRedirect (not AJAX JSON)
-                    // Just navigate to the success URL directly
-                    progressBar.style.width = '100%';
-                    progressBar.classList.replace('bg-primary','bg-success');
-                    progressText.textContent = 'Success!';
-                    statusText.textContent = 'Product saved! Redirecting…';
-                    showSuccessToast('Product created successfully!');
-                    setTimeout(() => { window.location.href = '{% url "home" %}'; }, 1000);
-                } else {
-                    throw new Error('Server returned an unexpected response. Please try again.');
-                }
+            function sync() {
+                try {
+                    var dt = new DataTransfer();
+                    files.forEach(function (f) { dt.items.add(f); });
+                    o.input.files = dt.files;
+                    return true;
+                } catch (err) { return false; }
             }
-        })
-        .catch(err => {
-            progressBar.classList.add('bg-danger');
-            progressText.textContent = 'Error';
-            statusText.textContent = err.message;
-            showErrorToast(err.message || 'Failed to save product. Please try again.');
-            setTimeout(() => {
-                hideOverlay();
-                isSubmitting = false;
-                nextBtn.disabled = false;
-                progressBar.classList.remove('bg-danger');
-                progressBar.style.width = '0%';
-            }, 3000);
+            function describe() {
+                if (!files.length) { say('', o.idle); return; }
+                var total = 0, orig = 0;
+                files.forEach(function (f) { total += f.size; orig += f._orig || f.size; });
+                var pct = orig ? Math.round((orig - total) / orig * 100) : 0;
+                say('', files.length + ' of ' + o.max + ' ready, ' + fmt(total) + (pct > 5 ? '. Resized to save ' + pct + '%.' : '.'));
+            }
+            function draw() {
+                urls.forEach(function (u) { URL.revokeObjectURL(u); });
+                urls = [];
+                o.thumbs.textContent = '';
+                files.forEach(function (f, i) {
+                    var u = URL.createObjectURL(f);
+                    urls.push(u);
+                    var li = document.createElement('li');
+                    li.className = 'pfm-thumb';
+                    var img = new Image();
+                    img.src = u; img.alt = o.label + ' ' + (i + 1); img.width = 96; img.height = 96;
+                    li.appendChild(img);
+                    if (o.tagFirst && i === 0) {
+                        var tag = document.createElement('span');
+                        tag.className = 'pfm-thumb-tag';
+                        tag.textContent = 'Main';
+                        li.appendChild(tag);
+                    }
+                    var x = document.createElement('button');
+                    x.type = 'button';
+                    x.className = 'pfm-thumb-x';
+                    x.setAttribute('aria-label', 'Remove ' + o.label.toLowerCase() + ' ' + (i + 1));
+                    x.innerHTML = '<i class="bi bi-x-lg" aria-hidden="true"></i>';
+                    x.addEventListener('click', function () { remove(i); });
+                    li.appendChild(x);
+                    var s = document.createElement('span');
+                    s.textContent = fmt(f.size);
+                    li.appendChild(s);
+                    o.thumbs.appendChild(li);
+                });
+                o.thumbs.hidden = !files.length;
+            }
+            function remove(i) {
+                files.splice(i, 1);
+                sync(); draw(); describe();
+                o.onChange();
+            }
+            self.reset = function () { files = []; sync(); draw(); describe(); o.onChange(); };
+            self.restoreInput = function () { if (files.length) sync(); };
+
+            async function add(list, fromDrop) {
+                if (working) return;
+                var before = files.slice(), problem = '', ok = [];
+                Array.prototype.slice.call(list).forEach(function (f) {
+                    var dup = files.some(function (g) { return g.name === f.name && (g._orig || g.size) === f.size; });
+                    if (TYPES.indexOf(f.type) === -1) problem = 'Use JPG or PNG. Skipped ' + shortName(f.name) + '.';
+                    else if (f.size > o.perFile) problem = shortName(f.name) + ' is over ' + fmt(o.perFile) + '.';
+                    else if (!dup) ok.push(f);
+                });
+                var room = o.max - files.length;
+                if (ok.length > room) { problem = 'You can add up to ' + o.max + '.'; ok = ok.slice(0, room); }
+                if (!ok.length) {
+                    sync();
+                    if (problem) say('bad', problem); else describe();
+                    return;
+                }
+                working = true;
+                say('', 'Resizing\u2026');
+                var out = [];
+                for (var k = 0; k < ok.length; k++) {
+                    var r = await Compressor.compress(ok[k]);
+                    r.file._orig = ok[k].size;
+                    out.push(r.file);
+                }
+                files = files.concat(out);
+                var sum = files.reduce(function (s, f) { return s + f.size; }, 0);
+                if (o.total && sum > o.total) {
+                    files = before;
+                    problem = 'Photos are over ' + fmt(o.total) + ' in total.';
+                }
+                if (!sync()) {
+                    if (fromDrop) {
+                        files = before;
+                        say('bad', 'Could not attach those. Use the Choose button instead.');
+                        working = false;
+                        return;
+                    }
+                    files = Array.prototype.slice.call(o.input.files); // the input already holds the originals
+                }
+                draw();
+                describe();
+                if (problem) say('bad', problem);
+                working = false;
+                o.onChange();
+            }
+
+            o.input.addEventListener('change', function () { add(o.input.files, false); });
+            o.box.addEventListener('dragover', function (e) { e.preventDefault(); o.box.classList.add('drag'); });
+            o.box.addEventListener('dragleave', function () { o.box.classList.remove('drag'); });
+            o.box.addEventListener('drop', function (e) {
+                e.preventDefault();
+                o.box.classList.remove('drag');
+                if (e.dataTransfer.files.length) add(e.dataTransfer.files, true);
+            });
+        }
+
+        /* Background upload: photos start uploading as soon as they are chosen */
+        var bg = { xhr: null, token: null };
+        function startBg(list) {
+            if (bg.xhr) { bg.xhr.abort(); bg.xhr = null; }
+            bg.token = null;
+            if (!list.length) return;
+            var fd = new FormData();
+            list.forEach(function (f) { fd.append('images', f); });
+            fd.append('csrfmiddlewaretoken', csrf());
+            var x = new XMLHttpRequest();
+            bg.xhr = x;
+            x.addEventListener('load', function () {
+                if (bg.xhr !== x) return;
+                bg.xhr = null;
+                try {
+                    var d = JSON.parse(x.responseText);
+                    if (x.status >= 200 && x.status < 300 && d.token) bg.token = d.token;
+                } catch (err) { /* no endpoint: the form uploads the files itself */ }
+            });
+            x.addEventListener('error', function () { if (bg.xhr === x) bg.xhr = null; });
+            x.open('POST', '/ajax/upload-images-temp/');
+            x.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            x.send(fd);
+        }
+
+        var imgInput = el('images'), recInput = el('receipt_images');
+        var images = imgInput ? new Picker({
+            input: imgInput, box: $('imageBox'), thumbs: $('imageThumbs'), note: $('imageNote'),
+            max: 5, perFile: 5 * 1024 * 1024, total: 25 * 1024 * 1024, label: 'Photo', tagFirst: true,
+            idle: 'The first photo is the main one.',
+            onChange: function () { startBg(images.files()); refresh(); saveDraft(); }
+        }) : null;
+        var receipts = recInput ? new Picker({
+            input: recInput, box: $('receiptBoxDrop'), thumbs: $('receiptThumbs'), note: $('receiptNote'),
+            max: 3, perFile: 5 * 1024 * 1024, total: 0, label: 'Receipt', tagFirst: false,
+            idle: 'Cover your name and address before uploading.',
+            onChange: function () {}
+        }) : null;
+
+        /* ---------- Preview ---------- */
+        var chipDefs = [['is_always_available', 'Always available'], ['negotiable', 'Negotiable'], ['delivery_available', 'Delivery available'], ['inspection_allowed', 'Inspection allowed'], ['swap_accepted', 'Open to swaps']];
+        function optText(s) { return s && s.value && s.selectedIndex >= 0 ? s.options[s.selectedIndex].text.trim() : ''; }
+
+        function refresh() {
+            var t = val('title');
+            $('pvTitle').textContent = t || 'Your title';
+            $('pvTitle').classList.toggle('empty', !t);
+            var p = val('formatted_price');
+            $('pvPrice').hidden = !p;
+            $('pvPrice').textContent = p;
+            var meta = [optText(condSel), optText(catSel)].filter(Boolean).join(' \u00B7 ');
+            $('pvMeta').hidden = !meta;
+            $('pvMeta').textContent = meta;
+            var chips = chipDefs.filter(function (c) { var e = el(c[0]); return e && e.checked; });
+            $('pvChips').hidden = !chips.length;
+            $('pvChips').innerHTML = chips.map(function (c) { return '<li>' + c[1] + '</li>'; }).join('');
+            var u = (images && images.firstUrl()) || form.getAttribute('data-image-url') || '';
+            var im = $('pvImg');
+            im.hidden = !u;
+            $('pvIcon').hidden = !!u;
+            if (u && im.getAttribute('src') !== u) im.setAttribute('src', u);
+        }
+
+        /* ---------- Draft (new listings only) ---------- */
+        var DKEY = 'os_listing_draft_v1', DTTL = 7 * 24 * 3600 * 1000;
+        var DRAFT_ON = form.getAttribute('data-draft') === '1' && !form.querySelector('.has-error');
+        var TEXTS = ['title', 'category', 'subcategory', 'brand', 'condition', 'reason_for_selling', 'formatted_price', 'listing_type', 'quantity', 'bundle_description', 'inspection_location', 'swap_preference', 'description'];
+        var CHECKS = ['original_accessories_included', 'is_always_available', 'negotiable', 'delivery_available', 'inspection_allowed', 'swap_accepted'];
+        var timer = null;
+
+        function readDraft() { try { return JSON.parse(localStorage.getItem(DKEY)); } catch (err) { return null; } }
+        function clearDraft() { try { localStorage.removeItem(DKEY); } catch (err) {} }
+        function writeDraft() {
+            if (!DRAFT_ON || restoring) return;
+            var f = {}, c = {};
+            TEXTS.forEach(function (n) { var e = el(n); if (e && e.value) f[n] = e.value; });
+            CHECKS.forEach(function (n) { var e = el(n); if (e) c[n] = !!e.checked; });
+            if (!f.title && !f.description && !f.formatted_price) { clearDraft(); return; }
+            try { localStorage.setItem(DKEY, JSON.stringify({ t: Date.now(), f: f, c: c })); } catch (err) {}
+        }
+        function saveDraft() {
+            if (!DRAFT_ON) return;
+            clearTimeout(timer);
+            timer = setTimeout(writeDraft, 600);
+        }
+
+        function restoreDraft() {
+            var d = DRAFT_ON ? readDraft() : null;
+            if (!d || !d.f || Date.now() - d.t > DTTL) { if (d) clearDraft(); return; }
+            restoring = true;
+            TEXTS.forEach(function (n) {
+                var e = el(n);
+                if (!e || d.f[n] === undefined || n === 'subcategory' || n === 'brand') return;
+                e.value = d.f[n];
+            });
+            CHECKS.forEach(function (n) { var e = el(n); if (e && d.c && n in d.c) e.checked = d.c[n]; });
+            if (d.f.category && catSel.value === d.f.category) {
+                loadSubs(d.f.category, d.f.subcategory || null, d.f.brand || null, false);
+            }
+            syncAll();
+            $('draftBanner').hidden = false;
+            restoring = false;
+        }
+
+        $('draftReset').addEventListener('click', function () {
+            clearDraft();
+            form.reset();
+            seq[subSel.id] = (seq[subSel.id] || 0) + 1;
+            seq[brandSel.id] = (seq[brandSel.id] || 0) + 1;
+            subSel.disabled = brandSel.disabled = false;
+            fillOpts(subSel, [], 'Select a subcategory', '');
+            fillOpts(brandSel, [], 'Select a brand', '');
+            if (qty && !qty.value) qty.value = 1;
+            if (images) images.reset();
+            if (receipts) receipts.reset();
+            syncAll(); refresh(); grow(desc);
+            passed = {}; bad = {}; reached = 0;
+            $('draftBanner').hidden = true;
+            goTo(0, true);
         });
-    }
-});
+
+        form.addEventListener('input', function () { refresh(); saveDraft(); });
+        form.addEventListener('change', function () { refresh(); saveDraft(); });
+
+        /* ---------- Submit ---------- */
+        function setBusy(text) {
+            nextBtn.disabled = true;
+            nextBtn.setAttribute('aria-busy', 'true');
+            nextBtn.innerHTML = '<span class="spinner-border" aria-hidden="true"></span><span>' + text + '</span>';
+        }
+
+        // Runs just before the browser reads the form
+        function prepare() {
+            if (bg.xhr) { bg.xhr.abort(); bg.xhr = null; bg.token = null; }
+            if (bg.token && imgInput) {
+                $('bgToken').value = bg.token;
+                imgInput.value = '';
+            }
+            clearDraft();
+            var hasFiles = (imgInput && imgInput.files.length) || (recInput && recInput.files.length);
+            if (hasFiles) $('pfmOverlay').hidden = false;
+        }
+
+        form.addEventListener('submit', function (e) {
+            if (busy) { e.preventDefault(); return; }
+
+            // Enter in a field moves to the next step; only the last step sends
+            if (cur < LAST) { e.preventDefault(); next(); return; }
+
+            if ((images && images.working()) || (receipts && receipts.working())) {
+                e.preventDefault();
+                $('imageNote').className = 'auth-hint auth-hint--bad';
+                $('imageNote').textContent = 'Still resizing your photos. Try again in a second.';
+                return;
+            }
+
+            var firstStep = -1, firstEl = null;
+            for (var i = 0; i < LAST; i++) {
+                var c = validateStep(i);
+                if (c && firstStep < 0) { firstStep = i; firstEl = c; }
+            }
+            if (firstStep >= 0) {
+                e.preventDefault();
+                goTo(firstStep, false);
+                focusEl(firstEl);
+                return;
+            }
+
+            busy = true;
+            if (bg.xhr) {
+                // Wait up to 10 seconds for photos that are still uploading, then send
+                e.preventDefault();
+                setBusy('Finishing upload\u2026');
+                var waited = 0;
+                var poll = setInterval(function () {
+                    waited += 200;
+                    if (!bg.xhr || waited >= 10000) {
+                        clearInterval(poll);
+                        prepare();
+                        form.submit();
+                    }
+                }, 200);
+                return;
+            }
+            prepare();
+            // Delay so the browser has already collected the form data
+            setTimeout(function () { setBusy('Saving\u2026'); }, 0);
+        });
+
+        // Coming back with the Back button restores the page from cache
+        window.addEventListener('pageshow', function (e) {
+            if (!e.persisted) return;
+            busy = false;
+            $('pfmOverlay').hidden = true;
+            nextBtn.disabled = false;
+            nextBtn.removeAttribute('aria-busy');
+            $('bgToken').value = '';
+            if (images) { images.restoreInput(); startBg(images.files()); }
+            if (receipts) receipts.restoreInput();
+            paint();
+        });
+
+        /* ---------- Start ---------- */
+        restoreDraft();
+        if (desc.value) grow(desc);
+
+        // After a server error, open the step that holds the first problem and land on it
+        var serverErr = form.querySelector('.has-error');
+        var startStep = 0;
+        if (serverErr) {
+            var pane = serverErr.closest('.pfm-pane');
+            startStep = pane ? panes.indexOf(pane) : 0;
+            reached = LAST;
+        }
+        goTo(startStep, false);
+        refresh();
+        if (serverErr) {
+            var sc = control(serverErr);
+            if (sc) focusEl(sc);
+        }
+    })();
 </script>
 {% endblock %}
 {% block 'Footer' %}{% endblock %}

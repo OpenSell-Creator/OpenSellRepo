@@ -5,497 +5,355 @@
 
 {% block page_css %}
 <style>
-    .withdrawal-form-card {
-        background-color: var(--card-background);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-lg);
-        box-shadow: 0 2px 8px var(--shadow-color);
-    }
+/* Highlight colour for hover, selection and links: navy in light mode, orange in dark mode (no blue) */
+:root, [data-bs-theme="light"] { --hl: var(--primary-color); --hl-edge: var(--primary-color); --hl-soft: var(--primary-soft); }
+[data-bs-theme="dark"] { --hl: var(--accent-text); --hl-edge: var(--accent-color); --hl-soft: var(--accent-soft); }
+/* Buttons: same pill as login, profile and the wallet pages. Hover fills with the brand orange. */
+.ox-btn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-4); border: 2px solid var(--bs-white); border-radius: var(--radius-full); background: var(--primary-color); color: var(--bs-white); font: inherit; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); text-align: center; text-decoration: none; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); cursor: pointer; touch-action: manipulation; }
+.ox-btn:disabled { opacity: .7; cursor: default; }
+.ox-btn .spinner-border { width: 1rem; height: 1rem; border-width: .15em; }
+.ox-btn-sm { min-height: 2.5rem; width: auto; padding: 0 var(--sp-4); font-size: var(--font-size-sm); }
+.ox-btn.ox-btn-neutral { border: 1px solid var(--border-color); background: var(--card-background); color: var(--text-primary); box-shadow: none; }
+.ox-btn.ox-btn-light { border-color: var(--bs-white); background: var(--bs-white); color: var(--primary-color); box-shadow: none; }
+.ox-btn.ox-btn-ghost { border-color: var(--bs-white); background: transparent; color: var(--bs-white); box-shadow: none; }
+.ox-btn:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+@media (hover: hover) {
+    .ox-btn.ox-btn:not(:disabled):hover { background: var(--accent-color); color: var(--on-accent); }
+    .ox-btn.ox-btn-neutral:not(:disabled):hover { background: var(--hover-bg); color: var(--text-primary); border-color: var(--hl-edge); }
+}
+/* Shared core */
+.ox {
+    --ox-navy: var(--primary-color);
+    --ox-orange: var(--accent-color);
+    --ox-green: var(--bs-success, var(--primary-color));
+    --ox-red: var(--bs-danger, var(--accent-color));
+    --ox-purple: var(--bs-purple, var(--primary-color));
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+    line-height: var(--lh-body);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-4));
+}
+.ox a { text-decoration: none; }
+.ox p { margin: 0; }
+.ox [hidden] { display: none !important; }
+.t-navy { --tint: var(--ox-navy); } .t-orange { --tint: var(--ox-orange); } .t-green { --tint: var(--ox-green); } .t-red { --tint: var(--ox-red); } .t-purple { --tint: var(--ox-purple); }
+.ox-ico { display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-lg); }
+.t-orange .ox-ico, .t-orange.ox-ico { color: var(--on-accent); }
+.ox-wash { position: relative; isolation: isolate; }
+.ox-wash::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .ox-wash::before { opacity: .09; }
+.ox a:focus-visible, .ox button:focus-visible, .ox summary:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
 
-    .withdrawal-form-card .card-header {
-        background-color: transparent;
-        border-bottom: 1px solid var(--border-color);
-        padding: 1.25rem 1.5rem;
-    }
+/* Header */
+.ox-head { margin: -2rem -1rem var(--gap-sections); padding: calc(2rem + var(--sp-4)) var(--sp-4) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); }
+.ox-head-in { display: grid; gap: var(--sp-4); max-width: var(--ox-w); margin: 0 auto; }
+.ox-head-l { display: flex; align-items: center; gap: var(--sp-2); }
+.ox-back { display: grid; place-items: center; flex: none; width: 2.75rem; height: 2.75rem; margin-left: calc(var(--sp-2) * -1); border-radius: var(--radius-full); color: var(--bs-white); font-size: var(--font-size-xl); }
+.ox-title { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-tight); }
+.ox-sub { margin: var(--sp-1) 0 0; font-size: var(--font-size-sm); color: rgba(255, 255, 255, .85); }
+.ox-bal { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--pad-l); border-radius: var(--radius-lg); background: var(--card-background); color: var(--text-primary); }
+.ox-bal-l { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.ox-total { margin: 0; font-size: var(--font-size-3xl); font-weight: 600; line-height: var(--lh-tight); }
+.ox-link { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1); min-height: 2.75rem; padding: 0 var(--sp-2); color: var(--hl); font-size: var(--font-size-sm); font-weight: 600; }
+@media (hover: hover) { .ox-link:hover { text-decoration: underline; } }
 
-    .withdrawal-form-card .card-body {
-        padding: 1.5rem;
-    }
+/* Layout and cards (same as the profile page: icon, title, one-line subtitle) */
+.ox-main { display: flex; flex-direction: column; gap: var(--gap-sections); max-width: var(--ox-w); margin: 0 auto; }
+.ox-card { padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); }
+@media (min-width: 768px) { .ox-card { padding: var(--pad-l); } }
+.ox-sec-h { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.ox-sec-t { flex: 1 1 auto; min-width: 0; }
+.ox-h2 { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-tight); }
+.ox-card-sub { margin: var(--sp-1) 0 0; font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+.ox-pill { display: inline-flex; align-items: center; gap: var(--sp-1); padding: 0 var(--sp-2); border: 1px solid var(--tint); border-radius: var(--radius-full); font-size: var(--font-size-xs); font-weight: 600; line-height: var(--lh-body); white-space: nowrap; }
+.ox-alert { display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-md); font-size: var(--font-size-sm); line-height: var(--lh-snug); --tint: var(--ox-red); }
+.ox-alert i { margin-top: 1px; color: var(--error-text); }
+.ox-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-cards); }
+.ox-tile { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); line-height: var(--lh-tight); }
+.ox-tile .ox-ico { width: 2rem; height: 2rem; margin-bottom: var(--sp-1); }
+.ox-tile b { font-size: var(--font-size-xl); font-weight: 600; overflow-wrap: anywhere; }
+.ox-tile span { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.ox-tile small { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.ox-dl { margin: 0; border: 1px solid var(--border-color); border-radius: var(--r-card-s); }
+.ox-dl div { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3); border-top: 1px solid var(--border-color); }
+.ox-dl div:first-child { border-top: 0; }
+.ox-dl dt { font-size: var(--font-size-sm); font-weight: 400; color: var(--text-secondary); }
+.ox-dl dd { margin: 0; font-size: var(--font-size-base); font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+@media (hover: hover) { a.ox-tile:hover, a.ox-row:hover { border-color: var(--hl-edge); } }
+.ox-row { display: flex; align-items: center; gap: var(--sp-3); min-height: 2.75rem; padding: var(--pad-s) var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-base); font-weight: 600; }
+.ox-row .ox-ico { width: 2rem; height: 2rem; }
+.ox-row .bi-chevron-right { margin-left: auto; color: var(--text-secondary); }
+@media (min-width: 768px) { .ox-head-in { gap: var(--sp-5); } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+.ox { --ox-w: 40rem; }
 
-    .withdrawable-banner {
-        background: linear-gradient(135deg, var(--accent-color) 0%, var(--primary-color) 100%);
-        border-radius: var(--radius-lg);
-        padding: 1.5rem;
-        color: white;
-        margin-bottom: 1.5rem;
-    }
+/* Fields: same 42px controls as login, signup and profile. The widgets come from the Django form, so they are styled by tag. */
+.wd-form :is(input, select, textarea):not([type="radio"]):not([type="file"]):not([type="checkbox"]) { box-sizing: border-box; width: 100%; min-height: var(--h-control-lg); padding: 0 var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--background-color); color: var(--text-primary); font: inherit; font-size: var(--font-size-base); }
+.wd-form select { padding-right: 2rem; }
+.wd-form textarea { min-height: 5.5rem; padding: var(--sp-2) var(--sp-3); resize: vertical; }
+.wd-form :is(input, select, textarea):not([type="radio"]):not([type="file"]):focus { outline: 2px solid var(--accent-color); outline-offset: 1px; border-color: var(--accent-color); box-shadow: none; background-color: var(--background-color); color: var(--text-primary); }
+[data-bs-theme="dark"] .wd-form :is(input, select, textarea) { color-scheme: dark; }
+.wd-form :is(input, textarea):-webkit-autofill { -webkit-text-fill-color: var(--text-primary); caret-color: var(--text-primary); box-shadow: 0 0 0 1000px var(--background-color) inset; transition: background-color 9999s ease-out 0s; }
+.wd-form input[type="file"] { box-sizing: border-box; width: 100%; padding: var(--sp-2); border: 1px dashed var(--border-color); border-radius: var(--radius-md); background: var(--background-color); color: var(--text-primary); font: inherit; font-size: var(--font-size-sm); }
+.wd-form input[type="file"]::file-selector-button { margin-right: var(--sp-3); padding: var(--sp-1) var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); color: var(--text-primary); font: inherit; font-weight: 600; cursor: pointer; }
+@supports (-webkit-touch-callout: none) { .wd-form :is(input, select, textarea) { font-size: 16px; } }
+.wd-field { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; margin-bottom: var(--gap-fields); }
+.wd-pair { display: grid; grid-template-columns: 1fr; gap: 0 var(--sp-3); }
+@media (min-width: 600px) { .wd-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.wd-lab { font-size: var(--font-size-sm); font-weight: 600; }
+.wd-opt { font-weight: 400; color: var(--text-secondary); }
+.wd-hint { font-size: var(--font-size-xs); line-height: var(--lh-snug); color: var(--text-secondary); }
+.wd-err { display: flex; align-items: flex-start; gap: var(--sp-1); font-size: var(--font-size-xs); font-weight: 600; line-height: var(--lh-snug); color: var(--error-text); }
+.wd-input { display: flex; align-items: stretch; overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--background-color); }
+.wd-input span { display: grid; place-items: center; padding: 0 var(--sp-3); border-right: 1px solid var(--border-color); background: var(--hover-bg); color: var(--text-secondary); font-weight: 600; }
+.wd-form .wd-input :is(input):not([type="radio"]):not([type="file"]) { flex: 1 1 auto; min-width: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.wd-input:focus-within { outline: 2px solid var(--accent-color); outline-offset: 1px; border-color: var(--accent-color); }
+.wd-form .wd-input :is(input):focus { outline: 0; box-shadow: none; border: 0; }
+.wd-input.is-bad { border-color: var(--error-text); }
 
-    .withdrawable-banner .label {
-        font-size: 0.85rem;
-        opacity: 0.9;
-        display: block;
-        margin-bottom: 0.25rem;
-    }
+/* Fee breakdown */
+.wd-fee { margin: var(--sp-2) 0 0; }
+.wd-fee .is-fee { color: var(--error-text); }
+.wd-fee .is-net dt { color: var(--text-primary); font-weight: 600; }
+.wd-fee .is-net dd { font-size: var(--font-size-lg); }
 
-    .withdrawable-banner .amount {
-        font-size: 2.25rem;
-        font-weight: 700;
-        margin-bottom: 0;
-    }
-
-    .form-label {
-        color: var(--text-primary);
-        font-weight: 500;
-        font-size: 0.9rem;
-    }
-
-    .form-control,
-    .form-select {
-        border: 2px solid var(--border-color);
-        border-radius: 0.5rem;
-        padding: 0.625rem 0.875rem;
-        background-color: var(--card-background);
-        color: var(--text-primary);
-        font-size: 0.9rem;
-    }
-
-    .form-control:focus,
-    .form-select:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
-        background-color: var(--card-background);
-        color: var(--text-primary);
-        outline: none;
-    }
-
-    .input-group .input-group-text {
-        border: 1px solid var(--border-color);
-        background-color: var(--hover-bg);
-        color: var(--text-primary);
-    }
-
-    .fee-breakdown {
-        background-color: var(--hover-bg);
-        border-radius: var(--radius-md);
-        padding: 1rem;
-        margin-top: 0.75rem;
-    }
-
-    .fee-breakdown-row {
-        display: flex;
-        justify-content: space-between;
-        font-size: 0.85rem;
-        color: var(--text-primary);
-        padding: 0.25rem 0;
-    }
-
-    .fee-breakdown-row.net {
-        border-top: 1px solid var(--border-color);
-        margin-top: 0.4rem;
-        padding-top: 0.5rem;
-        font-weight: 700;
-        font-size: 0.95rem;
-    }
-
-    .fee-breakdown-row .value.fee {
-        color: #e74c3c;
-    }
-
-    .fee-breakdown-row .value.net-amount {
-        color: #2ecc71;
-    }
-
-    .amount-exceeds-warning {
-        color: #e74c3c;
-        font-size: 0.8rem;
-        margin-top: 0.4rem;
-        display: none;
-    }
-
-    .proof-type-options {
-        display: flex;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-        margin-bottom: 1rem;
-    }
-
-    .proof-type-option {
-        flex: 1;
-        min-width: 180px;
-    }
-
-    .proof-type-option input[type="radio"] {
-        display: none;
-    }
-
-    .proof-type-option label {
-        display: block;
-        border: 2px solid var(--border-color);
-        border-radius: var(--radius-md);
-        padding: 0.75rem 1rem;
-        cursor: pointer;
-        font-size: 0.85rem;
-        color: var(--text-primary);
-        transition: all 0.2s ease;
-        text-align: center;
-        margin-bottom: 0;
-    }
-
-    .proof-type-option input[type="radio"]:checked + label {
-        border-color: var(--primary-color);
-        background-color: rgba(var(--primary-rgb), 0.08);
-        font-weight: 600;
-    }
-
-    .proof-field-section {
-        display: none;
-    }
-
-    .proof-field-section.active {
-        display: block;
-    }
-
-    .btn-submit-withdrawal {
-        background-color: var(--accent-color);
-        color: white;
-        border: none;
-        padding: 0.85rem 1.5rem;
-        border-radius: var(--radius-md);
-        font-weight: 600;
-        width: 100%;
-        transition: all 0.3s ease;
-    }
-
-    .btn-submit-withdrawal:hover:not(:disabled) {
-        background-color: var(--accent-hover);
-    }
-
-    .btn-submit-withdrawal:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    .zero-balance-banner {
-        background-color: rgba(231, 76, 60, 0.08);
-        border: 1px solid rgba(231, 76, 60, 0.25);
-        border-left: 4px solid #e74c3c;
-        border-radius: var(--radius-md);
-        padding: 1rem 1.25rem;
-        color: var(--text-primary);
-        margin-bottom: 1.5rem;
-        display: flex;
-        align-items: flex-start;
-        gap: 0.75rem;
-    }
-
-    .zero-balance-banner i {
-        color: #e74c3c;
-        font-size: 1.25rem;
-        flex-shrink: 0;
-    }
-
-    .pending-guard-banner {
-        background-color: rgba(241, 196, 15, 0.08);
-        border: 1px solid rgba(241, 196, 15, 0.25);
-        border-left: 4px solid #f1c40f;
-        border-radius: var(--radius-md);
-        padding: 1rem 1.25rem;
-        color: var(--text-primary);
-        margin-bottom: 1.5rem;
-        display: flex;
-        align-items: flex-start;
-        gap: 0.75rem;
-    }
-
-    .pending-guard-banner i {
-        color: #f1c40f;
-        font-size: 1.25rem;
-        flex-shrink: 0;
-    }
-
-    .fee-note {
-        color: var(--text-muted);
-        font-size: 0.78rem;
-        margin-top: 0.35rem;
-    }
+/* Proof type: three radio cards */
+.wd-fs { margin: 0 0 var(--gap-fields); padding: 0; border: 0; min-width: 0; }
+.wd-fs legend { float: none; width: auto; padding: 0; margin: 0 0 var(--gap-label); }
+.wd-proofs { display: grid; grid-template-columns: 1fr; gap: var(--sp-2); }
+@media (min-width: 600px) { .wd-proofs { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.wd-proof { position: relative; }
+.wd-proof input { position: absolute; inset: 0; margin: 0; opacity: 0; pointer-events: none; }
+.wd-proof label { display: flex; align-items: center; justify-content: center; gap: var(--sp-2); box-sizing: border-box; min-height: 2.75rem; height: 100%; padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--card-background); font-size: var(--font-size-sm); font-weight: 600; line-height: var(--lh-snug); text-align: center; cursor: pointer; touch-action: manipulation; }
+.wd-proof input:checked + label { border-color: var(--hl-edge); background: var(--hl-soft); color: var(--hl); box-shadow: inset 0 0 0 1px var(--hl-edge); }
+.wd-proof input:focus-visible + label { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+@media (hover: hover) { .wd-proof label:hover { border-color: var(--hl-edge); } }
+.wd-sec[hidden] { display: none; }
+.wd-div { height: 1px; margin: var(--sp-3) 0; border: 0; background: var(--border-color); }
+.wd-note { margin-bottom: var(--sp-3); }
+.wd-nf { margin-bottom: var(--sp-3); }
+.wd-state { display: flex; flex-direction: column; gap: var(--sp-3); }
 </style>
 {% endblock %}
 
 {% block 'Body' %}
-<div class="dashboard-container">
-    <div class="container py-4">
-        <div class="row mb-3">
-            <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <h1 class="dashboard-title" style="color: var(--text-primary); font-size: 1.75rem;">
-                    <i class="bi bi-cash-stack me-2"></i>Request Withdrawal
-                </h1>
-                <a href="{% url 'withdrawal_request_list' %}" class="btn btn-outline-primary">
-                    <i class="bi bi-list-ul me-2"></i>View My Requests
-                </a>
+<div class="ox">
+
+    <header class="ox-head">
+        <div class="ox-head-in">
+            <div class="ox-head-l">
+                <a href="{% url 'dashboard_home' %}" class="ox-back" aria-label="Back to dashboard"><i class="bi bi-arrow-left" aria-hidden="true"></i></a>
+                <div>
+                    <h1 class="ox-title">Request withdrawal</h1>
+                    <p class="ox-sub">Withdraw the funds you deposited</p>
+                </div>
             </div>
+            {% if not has_pending_withdrawal %}
+            <div class="ox-bal">
+                <div>
+                    <span class="ox-bal-l">Withdrawable balance</span>
+                    <p class="ox-total" id="withdrawableBalanceDisplay">₦{{ withdrawable_balance|floatformat:"2g" }}</p>
+                </div>
+                <a href="{% url 'withdrawal_request_list' %}" class="ox-link"><i class="bi bi-list-ul" aria-hidden="true"></i>My requests</a>
+            </div>
+            {% endif %}
         </div>
+    </header>
 
-        <div class="row justify-content-center">
-            <div class="col-12 col-lg-7">
+    <div class="ox-main">
 
-                {% if has_pending_withdrawal %}
-                <div class="pending-guard-banner">
-                    <i class="bi bi-exclamation-triangle-fill"></i>
-                    <div>
-                        <strong>You already have a pending withdrawal request.</strong>
-                        <p class="mb-0">Please wait for it to be resolved before submitting a new one.
-                        <a href="{% url 'withdrawal_request_list' %}">View your requests</a>.</p>
+        {% if has_pending_withdrawal %}
+        <section class="ox-card wd-state" aria-labelledby="pendTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-orange"><i class="bi bi-hourglass-split" aria-hidden="true"></i></span>
+                <div class="ox-sec-t">
+                    <h2 class="ox-h2" id="pendTitle">You already have a pending request</h2>
+                    <p class="ox-card-sub">Please wait for it to be resolved before submitting a new one.</p>
+                </div>
+            </div>
+            <a href="{% url 'withdrawal_request_list' %}" class="ox-btn"><i class="bi bi-list-ul" aria-hidden="true"></i>View your requests</a>
+        </section>
+        {% else %}
+
+        {% if withdrawable_balance <= 0 %}
+        <div class="ox-alert ox-wash" role="status">
+            <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+            <span><b>You have no withdrawable balance.</b> Only funds you've directly deposited can be withdrawn. Bonus credits and balances spent on boosts or subscriptions aren't eligible.</span>
+        </div>
+        {% endif %}
+
+        <section class="ox-card" aria-labelledby="wdTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-navy"><i class="bi bi-bank" aria-hidden="true"></i></span>
+                <div class="ox-sec-t">
+                    <h2 class="ox-h2" id="wdTitle">Withdrawal details</h2>
+                    <p class="ox-card-sub">A 10% fee applies to all withdrawals, calculated on the amount you request.</p>
+                </div>
+            </div>
+
+            {% if form.non_field_errors %}
+            <div class="ox-alert ox-wash wd-nf" role="alert">
+                <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+                <span>{% for error in form.non_field_errors %}{{ error }} {% endfor %}</span>
+            </div>
+            {% endif %}
+
+            <form method="post" enctype="multipart/form-data" id="withdrawalForm" class="wd-form" novalidate>
+                {% csrf_token %}
+
+                {# ---- Amount ---- #}
+                <div class="wd-field">
+                    <label class="wd-lab" for="{{ form.requested_amount.id_for_label }}">Amount to withdraw</label>
+                    <div class="wd-input{% if form.requested_amount.errors %} is-bad{% endif %}"><span aria-hidden="true">₦</span>{{ form.requested_amount }}</div>
+                    {% if form.requested_amount.errors %}<p class="wd-err" role="alert">{{ form.requested_amount.errors.0 }}</p>{% endif %}
+
+                    <dl class="ox-dl wd-fee" id="feeBreakdown" hidden>
+                        <div><dt>Amount requested</dt><dd id="feeAmountRequested">₦0.00</dd></div>
+                        <div><dt>Withdrawal fee (10%)</dt><dd class="is-fee" id="feeAmountFee">-₦0.00</dd></div>
+                        <div class="is-net"><dt>You'll receive</dt><dd id="feeAmountNet">₦0.00</dd></div>
+                    </dl>
+                    <p class="wd-err" id="exceedsWarning" role="alert" hidden><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i><span>Amount exceeds your withdrawable balance.</span></p>
+                </div>
+
+                {# ---- Bank details ---- #}
+                <div class="wd-field">
+                    <label class="wd-lab" for="{{ form.bank_name.id_for_label }}">Bank name</label>
+                    {{ form.bank_name }}
+                    {% if form.bank_name.errors %}<p class="wd-err" role="alert">{{ form.bank_name.errors.0 }}</p>{% endif %}
+                </div>
+                <div class="wd-pair">
+                    <div class="wd-field">
+                        <label class="wd-lab" for="{{ form.account_number.id_for_label }}">Account number</label>
+                        {{ form.account_number }}
+                        {% if form.account_number.errors %}<p class="wd-err" role="alert">{{ form.account_number.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div class="wd-field">
+                        <label class="wd-lab" for="{{ form.account_name.id_for_label }}">Account name</label>
+                        {{ form.account_name }}
+                        {% if form.account_name.errors %}<p class="wd-err" role="alert">{{ form.account_name.errors.0 }}</p>{% endif %}
+                        <p class="wd-hint">Must match your verified identity on OpenSell.</p>
                     </div>
                 </div>
-                {% else %}
 
-                <div class="withdrawable-banner">
-                    <span class="label">Withdrawable Balance</span>
-                    <h2 class="amount" id="withdrawableBalanceDisplay">₦{{ withdrawable_balance|floatformat:2 }}</h2>
-                </div>
+                <hr class="wd-div">
 
-                {% if withdrawable_balance <= 0 %}
-                <div class="zero-balance-banner">
-                    <i class="bi bi-exclamation-circle-fill"></i>
-                    <div>
-                        <strong>You have no withdrawable balance.</strong>
-                        <p class="mb-0">Only funds you've directly deposited can be withdrawn — bonus credits and balances spent on boosts or subscriptions aren't eligible.</p>
-                    </div>
-                </div>
-                {% endif %}
-
-                <div class="withdrawal-form-card">
-                    <div class="card-header">
-                        <h6 class="card-title mb-0">
-                            <i class="bi bi-bank me-2"></i>Withdrawal Details
-                        </h6>
-                    </div>
-                    <div class="card-body">
-
-                        {% if form.non_field_errors %}
-                        <div class="alert alert-danger">
-                            {% for error in form.non_field_errors %}
-                                <div>{{ error }}</div>
-                            {% endfor %}
+                {# ---- Proof of deposit ---- #}
+                <fieldset class="wd-fs">
+                    <legend class="wd-lab">Proof of original deposit</legend>
+                    {% if form.proof_type.errors %}<p class="wd-err" role="alert">{{ form.proof_type.errors.0 }}</p>{% endif %}
+                    <div class="wd-proofs">
+                        {% for radio in form.proof_type %}
+                        <div class="wd-proof">
+                            {{ radio.tag }}
+                            <label for="{{ radio.id_for_label }}">
+                                {% if radio.data.value == 'monnify_reference' %}<i class="bi bi-receipt" aria-hidden="true"></i>{% elif radio.data.value == 'bank_alert' %}<i class="bi bi-cloud-upload" aria-hidden="true"></i>{% else %}<i class="bi bi-files" aria-hidden="true"></i>{% endif %}
+                                <span>{{ radio.choice_label }}</span>
+                            </label>
                         </div>
-                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </fieldset>
 
-                        <form method="post" enctype="multipart/form-data" id="withdrawalForm" novalidate>
-                            {% csrf_token %}
-
-                            <!-- Amount -->
-                            <div class="mb-3">
-                                <label class="form-label" for="{{ form.requested_amount.id_for_label }}">Amount to Withdraw</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">₦</span>
-                                    {{ form.requested_amount }}
-                                </div>
-                                {% if form.requested_amount.errors %}
-                                <div class="text-danger small mt-1">{{ form.requested_amount.errors.0 }}</div>
-                                {% endif %}
-
-                                <div class="fee-breakdown" id="feeBreakdown" style="display: none;">
-                                    <div class="fee-breakdown-row">
-                                        <span>Amount Requested</span>
-                                        <span class="value" id="feeAmountRequested">₦0.00</span>
-                                    </div>
-                                    <div class="fee-breakdown-row">
-                                        <span>Withdrawal Fee (10%)</span>
-                                        <span class="value fee" id="feeAmountFee">-₦0.00</span>
-                                    </div>
-                                    <div class="fee-breakdown-row net">
-                                        <span>You'll Receive</span>
-                                        <span class="value net-amount" id="feeAmountNet">₦0.00</span>
-                                    </div>
-                                </div>
-                                <div class="amount-exceeds-warning" id="exceedsWarning">
-                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
-                                    Amount exceeds your withdrawable balance.
-                                </div>
-                                <p class="fee-note">A 10% fee applies to all withdrawals, calculated on the amount you request.</p>
-                            </div>
-
-                            <!-- Bank details -->
-                            <div class="row">
-                                <div class="col-12 mb-3">
-                                    <label class="form-label" for="{{ form.bank_name.id_for_label }}">Bank Name</label>
-                                    {{ form.bank_name }}
-                                    {% if form.bank_name.errors %}
-                                    <div class="text-danger small mt-1">{{ form.bank_name.errors.0 }}</div>
-                                    {% endif %}
-                                </div>
-                                <div class="col-12 col-md-6 mb-3">
-                                    <label class="form-label" for="{{ form.account_number.id_for_label }}">Account Number</label>
-                                    {{ form.account_number }}
-                                    {% if form.account_number.errors %}
-                                    <div class="text-danger small mt-1">{{ form.account_number.errors.0 }}</div>
-                                    {% endif %}
-                                </div>
-                                <div class="col-12 col-md-6 mb-3">
-                                    <label class="form-label" for="{{ form.account_name.id_for_label }}">Account Name</label>
-                                    {{ form.account_name }}
-                                    {% if form.account_name.errors %}
-                                    <div class="text-danger small mt-1">{{ form.account_name.errors.0 }}</div>
-                                    {% endif %}
-                                    <small class="text-muted">Must match your verified identity on OpenSell</small>
-                                </div>
-                            </div>
-
-                            <!-- Proof of deposit -->
-                            <hr style="border-color: var(--border-color);">
-                            <label class="form-label d-block mb-2">Proof of Original Deposit</label>
-                            {% if form.proof_type.errors %}
-                            <div class="text-danger small mb-2">{{ form.proof_type.errors.0 }}</div>
-                            {% endif %}
-
-                            <div class="proof-type-options">
-                                {% for radio in form.proof_type %}
-                                <div class="proof-type-option">
-                                    {{ radio.tag }}
-                                    <label for="{{ radio.id_for_label }}">
-                                        {% if radio.data.value == 'monnify_reference' %}
-                                            <i class="bi bi-receipt me-1"></i>
-                                        {% elif radio.data.value == 'bank_alert' %}
-                                            <i class="bi bi-cloud-upload me-1"></i>
-                                        {% else %}
-                                            <i class="bi bi-files me-1"></i>
-                                        {% endif %}
-                                        {{ radio.choice_label }}
-                                    </label>
-                                </div>
-                                {% endfor %}
-                            </div>
-
-                            <div class="proof-field-section" data-proof-section="monnify_reference">
-                                <div class="mb-3">
-                                    <label class="form-label" for="{{ form.monnify_transaction.id_for_label }}">Select Your Deposit</label>
-                                    {{ form.monnify_transaction }}
-                                    {% if form.monnify_transaction.errors %}
-                                    <div class="text-danger small mt-1">{{ form.monnify_transaction.errors.0 }}</div>
-                                    {% endif %}
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label" for="{{ form.monnify_reference_manual.id_for_label }}">Or Enter Reference Manually</label>
-                                    {{ form.monnify_reference_manual }}
-                                    {% if form.monnify_reference_manual.errors %}
-                                    <div class="text-danger small mt-1">{{ form.monnify_reference_manual.errors.0 }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-
-                            <div class="proof-field-section" data-proof-section="bank_alert">
-                                <div class="mb-3">
-                                    <label class="form-label" for="{{ form.proof_upload.id_for_label }}">Upload Bank Debit Alert</label>
-                                    {{ form.proof_upload }}
-                                    {% if form.proof_upload.errors %}
-                                    <div class="text-danger small mt-1">{{ form.proof_upload.errors.0 }}</div>
-                                    {% endif %}
-                                    <small class="text-muted">Screenshot or PDF of your original deposit alert</small>
-                                </div>
-                            </div>
-
-                            <div class="proof-field-section" data-proof-section="both">
-                                <div class="mb-3">
-                                    <label class="form-label">Select Your Deposit</label>
-                                    {{ form.monnify_transaction }}
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Or Enter Reference Manually</label>
-                                    {{ form.monnify_reference_manual }}
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Upload Bank Debit Alert</label>
-                                    {{ form.proof_upload }}
-                                </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label" for="{{ form.proof_notes.id_for_label }}">Additional Notes (optional)</label>
-                                {{ form.proof_notes }}
-                                {% if form.proof_notes.errors %}
-                                <div class="text-danger small mt-1">{{ form.proof_notes.errors.0 }}</div>
-                                {% endif %}
-                            </div>
-
-                            <button type="submit" class="btn btn-submit-withdrawal mt-2" id="submitWithdrawalBtn"
-                                    {% if withdrawable_balance <= 0 %}disabled{% endif %}>
-                                <i class="bi bi-send-check-fill me-2"></i>Submit Withdrawal Request
-                            </button>
-                        </form>
+                {# The "both" choice shows the two sections below together, so each field is rendered once #}
+                <div class="wd-sec" data-proof-for="monnify_reference both">
+                    <div class="wd-field">
+                        <label class="wd-lab" for="{{ form.monnify_transaction.id_for_label }}">Select your deposit</label>
+                        {{ form.monnify_transaction }}
+                        {% if form.monnify_transaction.errors %}<p class="wd-err" role="alert">{{ form.monnify_transaction.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div class="wd-field">
+                        <label class="wd-lab" for="{{ form.monnify_reference_manual.id_for_label }}">Or enter the reference manually</label>
+                        {{ form.monnify_reference_manual }}
+                        {% if form.monnify_reference_manual.errors %}<p class="wd-err" role="alert">{{ form.monnify_reference_manual.errors.0 }}</p>{% endif %}
                     </div>
                 </div>
 
-                {% endif %}
-            </div>
-        </div>
+                <div class="wd-sec" data-proof-for="bank_alert both">
+                    <div class="wd-field">
+                        <label class="wd-lab" for="{{ form.proof_upload.id_for_label }}">Upload bank debit alert</label>
+                        {{ form.proof_upload }}
+                        {% if form.proof_upload.errors %}<p class="wd-err" role="alert">{{ form.proof_upload.errors.0 }}</p>{% endif %}
+                        <p class="wd-hint">Screenshot or PDF of your original deposit alert.</p>
+                    </div>
+                </div>
+
+                <div class="wd-field wd-note">
+                    <label class="wd-lab" for="{{ form.proof_notes.id_for_label }}">Additional notes <span class="wd-opt">(optional)</span></label>
+                    {{ form.proof_notes }}
+                    {% if form.proof_notes.errors %}<p class="wd-err" role="alert">{{ form.proof_notes.errors.0 }}</p>{% endif %}
+                </div>
+
+                <button type="submit" class="ox-btn" id="submitWithdrawalBtn" {% if withdrawable_balance <= 0 %}disabled{% endif %}>
+                    <i class="bi bi-send-check-fill" aria-hidden="true"></i>Submit withdrawal request
+                </button>
+            </form>
+        </section>
+
+        {% endif %}
     </div>
 </div>
-{% endblock %}
 
-{% block page_js %}
 <script>
-(function() {
-    var withdrawableBalance = parseFloat("{{ withdrawable_balance|default:0 }}");
-    var feeRate = 0.10;
+(function () {
+    'use strict';
 
+    var balance = parseFloat('{{ withdrawable_balance|default:0|floatformat:"2u" }}') || 0;
+    var FEE = 0.10;
+
+    var form = document.getElementById('withdrawalForm');
+    if (!form) return;
     var amountInput = document.getElementById('{{ form.requested_amount.id_for_label }}');
-    var feeBreakdown = document.getElementById('feeBreakdown');
-    var exceedsWarning = document.getElementById('exceedsWarning');
-    var submitBtn = document.getElementById('submitWithdrawalBtn');
+    var feeBox = document.getElementById('feeBreakdown');
+    var exceeds = document.getElementById('exceedsWarning');
+    var btn = document.getElementById('submitWithdrawalBtn');
+    var label = btn.innerHTML;
+    var busy = false;
+    var naira = function (n) { return '₦' + n.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
 
-    function formatNaira(value) {
-        return '₦' + value.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-
-    function recalculate() {
-        if (!amountInput) return;
+    function recalc() {
         var amount = parseFloat(amountInput.value);
-
         if (isNaN(amount) || amount <= 0) {
-            feeBreakdown.style.display = 'none';
-            exceedsWarning.style.display = 'none';
-            if (submitBtn && withdrawableBalance > 0) submitBtn.disabled = false;
+            feeBox.hidden = true; exceeds.hidden = true;
+            if (balance > 0 && !busy) btn.disabled = false;
             return;
         }
-
-        var fee = amount * feeRate;
-        var net = amount - fee;
-
-        document.getElementById('feeAmountRequested').textContent = formatNaira(amount);
-        document.getElementById('feeAmountFee').textContent = '-' + formatNaira(fee);
-        document.getElementById('feeAmountNet').textContent = formatNaira(net);
-        feeBreakdown.style.display = 'block';
-
-        if (amount > withdrawableBalance) {
-            exceedsWarning.style.display = 'block';
-            if (submitBtn) submitBtn.disabled = true;
-        } else {
-            exceedsWarning.style.display = 'none';
-            if (submitBtn && withdrawableBalance > 0) submitBtn.disabled = false;
-        }
+        var fee = amount * FEE;
+        document.getElementById('feeAmountRequested').textContent = naira(amount);
+        document.getElementById('feeAmountFee').textContent = '-' + naira(fee);
+        document.getElementById('feeAmountNet').textContent = naira(amount - fee);
+        feeBox.hidden = false;
+        var over = amount > balance;
+        exceeds.hidden = !over;
+        btn.disabled = over || balance <= 0;
     }
+    if (amountInput) { amountInput.addEventListener('input', recalc); recalc(); }
 
-    if (amountInput) {
-        amountInput.addEventListener('input', recalculate);
-        recalculate();
-    }
-
-    // Proof type toggle
-    var proofRadios = document.querySelectorAll('input[name="proof_type"]');
-    var proofSections = document.querySelectorAll('.proof-field-section');
-
-    function updateProofSections() {
-        var selected = document.querySelector('input[name="proof_type"]:checked');
-        if (!selected) return;
-        proofSections.forEach(function(section) {
-            section.classList.toggle('active', section.dataset.proofSection === selected.value);
+    // Proof type decides which fields show. Sections are hidden, not removed, so nothing is rendered twice.
+    var sections = form.querySelectorAll('.wd-sec');
+    function proof() {
+        var sel = form.querySelector('input[name="proof_type"]:checked');
+        sections.forEach(function (s) {
+            var on = !!sel && s.getAttribute('data-proof-for').split(' ').indexOf(sel.value) !== -1;
+            s.hidden = !on;
         });
     }
+    form.querySelectorAll('input[name="proof_type"]').forEach(function (r) { r.addEventListener('change', proof); });
+    proof();
 
-    proofRadios.forEach(function(radio) {
-        radio.addEventListener('change', updateProofSections);
+    form.addEventListener('submit', function (e) {
+        if (busy || btn.disabled) { if (busy) e.preventDefault(); return; }
+        busy = true;
+        // Delay so the browser has already collected the form data
+        setTimeout(function () {
+            btn.disabled = true;
+            btn.setAttribute('aria-busy', 'true');
+            btn.innerHTML = '<span class="spinner-border" aria-hidden="true"></span><span>Submitting…</span>';
+        }, 0);
     });
-    updateProofSections();
+    window.addEventListener('pageshow', function (e) {
+        if (!e.persisted) return;
+        busy = false; btn.removeAttribute('aria-busy'); btn.innerHTML = label; recalc();
+    });
 })();
 </script>
 {% endblock %}

@@ -1,79 +1,140 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}Edit reply{% endblock %}
+
+{% block page_css %}
+<style>
+/* Form page: shared OpenSell design (navy header band, token-based card, pill buttons). */
+.fm {
+    display: flex; flex-direction: column; align-items: center; gap: var(--gap-sections);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-6));
+    color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-body);
+}
+.fm a { text-decoration: none; }
+.fm p, .fm h1, .fm h2, .fm form { margin: 0; }
+
+.fm-head { align-self: stretch; display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); margin: -2rem -1rem 0; padding: calc(2rem + var(--sp-4)) var(--sp-5) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); text-align: center; }
+.fm-head-ico { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin-bottom: var(--sp-1); border-radius: var(--radius-full); background: rgba(255, 255, 255, .14); font-size: var(--font-size-xl); }
+.fm-head h1 { font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-snug); }
+.fm-head p { max-width: 100%; overflow: hidden; font-size: var(--font-size-sm); line-height: var(--lh-snug); text-overflow: ellipsis; white-space: nowrap; opacity: .85; }
+@media (min-width: 768px) { .fm-head h1 { font-size: var(--font-size-3xl); } .fm-head p { font-size: var(--font-size-base); } }
+
+.fm-card { position: relative; z-index: 1; display: flex; flex-direction: column; gap: var(--gap-sections); box-sizing: border-box; width: 100%; max-width: 34rem; padding: var(--pad-l); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); box-shadow: var(--shadow-md); }
+.fm-form { display: flex; flex-direction: column; gap: var(--gap-fields); }
+
+/* Original review being replied to */
+.fm-orig { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--pad-s); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--background-color); }
+.fm-orig-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-1) var(--sp-3); font-size: var(--font-size-xs); color: var(--text-secondary); }
+.fm-orig-top b { font-size: var(--font-size-sm); font-weight: 600; color: var(--text-primary); }
+.fm-orig-lbl { font-size: var(--font-size-xs); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); }
+.fm-stars { display: flex; align-items: center; gap: 2px; color: var(--accent-color); font-size: var(--font-size-sm); }
+.fm-stars .fm-num { margin-left: var(--sp-2); font-weight: 600; color: var(--text-primary); }
+.fm-quote { padding-left: var(--sp-3); border-left: 3px solid var(--accent-color); font-size: var(--font-size-sm); line-height: var(--lh-body); color: var(--text-secondary); overflow-wrap: anywhere; white-space: pre-line; }
+
+/* Fields: the form widgets render with their own classes, so style them by element */
+.fm-field { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.fm-label { font-size: var(--font-size-sm); font-weight: 600; }
+.fm-field textarea, .fm-field input:not([type="radio"]):not([type="checkbox"]) { box-sizing: border-box; width: 100%; padding: 0 var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--background-color); color: var(--text-primary); font: inherit; font-size: var(--font-size-base); }
+.fm-field textarea { min-height: 7rem; padding: var(--sp-2) var(--sp-3); line-height: var(--lh-body); resize: vertical; }
+.fm-field textarea:focus, .fm-field input:focus { outline: 2px solid var(--accent-color); outline-offset: 1px; border-color: var(--accent-color); box-shadow: none; }
+[data-bs-theme="dark"] .fm-field textarea, [data-bs-theme="dark"] .fm-field input { color-scheme: dark; }
+@supports (-webkit-touch-callout: none) { .fm-field textarea, .fm-field input { font-size: 16px; } }
+.fm-field.has-error textarea { border-color: var(--bs-danger); }
+.fm-error { display: flex; align-items: flex-start; gap: var(--sp-1); font-size: var(--font-size-xs); font-weight: 600; color: var(--bs-danger); }
+.fm-error i { margin-top: 1px; }
+.fm-alert { position: relative; isolation: isolate; display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-md); font-size: var(--font-size-sm); line-height: var(--lh-snug); }
+.fm-alert::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--bs-danger); opacity: .14; }
+.fm-alert i { margin-top: 1px; color: var(--bs-danger); }
+
+/* Actions: primary on top on phones, Cancel left and primary right from 480px */
+.fm-actions { display: flex; flex-direction: column-reverse; gap: var(--sp-2); }
+@media (min-width: 480px) { .fm-actions { flex-direction: row; } .fm-actions > * { flex: 1 1 0; } }
+.fm-btn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-4); border: 1px solid transparent; border-radius: 22px; font: inherit; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); text-align: center; cursor: pointer; touch-action: manipulation; }
+.fm a.fm-btn-ghost { border-color: var(--border-color); background: var(--card-background); color: var(--text-primary); }
+.fm-btn-primary { border: 2px solid var(--bs-white); background: var(--primary-color); color: var(--bs-white); box-shadow: 0 4px 12px rgba(0, 0, 0, .2); }
+.fm-btn-primary:disabled { opacity: .7; cursor: default; }
+.fm-btn .spinner-border { width: 1rem; height: 1rem; border-width: .15em; }
+
+.fm a:focus-visible, .fm button:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; border-radius: var(--radius-sm); }
+@media (hover: hover) { .fm a.fm-btn-ghost:hover { background: var(--hover-bg); border-color: var(--primary-color); } }
+</style>
+{% endblock %}
+
 {% block 'Body' %}
-<div class="container">
-    <div class="row mt-4 mb-4">
-        <div class="col-md-8 offset-md-2">
-            <!-- Breadcrumb -->
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
-                    <li class="breadcrumb-item"><a href="{% url 'product_detail' pk=product.id %}">{{ product.title }}</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">Edit Reply</li>
-                </ol>
-            </nav>
+<div class="fm">
 
-            <div class="card">
-                <div class="card-body">
-                    <h3 class="card-title mb-4">Edit Your Reply</h3>
-                    
-                    <!-- Original Review Display -->
-                    <div class="original-review mb-4 p-3 bg-light rounded">
-                        <h5>Original Review</h5>
-                        <div class="d-flex justify-content-between">
-                            <span class="text-muted">By {{ reply.review.reviewer.username }}</span>
-                            <span class="text-muted">{{ reply.review.created_at|date:"F d, Y" }}</span>
-                        </div>
-                        <div class="rating mt-2">
-                            {% for i in "12345"|make_list %}
-                                {% if forloop.counter <= reply.review.rating %}
-                                    <i class="fas fa-star text-warning"></i>
-                                {% else %}
-                                    <i class="far fa-star text-warning"></i>
-                                {% endif %}
-                            {% endfor %}
-                            <span class="ms-2">{{ reply.review.rating }} / 5</span>
-                        </div>
-                        <p class="mt-2 mb-0">{{ reply.review.comment }}</p>
-                    </div>
+    <header class="fm-head">
+        <span class="fm-head-ico" aria-hidden="true"><i class="bi bi-reply-fill"></i></span>
+        <h1>Edit your reply</h1>
+        <p>{{ product.title }}</p>
+    </header>
 
-                    <!-- Reply Form -->
-                    <form method="post">
-                        {% csrf_token %}
-                        <div class="form-group">
-                            <label for="{{ form.comment.id_for_label }}" class="form-label">Your Reply</label>
-                            {{ form.comment }}
-                            {% if form.comment.errors %}
-                                <div class="alert alert-danger mt-2">
-                                    {{ form.comment.errors }}
-                                </div>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="mt-4">
-                            <button type="submit" class="btn btn-primary">Update Reply</button>
-                            <a href="{% url 'product_detail' pk=product.id %}" 
-                               class="btn btn-secondary ms-2">Cancel</a>
-                        </div>
-                    </form>
-                </div>
+    <div class="fm-card">
+
+        <div class="fm-orig">
+            <span class="fm-orig-lbl">Original review</span>
+            <div class="fm-orig-top">
+                <b>{{ reply.review.reviewer.username }}</b>
+                <span>{{ reply.review.created_at|date:"F d, Y" }}</span>
             </div>
+            <div class="fm-stars" role="img" aria-label="{{ reply.review.rating }} out of 5 stars">
+                {% for i in "12345" %}
+                    {% if forloop.counter <= reply.review.rating %}<i class="bi bi-star-fill" aria-hidden="true"></i>{% else %}<i class="bi bi-star" aria-hidden="true"></i>{% endif %}
+                {% endfor %}
+                <span class="fm-num">{{ reply.review.rating }} / 5</span>
+            </div>
+            {% if reply.review.comment %}<p class="fm-quote">{{ reply.review.comment }}</p>{% endif %}
         </div>
+
+        <form method="post" class="fm-form" id="fmForm">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="fm-alert" role="alert">
+                    <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+                    <span>{{ form.non_field_errors.0 }}</span>
+                </div>
+            {% endif %}
+
+            <div class="fm-field{% if form.comment.errors %} has-error{% endif %}">
+                <label for="{{ form.comment.id_for_label }}" class="fm-label">Your reply</label>
+                {{ form.comment }}
+                {% for error in form.comment.errors %}<div class="fm-error"><i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>{{ error }}</div>{% endfor %}
+            </div>
+
+            <div class="fm-actions">
+                <a href="{% url 'product_detail' pk=product.id %}" class="fm-btn fm-btn-ghost"><i class="bi bi-arrow-left" aria-hidden="true"></i>Cancel</a>
+                <button type="submit" class="fm-btn fm-btn-primary" id="fmSubmit"><i class="bi bi-check-lg" aria-hidden="true"></i>Update reply</button>
+            </div>
+        </form>
     </div>
 </div>
+
 <script>
-    // Auto-resize textarea as user types
-    document.addEventListener('DOMContentLoaded', function() {
-        const textarea = document.querySelector('textarea');
-        if (textarea) {
-            textarea.addEventListener('input', function() {
-                this.style.height = 'auto';
-                this.style.height = (this.scrollHeight) + 'px';
-            });
-        }
-    });
+    /* Auto-size the textarea, and guard against double-submitting. */
+    (function () {
+        var textarea = document.querySelector('.fm-form textarea');
+        function fit() { textarea.style.height = 'auto'; textarea.style.height = textarea.scrollHeight + 'px'; }
+        if (textarea) { textarea.addEventListener('input', fit); fit(); }
+
+        var form = document.getElementById('fmForm');
+        var btn = document.getElementById('fmSubmit');
+        var label = btn.innerHTML;
+        form.addEventListener('submit', function () {
+            // Delay so the browser has already collected the form data
+            setTimeout(function () {
+                btn.disabled = true;
+                btn.setAttribute('aria-busy', 'true');
+                btn.innerHTML = '<span class="spinner-border" aria-hidden="true"></span><span>Saving…</span>';
+            }, 0);
+        });
+        // Coming back with the Back button restores the page from cache
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted) { btn.disabled = false; btn.removeAttribute('aria-busy'); btn.innerHTML = label; }
+        });
+    })();
 </script>
 {% endblock %}
 
-{% block 'Footer'%}{% endblock %}
+{% block 'Footer' %}{% endblock %}

@@ -834,6 +834,53 @@ class ProductBoost(models.Model):
             models.Index(fields=['end_date', 'is_active']),
         ]
 
+class ProductViewDaily(models.Model):
+    """One row per listing per day, so views can be compared over time."""
+    product = models.ForeignKey('Home.Product_Listing', on_delete=models.CASCADE, related_name='daily_views')
+    date = models.DateField()
+    views = models.PositiveIntegerField(default=0)
+ 
+    class Meta:
+        unique_together = [['product', 'date']]
+        indexes = [models.Index(fields=['date', 'product'])]
+ 
+    def __str__(self):
+        return f'{self.product_id} {self.date}: {self.views}'
+
+
+BOT_HINTS = ('bot', 'crawl', 'spider', 'slurp', 'preview')
+
+
+def record_product_view(request, product):
+    """Call from product_detail, next to where view_count is incremented.
+    Skips bots, the seller's own visits, and counts each visitor once per listing per day."""
+    from django.db.models import F
+
+    agent = (request.META.get('HTTP_USER_AGENT') or '').lower()
+    if any(h in agent for h in BOT_HINTS):
+        return
+    user = getattr(request, 'user', None)
+    owner_id = getattr(getattr(product, 'seller', None), 'user_id', None)
+    if user is not None and user.is_authenticated and owner_id == user.id:
+        return
+
+    today = timezone.localdate()
+    key = f'pv:{today.isoformat()}:{product.pk}'
+    seen = request.session.get('pv_seen', {})
+    if key in seen:
+        return
+    # keep the session small: drop earlier days
+    seen = {k: 1 for k in seen if k.startswith(f'pv:{today.isoformat()}:')}
+    seen[key] = 1
+    request.session['pv_seen'] = seen
+ 
+    obj, created = ProductViewDaily.objects.get_or_create(
+        product=product, date=today, defaults={'views': 1}
+    )
+    if not created:
+        ProductViewDaily.objects.filter(pk=obj.pk).update(views=F('views') + 1)
+        
+        
 # BACKGROUND TASK HELPERS
 
 def check_subscription_expiry():

@@ -1,190 +1,206 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load compress %}
+
+{% block title %}Notifications - OpenSell{% endblock %}
 
 {% block page_css %}
-    <link rel="stylesheet" type="text/css" href="{% static 'css/pages/notifications/notification_list.css' %}">
+<style>
+/* Notifications: shared OpenSell design (navy header band, token cards, solid icon badges, pill buttons).
+   Replaces css/pages/notifications/notification_list.css for this page. */
+.nl {
+    --ox-orange: var(--accent-color);
+    --ox-teal: var(--bs-teal, var(--primary-color));
+    --ox-purple: var(--bs-purple, var(--primary-color));
+    display: flex; flex-direction: column; gap: var(--gap-sections);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-6));
+    color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-body);
+}
+.nl a { text-decoration: none; color: inherit; }
+.nl h1, .nl h2, .nl h3, .nl p { margin: 0; }
+.t-navy { --tint: var(--primary-color); } .t-orange { --tint: var(--ox-orange); } .t-teal { --tint: var(--ox-teal); } .t-purple { --tint: var(--ox-purple); }
+
+/* Navy header band */
+.nl-head { margin: -2rem -1rem 0; padding: calc(2rem + var(--sp-4)) var(--sp-4) var(--sp-4); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); }
+.nl-head-in { display: flex; flex-direction: column; gap: var(--sp-3); max-width: 46rem; margin: 0 auto; }
+.nl-title { display: flex; align-items: center; gap: var(--sp-2); }
+.nl-title h1 { font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-snug); }
+.nl-count { display: inline-grid; place-items: center; min-width: 1.5rem; height: 1.5rem; padding: 0 var(--sp-2); border-radius: var(--radius-full); background: var(--accent-color); color: var(--bs-white); font-size: var(--font-size-xs); font-weight: 600; }
+.nl-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.nl-hbtn { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1); min-height: 2.5rem; margin: 0; padding: 0 var(--sp-4); border: 1px solid rgba(255, 255, 255, .35); border-radius: 22px; background: rgba(255, 255, 255, .14); color: var(--bs-white); font: inherit; font-size: var(--font-size-sm); font-weight: 600; line-height: var(--lh-tight); white-space: nowrap; cursor: pointer; touch-action: manipulation; }
+.nl .nl-hbtn { color: var(--bs-white); }
+@media (min-width: 768px) { .nl-title h1 { font-size: var(--font-size-3xl); } }
+
+.nl-body { display: flex; flex-direction: column; gap: var(--gap-sections); box-sizing: border-box; width: 100%; max-width: 46rem; margin: 0 auto; }
+
+/* Category filter: segmented chips, scroll sideways when they don't fit */
+.nl-filters { display: flex; gap: var(--sp-2); overflow-x: auto; padding-bottom: var(--sp-1); scrollbar-width: none; }
+.nl-filters::-webkit-scrollbar { display: none; }
+.filter-btn { flex: none; display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 2.25rem; margin: 0; padding: 0 var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); color: var(--text-primary); font: inherit; font-size: var(--font-size-sm); font-weight: 600; line-height: var(--lh-tight); white-space: nowrap; cursor: pointer; touch-action: manipulation; }
+.filter-btn.active { border-color: var(--primary-color); background: var(--primary-color); color: var(--bs-white); }
+
+/* List */
+.nl-list { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); box-shadow: var(--shadow-md); }
+.notification-item { position: relative; display: flex; align-items: flex-start; background: var(--card-background); }
+.notification-item[hidden] { display: none; }
+.notification-item + .notification-item { border-top: 1px solid var(--border-color); }
+.notification-item.is-unread { background: var(--hover-bg); }
+.notification-link { display: flex; flex: 1 1 auto; align-items: flex-start; gap: var(--sp-3); min-width: 0; padding: var(--pad-m); }
+.unread-indicator { position: absolute; top: var(--pad-m); left: .4rem; width: .5rem; height: .5rem; border-radius: var(--radius-full); background: var(--accent-color); }
+.notification-icon { display: grid; place-items: center; flex: none; width: 2.5rem; height: 2.5rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-lg); }
+.notification-content { display: flex; flex: 1 1 auto; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.notification-title { font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-snug); overflow-wrap: anywhere; }
+.is-unread .notification-title { font-weight: 700; }
+.new-indicator { display: inline-block; margin-right: var(--sp-1); padding: 0 var(--sp-2); border-radius: var(--radius-full); background: var(--accent-color); color: var(--bs-white); font-size: .6875rem; font-weight: 700; line-height: 1.25rem; vertical-align: 1px; }
+.notification-message { font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); overflow-wrap: anywhere; }
+.related-preview { display: flex; align-items: center; gap: var(--sp-1); min-width: 0; font-size: var(--font-size-xs); color: var(--text-secondary); }
+.related-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notification-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); font-size: var(--font-size-xs); color: var(--text-secondary); }
+.category-tag { padding: 0 var(--sp-2); border: 1px solid var(--border-color); border-radius: var(--radius-full); font-size: .6875rem; font-weight: 600; line-height: 1.25rem; color: var(--text-secondary); }
+
+.notification-actions { flex: none; padding: var(--pad-s) var(--pad-m) var(--pad-s) 0; }
+.mark-read-btn { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; padding: 0; border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-lg); cursor: pointer; touch-action: manipulation; }
+.notification-actions:empty { display: none; }
+
+/* Empty states */
+.empty-state { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); padding: var(--sp-8) var(--sp-5); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); text-align: center; }
+.empty-state[hidden] { display: none; }
+.empty-icon { display: grid; place-items: center; width: 3.5rem; height: 3.5rem; margin-bottom: var(--sp-1); border-radius: var(--radius-full); background: var(--hover-bg); color: var(--text-secondary); font-size: var(--font-size-2xl); }
+.empty-title { font-size: var(--font-size-lg); font-weight: 600; }
+.empty-message { max-width: 22rem; font-size: var(--font-size-sm); color: var(--text-secondary); }
+
+/* Pagination */
+.nl-pager { display: flex; justify-content: center; }
+.nl-pager ul { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-1); margin: 0; padding: 0; list-style: none; }
+.nl-pager .page-link { display: grid; place-items: center; min-width: 2.5rem; height: 2.5rem; padding: 0 var(--sp-2); border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-sm); font-weight: 600; }
+.nl-pager .active .page-link { border-color: var(--primary-color); background: var(--primary-color); color: var(--bs-white); }
+
+.nl a:focus-visible, .nl button:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+@media (hover: hover) { .notification-item:hover { background: var(--hover-bg); } .filter-btn:not(.active):hover, .mark-read-btn:hover, .nl-pager a.page-link:hover { border-color: var(--primary-color); } .nl-hbtn:hover { background: rgba(255, 255, 255, .24); } }
+</style>
 {% endblock %}
 
 {% block 'Body' %}
-<div class="container-fluid py-3">
-    <!-- Header Section -->
-    <div class="notifications-header">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div class="d-flex align-items-center">
-                <h1 class="page-title">Notifications</h1>
-                {% if notifications %}
-                    <span class="notification-count">{{ notifications|length }}</span>
-                {% endif %}
+<div class="nl">
+
+    <header class="nl-head">
+        <div class="nl-head-in">
+            <div class="nl-title">
+                <h1>Notifications</h1>
+                {% if notifications %}<span class="nl-count notification-count" aria-label="{{ notifications|length }} notifications">{{ notifications|length }}</span>{% endif %}
             </div>
-            
-            <div class="header-actions">
+            <div class="nl-actions">
                 {% if notifications %}
-                    <button id="markAllReadBtn" class="btn btn-outline-primary action-btn">
-                        <i class="bi bi-check-all me-1"></i>
-                        <span class="btn-text">Mark All Read</span>
-                    </button>
-                    <button id="clearAllBtn" class="btn btn-outline-danger action-btn">
-                        <i class="bi bi-trash3 me-1"></i>
-                        <span class="btn-text">Clear All</span>
-                    </button>
+                    <button type="button" id="markAllReadBtn" class="nl-hbtn"><i class="bi bi-check-all" aria-hidden="true"></i><span>Mark all read</span></button>
+                    <button type="button" id="clearAllBtn" class="nl-hbtn"><i class="bi bi-trash3" aria-hidden="true"></i><span>Clear all</span></button>
                 {% endif %}
-                <a href="{% url 'notifications:preferences' %}" class="btn btn-primary action-btn">
-                    <i class="bi bi-gear-fill me-1"></i>
-                    <span class="btn-text">Settings</span>
-                </a>
+                <a href="{% url 'notifications:preferences' %}" class="nl-hbtn"><i class="bi bi-gear-fill" aria-hidden="true"></i><span>Settings</span></a>
             </div>
         </div>
-    </div>
-    
-    <!-- Category Filter -->
-    {% if categories %}
-    <div class="category-filter-section">
-        <div class="category-filters">
-            <button type="button" class="filter-btn active" data-category="all">
-                <i class="bi bi-grid-3x3-gap-fill me-1"></i>All
-            </button>
+    </header>
+
+    <div class="nl-body">
+
+        {% if categories %}
+        <div class="nl-filters" role="group" aria-label="Filter by category">
+            <button type="button" class="filter-btn active" data-category="all" aria-pressed="true"><i class="bi bi-grid-3x3-gap-fill" aria-hidden="true"></i>All</button>
             {% for category_id, category_name in categories %}
-                <button type="button" class="filter-btn" data-category="{{ category_id }}">
-                    {% if category_id == 'announcement' %}<i class="bi bi-megaphone-fill me-1"></i>
-                    {% elif category_id == 'system' %}<i class="bi bi-gear-fill me-1"></i>
-                    {% elif category_id == 'news' %}<i class="bi bi-newspaper me-1"></i>
-                    {% else %}<i class="bi bi-bell-fill me-1"></i>{% endif %}
+                <button type="button" class="filter-btn" data-category="{{ category_id }}" aria-pressed="false">
+                    {% if category_id == 'announcement' %}<i class="bi bi-megaphone-fill" aria-hidden="true"></i>
+                    {% elif category_id == 'system' %}<i class="bi bi-gear-fill" aria-hidden="true"></i>
+                    {% elif category_id == 'news' %}<i class="bi bi-newspaper" aria-hidden="true"></i>
+                    {% else %}<i class="bi bi-bell-fill" aria-hidden="true"></i>{% endif %}
                     {{ category_name }}
                 </button>
             {% endfor %}
         </div>
-    </div>
-    {% endif %}
+        {% endif %}
 
-    <!-- Notifications List -->
-    <div class="notifications-container">
         {% if notifications %}
-            <div id="notificationsList" class="notifications-list">
+            <div id="notificationsList" class="nl-list notifications-list">
                 {% for notification in notifications %}
-                    <div class="notification-item" 
-                         data-category="{{ notification.category }}" 
+                    <div class="notification-item{% if not notification.is_read %} is-unread{% endif %}"
+                         data-category="{{ notification.category }}"
                          data-id="{{ notification.id }}">
-                        
-                        <!-- Unread Indicator -->
-                        {% if not notification.is_read %}
-                            <div class="unread-indicator"></div>
-                        {% endif %}
-                        
+
+                        {% if not notification.is_read %}<span class="unread-indicator" aria-hidden="true"></span>{% endif %}
+
                         <a href="{% url 'notifications:detail' notification.id %}" class="notification-link">
-                            <div class="notification-content-wrapper">
-                                <!-- Icon and Content -->
-                                <div class="notification-main">
-                                    <div class="notification-icon">
-                                        {% if notification.category == 'announcement' %}📢
-                                        {% elif notification.category == 'system' %}⚙️
-                                        {% elif notification.category == 'news' %}📰
-                                        {% else %}📢{% endif %}
-                                    </div>
-                                    
-                                    <div class="notification-content">
-                                        <div class="notification-header-inline">
-                                            <h3 class="notification-title">
-                                                {% if not notification.is_read %}
-                                                    <span class="new-indicator">NEW</span>
-                                                {% endif %}
-                                                {{ notification.title }}
-                                            </h3>
-                                            <span class="category-tag category-{{ notification.category }}">
-                                                {{ notification.get_category_display }}
-                                            </span>
-                                        </div>
-                                        
-                                        <p class="notification-message">{{ notification.message|truncatewords:20 }}</p>
-                                        
-                                        <!-- Related Content Preview -->
-                                        {% if notification.content_object %}
-                                            <div class="related-preview">
-                                                <i class="bi bi-link-45deg me-1"></i>
-                                                <span class="related-text">
-                                                    {% if notification.get_content_type_name == 'product_listing' %}
-                                                        Product: {{ notification.content_object.title|truncatewords:6 }}
-                                                    {% elif notification.get_content_type_name == 'review' %}
-                                                        Review by {{ notification.content_object.reviewer.username }}
-                                                    {% else %}
-                                                        {{ notification.content_object|truncatewords:6 }}
-                                                    {% endif %}
-                                                </span>
-                                            </div>
-                                        {% endif %}
-                                        
-                                        <div class="notification-meta">
-                                            <span class="timestamp">
-                                                <i class="bi bi-clock me-1"></i>
-                                                {{ notification.created_at|timesince }} ago
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Quick Actions -->
-                                <div class="notification-actions">
-                                    {% if not notification.is_read %}
-                                        <button class="action-btn-sm mark-read-btn" 
-                                                data-notification-id="{{ notification.id }}"
-                                                title="Mark as read"
-                                                onclick="event.stopPropagation(); event.preventDefault();">
-                                            <i class="bi bi-check2"></i>
-                                        </button>
-                                    {% endif %}
-                                </div>
-                            </div>
+                            <span class="notification-icon {% if notification.category == 'announcement' %}t-orange{% elif notification.category == 'system' %}t-navy{% elif notification.category == 'news' %}t-teal{% else %}t-purple{% endif %}" aria-hidden="true">
+                                {% if notification.category == 'announcement' %}<i class="bi bi-megaphone-fill"></i>
+                                {% elif notification.category == 'system' %}<i class="bi bi-gear-fill"></i>
+                                {% elif notification.category == 'news' %}<i class="bi bi-newspaper"></i>
+                                {% else %}<i class="bi bi-bell-fill"></i>{% endif %}
+                            </span>
+
+                            <span class="notification-content">
+                                <h3 class="notification-title">{% if not notification.is_read %}<span class="new-indicator">NEW</span>{% endif %}{{ notification.title }}</h3>
+
+                                <p class="notification-message">{{ notification.message|truncatewords:20 }}</p>
+
+                                {% if notification.content_object %}
+                                    <span class="related-preview">
+                                        <i class="bi bi-link-45deg" aria-hidden="true"></i>
+                                        <span class="related-text">
+                                            {% if notification.get_content_type_name == 'product_listing' %}
+                                                Product: {{ notification.content_object.title|truncatewords:6 }}
+                                            {% elif notification.get_content_type_name == 'review' %}
+                                                Review by {{ notification.content_object.reviewer.username }}
+                                            {% else %}
+                                                {{ notification.content_object|truncatewords:6 }}
+                                            {% endif %}
+                                        </span>
+                                    </span>
+                                {% endif %}
+
+                                <span class="notification-meta">
+                                    <span class="category-tag category-{{ notification.category }}">{{ notification.get_category_display }}</span>
+                                    <span class="timestamp"><i class="bi bi-clock" aria-hidden="true"></i> {{ notification.created_at|timesince }} ago</span>
+                                </span>
+                            </span>
                         </a>
+
+                        <div class="notification-actions">
+                            {% if not notification.is_read %}
+                                <button type="button" class="mark-read-btn" data-notification-id="{{ notification.id }}" title="Mark as read" aria-label="Mark as read"><i class="bi bi-check2" aria-hidden="true"></i></button>
+                            {% endif %}
+                        </div>
                     </div>
                 {% endfor %}
             </div>
+
+            <div class="empty-state" id="filterEmpty" hidden>
+                <div class="empty-icon" aria-hidden="true"><i class="bi bi-funnel"></i></div>
+                <h2 class="empty-title">Nothing in this category</h2>
+                <p class="empty-message">Try another category or choose All.</p>
+            </div>
         {% else %}
             <div class="empty-state">
-                <div class="empty-icon">
-                    <i class="bi bi-bell-slash"></i>
-                </div>
-                <h3 class="empty-title">No notifications yet</h3>
+                <div class="empty-icon" aria-hidden="true"><i class="bi bi-bell-slash"></i></div>
+                <h2 class="empty-title">No notifications yet</h2>
                 <p class="empty-message">We'll notify you when something important happens with your listings and account.</p>
             </div>
         {% endif %}
-    </div>
 
-    <!-- Pagination -->
-    {% if page_obj.has_other_pages %}
-        <div class="pagination-wrapper">
-            <nav aria-label="Notification pagination">
+        {% if page_obj.has_other_pages %}
+            <nav class="nl-pager" aria-label="Notification pagination">
                 <ul class="pagination">
                     {% if page_obj.has_previous %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
-                                <i class="bi bi-chevron-left"></i>
-                            </a>
-                        </li>
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous page"><i class="bi bi-chevron-left" aria-hidden="true"></i></a></li>
                     {% endif %}
-                    
                     {% for num in page_obj.paginator.page_range %}
                         {% if num == page_obj.number %}
-                            <li class="page-item active">
-                                <span class="page-link">{{ num }}</span>
-                            </li>
+                            <li class="page-item active"><span class="page-link" aria-current="page">{{ num }}</span></li>
                         {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
-                            </li>
+                            <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
                         {% endif %}
                     {% endfor %}
-                    
                     {% if page_obj.has_next %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">
-                                <i class="bi bi-chevron-right"></i>
-                            </a>
-                        </li>
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next page"><i class="bi bi-chevron-right" aria-hidden="true"></i></a></li>
                     {% endif %}
                 </ul>
             </nav>
-        </div>
-    {% endif %}
+        {% endif %}
+    </div>
 </div>
 
 <script>
@@ -194,11 +210,7 @@ document.addEventListener('DOMContentLoaded', function() {
         button.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            
-            const notificationId = this.dataset.notificationId;
-            const notificationItem = this.closest('.notification-item');
-            
-            markNotificationAsRead(notificationId, notificationItem);
+            markNotificationAsRead(this.dataset.notificationId, this.closest('.notification-item'));
         });
     });
 
@@ -207,7 +219,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (markAllBtn) {
         markAllBtn.addEventListener('click', function() {
             if (!confirm('Mark all notifications as read?')) return;
-            
+
             fetch('{% url "notifications:mark_all_read" %}', {
                 method: 'POST',
                 headers: {
@@ -219,14 +231,8 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    // Update UI
-                    document.querySelectorAll('.unread-indicator').forEach(el => el.remove());
-                    document.querySelectorAll('.new-indicator').forEach(el => el.remove());
-                    document.querySelectorAll('.mark-read-btn').forEach(el => el.remove());
-                    
-                    const countEl = document.querySelector('.notification-count');
-                    if (countEl) countEl.textContent = '0';
-                    
+                    document.querySelectorAll('.unread-indicator, .new-indicator, .mark-read-btn').forEach(el => el.remove());
+                    document.querySelectorAll('.notification-item.is-unread').forEach(el => el.classList.remove('is-unread'));
                     showSystemAlert('All notifications marked as read', 'success');
                 } else {
                     showSystemAlert(data.message || 'Failed to mark all as read', 'error');
@@ -244,7 +250,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (clearAllBtn) {
         clearAllBtn.addEventListener('click', function() {
             if (!confirm('Delete all notifications? This cannot be undone.')) return;
-            
+
             fetch('{% url "notifications:clear_all" %}', {
                 method: 'POST',
                 headers: {
@@ -269,19 +275,27 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Category filtering
+    const filterEmpty = document.getElementById('filterEmpty');
     document.querySelectorAll('.filter-btn').forEach(button => {
         button.addEventListener('click', function() {
             const category = this.dataset.category;
-            
-            // Update active state
-            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+                btn.setAttribute('aria-pressed', 'false');
+            });
             this.classList.add('active');
-            
-            // Filter notifications
+            this.setAttribute('aria-pressed', 'true');
+
+            let shown = 0;
             document.querySelectorAll('.notification-item').forEach(item => {
                 const shouldShow = category === 'all' || item.dataset.category === category;
-                item.style.display = shouldShow ? 'block' : 'none';
+                item.hidden = !shouldShow;
+                if (shouldShow) shown++;
             });
+            const list = document.getElementById('notificationsList');
+            if (list) list.hidden = shown === 0;
+            if (filterEmpty) filterEmpty.hidden = shown !== 0;
         });
     });
 
@@ -297,11 +311,11 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                // Update UI
                 notificationElement.querySelector('.unread-indicator')?.remove();
                 notificationElement.querySelector('.new-indicator')?.remove();
                 notificationElement.querySelector('.mark-read-btn')?.remove();
-                
+                notificationElement.classList.remove('is-unread');
+
                 showSystemAlert('Marked as read', 'success');
             } else {
                 showSystemAlert(data.message || 'Failed to mark as read', 'error');
@@ -313,9 +327,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Function to use your existing alert system
+    // Uses the site's existing alert system (.alert-system-container / .system-alert)
     function showSystemAlert(message, type = 'info', duration = 3000) {
-        // Create or get the alert container
         let alertContainer = document.querySelector('.alert-system-container');
         if (!alertContainer) {
             alertContainer = document.createElement('div');
@@ -323,7 +336,6 @@ document.addEventListener('DOMContentLoaded', function() {
             document.body.appendChild(alertContainer);
         }
 
-        // Map types to your alert classes
         const alertTypeClass = {
             'success': 'alert-success',
             'error': 'alert-error',
@@ -332,7 +344,6 @@ document.addEventListener('DOMContentLoaded', function() {
             'info': 'alert-info'
         }[type] || 'alert-info';
 
-        // Get appropriate icon
         const alertIcon = {
             'success': '✓',
             'error': '✕',
@@ -341,50 +352,30 @@ document.addEventListener('DOMContentLoaded', function() {
             'info': 'ℹ'
         }[type] || 'ℹ';
 
-        // Create the alert element using your existing structure
         const alert = document.createElement('div');
         alert.className = `system-alert ${alertTypeClass}`;
         alert.innerHTML = `
             <div class="alert-content">
                 <div class="alert-icon">${alertIcon}</div>
-                <div class="alert-message">${message}</div>
+                <div class="alert-message"></div>
             </div>
-            <button class="alert-close-btn" type="button">
+            <button class="alert-close-btn" type="button" aria-label="Close">
                 <i class="bi bi-x"></i>
             </button>
         `;
+        alert.querySelector('.alert-message').textContent = message;
 
-        // Add the alert to container
         alertContainer.appendChild(alert);
 
-        // Add close functionality
-        const closeBtn = alert.querySelector('.alert-close-btn');
-        closeBtn.addEventListener('click', () => {
+        const dismiss = () => {
             alert.classList.add('fade-out');
-            setTimeout(() => {
-                if (alert.parentElement) {
-                    alert.remove();
-                }
-            }, 300);
-        });
-
-        // Auto-remove after duration
-        if (duration > 0) {
-            setTimeout(() => {
-                if (alert.parentElement) {
-                    alert.classList.add('fade-out');
-                    setTimeout(() => {
-                        if (alert.parentElement) {
-                            alert.remove();
-                        }
-                    }, 300);
-                }
-            }, duration);
-        }
+            setTimeout(() => { if (alert.parentElement) alert.remove(); }, 300);
+        };
+        alert.querySelector('.alert-close-btn').addEventListener('click', dismiss);
+        if (duration > 0) setTimeout(() => { if (alert.parentElement) dismiss(); }, duration);
     }
 });
 </script>
-
 {% endblock %}
 
 {% block 'Footer' %}{% endblock %}

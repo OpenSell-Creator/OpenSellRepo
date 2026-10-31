@@ -1,865 +1,405 @@
 {% extends 'base.html' %}
-{% load static %}
-
-{% block page_css %}
-<style>
-/* Status Card */
-.status-card {
-    background: var(--card-background);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-xl);
-    box-shadow: 0 8px 32px var(--shadow-color);
-    overflow: hidden;
-    margin-bottom: 2rem;
-}
-
-/* Header Section */
-.status-header {
-    background: var(--primary-color); 
-    color: white;
-    padding: 2rem 1.5rem;
-    position: relative;
-}
-
-.status-header::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: var(--primary-color);
-    pointer-events: none;
-}
-
-.status-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 60px;
-    height: 60px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    backdrop-filter: blur(10px);
-    position: relative;
-    z-index: 1;
-}
-
-.status-icon i {
-    font-size: 1.8rem;
-    color: white;
-}
-
-.header-title {
-    font-size: 1.75rem;
-    font-weight: 600;
-    color: white;
-    margin: 0;
-    position: relative;
-    z-index: 1;
-}
-
-.header-subtitle {
-    font-size: 1rem;
-    color: rgba(255, 255, 255, 0.9);
-    position: relative;
-    z-index: 1;
-}
-
-/* Status Body */
-.status-body {
-    padding: 2rem 1.5rem;
-}
-
-/* Status Overview */
-.status-alert {
-    border-radius: var(--radius-lg);
-    padding: 2rem;
-    text-align: center;
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    border: 1px solid;
-}
-
-.status-success {
-    background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(40, 167, 69, 0.05) 100%);
-    border-color: rgba(40, 167, 69, 0.3);
-    color: var(--text-primary);
-}
-
-.status-pending {
-    background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 193, 7, 0.05) 100%);
-    border-color: rgba(255, 193, 7, 0.3);
-    color: var(--text-primary);
-}
-
-.status-rejected {
-    background: linear-gradient(135deg, rgba(220, 53, 69, 0.1) 0%, rgba(220, 53, 69, 0.05) 100%);
-    border-color: rgba(220, 53, 69, 0.3);
-    color: var(--text-primary);
-}
-
-.status-icon-large {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-.status-success .status-icon-large {
-    background: rgba(40, 167, 69, 0.2);
-    color: #28a745;
-}
-
-.status-pending .status-icon-large {
-    background: rgba(255, 193, 7, 0.2);
-    color: #ffc107;
-}
-
-.status-rejected .status-icon-large {
-    background: rgba(220, 53, 69, 0.2);
-    color: #dc3545;
-}
-
-.status-icon-large i {
-    font-size: 2.5rem;
-}
-
-.status-content {
-    flex: 1;
-    text-align: left;
-}
-
-.status-content h4 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: var(--text-primary);
-}
-
-.status-content p {
-    color: var(--text-secondary);
-    margin-bottom: 1rem;
-    font-size: 0.95rem;
-}
-
-/* Status Badges */
-.status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    border-radius: 25px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    border: none;
-}
-
-.status-badge.verified {
-    background: linear-gradient(135deg, #28a745, #20c997);
-    color: white;
-}
-
-.status-badge.pending {
-    background: linear-gradient(135deg, #ffc107, #fd7e14);
-    color: white;
-}
-
-.status-badge.rejected {
-    background: linear-gradient(135deg, #dc3545, #c82333);
-    color: white;
-}
-
-.status-badge.small {
-    padding: 0.25rem 0.75rem;
-    font-size: 0.75rem;
-}
-
-/* Info Section */
-.info-section {
-    background: var(--hover-bg);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-}
-
-.section-title {
-    color: var(--text-primary);
-    font-weight: 600;
-    font-size: 1.1rem;
-    margin-bottom: 1.5rem;
-    display: flex;
-    align-items: center;
-    padding-bottom: 0.75rem;
-    border-bottom: 2px solid var(--border-color);
-}
-
-.section-title i {
-    color: var(--accent-color);
-    font-size: 1.2rem;
-}
-
-.info-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1rem;
-}
-
-.info-item {
-    background: var(--card-background);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: 1rem;
-    transition: all 0.3s ease;
-}
-
-.info-item:hover {
-    border-color: var(--accent-color);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.info-label {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 0.5rem;
-}
-
-.info-value {
-    color: var(--text-primary);
-    font-size: 0.9rem;
-    font-weight: 500;
-    word-break: break-word;
-}
-
-.external-link {
-    color: var(--accent-color);
-    text-decoration: none;
-    transition: all 0.3s ease;
-}
-
-.external-link:hover {
-    color: var(--text-primary);
-    text-decoration: underline;
-}
-
-/* Documents Section */
-.documents-section {
-    background: var(--hover-bg);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-}
-
-.documents-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.document-item {
-    background: var(--card-background);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    transition: all 0.3s ease;
-}
-
-.document-item:hover {
-    border-color: var(--accent-color);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.document-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    background: var(--hover-bg);
-    border-radius: 50%;
-    color: var(--accent-color);
-    flex-shrink: 0;
-}
-
-.document-icon i {
-    font-size: 1.2rem;
-}
-
-.document-info {
-    flex: 1;
-}
-
-.document-name {
-    font-weight: 600;
-    color: var(--text-primary);
-    font-size: 0.9rem;
-    margin-bottom: 0.25rem;
-}
-
-.document-date {
-    color: var(--text-secondary);
-    font-size: 0.8rem;
-}
-
-.document-status {
-    flex-shrink: 0;
-}
-
-/* Upload Section */
-.upload-section {
-    background: linear-gradient(135deg, rgba(0, 123, 255, 0.05) 0%, rgba(0, 123, 255, 0.02) 100%);
-    border: 2px dashed var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-}
-
-.upload-title {
-    color: var(--text-primary);
-    font-weight: 600;
-    font-size: 1rem;
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-}
-
-.upload-title i {
-    color: var(--accent-color);
-}
-
-.upload-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1rem;
-}
-
-.upload-field {
-    display: flex;
-    flex-direction: column;
-}
-
-/* Form Controls */
-.form-control,
-.form-select {
-    background-color: var(--card-background);
-    border: 2px solid var(--border-color);
-    color: var(--text-primary);
-    border-radius: var(--radius-md);
-    font-size: 0.9rem;
-    padding: 0.75rem;
-    transition: all 0.3s ease;
-}
-
-.form-control:focus,
-.form-select:focus {
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.15);
-    background-color: var(--card-background);
-}
-
-/* File Input */
-.file-input-wrapper input[type="file"] {
-    padding: 0.5rem;
-    font-size: 0.85rem;
-}
-
-/* Buttons */
-.btn {
-    font-weight: 500;
-    border-radius: var(--radius-md);
-    padding: 0.75rem 1.5rem;
-    font-size: 0.9rem;
-    transition: all 0.3s ease;
-    border: 2px solid transparent;
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-    border-color: transparent;
-    color: white;
-}
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-    color: white;
-}
-
-.btn-secondary {
-    background: var(--hover-bg);
-    border-color: var(--border-color);
-    color: var(--text-primary);
-}
-
-.btn-secondary:hover {
-    background: var(--card-background);
-    border-color: var(--accent-color);
-    color: var(--text-primary);
-}
-
-/* Action Buttons */
-.action-buttons {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    flex-wrap: wrap;
-    margin-top: 2rem;
-}
-
-/* Dark Theme Adaptations */
-[data-bs-theme="dark"] .status-header {
-    background: linear-gradient(135deg, var(--dark-primary-color) 0%, var(--dark-secondary-color) 100%);
-}
-
-[data-bs-theme="dark"] .info-section,
-[data-bs-theme="dark"] .documents-section {
-    background: var(--dark-hover-bg);
-    border-color: var(--dark-border-color);
-}
-
-[data-bs-theme="dark"] .info-item,
-[data-bs-theme="dark"] .document-item {
-    background: var(--dark-card-background);
-    border-color: var(--dark-border-color);
-}
-
-[data-bs-theme="dark"] .info-item:hover,
-[data-bs-theme="dark"] .document-item:hover {
-    border-color: var(--dark-accent-color);
-}
-
-[data-bs-theme="dark"] .section-title {
-    border-bottom-color: var(--dark-border-color);
-}
-
-[data-bs-theme="dark"] .document-icon {
-    background: var(--dark-hover-bg);
-}
-
-[data-bs-theme="dark"] .upload-section {
-    background: linear-gradient(135deg, rgba(0, 123, 255, 0.1) 0%, rgba(0, 123, 255, 0.05) 100%);
-    border-color: var(--dark-border-color);
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-    .status-body {
-        padding: 1.5rem 1rem;
-    }
-    
-    .status-header {
-        padding: 1.5rem 1rem;
-    }
-    
-    .header-title {
-        font-size: 1.5rem;
-    }
-    
-    .header-subtitle {
-        font-size: 0.9rem;
-    }
-    
-    .status-icon {
-        width: 50px;
-        height: 50px;
-    }
-    
-    .status-icon i {
-        font-size: 1.5rem;
-    }
-    
-    .status-alert {
-        flex-direction: column;
-        text-align: center;
-        gap: 1rem;
-        padding: 1.5rem;
-    }
-    
-    .status-content {
-        text-align: center;
-    }
-    
-    .status-icon-large {
-        width: 60px;
-        height: 60px;
-    }
-    
-    .status-icon-large i {
-        font-size: 2rem;
-    }
-    
-    .info-grid {
-        grid-template-columns: 1fr;
-        gap: 0.75rem;
-    }
-    
-    .info-section,
-    .documents-section {
-        padding: 1.25rem 1rem;
-    }
-    
-    .upload-section {
-        padding: 1.25rem 1rem;
-    }
-    
-    .upload-grid {
-        grid-template-columns: 1fr;
-        gap: 0.75rem;
-    }
-    
-    .action-buttons {
-        flex-direction: column;
-        align-items: center;
-    }
-    
-    .action-buttons .btn {
-        width: 100%;
-        max-width: 300px;
-    }
-}
-
-@media (max-width: 576px) {
-    .status-header {
-        padding: 1.25rem 0.75rem;
-    }
-    
-    .status-body {
-        padding: 1.25rem 0.75rem;
-    }
-    
-    .header-title {
-        font-size: 1.3rem;
-    }
-    
-    .header-subtitle {
-        font-size: 0.85rem;
-    }
-    
-    .status-icon {
-        width: 45px;
-        height: 45px;
-    }
-    
-    .status-icon i {
-        font-size: 1.3rem;
-    }
-    
-    .status-alert {
-        padding: 1.25rem 0.75rem;
-    }
-    
-    .info-section,
-    .documents-section,
-    .upload-section {
-        padding: 1rem 0.75rem;
-    }
-    
-    .info-item,
-    .document-item {
-        padding: 0.875rem;
-    }
-    
-    .document-item {
-        flex-direction: column;
-        text-align: center;
-        gap: 0.75rem;
-    }
-    
-    .document-status {
-        align-self: center;
-    }
-    
-    .section-title {
-        font-size: 1rem;
-    }
-    
-    .upload-title {
-        font-size: 0.95rem;
-    }
-}
-</style>
-{% endblock %}
 
 {% block title %}Business Verification Status - {{ block.super }}{% endblock %}
 
+{% block page_css %}
+<style>
+/* Same design core as profile_update, login, signup, the product, service, request and verification forms (shared .ox wrapper,
+   hue tints, 42px controls, autofill fix, navy pill buttons). Status page only: the .bvs-* rules at the end. */
+.ox {
+    --ox-navy: var(--primary-color);
+    --ox-orange: var(--accent-color);
+    --ox-teal: var(--bs-teal, var(--primary-color));
+    --ox-green: var(--bs-success, var(--primary-color));
+    --ox-purple: var(--bs-purple, var(--primary-color));
+    display: flex; flex-direction: column; gap: var(--gap-sections);
+    color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-body);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-4));
+}
+.ox [hidden] { display: none !important; }
+.ox a { text-decoration: none; }
+.ox p { margin: 0; }
+.t-navy { --tint: var(--ox-navy); } .t-orange { --tint: var(--ox-orange); } .t-teal { --tint: var(--ox-teal); }
+.t-green { --tint: var(--ox-green); } .t-purple { --tint: var(--ox-purple); }
+.ox-ico { display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-lg); }
+.ox-tint, .auth-alert { position: relative; isolation: isolate; }
+.ox-tint::before, .auth-alert::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .ox-tint::before, [data-bs-theme="dark"] .auth-alert::before { opacity: .09; }
+.ox-card { border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); }
+
+/* Header: navy band, full-bleed, tucks under the navbar */
+.ox-head { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); margin: -2rem -1rem 0; padding: calc(2rem + var(--sp-4)) var(--sp-5) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); text-align: center; }
+.ox-title { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-snug); }
+.ox-lead { max-width: 32rem; font-size: var(--font-size-sm); line-height: var(--lh-snug); opacity: .85; }
+@media (min-width: 768px) { .ox-title { font-size: var(--font-size-3xl); } .ox-lead { font-size: var(--font-size-base); } }
+
+/* Form primitives (42px controls, same as the auth pages) */
+.auth-field { display: flex; flex-direction: column; gap: var(--gap-label); min-width: 0; }
+.auth-label { font-size: var(--font-size-sm); font-weight: 600; }
+.auth-opt { font-weight: 400; color: var(--text-secondary); }
+.auth-hint { display: flex; align-items: flex-start; gap: var(--sp-1); font-size: var(--font-size-xs); line-height: var(--lh-snug); color: var(--text-secondary); }
+.auth-hint--ok { color: var(--bs-success); }
+.auth-hint--bad { color: var(--bs-danger); font-weight: 600; }
+.ox .has-error .auth-hint { display: none; }
+.ox .form-control, .ox .form-select { box-sizing: border-box; width: 100%; min-height: var(--h-control-lg); padding: 0 var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--background-color); color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-tight); }
+.ox .form-select { padding-right: 2.25rem; }
+.ox textarea.form-control { min-height: 9.5rem; padding: var(--sp-2) var(--sp-3); line-height: var(--lh-body); resize: vertical; }
+.ox .form-control:focus, .ox .form-select:focus { outline: 2px solid var(--accent-color); outline-offset: 1px; border-color: var(--accent-color); box-shadow: none; background-color: var(--background-color); color: var(--text-primary); }
+.ox .form-control:disabled, .ox .form-select:disabled { opacity: .7; }
+/* Browser autofill: keep the field dark in dark mode (browsers paint it white with dark text) */
+[data-bs-theme="dark"] .ox .form-control, [data-bs-theme="dark"] .ox .form-select { color-scheme: dark; }
+.ox .form-control:-webkit-autofill, .ox .form-control:-webkit-autofill:hover, .ox .form-control:-webkit-autofill:focus, .ox .form-select:-webkit-autofill, .ox .form-select:-webkit-autofill:hover, .ox .form-select:-webkit-autofill:focus { -webkit-text-fill-color: var(--text-primary); caret-color: var(--text-primary); -webkit-box-shadow: 0 0 0 1000px var(--background-color) inset; box-shadow: 0 0 0 1000px var(--background-color) inset; transition: background-color 9999s ease-out 0s; }
+.ox .form-control:autofill, .ox .form-select:autofill { -webkit-text-fill-color: var(--text-primary); caret-color: var(--text-primary); box-shadow: 0 0 0 1000px var(--background-color) inset; }
+.ox .invalid-feedback { display: none; margin: 0; font-size: var(--font-size-xs); font-weight: 600; color: var(--bs-danger); }
+.ox .has-error .invalid-feedback { display: block; }
+.ox .has-error .form-control, .ox .has-error .form-select { border-color: var(--bs-danger); }
+.ox .has-error .form-control { background-image: none; }
+@supports (-webkit-touch-callout: none) { .ox .form-control, .ox .form-select { font-size: 16px; } }
+.auth-check { display: flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; margin: 0; font-size: var(--font-size-sm); cursor: pointer; }
+.auth-check .form-check-input { flex: none; width: 1.125rem; height: 1.125rem; margin: 0; cursor: pointer; accent-color: var(--primary-color); }
+.auth-check .form-check-input:checked { background-color: var(--primary-color); border-color: var(--primary-color); }
+[data-bs-theme="dark"] .auth-check .form-check-input:checked { border-color: var(--text-secondary); }
+.ox .form-select option { background-color: var(--background-color); color: var(--text-primary); }
+.auth-more > summary { display: flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; font-size: var(--font-size-sm); font-weight: 600; list-style: none; cursor: pointer; touch-action: manipulation; }
+.auth-more > summary::-webkit-details-marker { display: none; }
+.auth-more > summary .auth-opt { margin-left: auto; }
+.auth-more > summary .bi { transition: transform .2s ease; }
+.auth-more[open] > summary .bi { transform: rotate(90deg); }
+.auth-more-body { display: flex; flex-direction: column; gap: var(--gap-fields); padding-top: var(--sp-1); }
+
+/* Messages */
+.auth-alert { display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-md); font-size: var(--font-size-sm); line-height: var(--lh-snug); --tint: var(--bs-danger); }
+.auth-alert i { margin-top: 1px; color: var(--bs-danger); }
+.auth-alert--success { --tint: var(--bs-success); }
+.auth-alert--success i { color: var(--bs-success); }
+
+/* Buttons: the same navy pill as the auth pages and the profile Save button */
+.ox-btn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-4); border: 2px solid var(--bs-white); border-radius: 22px; background: var(--primary-color); color: var(--bs-white); font: inherit; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); text-align: center; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.ox-btn:disabled { opacity: .7; cursor: default; }
+.ox-btn .spinner-border { width: 1rem; height: 1rem; border-width: .15em; }
+.ox-btn-neutral { border: 1px solid var(--border-color); background: var(--card-background); color: var(--text-primary); box-shadow: none; }
+
+/* Links */
+.auth-link { font-weight: 600; }
+
+.ox a:focus-visible, .ox button:focus-visible, .ox summary:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; border-radius: var(--radius-sm); }
+@media (hover: hover) {
+    .ox-btn-neutral:hover { background: var(--hover-bg); }
+    .auth-link:hover { text-decoration: underline; }
+}
+@media (prefers-reduced-motion: reduce) { .auth-more > summary .bi { transition: none; } }
+
+
+/* ---- Business verification status only ---- */
+.t-red { --tint: var(--bs-danger); }
+.bvs-body { display: flex; flex-direction: column; gap: var(--gap-sections); width: 100%; max-width: 40rem; margin: 0 auto; }
+.bvs-fine { margin: 0; font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+
+/* Status banner */
+.bvs-status { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--pad-l); border-radius: var(--r-card); }
+.bvs-status-top { display: flex; align-items: flex-start; gap: var(--sp-3); }
+.bvs-status h2 { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-snug); }
+.bvs-status .ox-btn { align-self: flex-start; width: auto; padding: 0 var(--sp-6); }
+.bvs-chip { display: inline-flex; align-self: flex-start; align-items: center; gap: var(--sp-1); padding: var(--sp-1) var(--sp-2); border-radius: var(--radius-full); font-size: var(--font-size-xs); font-weight: 600; line-height: var(--lh-tight); white-space: nowrap; }
+.bvs-chip i { color: var(--tint); }
+
+/* Cards */
+.bvs-card { display: flex; flex-direction: column; gap: var(--gap-sections); padding: var(--pad-m); }
+@media (min-width: 768px) { .bvs-card { padding: var(--pad-l); } }
+.bvs-cardhead { display: flex; align-items: center; gap: var(--sp-3); }
+.bvs-h { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-snug); }
+
+/* Submitted information */
+.bvs-kv { display: grid; grid-template-columns: 1fr; gap: var(--gap-fields) var(--sp-4); margin: 0; }
+@media (min-width: 576px) { .bvs-kv { grid-template-columns: 1fr 1fr; } }
+.bvs-kv dt { font-size: var(--font-size-xs); font-weight: 500; color: var(--text-secondary); }
+.bvs-kv dd { margin: 0; font-size: var(--font-size-base); overflow-wrap: anywhere; }
+.bvs-kv a { color: var(--accent-color); }
+
+/* Uploaded documents */
+.bvs-docs { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.bvs-doc { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) 0; border-top: 1px solid var(--border-color); }
+.bvs-doc:first-child { padding-top: 0; border-top: 0; }
+.bvs-doc:last-child { padding-bottom: 0; }
+.bvs-doc > i { flex: none; font-size: var(--font-size-3xl); color: var(--text-secondary); }
+.bvs-doc-text { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; line-height: var(--lh-snug); }
+.bvs-doc-name { font-size: var(--font-size-base); overflow-wrap: anywhere; }
+.bvs-doc-date { font-size: var(--font-size-xs); color: var(--text-secondary); }
+
+/* Upload form */
+.bvs-form { display: flex; flex-direction: column; gap: var(--gap-fields); }
+</style>
+{% endblock %}
 {% block 'Body' %}
-<div class="container my-3 my-lg-4">
-    <div class="row justify-content-center">
-        <div class="col-12 col-lg-10 col-xl-8">
-            <div class="status-card">
-                <!-- Header Section -->
-                <div class="status-header text-center">
-                    <div class="status-icon mb-3">
-                        <i class="bi bi-clipboard-check"></i>
-                    </div>
-                    <h2 class="header-title mb-2">Business Verification Status</h2>
-                    <p class="header-subtitle mb-0">Track your verification progress</p>
-                </div>
-                
-                <div class="status-body">
-                    <!-- Status Overview -->
-                    <div class="status-overview mb-4">
-                        {% if profile.business_verification_status == 'verified' %}
-                            <div class="status-alert status-success">
-                                <div class="status-icon-large">
-                                    <i class="bi bi-patch-check-fill"></i>
-                                </div>
-                                <div class="status-content">
-                                    <h4>Congratulations! Your business is verified</h4>
-                                    <p>Verified on {{ profile.business_verified_at|date:"F d, Y" }}</p>
-                                    <div class="status-badge verified">
-                                        <i class="bi bi-check-circle-fill"></i>
-                                        <span>Verified Business</span>
-                                    </div>
-                                </div>
-                            </div>
-                        {% elif profile.business_verification_status == 'pending' %}
-                            <div class="status-alert status-pending">
-                                <div class="status-icon-large">
-                                    <i class="bi bi-clock-history"></i>
-                                </div>
-                                <div class="status-content">
-                                    <h4>Your verification is under review</h4>
-                                    <p>We'll review your application within 2-3 business days</p>
-                                    <div class="status-badge pending">
-                                        <i class="bi bi-hourglass-split"></i>
-                                        <span>Under Review</span>
-                                    </div>
-                                </div>
-                            </div>
-                        {% elif profile.business_verification_status == 'rejected' %}
-                            <div class="status-alert status-rejected">
-                                <div class="status-icon-large">
-                                    <i class="bi bi-x-circle-fill"></i>
-                                </div>
-                                <div class="status-content">
-                                    <h4>Verification was not approved</h4>
-                                    <p>Please contact support for more information or resubmit your application</p>
-                                    <div class="status-badge rejected">
-                                        <i class="bi bi-exclamation-triangle-fill"></i>
-                                        <span>Not Approved</span>
-                                    </div>
-                                    <a href="{% url 'business_verification_form' %}" class="btn btn-primary mt-3">
-                                        <i class="bi bi-arrow-clockwise me-2"></i>Resubmit Application
-                                    </a>
-                                </div>
-                            </div>
-                        {% endif %}
-                    </div>
-                    
-                    <!-- Business Information -->
-                    <div class="info-section mb-4">
-                        <h5 class="section-title">
-                            <i class="bi bi-building me-2"></i>Submitted Business Information
-                        </h5>
-                        <div class="info-grid">
-                            <div class="info-item">
-                                <div class="info-label">Business Name</div>
-                                <div class="info-value">{{ profile.business_name|default:"Not provided" }}</div>
-                            </div>
-                            <div class="info-item">
-                                <div class="info-label">Business Type</div>
-                                <div class="info-value">{{ profile.get_business_type_display|default:"Not specified" }}</div>
-                            </div>
-                            <div class="info-item">
-                                <div class="info-label">Registration Number</div>
-                                <div class="info-value">{{ profile.business_registration_number|default:"Not provided" }}</div>
-                            </div>
-                            <div class="info-item">
-                                <div class="info-label">Business Email</div>
-                                <div class="info-value">{{ profile.business_email|default:"Not provided" }}</div>
-                            </div>
-                            <div class="info-item">
-                                <div class="info-label">Business Phone</div>
-                                <div class="info-value">{{ profile.business_phone|default:"Not provided" }}</div>
-                            </div>
-                            {% if profile.business_website %}
-                            <div class="info-item">
-                                <div class="info-label">Website</div>
-                                <div class="info-value">
-                                    <a href="{{ profile.business_website }}" target="_blank" class="external-link">
-                                        {{ profile.business_website }}
-                                        <i class="bi bi-box-arrow-up-right ms-1"></i>
-                                    </a>
-                                </div>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    
-                    <!-- Uploaded Documents -->
-                    {% if documents %}
-                    <div class="documents-section mb-4">
-                        <h5 class="section-title">
-                            <i class="bi bi-file-earmark-check me-2"></i>Uploaded Documents
-                        </h5>
-                        <div class="documents-list">
-                            {% for document in documents %}
-                            <div class="document-item">
-                                <div class="document-icon">
-                                    <i class="bi bi-file-earmark-text"></i>
-                                </div>
-                                <div class="document-info">
-                                    <div class="document-name">{{ document.get_document_type_display }}</div>
-                                    <div class="document-date">Uploaded {{ document.uploaded_at|date:"M d, Y" }}</div>
-                                </div>
-                                <div class="document-status">
-                                    {% if document.verified %}
-                                        <span class="status-badge verified small">
-                                            <i class="bi bi-check-circle-fill"></i>
-                                            <span>Verified</span>
-                                        </span>
-                                    {% else %}
-                                        <span class="status-badge pending small">
-                                            <i class="bi bi-clock-history"></i>
-                                            <span>Pending</span>
-                                        </span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endif %}
-                    
-                    <!-- Upload Additional Documents -->
-                    {% if profile.business_verification_status == 'pending' %}
-                    <div class="upload-section mb-4">
-                        <h6 class="upload-title">
-                            <i class="bi bi-cloud-upload me-2"></i>Upload Additional Documents
-                        </h6>
-                        <form id="documentUploadForm" enctype="multipart/form-data" class="upload-form">
-                            {% csrf_token %}
-                            <div class="upload-grid">
-                                <div class="upload-field">
-                                    <select name="document_type" class="form-select" required>
-                                        <option value="">Select Document Type</option>
-                                        <option value="business_registration">Business Registration</option>
-                                        <option value="tax_certificate">Tax Certificate</option>
-                                        <option value="business_license">Business License</option>
-                                        <option value="bank_statement">Bank Statement</option>
-                                        <option value="utility_bill">Utility Bill</option>
-                                        <option value="other">Other</option>
-                                    </select>
-                                </div>
-                                <div class="upload-field">
-                                    <div class="file-input-wrapper">
-                                        <input type="file" name="document" class="form-control" 
-                                                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" required>
-                                    </div>
-                                </div>
-                                <div class="upload-field">
-                                    <button type="submit" class="btn btn-primary w-100">
-                                        <i class="bi bi-upload me-2"></i>Upload
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="mt-3">
-                                <input type="text" name="description" class="form-control" 
-                                        placeholder="Document description (optional)">
-                            </div>
-                        </form>
-                    </div>
-                    {% endif %}
-                    
-                    <!-- Action Buttons -->
-                    <div class="action-buttons text-center">
-                        <a href="{% url 'my_store'%}" class="btn btn-secondary me-2">
-                            <i class="bi bi-arrow-left me-2"></i>Back to Store
-                        </a>
-                        {% if profile.business_verification_status in 'unverified,rejected' %}
-                        <a href="{% url 'business_verification_form' %}" class="btn btn-primary">
-                            <i class="bi bi-pencil me-2"></i>Edit Application
-                        </a>
-                        {% endif %}
+<div class="ox">
+
+    <header class="ox-head">
+        <h1 class="ox-title">Verification status</h1>
+        <p class="ox-lead">Track your verification progress.</p>
+    </header>
+
+    <div class="bvs-body">
+
+        {% if profile.business_verification_status == 'verified' %}
+            <section class="ox-tint bvs-status t-green" aria-labelledby="h-status">
+                <div class="bvs-status-top">
+                    <span class="ox-ico"><i class="bi bi-patch-check-fill" aria-hidden="true"></i></span>
+                    <div>
+                        <h2 id="h-status">Congratulations! Your business is verified</h2>
+                        <p class="bvs-fine">Verified on {{ profile.business_verified_at|date:"F d, Y" }}</p>
                     </div>
                 </div>
+                <span class="bvs-chip ox-tint t-green"><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Verified business</span>
+            </section>
+        {% elif profile.business_verification_status == 'pending' %}
+            <section class="ox-tint bvs-status t-teal" aria-labelledby="h-status">
+                <div class="bvs-status-top">
+                    <span class="ox-ico"><i class="bi bi-clock-history" aria-hidden="true"></i></span>
+                    <div>
+                        <h2 id="h-status">Your verification is under review</h2>
+                        <p class="bvs-fine">We'll review your application within 2-3 business days.</p>
+                    </div>
+                </div>
+                <span class="bvs-chip ox-tint t-teal"><i class="bi bi-hourglass-split" aria-hidden="true"></i>Under review</span>
+            </section>
+        {% elif profile.business_verification_status == 'rejected' %}
+            <section class="ox-tint bvs-status t-red" aria-labelledby="h-status">
+                <div class="bvs-status-top">
+                    <span class="ox-ico"><i class="bi bi-x-circle-fill" aria-hidden="true"></i></span>
+                    <div>
+                        <h2 id="h-status">Verification was not approved</h2>
+                        <p class="bvs-fine">Please contact support for more information or resubmit your application.</p>
+                    </div>
+                </div>
+                <span class="bvs-chip ox-tint t-red"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>Not approved</span>
+                <a href="{% url 'business_verification_form' %}" class="ox-btn">Resubmit application</a>
+            </section>
+        {% else %}
+            <section class="ox-tint bvs-status t-orange" aria-labelledby="h-status">
+                <div class="bvs-status-top">
+                    <span class="ox-ico"><i class="bi bi-shield-exclamation" aria-hidden="true"></i></span>
+                    <div>
+                        <h2 id="h-status">Your business is not verified yet</h2>
+                        <p class="bvs-fine">Takes about 2 minutes. No business registration needed.</p>
+                    </div>
+                </div>
+                <a href="{% url 'business_verification_form' %}" class="ox-btn">Start verification</a>
+            </section>
+        {% endif %}
+
+        <section class="ox-card bvs-card" aria-labelledby="h-info">
+            <div class="bvs-cardhead t-navy">
+                <span class="ox-ico"><i class="bi bi-building-fill" aria-hidden="true"></i></span>
+                <h2 class="bvs-h" id="h-info">Submitted information</h2>
             </div>
-        </div>
+            <dl class="bvs-kv">
+                <div><dt>Business name</dt><dd>{{ profile.business_name|default:"Not provided" }}</dd></div>
+                <div><dt>Business type</dt><dd>{{ profile.get_business_type_display|default:"Not specified" }}</dd></div>
+                <div><dt>Registration number</dt><dd>{{ profile.business_registration_number|default:"Not provided" }}</dd></div>
+                <div><dt>Business email</dt><dd>{{ profile.business_email|default:"Not provided" }}</dd></div>
+                <div><dt>Business phone</dt><dd>{{ profile.business_phone|default:"Not provided" }}</dd></div>
+                {% if profile.business_website %}
+                <div><dt>Website</dt><dd><a href="{{ profile.business_website }}" target="_blank" rel="noopener noreferrer">{{ profile.business_website }} <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a></dd></div>
+                {% endif %}
+            </dl>
+        </section>
+
+        {% if documents %}
+        <section class="ox-card bvs-card" aria-labelledby="h-docs">
+            <div class="bvs-cardhead t-orange">
+                <span class="ox-ico"><i class="bi bi-file-earmark-check-fill" aria-hidden="true"></i></span>
+                <h2 class="bvs-h" id="h-docs">Uploaded documents</h2>
+            </div>
+            <ul class="bvs-docs">
+                {% for document in documents %}
+                <li class="bvs-doc">
+                    <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+                    <div class="bvs-doc-text">
+                        <span class="bvs-doc-name">{{ document.get_document_type_display }}</span>
+                        <span class="bvs-doc-date">Uploaded {{ document.uploaded_at|date:"M d, Y" }}</span>
+                    </div>
+                    {% if document.verified %}
+                    <span class="bvs-chip ox-tint t-green"><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Verified</span>
+                    {% else %}
+                    <span class="bvs-chip ox-tint t-teal"><i class="bi bi-clock-history" aria-hidden="true"></i>Pending</span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
+
+        {% if profile.business_verification_status == 'pending' %}
+        <section class="ox-card bvs-card" aria-labelledby="h-upload">
+            <div class="bvs-cardhead t-purple">
+                <span class="ox-ico"><i class="bi bi-cloud-arrow-up-fill" aria-hidden="true"></i></span>
+                <h2 class="bvs-h" id="h-upload">Add another document</h2>
+            </div>
+            <form id="documentUploadForm" class="bvs-form" enctype="multipart/form-data" novalidate>
+                {% csrf_token %}
+                <div class="auth-alert" id="uploadAlert" role="alert" hidden>
+                    <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+                    <span></span>
+                </div>
+                <div class="auth-field" id="typeField">
+                    <label for="docType" class="auth-label">Document type</label>
+                    <select name="document_type" id="docType" class="form-select">
+                        <option value="">Choose a document type</option>
+                        <optgroup label="Business documents">
+                            <option value="business_registration">Business Registration Certificate (CAC)</option>
+                            <option value="tax_certificate">Tax Identification Certificate</option>
+                            <option value="business_license">Business License</option>
+                        </optgroup>
+                        <optgroup label="Financial">
+                            <option value="bank_statement">Bank Statement</option>
+                        </optgroup>
+                        <optgroup label="Address or premises">
+                            <option value="utility_bill">Utility Bill</option>
+                            <option value="shop_front_image">Shop/Store Front Photo</option>
+                            <option value="shop_interior_image">Shop Interior Photo</option>
+                            <option value="signage_image">Shop Signage/Branding Photo</option>
+                        </optgroup>
+                        <optgroup label="Identity and local">
+                            <option value="nin_slip">National ID (NIN) Slip</option>
+                            <option value="voters_card">Voter's Card</option>
+                            <option value="market_association_letter">Market/Trade Association Letter</option>
+                            <option value="lasrra_card">State Residency Card (e.g. LASRRA)</option>
+                            <option value="guarantor_letter">Guarantor's Letter</option>
+                        </optgroup>
+                        <optgroup label="Other">
+                            <option value="other">Other Document</option>
+                        </optgroup>
+                    </select>
+                    <div class="invalid-feedback" id="err-document_type"></div>
+                </div>
+                <div class="auth-field" id="fileField">
+                    <label for="docFile" class="auth-label">Document</label>
+                    <input type="file" name="document" id="docFile" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                    <p class="auth-hint" id="hint-document">PDF, JPG, PNG, DOC or DOCX, up to 10 MB.</p>
+                    <div class="invalid-feedback" id="err-document"></div>
+                </div>
+                <div class="auth-field">
+                    <label for="docDesc" class="auth-label">Description <span class="auth-opt">(optional)</span></label>
+                    <input type="text" name="description" id="docDesc" class="form-control" autocomplete="off" enterkeyhint="done">
+                </div>
+                <button type="submit" class="ox-btn" id="uploadBtn">Upload document</button>
+            </form>
+        </section>
+        {% endif %}
+
+        <a href="{% url 'my_store' %}" class="ox-btn ox-btn-neutral">Back to store</a>
+
     </div>
 </div>
 
-
 <script>
-document.getElementById('documentUploadForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(this);
-    const submitBtn = this.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    
-    // Show loading state
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Uploading...';
-    
-    fetch('{% url "upload_business_document" %}', {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+    /* Status page: upload one more document while the application is pending. Posts JSON, same endpoint as before. */
+    (function () {
+        'use strict';
+
+        var form = document.getElementById('documentUploadForm');
+        if (!form) return;
+
+        var $ = function (id) { return document.getElementById(id); };
+        var btn = $('uploadBtn');
+        var box = $('uploadAlert'), boxIcon = box.querySelector('i'), boxText = box.querySelector('span');
+        var typeField = $('typeField'), fileField = $('fileField');
+        var typeSel = $('docType'), fileInp = $('docFile');
+        var MAX = 10 * 1024 * 1024;
+        var LABELS = { document_type: 'Document type', document: 'Document', description: 'Description' };
+        var busy = false;
+
+        function show(kind, text) {
+            box.className = 'auth-alert' + (kind === 'success' ? ' auth-alert--success' : '');
+            boxIcon.className = 'bi ' + (kind === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill');
+            boxText.textContent = text;
+            box.hidden = false;
         }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Show success message and reload page
-            const successDiv = document.createElement('div');
-            successDiv.className = 'alert alert-success mt-3';
-            successDiv.innerHTML = '<i class="bi bi-check-circle me-2"></i>' + (data.message || 'Document uploaded successfully!');
-            
-            this.appendChild(successDiv);
-            
-            setTimeout(() => {
-                location.reload();
-            }, 1500);
-        } else {
-            // Show error message
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'alert alert-danger mt-3';
-            errorDiv.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>Error uploading document: ' + JSON.stringify(data.errors);
-            
-            this.appendChild(errorDiv);
-            
-            // Re-enable button
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
-            
-            // Remove error message after 5 seconds
-            setTimeout(() => {
-                errorDiv.remove();
-            }, 5000);
+
+        function flag(f, c, msg) {
+            var fb = f.querySelector('.invalid-feedback'), hint = f.querySelector('.auth-hint');
+            f.classList.toggle('has-error', !!msg);
+            c.setAttribute('aria-invalid', msg ? 'true' : 'false');
+            if (msg) fb.textContent = msg;
+            var ids = [];
+            if (hint) ids.push(hint.id);
+            if (msg) ids.push(fb.id);
+            if (ids.length) c.setAttribute('aria-describedby', ids.join(' ')); else c.removeAttribute('aria-describedby');
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'alert alert-danger mt-3';
-        errorDiv.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>An error occurred while uploading the document.';
-        
-        this.appendChild(errorDiv);
-        
-        // Re-enable button
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-        
-        // Remove error message after 5 seconds
-        setTimeout(() => {
-            errorDiv.remove();
-        }, 5000);
-    });
-});
+
+        function typeMsg() { return typeSel.value ? '' : 'Choose a document type.'; }
+        function fileMsg() {
+            var f = fileInp.files[0];
+            if (!f) return 'Choose a file.';
+            return f.size > MAX ? 'That file is over 10 MB.' : '';
+        }
+        typeSel.addEventListener('change', function () { if (typeField.classList.contains('has-error') && !typeMsg()) flag(typeField, typeSel, ''); });
+        fileInp.addEventListener('change', function () { if (fileField.classList.contains('has-error') || fileMsg()) flag(fileField, fileInp, fileMsg()); });
+
+        // Turn the server's error object into one readable sentence
+        function problems(d) {
+            var out = [];
+            if (d.errors && typeof d.errors === 'object') {
+                Object.keys(d.errors).forEach(function (k) {
+                    var v = d.errors[k];
+                    (Array.isArray(v) ? v : [v]).forEach(function (x) {
+                        var t = x && typeof x === 'object' ? (x.message || '') : String(x);
+                        if (t) out.push((LABELS[k] ? LABELS[k] + ': ' : '') + t);
+                    });
+                });
+            }
+            if (!out.length && (d.message || d.error)) out.push(d.message || d.error);
+            return out.length ? out.join(' ') : 'Could not upload the document. Please try again.';
+        }
+
+        function idle() {
+            busy = false;
+            btn.disabled = false;
+            btn.removeAttribute('aria-busy');
+            btn.textContent = 'Upload document';
+        }
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (busy) return;
+            box.hidden = true;
+
+            var tm = typeMsg(), fm = fileMsg();
+            flag(typeField, typeSel, tm);
+            flag(fileField, fileInp, fm);
+            if (tm) { typeSel.focus(); return; }
+            if (fm) { fileInp.focus(); return; }
+
+            busy = true;
+            btn.disabled = true;
+            btn.setAttribute('aria-busy', 'true');
+            btn.innerHTML = '<span class="spinner-border" aria-hidden="true"></span><span>Uploading\u2026</span>';
+
+            fetch('{% url "upload_business_document" %}', {
+                method: 'POST',
+                body: new FormData(form),
+                headers: { 'X-CSRFToken': form.elements.csrfmiddlewaretoken.value }
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.success) {
+                    show('success', d.message || 'Document uploaded.');
+                    btn.textContent = 'Uploaded';
+                    setTimeout(function () { location.reload(); }, 1200);
+                } else {
+                    show('error', problems(d));
+                    idle();
+                }
+            })
+            .catch(function () {
+                show('error', 'Could not upload the document. Check your connection and try again.');
+                idle();
+            });
+        });
+
+        // Back button restores the page from cache with the button still busy
+        window.addEventListener('pageshow', function (e) { if (e.persisted) idle(); });
+    })();
 </script>
 {% endblock %}
-{% block 'Footer'%}{% endblock %}
+{% block 'Footer' %}{% endblock %}

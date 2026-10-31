@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
 from datetime import timedelta, datetime
-from django.db.models import Sum, Count, Q, Avg, F
+from django.db.models import Sum, Count, Q, Avg, F, Max
 from decimal import Decimal, InvalidOperation
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.paginator import Paginator
@@ -12,7 +12,7 @@ from django.http import JsonResponse, HttpResponse
 from django.urls import reverse
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods, require_POST
-from .models import UserAccount, Transaction, ProductBoost, AccountStatus, WithdrawalRequest, WalletTransfer
+from .models import UserAccount, Transaction, ProductBoost, AccountStatus, WithdrawalRequest, WalletTransfer, ProductViewDaily
 from Home.models import Product_Listing
 from Dashboard.models import AffiliateProfile, AffiliateCommission, Referral
 from .models import VirtualAccount, MonnifyTransaction
@@ -322,7 +322,8 @@ def transaction_history(request):
     if search_query:
         transactions = transactions.filter(
             Q(transaction_type__icontains=search_query) |
-            Q(reference__icontains=search_query)
+            Q(reference_id__icontains=search_query) |
++           Q(description__icontains=search_query)
         )
     
     if transaction_type:
@@ -379,16 +380,15 @@ def transaction_history(request):
         response['Content-Disposition'] = 'attachment; filename="transactions.csv"'
         
         writer = csv.writer(response)
-        writer.writerow(['Date', 'Type', 'Description', 'Amount', 'Balance After', 'Reference'])
+        writer.writerow(['Date', 'Type', 'Description', 'Amount', 'Reference'])
         
         for transaction in transactions:
             writer.writerow([
                 transaction.created_at.strftime('%Y-%m-%d %H:%M'),
                 transaction.get_transaction_type_display(),
-                transaction.get_transaction_type_display(),
+                transaction.description,
                 transaction.amount,
-                transaction.balance_after or 0,
-                transaction.reference or ''
+                transaction.reference_id or ''
             ])
         
         return response
@@ -871,103 +871,248 @@ def boost_product(request, product_id):
 
 @login_required
 def product_boost_status(request):
-    """Enhanced product boost status view with analytics"""
-    account = request.user.account
-    
-    # Get active boosts
-    active_boosts = ProductBoost.objects.filter(
-        product__seller=request.user.profile,
+    """Boost overview: active boosts, history and real analytics"""
+    boosts_qs = ProductBoost.objects.filter(product__seller=request.user.profile)
+
+    active_boosts = boosts_qs.filter(
         is_active=True,
         end_date__gt=timezone.now()
     ).select_related('product').order_by('end_date')
-    
-    # Calculate metrics for active boosts (don't assign to properties)
-    active_boost_metrics = {}
-    for boost in active_boosts:
-        active_boost_metrics[boost.id] = {
-            'days_remaining': (boost.end_date - timezone.now()).days,
-            'progress_percentage': min(100, max(0, 
-                ((timezone.now() - boost.start_date).total_seconds() / 
-                 (boost.end_date - boost.start_date).total_seconds()) * 100
-            )),
-            'views_gained': getattr(boost, 'views_gained', 0)
-        }
-    
-    # Get boost history
-    boost_history = ProductBoost.objects.filter(
-        product__seller=request.user.profile
-    ).select_related('product').order_by('-created_at')[:20]
-    
-    # Calculate metrics for boost history (don't assign to properties)
-    history_boost_metrics = {}
-    for boost in boost_history:
-        is_currently_active = boost.is_active and boost.end_date > timezone.now()
-        metrics = {
-            'is_currently_active': is_currently_active,
-        }
-        
-        if is_currently_active:
-            metrics.update({
-                'days_remaining': (boost.end_date - timezone.now()).days,
-                'progress_percentage': min(100, max(0, 
-                    ((timezone.now() - boost.start_date).total_seconds() / 
-                     (boost.end_date - boost.start_date).total_seconds()) * 100
-                ))
-            })
-        
-        history_boost_metrics[boost.id] = metrics
-    
-    # Calculate overview stats
-    total_boosts = ProductBoost.objects.filter(
-        product__seller=request.user.profile
-    ).count()
-    
+
+    boost_history = boosts_qs.select_related('product').order_by('-start_date')[:20]
+
+    agg = boosts_qs.aggregate(
+        spent=Sum('final_cost'),
+        original=Sum('original_cost'),
+        days=Sum('duration_days'),
+        avg=Avg('final_cost'),
+    )
+    total_boosts = boosts_qs.count()
     active_boosts_count = active_boosts.count()
-    
-    total_spent = abs(Transaction.objects.filter(
-        account=account,
-        transaction_type='boost_fee'
-    ).aggregate(total=Sum('amount'))['total'] or 0)
-    
-    # Calculate total savings from Pro discounts
-    total_savings = 0
-    if account.is_subscription_active:
-        boost_transactions = Transaction.objects.filter(
-            account=account,
-            transaction_type='boost_fee'
-        )
-        for transaction in boost_transactions:
-            # Estimate savings (assuming 30% discount)
-            original_cost = abs(transaction.amount) / 0.7  # Reverse calculate original
-            total_savings += original_cost - abs(transaction.amount)
-    
-    # Mock analytics data (you can implement real analytics later)
+    total_spent = agg['spent'] or Decimal('0')
+    total_original = agg['original'] or Decimal('0')
+    total_savings = total_original - total_spent
+    total_days = agg['days'] or 0
+
     boost_analytics = None
     if total_boosts > 0:
+        labels = dict(ProductBoost.BOOST_TYPES)
+        tints = {'featured': 'orange', 'urgent': 'red', 'spotlight': 'navy', 'premium': 'purple'}
+
+        type_rows = list(
+            boosts_qs.values('boost_type')
+            .annotate(count=Count('id'), spent=Sum('final_cost'))
+            .order_by('-spent')
+        )
+        max_spent = max((r['spent'] for r in type_rows), default=Decimal('0')) or Decimal('1')
+        by_type = [{
+            'label': labels.get(r['boost_type'], r['boost_type']),
+            'tint': tints.get(r['boost_type'], 'navy'),
+            'count': r['count'],
+            'spent': r['spent'],
+            'percent': int(r['spent'] / max_spent * 100),
+        } for r in type_rows]
+
+        top_products = list(
+            boosts_qs.values('product_id', 'product__title')
+            .annotate(count=Count('id'), spent=Sum('final_cost'), views=Max('product__view_count'))
+            .order_by('-count', '-spent')[:5]
+        )
+
         boost_analytics = {
-            'total_views': 1250,  # Mock data
-            'views_growth': 15,
-            'conversion_rate': 3.2,
-            'conversion_growth': 8,
-            'avg_roi': 2.4,
-            'roi_growth': 12,
-            'engagement_rate': 7.8,
-            'engagement_growth': 5,
+            'avg_cost': agg['avg'] or Decimal('0'),
+            'total_days': total_days,
+            'cost_per_day': (total_spent / total_days) if total_days else Decimal('0'),
+            'discount_rate': (total_savings / total_original * 100) if total_original else Decimal('0'),
+            'by_type': by_type,
+            'top_products': top_products,
         }
-    
+
     context = {
         'active_boosts': active_boosts,
         'active_boosts_count': active_boosts_count,
-        'active_boost_metrics': active_boost_metrics,  # Add metrics
         'boost_history': boost_history,
-        'history_boost_metrics': history_boost_metrics,  # Add metrics
         'total_boosts': total_boosts,
         'total_spent': total_spent,
         'total_savings': total_savings,
         'boost_analytics': boost_analytics,
     }
     
-    return render(request, 'dashboard/product_boost_status.html', context)
+    group, span = parse_chart_params(request.GET)
+    context['boost_chart'] = build_boost_comparison_chart(request.user.profile, boosts_qs, group, span)
+
+    return render(request, 'dashboard/boost_overview.html', context)
+
+
+CHART_ORDER = ['featured', 'urgent', 'spotlight', 'premium', 'none']
+GROUP_CFG = {
+    'day':   {'size': 1,  'spans': [7, 14, 30], 'default': 14, 'unit': 'day',   'label': 'Daily'},
+    'week':  {'size': 7,  'spans': [4, 8, 12],  'default': 8,  'unit': 'week',  'label': 'Weekly'},
+    'month': {'size': 30, 'spans': [3, 6, 12],  'default': 6,  'unit': 'month', 'label': 'Monthly'},
+    'all':   {'size': 0,  'spans': [],          'default': 1,  'unit': '',      'label': 'Overall'},
+}
+ 
+ 
+def parse_chart_params(params):
+    group = params.get('group', 'day')
+    if group not in GROUP_CFG:
+        group = 'day'
+    cfg = GROUP_CFG[group]
+    try:
+        span = int(params.get('span'))
+    except (TypeError, ValueError):
+        span = None
+    if span not in cfg['spans']:
+        span = cfg['default']
+    return group, span
+ 
+ 
+def _local_date(dt):
+    if timezone.is_aware(dt):
+        dt = timezone.localtime(dt)
+    return dt.date()
+ 
+ 
+def build_boost_comparison_chart(profile, boosts_qs, group='day', span=14):
+    """Average views per listing per day, by the boost type live that day.
+ 
+    A listing with several live boosts counts under each type; listings with none
+    count under 'none' (baseline). Buckets are pooled (total views / listing-days),
+    so a bucket is never skewed by days with few listings.
+    Progress compares the current window with the previous window of equal length."""
+    cfg = GROUP_CFG[group]
+    today = timezone.localdate()
+ 
+    listings = list(Product_Listing.objects.filter(seller=profile).values('id', 'created_at'))
+    created = {l['id']: _local_date(l['created_at']) for l in listings}
+ 
+    if group == 'all':
+        earliest = min(created.values()) if created else today
+        total_days = max(1, min(730, (today - earliest).days + 1))
+        n, size, has_prev = 1, total_days, False
+    else:
+        n, size, has_prev = span, cfg['size'], True
+        total_days = n * size
+ 
+    L = total_days * (2 if has_prev else 1)
+    cur_off = total_days if has_prev else 0
+    first = today - timedelta(days=L - 1)
+    day_list = [first + timedelta(days=i) for i in range(L)]
+ 
+    views = {}
+    for r in ProductViewDaily.objects.filter(
+        product_id__in=created.keys(), date__gte=first, date__lte=today
+    ).values('product_id', 'date', 'views'):
+        views[(r['product_id'], r['date'])] = r['views']
+ 
+    boost_by_pid = {}
+    for b in boosts_qs:
+        if b.product_id in created:
+            boost_by_pid.setdefault(b.product_id, []).append(
+                (b.boost_type, _local_date(b.start_date), _local_date(b.end_date))
+            )
+ 
+    vs = {k: [0] * L for k in CHART_ORDER}
+    cs = {k: [0] * L for k in CHART_ORDER}
+    seen = {k: set() for k in CHART_ORDER}
+ 
+    for i, day in enumerate(day_list):
+        for pid, made in created.items():
+            if made > day:
+                continue
+            types = {t for t, s, e in boost_by_pid.get(pid, ()) if s <= day <= e} or {'none'}
+            v = views.get((pid, day), 0)
+            for t in types:
+                if t in vs:
+                    vs[t][i] += v
+                    cs[t][i] += 1
+                    if i >= cur_off:
+                        seen[t].add(pid)
+ 
+    def pooled(k, a, b):
+        sc = sum(cs[k][a:b])
+        sv = sum(vs[k][a:b])
+        return (sv / sc if sc else None), sv
+ 
+    labels_map = dict(ProductBoost.BOOST_TYPES)
+    labels_map['none'] = 'Not boosted'
+ 
+    labels, full_labels = [], []
+    for i in range(n):
+        a = cur_off + i * size
+        s, e = day_list[a], day_list[a + size - 1]
+        labels.append(s.strftime('%b %d'))
+        full_labels.append(s.strftime('%b %d') if s == e else f'{s:%b %d} – {e:%b %d}')
+    if group == 'all':
+        labels, full_labels = ['All time'], [f'All time ({day_list[cur_off]:%b %d, %Y} – today)']
+ 
+    series = []
+    for k in CHART_ORDER:
+        avg, total = pooled(k, cur_off, L)
+        if avg is None:
+            continue
+        points = []
+        for i in range(n):
+            a = cur_off + i * size
+            p, _ = pooled(k, a, a + size)
+            points.append(round(p, 1) if p is not None else None)
+        prev_avg = pooled(k, 0, total_days)[0] if has_prev else None
+        change = None
+        if prev_avg and prev_avg > 0:
+            change = round((avg - prev_avg) / prev_avg * 100)
+        series.append({
+            'key': k,
+            'label': str(labels_map.get(k, k.title())),
+            'points': points,
+            'avg': round(avg, 1),
+            'prev_avg': round(prev_avg, 1) if prev_avg is not None else None,
+            'change': change,
+            'lift': None,
+            'views': total,
+            'listings': len(seen[k]),
+        })
+ 
+    base = next((s for s in series if s['key'] == 'none'), None)
+    if base and base['avg'] > 0:
+        for s in series:
+            if s['key'] != 'none':
+                s['lift'] = round((s['avg'] - base['avg']) / base['avg'] * 100)
+ 
+    groups = [
+        {'key': g, 'label': c['label'], 'active': g == group,
+         'href': f'?group={g}' + (f'&span={c["default"]}' if c['spans'] else '')}
+        for g, c in GROUP_CFG.items()
+    ]
+    spans = [
+        {'n': s, 'label': f'{s} {cfg["unit"]}s', 'active': s == span,
+         'href': f'?group={group}&span={s}'}
+        for s in cfg['spans']
+    ]
+ 
+    return {
+        'has_data': bool(series) and sum(sum(vs[k][cur_off:]) for k in CHART_ORDER) > 0,
+        'group': group,
+        'span': span,
+        'unit': cfg['unit'] or 'all time',
+        'labels': labels,
+        'full_labels': full_labels,
+        'series': series,
+        'controls': {'groups': groups, 'spans': spans},
+        'updated': timezone.localtime().strftime('%H:%M:%S'),
+    }
+ 
+ 
+def _chart_inputs(request):
+    profile = request.user.profile
+    boosts_qs = ProductBoost.objects.filter(product__seller=profile)
+    return profile, boosts_qs
+ 
+@login_required
+def boost_chart_data(request):
+    profile, boosts_qs = _chart_inputs(request)
+    group, span = parse_chart_params(request.GET)
+    return JsonResponse(build_boost_comparison_chart(profile, boosts_qs, group, span))
+ 
 
 @staff_member_required
 def task_monitor(request):
@@ -1002,8 +1147,8 @@ def get_transaction_details(request, transaction_id):
             'type': transaction.get_transaction_type_display(),
             'amount': float(transaction.amount),
             'date': transaction.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-            'reference': transaction.reference or '',
-            'balance_after': float(transaction.balance_after or 0),
+            'reference': transaction.reference_id or '',
++           'balance_after': None,
             'status': getattr(transaction, 'status', 'completed'),
         }
         

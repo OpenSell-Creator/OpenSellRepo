@@ -1,176 +1,211 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}Report product{% endblock %}
+
+{% block page_css %}
+<style>
+/* Form page: shared OpenSell design (navy header band, token-based cards, pill buttons). */
+.fm {
+    --ox-green: var(--bs-success, var(--primary-color));
+    display: flex; flex-direction: column; align-items: center; gap: var(--gap-sections);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-6));
+    color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-body);
+}
+.fm a { text-decoration: none; }
+.fm p, .fm h1, .fm h2, .fm form, .fm ul { margin: 0; }
+
+.fm-head { align-self: stretch; display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); margin: -2rem -1rem 0; padding: calc(2rem + var(--sp-4)) var(--sp-5) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); text-align: center; }
+.fm-head-ico { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin-bottom: var(--sp-1); border-radius: var(--radius-full); background: rgba(255, 255, 255, .14); font-size: var(--font-size-xl); }
+.fm-head h1 { font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-snug); }
+.fm-head p { font-size: var(--font-size-sm); line-height: var(--lh-snug); opacity: .85; }
+@media (min-width: 768px) { .fm-head h1 { font-size: var(--font-size-3xl); } .fm-head p { font-size: var(--font-size-base); } }
+
+.fm-card { position: relative; z-index: 1; display: flex; flex-direction: column; gap: var(--gap-sections); box-sizing: border-box; width: 100%; max-width: 34rem; padding: var(--pad-l); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); box-shadow: var(--shadow-md); }
+.fm-form { display: flex; flex-direction: column; gap: var(--gap-fields); }
+
+/* Product summary */
+.fm-prod { display: flex; align-items: center; gap: var(--sp-3); padding: var(--pad-s); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--background-color); }
+.fm-thumb { position: relative; display: grid; place-items: center; flex: none; width: 4rem; height: 4rem; overflow: hidden; border-radius: var(--radius-md); background: var(--hover-bg); color: var(--text-secondary); font-size: var(--font-size-xl); }
+.fm-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.fm-prod-txt { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.fm-prod-title { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); overflow-wrap: anywhere; }
+.fm-prod-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-3); font-size: var(--font-size-xs); color: var(--text-secondary); }
+.fm-prod-price { font-size: var(--font-size-sm); font-weight: 600; color: var(--accent-color); }
+
+/* Fields */
+.fm-field { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.fm-label { font-size: var(--font-size-sm); font-weight: 600; }
+.fm-opt { font-weight: 400; color: var(--text-secondary); }
+.fm-req { color: var(--bs-danger); }
+.fm-hint { display: flex; align-items: flex-start; gap: var(--sp-1); font-size: var(--font-size-xs); line-height: var(--lh-snug); color: var(--text-secondary); }
+.fm .form-control { box-sizing: border-box; width: 100%; min-height: var(--h-control-lg); padding: 0 var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--background-color); color: var(--text-primary); font: inherit; font-size: var(--font-size-base); }
+.fm textarea.form-control { min-height: 7.5rem; padding: var(--sp-2) var(--sp-3); line-height: var(--lh-body); resize: vertical; }
+.fm .form-control:focus { outline: 2px solid var(--accent-color); outline-offset: 1px; border-color: var(--accent-color); box-shadow: none; background-color: var(--background-color); color: var(--text-primary); }
+[data-bs-theme="dark"] .fm .form-control { color-scheme: dark; }
+.fm .form-control:-webkit-autofill, .fm .form-control:-webkit-autofill:hover, .fm .form-control:-webkit-autofill:focus { -webkit-text-fill-color: var(--text-primary); caret-color: var(--text-primary); -webkit-box-shadow: 0 0 0 1000px var(--background-color) inset; box-shadow: 0 0 0 1000px var(--background-color) inset; transition: background-color 9999s ease-out 0s; }
+@supports (-webkit-touch-callout: none) { .fm .form-control { font-size: 16px; } }
+.fm .invalid-feedback { display: none; margin: 0; font-size: var(--font-size-xs); font-weight: 600; color: var(--bs-danger); }
+.fm-field.has-error .invalid-feedback { display: block; }
+.fm-field.has-error .form-control { border-color: var(--bs-danger); }
+
+/* Notices */
+.fm-alert { position: relative; isolation: isolate; display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-md); font-size: var(--font-size-sm); line-height: var(--lh-snug); --tint: var(--accent-color); }
+.fm-alert::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .fm-alert::before { opacity: .09; }
+.fm-alert i { margin-top: 1px; color: var(--tint); }
+.fm-alert--bad { --tint: var(--bs-danger); }
+
+/* Button */
+.fm-btn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-4); border: 2px solid var(--bs-white); border-radius: 22px; background: var(--primary-color); color: var(--bs-white); font: inherit; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); text-align: center; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); cursor: pointer; touch-action: manipulation; }
+.fm-btn:disabled { opacity: .7; cursor: default; }
+.fm-btn .spinner-border { width: 1rem; height: 1rem; border-width: .15em; }
+.fm-back { font-size: var(--font-size-sm); font-weight: 600; text-align: center; }
+.fm-back a { display: inline-block; padding: var(--sp-1); color: var(--text-primary); }
+
+/* Guidelines */
+.fm-guide h2 { margin-bottom: var(--sp-2); font-size: var(--font-size-base); font-weight: 600; }
+.fm-guide ul { display: flex; flex-direction: column; gap: var(--sp-2); padding: 0; list-style: none; }
+.fm-guide li { display: flex; align-items: flex-start; gap: var(--sp-2); font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+.fm-check { display: grid; place-items: center; flex: none; width: 1.25rem; height: 1.25rem; margin-top: 1px; border-radius: var(--radius-full); background: var(--ox-green); color: var(--bs-white); font-size: var(--font-size-xs); }
+
+.fm a:focus-visible, .fm button:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; border-radius: var(--radius-sm); }
+@media (hover: hover) { .fm-back a:hover { text-decoration: underline; } }
+</style>
+{% endblock %}
+
 {% block 'Body' %}
-<div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-danger text-white">
-                    <h3 class="mb-0">
-                        <i class="fas fa-flag me-2"></i>Report Product
-                    </h3>
-                </div>
-                <div class="card-body">
-                    <!-- Product Preview Section -->
-                    <div class="product-preview mb-4">
-                        <div class="row align-items-center">
-                            <div class="col-md-4">
-                                {% if product.primary_image %}
-                                    <img src="{{ product.primary_image.image.url }}" 
-                                         alt="{{ product.title }}" 
-                                         class="img-fluid rounded">
-                                {% else %}
-                                    <div class="bg-light d-flex align-items-center justify-content-center rounded" style="height: 200px;">
-                                        <i class="fas fa-image text-muted" style="font-size: 3rem;"></i>
-                                    </div>
-                                {% endif %}
-                            </div>
-                            <div class="col-md-8">
-                                <h4 class="mb-2">{{ product.title }}</h4>
-                                <div class="text-muted mb-2">
-                                    <strong>Seller:</strong> {{ product.seller.user.username }}
-                                </div>
-                                <div class="text-muted">
-                                    <strong>Price:</strong> ₦ {{ product.price|floatformat:2 }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+<div class="fm">
 
-                    <!-- Report Form -->
-                    <form id="reportProductForm" method="post">
-                        {% csrf_token %}
-                        
-                        <div class="mb-3">
-                            <label for="id_reason" class="form-label">Reason for Reporting <span class="text-danger">*</span></label>
-                            <select class="form-control" id="id_reason" name="reason" required>
-                                <option value="">Select a Reason</option>
-                                <option value="spam">Spam or Misleading Content</option>
-                                <option value="fraud">Fraudulent Listing</option>
-                                <option value="inappropriate">Inappropriate Content</option>
-                                <option value="expired">Expired or Sold Item</option>
-                                <option value="other">Other Reason</option>
-                            </select>
-                            <div class="invalid-feedback">Please select a reason for reporting.</div>
-                        </div>
+    <header class="fm-head">
+        <span class="fm-head-ico" aria-hidden="true"><i class="bi bi-flag-fill"></i></span>
+        <h1>Report product</h1>
+        <p>Tell us what's wrong with this listing</p>
+    </header>
 
-                        <div class="mb-3">
-                            <label for="id_details" class="form-label">Additional Details <span class="text-danger">*</span></label>
-                            <textarea 
-                                class="form-control" 
-                                id="id_details" 
-                                name="details" 
-                                rows="5" 
-                                required
-                                minlength="10"
-                                placeholder="Please provide more information about your report. Be specific and provide context."
-                            ></textarea>
-                            <div class="invalid-feedback">Please provide more details (minimum 10 characters).</div>
-                            <small class="form-text text-muted">
-                                <i class="fas fa-info-circle me-1"></i>
-                                Help us understand why you're reporting this product.
-                            </small>
-                        </div>
+    <div class="fm-card">
 
-                        <div class="mb-3">
-                            <label for="id_reporter_email" class="form-label">Your Email (Optional)</label>
-                            <input 
-                                type="email" 
-                                class="form-control" 
-                                id="id_reporter_email" 
-                                name="reporter_email" 
-                                placeholder="Enter your email if you want to be contacted"
-                            >
-                            <small class="form-text text-muted">
-                                <i class="fas fa-envelope me-1"></i>
-                                We'll use this only if we need more information.
-                            </small>
-                        </div>
-
-                        <div class="alert alert-warning" role="alert">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            False reports may result in account restrictions.
-                        </div>
-
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-danger">
-                                <i class="fas fa-flag me-2"></i>Submit Report
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Safety and Guidelines Section -->
-            <div class="card mt-4 shadow-sm">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-shield-alt me-2 text-success"></i>
-                        Reporting Guidelines
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <ul class="list-unstyled">
-                        <li class="mb-2">
-                            <i class="fas fa-check-circle me-2 text-success"></i>
-                            Provide specific and factual information
-                        </li>
-                        <li class="mb-2">
-                            <i class="fas fa-check-circle me-2 text-success"></i>
-                            Include relevant details that support your report
-                        </li>
-                        <li class="mb-2">
-                            <i class="fas fa-check-circle me-2 text-success"></i>
-                            Only report genuine violations of our marketplace rules
-                        </li>
-                        <li>
-                            <i class="fas fa-check-circle me-2 text-success"></i>
-                            Understand that not all reports will result in immediate action
-                        </li>
-                    </ul>
+        <div class="fm-prod">
+            <span class="fm-thumb" aria-hidden="true">
+                {% if product.primary_image %}<img src="{{ product.primary_image.image.url }}" alt="" loading="lazy">{% else %}<i class="bi bi-image"></i>{% endif %}
+            </span>
+            <div class="fm-prod-txt">
+                <h2 class="fm-prod-title">{{ product.title }}</h2>
+                <div class="fm-prod-meta">
+                    <span class="fm-prod-price">₦{{ product.price|floatformat:2 }}</span>
+                    <span>Seller: {{ product.seller.user.username }}</span>
                 </div>
             </div>
         </div>
+
+        <form id="reportProductForm" method="post" class="fm-form" novalidate>
+            {% csrf_token %}
+
+            <div class="fm-alert fm-alert--bad" id="reportError" role="alert" hidden>
+                <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+                <span id="reportErrorText"></span>
+            </div>
+
+            <div class="fm-field">
+                <label for="id_reason" class="fm-label">Reason for reporting <span class="fm-req" aria-hidden="true">*</span></label>
+                <select class="form-control" id="id_reason" name="reason" required>
+                    <option value="">Select a reason</option>
+                    <option value="spam">Spam or Misleading Content</option>
+                    <option value="fraud">Fraudulent Listing</option>
+                    <option value="inappropriate">Inappropriate Content</option>
+                    <option value="expired">Expired or Sold Item</option>
+                    <option value="other">Other Reason</option>
+                </select>
+                <div class="invalid-feedback" id="err-reason">Please select a reason for reporting.</div>
+            </div>
+
+            <div class="fm-field">
+                <label for="id_details" class="fm-label">Additional details <span class="fm-req" aria-hidden="true">*</span></label>
+                <textarea class="form-control"
+                          id="id_details"
+                          name="details"
+                          rows="5"
+                          required
+                          minlength="10"
+                          placeholder="Please provide more information about your report. Be specific and provide context."></textarea>
+                <div class="invalid-feedback" id="err-details">Please provide more details (minimum 10 characters).</div>
+                <div class="fm-hint"><i class="bi bi-info-circle" aria-hidden="true"></i>Help us understand why you're reporting this product.</div>
+            </div>
+
+            <div class="fm-field">
+                <label for="id_reporter_email" class="fm-label">Your email <span class="fm-opt">(optional)</span></label>
+                <input type="email"
+                       class="form-control"
+                       id="id_reporter_email"
+                       name="reporter_email"
+                       autocomplete="email"
+                       inputmode="email"
+                       autocapitalize="none"
+                       placeholder="Enter your email if you want to be contacted">
+                <div class="fm-hint"><i class="bi bi-envelope" aria-hidden="true"></i>We'll use this only if we need more information.</div>
+            </div>
+
+            <div class="fm-alert" role="note">
+                <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+                <span>False reports may result in account restrictions.</span>
+            </div>
+
+            <button type="submit" class="fm-btn" id="reportSubmit"><i class="bi bi-flag-fill" aria-hidden="true"></i>Submit report</button>
+            <p class="fm-back"><a href="{% url 'product_detail' product.id %}">Cancel and go back</a></p>
+        </form>
+    </div>
+
+    <div class="fm-card fm-guide">
+        <h2>Reporting guidelines</h2>
+        <ul>
+            <li><span class="fm-check" aria-hidden="true"><i class="bi bi-check-lg"></i></span>Provide specific and factual information</li>
+            <li><span class="fm-check" aria-hidden="true"><i class="bi bi-check-lg"></i></span>Include relevant details that support your report</li>
+            <li><span class="fm-check" aria-hidden="true"><i class="bi bi-check-lg"></i></span>Only report genuine violations of our marketplace rules</li>
+            <li><span class="fm-check" aria-hidden="true"><i class="bi bi-check-lg"></i></span>Understand that not all reports will result in immediate action</li>
+        </ul>
     </div>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const reportForm = document.getElementById('reportProductForm');
-    
-    reportForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        // Remove any previous validation errors
-        document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
-        
-        const reasonSelect = document.getElementById('id_reason');
-        const detailsTextarea = document.getElementById('id_details');
-        
-        let isValid = true;
-        
-        // Validate reason
-        if (!reasonSelect.value) {
-            reasonSelect.classList.add('is-invalid');
-            isValid = false;
-        }
-        
-        // Validate details
-        if (detailsTextarea.value.trim().length < 10) {
-            detailsTextarea.classList.add('is-invalid');
-            isValid = false;
-        }
-        
-        if (!isValid) {
-            return;
-        }
-        
-        const submitButton = this.querySelector('button[type="submit"]');
-        submitButton.disabled = true;
-        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Submitting...';
+document.addEventListener('DOMContentLoaded', function () {
+    var form = document.getElementById('reportProductForm');
+    var submit = document.getElementById('reportSubmit');
+    var label = submit.innerHTML;
+    var banner = document.getElementById('reportError');
+    var bannerText = document.getElementById('reportErrorText');
+    var reason = document.getElementById('id_reason');
+    var details = document.getElementById('id_details');
 
-        const formData = new FormData(this);
+    // aria-describedby is set only while an error shows
+    function flag(input, errId, bad) {
+        var field = input.closest('.fm-field');
+        field.classList.toggle('has-error', bad);
+        input.setAttribute('aria-invalid', String(bad));
+        if (bad) input.setAttribute('aria-describedby', errId); else input.removeAttribute('aria-describedby');
+    }
+    function reasonOk() { return !!reason.value; }
+    function detailsOk() { return details.value.trim().length >= 10; }
+
+    reason.addEventListener('change', function () { if (reasonOk()) flag(reason, 'err-reason', false); });
+    details.addEventListener('input', function () { if (detailsOk()) flag(details, 'err-details', false); });
+
+    function showError(msg) { bannerText.textContent = msg; banner.hidden = false; banner.scrollIntoView({ block: 'nearest' }); }
+    function reset() { submit.disabled = false; submit.removeAttribute('aria-busy'); submit.innerHTML = label; }
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        banner.hidden = true;
+
+        var first = null;
+        if (!reasonOk()) { flag(reason, 'err-reason', true); first = first || reason; }
+        if (!detailsOk()) { flag(details, 'err-details', true); first = first || details; }
+        if (first) { first.focus(); return; }
+
+        submit.disabled = true;
+        submit.setAttribute('aria-busy', 'true');
+        submit.innerHTML = '<span class="spinner-border" aria-hidden="true"></span><span>Submitting…</span>';
+
+        var formData = new FormData(form);
 
         fetch("{% url 'report_product' product.id %}", {
             method: 'POST',
@@ -180,26 +215,25 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             body: formData
         })
-        .then(response => response.json())
-        .then(data => {
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
             if (data.success) {
-                // Redirect to a success page or show a success message
                 window.location.href = "{% url 'product_detail' product.id %}?report_submitted=true";
             } else {
-                // Show error messages
-                alert(data.message || 'An error occurred while submitting the report.');
+                showError(data.message || 'An error occurred while submitting the report.');
+                reset();
             }
         })
-        .catch(error => {
+        .catch(function (error) {
             console.error('Error:', error);
-            alert('An unexpected error occurred. Please try again.');
-        })
-        .finally(() => {
-            submitButton.disabled = false;
-            submitButton.innerHTML = '<i class="fas fa-flag me-2"></i>Submit Report';
+            showError('An unexpected error occurred. Please try again.');
+            reset();
         });
     });
+
+    // Coming back with the Back button restores the page from cache
+    window.addEventListener('pageshow', function (e) { if (e.persisted) reset(); });
 });
 </script>
 {% endblock %}
-{% block 'Footer'%}{% endblock %}
+{% block 'Footer' %}{% endblock %}

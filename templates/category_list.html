@@ -1,138 +1,122 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block 'Body' %}
-<section class="categories-section py-5">
-    <div class="card border-0 shadow-sm">
-        <div class="card-body p-0">
-            <div class="list-group list-group-flush" id="categories-list">
-                <div class="list-group-item border-start-0 border-end-0">
-                    <a href="{% url 'product_list' %}" 
-                       class="text-decoration-none fw-bold d-flex align-items-center"
-                       style="color: var(--text-primary)">
-                        <i class="bi bi-grid-fill me-2"></i>
-                        All Products
-                    </a>
-                </div>
-                {% for category in categories %}
-                    <div class="list-group-item border-start-0 border-end-0 {% if category.id == selected_category %}active{% endif %}"
-                         style="background-color: {% if category.slug == selected_category %}var(--primary-color){% else %}var(--card-background){% endif %};
-                                border-color: var(--border-color)">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <a href="{% url 'product_list' %}?category={{ category.slug }}"
-                               class="text-decoration-none d-flex align-items-center"
-                               style="color: {% if category.slug == selected_category %}var(--text-primary-inverse){% else %}var(--text-primary){% endif %}">
-                                {% if category.image %}
-                                    <img src="{{ category.image.url }}" alt="{{ category.name }}" class="category-image me-2 rounded-circle" style="width: 30px; height: 30px; object-fit: cover;">
-                                {% else %}
-                                    <div class="category-icon me-2 rounded-circle d-flex align-items-center justify-content-center" style="width: 30px; height: 30px; background-color: var(--primary-color);">
-                                        <i class="bi bi-folder-fill text-white"></i>
-                                    </div>
-                                {% endif %}
-                                {{ category.name }}
-                                <!-- 
-                                <p class="text-muted category-count small mb-0">
-                                    ( {{ category.product_listing_set.count }} )
-                                </p>
-                            --> 
-                            </a>
-                            {% if category.subcategories.all %}
-                                <button class="btn btn-link btn-sm p-0 text-decoration-none"
-                                        data-bs-toggle="collapse"
-                                        data-bs-target="#category{{ category.slug }}"
-                                        style="color: {% if category.id == selected_category %}var(--text-primary-inverse){% else %}var(--text-primary){% endif %}">
-                                    <i class="bi bi-chevron-down"></i>
-                                </button>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="collapse {% if category.slug == selected_category %}show{% endif %}"
-                             id="category{{ category.slug }}">
-                            <ul class="list-unstyled ms-3 mt-2 mb-0">
-                                {% for subcategory in category.subcategories.all %}
-                                    <li class="mb-2">
-                                        <a href="{% url 'product_list' %}?category={{ category.slug }}&subcategory={{ subcategory.slug }}"
-                                           class="text-decoration-none d-block py-1 ps-2 rounded d-flex align-items-center"
-                                           style="color: {% if subcategory.slug == selected_subcategory %}var(--primary-color){% else %}var(--text-secondary){% endif %};
-                                                  border-left: 2px solid {% if subcategory.slug == selected_subcategory %}var(--primary-color){% else %}transparent{% endif %};
-                                                  background-color: {% if subcategory.id == selected_subcategory %}var(--hover-bg){% else %}transparent{% endif %}">
-                                            {% if subcategory.image %}
-                                                <img src="{{ subcategory.image.url }}" alt="{{ subcategory.name }}" class="subcategory-image me-2 rounded-circle" style="width: 20px; height: 20px; object-fit: cover;">
-                                            {% else %}
-                                                <div class="subcategory-icon me-2 rounded-circle d-flex align-items-center justify-content-center" style="width: 20px; height: 20px; background-color: var(--primary-color);">
-                                                    <i class="bi bi-folder text-white" style="font-size: 0.8rem;"></i>
-                                                </div>
-                                            {% endif %}
-                                            {{ subcategory.name }}
-                                            <!-- 
-                                            <p class="text-muted category-count small mb-0">
-                                                ( {{ subcategory.product_count }} )
-                                            </p>
-                                            -->
-                                        </a>
-                                    </li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-</section>
+{% block title %}Categories{% endblock %}
+
+{% block page_css %}
 <style>
-    .category-image, .subcategory-image {
-        transition: transform 0.3s ease;
-    }
-    
-    .category-image:hover, .subcategory-image:hover {
-        transform: scale(1.1);
-    }
-    
-    .category-icon, .subcategory-icon {
-        transition: background-color 0.3s ease;
-    }
-    
-    .category-icon:hover, .subcategory-icon:hover {
-        background-color: var(--primary-hover) !important;
-    }
-    
-    .list-group-item {
-        transition: background-color 0.3s ease, color 0.3s ease;
-    }
-    
-    .list-group-item:hover {
-        background-color: var(--hover-bg) !important;
-    }
-    
-    .collapse {
-        transition: max-height 0.3s ease;
-    }
-    
-    /* Custom Scrollbar for Subcategories */
-    .list-unstyled {
-        max-height: 200px;
-        overflow-y: auto;
-        padding-right: 10px;
-    }
-    
-    .list-unstyled::-webkit-scrollbar {
-        width: 6px;
-    }
-    
-    .list-unstyled::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 10px;
-    }
-    
-    .list-unstyled::-webkit-scrollbar-thumb {
-        background: #888;
-        border-radius: 10px;
-    }
-    
-    .list-unstyled::-webkit-scrollbar-thumb:hover {
-        background: #555;
-    }
+/* Richness kit subset (assets/home-kit.css): vars, hues, icon badge, tint wash, hero pill button */
+.ox {
+    --ox-navy: var(--primary-color);
+    --ox-orange: var(--accent-color);
+    --ox-teal: var(--bs-teal, var(--primary-color));
+    --ox-green: var(--bs-success, var(--primary-color));
+    --ox-purple: var(--bs-purple, var(--primary-color));
+    display: flex; flex-direction: column; gap: var(--gap-sections);
+    color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-body);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-4));
+}
+.ox a { text-decoration: none; }
+.ox p { margin: 0; }
+.t-navy { --tint: var(--ox-navy); } .t-orange { --tint: var(--ox-orange); } .t-teal { --tint: var(--ox-teal); }
+.t-green { --tint: var(--ox-green); } .t-purple { --tint: var(--ox-purple); }
+.ox-tint { position: relative; isolation: isolate; }
+.ox-tint::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .ox-tint::before { opacity: .09; }
+
+/* Header: navy, full-bleed, tucks under the navbar */
+.ox-head { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); margin: -2rem -1rem 0; padding: calc(2rem + var(--sp-4)) var(--sp-5) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); text-align: center; }
+.ox-title { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-tight); }
+.ox-sub-text { font-size: var(--font-size-sm); opacity: .9; }
+.ox-hbtn { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: var(--h-control-lg); margin-top: var(--sp-2); padding: 0 var(--sp-6); border: 2px solid var(--bs-white); border-radius: 22px; background: var(--accent-color); color: var(--bs-white); font-size: var(--font-size-sm); font-weight: 600; letter-spacing: .3px; line-height: var(--lh-tight); box-shadow: 0 4px 12px rgba(0, 0, 0, .2); transition: transform .2s ease, box-shadow .2s ease; touch-action: manipulation; }
+@media (hover: hover) { .ox a.ox-hbtn:hover { color: var(--bs-white); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 0, 0, .25); } }
+
+/* Category cards */
+.ox-list { display: grid; grid-template-columns: 1fr; align-items: start; gap: var(--gap-cards); margin: 0; padding: 0; list-style: none; }
+@media (min-width: 768px) { .ox-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 992px) { .ox-list { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.ox-cat { border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); }
+.ox-cat.is-selected { border-color: var(--accent-color); }
+.ox-cat-row { display: flex; align-items: center; gap: var(--sp-2); }
+.ox-cat-link { display: flex; align-items: center; gap: var(--sp-3); flex: 1 1 auto; min-width: 0; min-height: 3.5rem; padding: var(--sp-2) var(--pad-m); color: var(--text-primary); font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); }
+.ox-cat-ico { display: grid; place-items: center; flex: none; width: 2.75rem; height: 2.75rem; border-radius: var(--radius-full); background: var(--card-background); box-shadow: 0 0 0 2px var(--tint); }
+.ox-cat-ico img { width: 2rem; height: 2rem; object-fit: contain; }
+.ox-cat-ico .bi { color: var(--tint); font-size: var(--font-size-xl); }
+.ox-cat-name { min-width: 0; overflow-wrap: anywhere; }
+.ox-cat-toggle { display: inline-flex; align-items: center; gap: var(--sp-1); flex: none; min-height: 2.75rem; margin-right: var(--sp-2); padding: 0 var(--sp-3); border: 0; border-radius: var(--radius-full); background: none; color: var(--text-secondary); font: inherit; font-size: var(--font-size-sm); font-weight: 600; cursor: pointer; touch-action: manipulation; }
+.ox-cat-toggle .bi { transition: transform .2s ease; }
+.ox-cat-toggle[aria-expanded="true"] .bi { transform: rotate(180deg); }
+.ox-subs { display: flex; flex-wrap: wrap; gap: var(--sp-2); max-height: 12rem; overflow-y: auto; padding: 0 var(--pad-m) var(--pad-m); scrollbar-width: thin; scrollbar-color: var(--border-color) transparent; }
+.ox-sub { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 2.25rem; padding: 0 var(--sp-3) 0 var(--sp-1); border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-sm); font-weight: 600; line-height: var(--lh-tight); }
+.ox-sub-ico { display: grid; place-items: center; flex: none; width: 1.75rem; height: 1.75rem; overflow: hidden; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-sm); }
+.ox-sub-ico img { width: 100%; height: 100%; object-fit: cover; }
+.ox-sub.is-selected { border-color: var(--primary-color); background: var(--primary-color); color: var(--bs-white); }
+[data-bs-theme="dark"] .ox-sub.is-selected { border-color: rgba(255, 255, 255, .5); }
+.ox a:focus-visible, .ox button:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+@media (hover: hover) { .ox-cat:hover, .ox-sub:hover { border-color: var(--primary-color); } }
+@media (prefers-reduced-motion: reduce) { .ox-hbtn, .ox-cat-toggle .bi { transition: none; } }
 </style>
 {% endblock %}
-{% block 'Footer'%}{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+
+    <header class="ox-head">
+        <h1 class="ox-title">Categories</h1>
+        <p class="ox-sub-text">Pick a category to see its products.</p>
+        <a href="{% url 'product_list' %}" class="ox-hbtn"><i class="bi bi-grid-fill" aria-hidden="true"></i>All products</a>
+    </header>
+
+    <ul class="ox-list" id="categories-list">
+        {% for category in categories %}
+        {% with is_sel=False %}
+        <li class="ox-cat ox-tint {% cycle 't-navy' 't-orange' 't-teal' 't-purple' 't-green' %}{% if category.slug == selected_category or category.id == selected_category %} is-selected{% endif %}">
+            <div class="ox-cat-row">
+                <a href="{% url 'product_list' %}?category={{ category.slug }}" class="ox-cat-link">
+                    <span class="ox-cat-ico">
+                        {% if category.image %}
+                            <img src="{{ category.image.url }}" alt="" loading="lazy" width="32" height="32">
+                        {% else %}
+                            <i class="bi bi-folder-fill" aria-hidden="true"></i>
+                        {% endif %}
+                    </span>
+                    <span class="ox-cat-name">{{ category.name }}</span>
+                </a>
+                {% if category.subcategories.all %}
+                <button type="button" class="ox-cat-toggle"
+                        data-bs-toggle="collapse" data-bs-target="#category{{ category.slug }}"
+                        aria-expanded="{% if category.slug == selected_category or category.id == selected_category %}true{% else %}false{% endif %}"
+                        aria-controls="category{{ category.slug }}"
+                        aria-label="Show subcategories of {{ category.name }}">
+                    <span>{{ category.subcategories.all|length }}</span><i class="bi bi-chevron-down" aria-hidden="true"></i>
+                </button>
+                {% endif %}
+            </div>
+
+            {% if category.subcategories.all %}
+            <div class="collapse{% if category.slug == selected_category or category.id == selected_category %} show{% endif %}" id="category{{ category.slug }}">
+                <div class="ox-subs">
+                    {% for subcategory in category.subcategories.all %}
+                    <a href="{% url 'product_list' %}?category={{ category.slug }}&subcategory={{ subcategory.slug }}"
+                       class="ox-sub{% if subcategory.slug == selected_subcategory or subcategory.id == selected_subcategory %} is-selected{% endif %}">
+                        <span class="ox-sub-ico">
+                            {% if subcategory.image %}
+                                <img src="{{ subcategory.image.url }}" alt="" loading="lazy" width="28" height="28">
+                            {% else %}
+                                <i class="bi bi-folder-fill" aria-hidden="true"></i>
+                            {% endif %}
+                        </span>
+                        {{ subcategory.name }}
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </li>
+        {% endwith %}
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}
+
+{% block 'Footer' %}{% endblock %}

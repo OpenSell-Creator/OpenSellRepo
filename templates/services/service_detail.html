@@ -1,1207 +1,796 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load compress %}
 
 {% block page_css %}
-    <link rel="stylesheet" type="text/css" href="{% static 'css/pages/services.css' %}">
-    <style>
-        /* ── Back button ──────────────────────────────────────── */
-        .back-button-container { margin-bottom: 0.75rem; padding: 0; }
-        .btn-back {
-            display: inline-flex; align-items: center; gap: 0.5rem;
-            padding: 0.4rem 0.875rem; background-color: var(--background-color);
-            border: 1px solid var(--border-color); border-radius: var(--radius-sm);
-            color: var(--text-primary); text-decoration: none;
-            font-size: 0.85rem; font-weight: 500; transition: all 0.25s ease; line-height: 1.4;
-        }
-        .btn-back:hover { background-color: var(--card-background); border-color: var(--accent-color); color: var(--accent-color); transform: translateX(-3px); }
-        .btn-back i { font-size: 0.875rem; transition: transform 0.25s ease; }
-        .btn-back:hover i { transform: translateX(-2px); }
+<link rel="stylesheet" type="text/css" href="{% static 'css/pages/services.css' %}">
+<style>
+/* Richness kit subset (assets/home-kit.css): vars, hues, icon badge, tint wash */
+.ox {
+    --ox-navy: var(--primary-color);
+    --ox-orange: var(--accent-color);
+    --ox-teal: var(--bs-teal, var(--primary-color));
+    --ox-green: var(--bs-success, var(--primary-color));
+    --ox-purple: var(--bs-purple, var(--primary-color));
+    --ox-red: var(--bs-danger, var(--accent-color));
+    display: flex; flex-direction: column; gap: var(--gap-sections);
+    color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-body);
+}
+.ox-has-bar { padding-bottom: 10.5rem; }
+.ox a { text-decoration: none; }
+.ox p { margin: 0; }
+.t-navy { --tint: var(--ox-navy); } .t-orange { --tint: var(--ox-orange); } .t-teal { --tint: var(--ox-teal); }
+.t-green { --tint: var(--ox-green); } .t-purple { --tint: var(--ox-purple); } .t-red { --tint: var(--ox-red); }
+.ox-ico { display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-lg); }
+.ox-ico-s { width: 1.75rem; height: 1.75rem; font-size: var(--font-size-base); }
+.ox-tint { position: relative; isolation: isolate; }
+.ox-tint::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .ox-tint::before { opacity: .09; }
+.ox-h2 { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-snug); }
+.ox-h2 .bi { margin-right: var(--sp-2); color: var(--tint); }
+.ox-fine { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.ox-card { border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); }
+@media (min-width: 768px) { .ox-h2 { font-size: var(--font-size-xl); } }
 
-        /* ── Main wrapper card ─────────────────────────────────── */
-        .service-detail-card { border: 1px solid var(--border-color); border-radius: var(--radius-lg); overflow: hidden; }
-        .service-detail-container { padding: 1rem; }
+/* Product: gallery and details */
+.ox-product { display: grid; grid-template-columns: 1fr; gap: var(--sp-4); padding: var(--pad-m); }
+@media (min-width: 768px) { .ox-product { grid-template-columns: 1fr 1fr; gap: var(--sp-6); padding: var(--pad-l); } }
+.ox-gal-frame { position: relative; height: 20rem; overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--hover-bg); }
+@media (min-width: 576px) { .ox-gal-frame { height: 24rem; } }
+@media (min-width: 768px) { .ox-gal-frame { height: 27.5rem; } }
+@media (min-width: 993px) { .ox-gal-frame { height: 32.5rem; } }
+.ox-gal-frame .carousel, .ox-gal-frame .carousel-inner, .ox-gal-frame .carousel-item { height: 100%; }
+.carousel-img-clickable { display: block; width: 100%; height: 100%; cursor: zoom-in; }
+.carousel-main-img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+.ox-noimg { display: grid; place-items: center; height: 100%; color: var(--text-secondary); font-size: var(--font-size-3xl); }
+.ox-gal-frame .carousel-control-prev, .ox-gal-frame .carousel-control-next { width: 3.25rem; }
+.ox-gal-frame .carousel-control-prev-icon, .ox-gal-frame .carousel-control-next-icon { width: 2.25rem; height: 2.25rem; border-radius: var(--radius-full); background-color: rgba(0, 0, 0, .5); background-size: 50%; }
+.carousel-dots { display: flex; justify-content: center; gap: var(--sp-2); margin-top: var(--sp-2); }
+.carousel-dot { width: .5rem; height: .5rem; padding: 0; border: 0; border-radius: var(--radius-full); background: var(--border-color); transition: background .2s, transform .2s; touch-action: manipulation; }
+.carousel-dot.active { background: var(--primary-color); transform: scale(1.3); }
+[data-bs-theme="dark"] .carousel-dot.active { background: var(--accent-color); }
 
-        /* ── Carousel ─────────────────────────────────────────── */
-        .main-carousel-wrapper { border-radius: var(--radius-md); overflow: hidden; height: 520px; }
-        .main-carousel-wrapper .carousel,
-        .main-carousel-wrapper .carousel-inner,
-        .main-carousel-wrapper .carousel-item { height: 100%; }
-        .carousel-img-clickable { display: block; width: 100%; height: 100%; cursor: zoom-in; }
-        .carousel-main-img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; background: none; }
+.ox-details { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.ox-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1); margin: 0; padding: 0; list-style: none; font-size: var(--font-size-xs); color: var(--text-secondary); }
+.ox-crumbs li + li::before { content: "\F285"; margin-right: var(--sp-1); font-family: "bootstrap-icons"; }
+.ox-title { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-tight); overflow-wrap: anywhere; }
+@media (min-width: 768px) { .ox-title { font-size: var(--font-size-3xl); } }
+.ox-pricerow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+.ox-price { font-size: var(--font-size-3xl); font-weight: 600; line-height: 1; color: var(--accent-color); }
+.ox-stock { display: inline-flex; align-items: center; gap: var(--sp-1); padding: 0 var(--sp-2); border-radius: var(--radius-full); border: 1px solid var(--border-color); background: var(--card-background); font-size: var(--font-size-xs); font-weight: 600; line-height: var(--lh-body); }
+.ox-stock .bi { color: var(--tint); }
 
-        /* ── No-image placeholder ─────────────────────────────── */
-        .no-images-placeholder {
-            height: 520px; display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            background-color: var(--card-background);
-            border: 1px dashed var(--border-color); border-radius: var(--radius-md);
-            color: var(--text-muted);
-        }
-        .no-images-placeholder i { font-size: 3.5rem; margin-bottom: 0.75rem; opacity: 0.5; }
+/* Action buttons: solid fills */
+.ox-acts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+.ox-act { box-sizing: border-box; position: relative; isolation: isolate; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-3); border: 1px solid transparent; border-radius: var(--radius-md); font: inherit; font-size: var(--font-size-sm); font-weight: 600; line-height: var(--lh-tight); text-align: center; cursor: pointer; touch-action: manipulation; }
+.ox-act-pri { background: var(--primary-color); border-color: var(--primary-color); color: var(--bs-white); }
+[data-bs-theme="dark"] .ox-act-pri { border-color: rgba(255, 255, 255, .35); }
+.ox-act-boost { background: var(--accent-color); border-color: var(--accent-color); color: var(--bs-white); }
+.ox-act-done { background: var(--bs-success); border-color: var(--bs-success); color: var(--bs-white); cursor: default; }
+.ox-act-save { border-color: var(--border-color); background: var(--card-background); color: var(--text-primary); }
+.ox-act-save::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .ox-act-save::before { opacity: .09; }
+.ox-act-save .bi, .ox-act-save .fa-heart { color: var(--tint); }
+.ox-act-save.saved, .ox-act-save.saved-state, .ox-act-save[data-saved="true"] { background: var(--bs-danger); border-color: var(--bs-danger); color: var(--bs-white); }
+.ox-act-save.saved::before, .ox-act-save.saved-state::before, .ox-act-save[data-saved="true"]::before { display: none; }
+.ox-act-save.saved i, .ox-act-save.saved-state i, .ox-act-save[data-saved="true"] i { color: var(--bs-white); }
+.ox a.ox-act-pri:hover, .ox a.ox-act-boost:hover { color: var(--bs-white); }
 
-        /* ── Breadcrumb ───────────────────────────────────────── */
-        .breadcrumb { font-size: 0.8rem; font-weight: 400; margin-bottom: 0.5rem; }
-        .breadcrumb-item+.breadcrumb-item::before { font-size: 0.75rem; }
+/* Listing details and seller facts: compact two-column grid */
+.ox-cells { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-cards); margin: 0; padding: 0; list-style: none; }
+.ox-cell { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; min-height: 2.75rem; padding: var(--sp-2) var(--pad-s); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); line-height: var(--lh-tight); }
+.ox-cell > span:last-child { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.ox-cell small { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.ox-cell b { font-size: var(--font-size-sm); font-weight: 600; overflow-wrap: anywhere; }
+.ox-cell .ox-link { font-size: var(--font-size-sm); }
+.ox-span2 { grid-column: 1 / -1; }
+.ox-sec { display: flex; flex-direction: column; gap: var(--sp-2); }
+.ox-desc-box { padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); }
+.ox-desc { max-height: 13.75rem; overflow-y: auto; padding-right: var(--sp-2); color: var(--text-secondary); font-size: var(--font-size-sm); line-height: var(--lh-body); overflow-wrap: anywhere; scrollbar-width: thin; scrollbar-color: var(--border-color) transparent; }
+.ox-desc::-webkit-scrollbar { width: 3px; }
+.ox-desc::-webkit-scrollbar-thumb { border-radius: var(--radius-full); background-color: var(--border-color); }
+.ox-desc p { margin: 0 0 var(--sp-2); }
+.ox-desc p:last-child { margin-bottom: 0; }
+.ox-mt { margin-top: var(--sp-3); }
+.ox-mt-s { margin-top: var(--sp-2); }
+#ox-tips-h, #ox-rel-h { margin-bottom: var(--sp-3); }
 
-        /* ── Title ────────────────────────────────────────────── */
-        .service-title { font-size: 2.25rem; font-weight: 700; line-height: 1.2; margin-bottom: 0.75rem !important; color: var(--text-primary); }
+/* Owner tools */
+.ox-owner { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); }
+.ox-owner-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.ox-owner-btns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+.ox-mini { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: var(--h-control); padding: 0 var(--sp-3); border: 1px solid transparent; border-radius: var(--radius-md); background: var(--primary-color); color: var(--bs-white); font: inherit; font-size: var(--font-size-sm); font-weight: 600; cursor: pointer; touch-action: manipulation; }
+.ox-mini-danger { background: var(--bs-danger); }
+.ox a.ox-mini:hover { color: var(--bs-white); }
+.ox-toast { position: fixed; left: 50%; bottom: 11rem; z-index: 1060; display: flex; align-items: center; gap: var(--sp-2); max-width: calc(100% - 2rem); padding: var(--sp-2) var(--sp-4); border-radius: var(--radius-full); background: var(--primary-color); color: var(--bs-white); font-size: var(--font-size-sm); font-weight: 600; box-shadow: var(--shadow-md); transform: translateX(-50%); }
 
-        /* ── Price badge ──────────────────────────────────────── */
-        .price-badge {
-            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
-            border-radius: var(--radius-md); color: var(--accent-color);
-            padding: 0.65rem 1rem; display: inline-block; margin-bottom: 0.875rem !important;
-        }
-        .price-badge .h2 { font-size: 1.6rem; line-height: 1; }
+/* Seller card */
+.ox-seller { display: flex; flex-direction: column; gap: var(--sp-4); padding: var(--pad-m); }
+@media (min-width: 768px) { .ox-seller { padding: var(--pad-l); } }
+.ox-vchips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+.ox-vchip { display: flex; align-items: center; gap: var(--sp-2); padding: var(--pad-s); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); line-height: var(--lh-tight); }
+.ox-vchip small { display: block; font-size: var(--font-size-xs); color: var(--text-secondary); }
+.ox-vchip b { font-size: var(--font-size-sm); font-weight: 600; }
+.ox-seller-main { display: grid; grid-template-columns: 1fr; gap: var(--sp-4); }
+@media (min-width: 768px) { .ox-seller-main { grid-template-columns: 1fr 2fr; } }
+.ox-seller-id { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); text-align: center; }
+.ox-avatar { display: grid; place-items: center; width: 4.5rem; height: 4.5rem; border-radius: var(--radius-full); background: var(--primary-color); color: var(--bs-white); font-size: var(--font-size-xl); font-weight: 600; object-fit: cover; border: 2px solid var(--border-color); }
+.ox-seller-name { margin: 0; font-size: var(--font-size-lg); font-weight: 600; overflow-wrap: anywhere; }
+.ox-seller-name .bi { color: var(--accent-color); }
+.ox-stars { color: var(--accent-color); font-size: var(--font-size-sm); }
+.ox-seller-info { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.ox-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap-cards); }
+.ox-tile { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); padding: var(--pad-s); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-sm); font-weight: 600; line-height: var(--lh-tight); text-align: center; }
+.ox-link { color: var(--primary-color); font-weight: 600; }
+[data-bs-theme="dark"] .ox-link { color: var(--text-primary); text-decoration: underline; }
 
-        /* ── Info section ────────────────────────────────────── */
-        .info-section {
-            font-size: 0.8rem; font-weight: 500;
-            background-color: var(--background-color);
-            border: 1px solid var(--border-color); border-radius: var(--radius-md);
-            padding: 0.625rem !important; margin-bottom: 0.75rem !important;
-        }
-        .info-section .row { --bs-gutter-x: 0.5rem; --bs-gutter-y: 0.5rem; }
-        .info-section h4 {
-            font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;
-            display: flex; align-items: center; gap: 0.375rem; color: var(--text-primary);
-        }
-        .info-section h4 i { color: var(--accent-color); font-size: 0.875rem; }
+/* Floating contact bar above the bottom navigation */
+.ox-bar { position: fixed; left: 50%; bottom: 5.75rem; z-index: 1040; display: flex; flex-direction: column; gap: var(--sp-1); width: calc(100% - 2rem); max-width: 21rem; padding: var(--sp-2); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); box-shadow: var(--shadow-md); transform: translateX(-50%); }
+.ox-bar.is-hidden { display: none; }
+@media (min-width: 768px) { .ox-bar { bottom: 5rem; } }
+.ox-bar-title { display: flex; align-items: center; justify-content: center; gap: var(--sp-1); font-size: var(--font-size-xs); font-weight: 600; line-height: var(--lh-tight); }
+.ox-bar-title .bi { color: var(--accent-color); }
+.ox-bar-btns { display: flex; gap: var(--sp-1); }
+.ox-cbtn { box-sizing: border-box; display: flex; flex: 1 1 0; align-items: center; justify-content: center; gap: var(--sp-2); min-width: 0; min-height: var(--h-control); margin: 0; padding: 0 var(--sp-2); border: 1px solid transparent; border-radius: var(--radius-full); font: inherit; font-size: var(--font-size-xs); font-weight: 600; line-height: var(--lh-tight); color: var(--bs-white); cursor: pointer; touch-action: manipulation; }
+.ox-c-wa { background: var(--bs-success); border-color: var(--bs-success); }
+.ox-c-call { background: var(--primary-color); border-color: var(--primary-color); }
+[data-bs-theme="dark"] .ox-c-call { border-color: rgba(255, 255, 255, .35); }
+.ox-c-msg { background: var(--accent-color); border-color: var(--accent-color); }
+.ox a.ox-cbtn:hover { color: var(--bs-white); }
 
-        /* ── Detail items (info grid) ────────────────────────── */
-        .detail-item {
-            background-color: var(--card-background); border-radius: var(--radius-sm);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            padding: 0.45rem 0.5rem !important; height: 100%; border: none;
-        }
-        .detail-item:hover { transform: translateY(-2px); box-shadow: 0 2px 8px var(--shadow-color); }
-        .detail-item i { color: var(--accent-color); font-size: 0.875rem; flex-shrink: 0; width: 1rem; text-align: center; }
-        .detail-item .small { font-size: 0.65rem; color: var(--text-secondary); margin-bottom: 0.1rem; display: block; }
-        .detail-item > div > div:not(.small) { font-size: 0.8rem; font-weight: 600; line-height: 1.3; }
+/* Safety tips and related */
+.ox-tips { padding: var(--pad-m); }
+.ox-tips ul { display: flex; flex-direction: column; gap: var(--sp-2); margin: 0; padding: 0; list-style: none; font-size: var(--font-size-sm); }
+.ox-tips li .bi { margin-right: var(--sp-2); color: var(--bs-success); }
+.ox-tips-toggle { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; padding: 0; border: 0; background: none; color: var(--primary-color); font: inherit; font-size: var(--font-size-sm); font-weight: 600; cursor: pointer; touch-action: manipulation; }
+[data-bs-theme="dark"] .ox-tips-toggle { color: var(--text-primary); }
+.ox-tips-toggle .bi { transition: transform .2s ease; }
+.ox-tips-toggle[aria-expanded="true"] .bi { transform: rotate(180deg); }
+.ox-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-cards); }
+.ox-grid > * { min-width: 0; }
+@media (min-width: 768px) { .ox-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 992px) { .ox-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.ox a:focus-visible, .ox button:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+@media (hover: hover) { .ox-tile:hover { border-color: var(--primary-color); } }
+@media (prefers-reduced-motion: reduce) { .carousel-dot, .ox-tips-toggle .bi { transition: none; } }
 
-        /* ── Description / content sections ──────────────────── */
-        .service-description {
-            border: 1px solid var(--border-color); border-radius: var(--radius-md);
-            padding: 0.75rem !important; margin-bottom: 0.75rem !important;
-        }
-        .service-description h4 {
-            font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;
-            display: flex; align-items: center; gap: 0.375rem; color: var(--text-primary);
-        }
-        .service-description h4 i { color: var(--accent-color); font-size: 0.875rem; }
-        .description-content {
-            color: var(--text-secondary); max-height: 220px; overflow-y: auto;
-            font-size: 0.8rem; font-weight: 400; line-height: 1.55;
-        }
-        .description-content::-webkit-scrollbar { width: 3px; }
-        .description-content::-webkit-scrollbar-track { background: var(--card-background); }
-        .description-content::-webkit-scrollbar-thumb { background-color: var(--border-color); border-radius: var(--radius-full); }
+/* Lightbox: unchanged behaviour */
+#imgLightbox { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh; z-index: 99999; background: rgba(0, 0, 0, .95); align-items: center; justify-content: center; touch-action: pan-y pinch-zoom; transform: none !important; overflow: hidden; }
+#imgLightbox.lb-open { display: flex; }
+#imgLightbox .lb-img { display: block; max-width: 94vw; max-height: 90vh; object-fit: contain; border-radius: 4px; user-select: none; -webkit-user-drag: none; }
+#imgLightbox .lb-close, #imgLightbox .lb-nav { position: fixed; display: flex; align-items: center; justify-content: center; border: none; border-radius: 50%; background: rgba(255, 255, 255, .18); color: var(--bs-white); cursor: pointer; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); z-index: 100001; touch-action: manipulation; }
+#imgLightbox .lb-close { top: 1rem; right: 1rem; width: 2.75rem; height: 2.75rem; font-size: 1.2rem; }
+#imgLightbox .lb-nav { top: 50%; width: 2.75rem; height: 2.75rem; font-size: 1.1rem; transform: translateY(-50%); }
+#imgLightbox .lb-prev { left: .75rem; } #imgLightbox .lb-next { right: .75rem; }
+#imgLightbox .lb-dots { position: fixed; bottom: 1.25rem; left: 50%; display: flex; gap: 7px; transform: translateX(-50%); z-index: 100001; }
+#imgLightbox .lb-dot { width: 7px; height: 7px; padding: 0; border: none; border-radius: 50%; background: rgba(255, 255, 255, .35); cursor: pointer; transition: background .2s, transform .2s; }
+#imgLightbox .lb-dot.active { background: var(--bs-white); transform: scale(1.35); }
+#imgLightbox .lb-counter { position: fixed; top: 1rem; left: 50%; padding: .2rem .65rem; border-radius: 999px; background: rgba(0, 0, 0, .45); color: rgba(255, 255, 255, .75); font-size: var(--font-size-sm); white-space: nowrap; transform: translateX(-50%); z-index: 100001; }
+@media (hover: hover) { #imgLightbox .lb-close:hover, #imgLightbox .lb-nav:hover { background: rgba(255, 255, 255, .32); } }
 
-        /* ── Documents ────────────────────────────────────────── */
-        .document-item { background-color: var(--background-color); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.875rem; }
-        .document-item i { font-size: 1.5rem; color: var(--accent-color); }
+/* ── Request and service pages: additions to the shared kit ───────────── */
+.ox-noimg-txt { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-1); padding: var(--pad-m); text-align: center; }
+.ox-noimg-txt b { font-size: var(--font-size-lg); font-weight: 600; color: var(--text-primary); }
+.ox-noimg-txt small { font-size: var(--font-size-sm); }
+.ox-crumbs a { color: inherit; }
+.ox-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.ox-acts form { display: flex; margin: 0; }
+.ox-note { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); padding: var(--pad-s); border-radius: var(--r-card-s); font-size: var(--font-size-sm); font-weight: 600; }
+.ox-note .bi { color: var(--tint); }
+.ox-mini-ok { background: var(--bs-success); }
+.ox-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap-cards); }
+.ox-stat { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); padding: var(--pad-s); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); line-height: var(--lh-tight); text-align: center; }
+.ox-stat b { font-size: var(--font-size-lg); font-weight: 600; }
+.ox-stat small { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.ox-tiles-1 { grid-template-columns: minmax(0, 1fr); }
+.ox-tiles-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-        /        /* ── Action buttons ──────────────────────────────────── */
-        .service-action-buttons .row { --bs-gutter-x: 0.5rem; --bs-gutter-y: 0.5rem; }
-        .btn-action-primary, .btn-action-secondary, .btn-action-boost, .btn-action-success, .btn-action-danger {
-            display: inline-flex; align-items: center; justify-content: center;
-            gap: 0.4rem; padding: 0.6rem 1rem; border-radius: var(--radius-lg);
-            font-size: 0.82rem; font-weight: 600; border: none; cursor: pointer;
-            transition: all 0.2s ease; text-decoration: none; white-space: nowrap; width: 100%;
-        }
-        .btn-action-primary { background-color: var(--primary-color); color: #fff; }
-        .btn-action-primary:hover { opacity: 0.88; color: #fff; }
-        .btn-action-secondary { background-color: var(--card-background); color: var(--text-primary); border: 1px solid var(--border-color); }
-        .btn-action-secondary:hover { border-color: var(--primary-color); color: var(--primary-color); }
-        .btn-action-secondary.saved-state { background-color: rgba(var(--primary-rgb,59,130,246),.1); border-color: var(--primary-color); color: var(--primary-color); }
-        .btn-action-boost { background-color: #f59e0b; color: #fff; }
-        .btn-action-boost:hover { opacity: 0.88; color: #fff; }
-        .btn-action-success { background-color: var(--success, #22c55e); color: #fff; }
-        .btn-action-danger { background-color: transparent; color: var(--danger, #ef4444); border: 1px solid var(--danger, #ef4444); }
-        .btn-action-danger:hover { background-color: var(--danger, #ef4444); color: #fff; }
+/* Modals (outside .ox, so not scoped to it) */
+.ox-modal { border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-body); }
+.ox-modal .modal-header, .ox-modal .modal-footer { padding: var(--pad-m); border-color: var(--border-color); }
+.ox-modal .modal-body { display: flex; flex-direction: column; gap: var(--gap-fields); padding: var(--pad-m); }
+.ox-modal .modal-footer { gap: var(--sp-2); }
+.ox-modal .modal-footer .ox-act { flex: 1 1 0; width: auto; }
+.ox-modal .modal-title { margin: 0; font-size: var(--font-size-lg); font-weight: 600; }
+.ox-modal .modal-title .bi { margin-right: var(--sp-2); color: var(--accent-color); }
+.ox-modal p { margin: 0; }
+.ox-mf { display: flex; flex-direction: column; gap: var(--gap-label); min-width: 0; }
+.ox-mf > label, .ox-modal label { font-size: var(--font-size-sm); font-weight: 600; }
+.ox-modal .form-control, .ox-modal .form-select, .ox-modal input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), .ox-modal select, .ox-modal textarea {
+    box-sizing: border-box; width: 100%; min-height: var(--h-control-lg); padding: var(--sp-2) var(--sp-3);
+    border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--background-color);
+    color: var(--text-primary); font-size: var(--font-size-base); font-family: inherit;
+}
+.ox-modal textarea { min-height: 6rem; }
+.ox-modal .form-control:focus, .ox-modal .form-select:focus, .ox-modal input:focus, .ox-modal select:focus, .ox-modal textarea:focus { outline: 2px solid var(--accent-color); outline-offset: 1px; border-color: var(--accent-color); box-shadow: none; }
+.ox-modal .errorlist { margin: 0; padding: 0; list-style: none; color: var(--error-text); font-size: var(--font-size-sm); }
+.ox-modal .helptext { font-size: var(--font-size-xs); color: var(--text-secondary); }
+[data-bs-theme="dark"] .ox-modal .form-control, [data-bs-theme="dark"] .ox-modal .form-select, [data-bs-theme="dark"] .ox-modal input, [data-bs-theme="dark"] .ox-modal select, [data-bs-theme="dark"] .ox-modal textarea { color-scheme: dark; }
+@supports (-webkit-touch-callout: none) { .ox-modal .form-control, .ox-modal .form-select, .ox-modal input, .ox-modal select, .ox-modal textarea { font-size: 16px; } }
+.ox-act-ghost { border-color: var(--border-color); background: var(--card-background); color: var(--text-primary); }
+.ox-act:disabled { opacity: .65; cursor: default; }
+@media (hover: hover) { .ox-crumbs a:hover { color: var(--text-primary); text-decoration: underline; } }
 
-        /* ── Status / owner section ──────────────────────────── */
-        .service-status-section {
-            background-color: var(--background-color); border: 1px solid var(--border-color);
-            border-radius: var(--radius-md); padding: 0.75rem !important; margin-bottom: 0.75rem !important;
-        }
-        .service-status-section:hover { box-shadow: 0 3px 10px var(--shadow-color); }
-        .service-status-section h6 {
-            font-size: 0.825rem; font-weight: 600; margin-bottom: 0.4rem;
-            display: flex; align-items: center; gap: 0.35rem;
-        }
-        .service-status-section h6 i { color: var(--accent-color); font-size: 0.825rem; }
-        .stock-status span { font-size: 0.8rem; font-weight: 500; display: inline-flex; align-items: center; gap: 0.35rem; }
-        .stock-status i { font-size: 0.825rem; }
-        .quick-actions { padding-top: 0.5rem; }
-        .quick-actions h6 { font-size: 0.825rem; font-weight: 600; margin-bottom: 0.5rem; }
-
-        /* ── Stats bar ────────────────────────────────────────── */
-        .service-stats { background-color: var(--card-background); border: 1px solid var(--border-color); border-radius: var(--radius-md); }
-        .stat-item { text-align: center; padding: 0.75rem 0.5rem; }
-        .stat-item i { font-size: 1.25rem; display: block; margin-bottom: 0.35rem; }
-        .stat-item h5 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.1rem; color: var(--text-primary); }
-        .stat-item small { font-size: 0.75rem; color: var(--text-muted); }
-
-        /* ── Contact buttons grid ────────────────────────────── */
-        .contact-buttons-grid { padding-top: 0.125rem; }
-        .contact-buttons-grid .row { --bs-gutter-x: 0.5rem; --bs-gutter-y: 0.5rem; }
-        .contact-buttons-grid .btn-contact {
-            display: flex; align-items: center; justify-content: center; gap: 0.4rem;
-            padding: 0.6rem 0.5rem; font-size: 0.825rem; font-weight: 500;
-            border-radius: var(--radius-lg); transition: all 0.25s ease; width: 100%;
-        }
-        .contact-buttons-grid .btn-contact i { font-size: 1rem; flex-shrink: 0; }
-        .contact-buttons-grid .btn-contact:hover { transform: translateY(-2px); box-shadow: 0 4px 12px var(--shadow-color); }
-
-        /* ── Provider / Seller card ──────────────────────────── */
-        .seller-card {
-            background: var(--card-background); margin: 10px;
-            border: 1px solid var(--border-color); border-radius: var(--radius-lg);
-            box-shadow: 0 2px 12px var(--shadow-color); transition: box-shadow 0.3s ease; overflow: hidden;
-        }
-        .seller-card:hover { box-shadow: 0 6px 24px var(--shadow-color); }
-        .seller-card .card-header { padding: 0.625rem 0.875rem; border-bottom: 1px solid var(--border-color); }
-        .seller-card .card-header h5 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0; display: flex; align-items: center; gap: 0.375rem; }
-        .seller-card .card-header h5 i { color: var(--accent-color); font-size: 1rem; }
-        .seller-card .card-body { padding: 0.875rem; }
-
-        /* ── Verification status row ──────────────────────────── */
-        .verification-status-row {
-            background: linear-gradient(135deg, var(--background-color) 0%, var(--hover-bg) 100%);
-            border-bottom: 1px solid var(--border-color); padding: 0.5rem 0;
-        }
-        .verification-status-row .row { --bs-gutter-x: 0.5rem; --bs-gutter-y: 0.375rem; }
-
-        /* ── Status chips ─────────────────────────────────────── */
-        .status-chip {
-            display: flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0.75rem;
-            border-radius: var(--radius-md); border: 1px solid;
-            transition: all 0.25s ease; position: relative; overflow: hidden; height: 100%; min-height: 56px;
-        }
-        .status-chip::before {
-            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent); transition: left 0.4s;
-        }
-        .status-chip:hover::before { left: 100%; }
-        .status-chip.verified { background: linear-gradient(135deg, rgba(34,197,94,0.08) 0%, rgba(34,197,94,0.03) 100%); border-color: rgba(34,197,94,0.3); color: var(--text-primary); }
-        .status-chip.verified:hover { border-color: rgba(34,197,94,0.5); transform: translateY(-1px); box-shadow: 0 3px 12px rgba(34,197,94,0.12); }
-        .status-chip.unverified { background: linear-gradient(135deg, rgba(239,68,68,0.08) 0%, rgba(239,68,68,0.03) 100%); border-color: rgba(239,68,68,0.3); color: var(--text-primary); }
-        .status-chip.unverified:hover { border-color: rgba(239,68,68,0.5); transform: translateY(-1px); box-shadow: 0 3px 12px rgba(239,68,68,0.12); }
-        .status-icon { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: transform 0.25s ease; }
-        .status-chip.verified .status-icon { background: rgba(34,197,94,0.15); color: #22c55e; }
-        .status-chip.unverified .status-icon { background: rgba(239,68,68,0.15); color: #ef4444; }
-        .status-icon i { font-size: 1rem; }
-        .status-chip:hover .status-icon { transform: scale(1.08); }
-        .status-content { flex: 1; min-width: 0; }
-        .status-label { font-size: 0.625rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 0.15rem; display: block; }
-        .status-value { font-size: 0.775rem; font-weight: 600; color: var(--text-primary); line-height: 1.2; }
-
-        /* ── Unified provider profile ─────────────────────────── */
-        .seller-profile-unified { padding: 0.375rem 0; }
-        .seller-avatar-unified { width: 76px; height: 76px; object-fit: cover; border-radius: 50%; border: 2px solid var(--border-color); box-shadow: 0 2px 8px var(--shadow-color); display: block; margin: 0 auto; }
-        .seller-avatar-placeholder-unified {
-            width: 76px; height: 76px; border-radius: 50%;
-            background: var(--primary-color); color: var(--card-background);
-            display: flex; align-items: center; justify-content: center;
-            border: 2px solid var(--border-color); box-shadow: 0 2px 8px var(--shadow-color);
-            margin: 0 auto; font-size: 1.75rem; font-weight: 700;
-        }
-        .seller-profile-unified h5 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.25rem; display: flex; align-items: center; justify-content: center; gap: 0.3rem; flex-wrap: wrap; }
-        .seller-profile-unified p { font-size: 0.775rem; }
-
-        /* ── Rating / stars ───────────────────────────────────── */
-        .rating-wrapper { margin-bottom: 0.5rem; }
-        .stars-provider { display: flex; align-items: center; gap: 0.2rem; }
-        .stars-provider i { color: var(--accent-color); font-size: 0.9rem; }
-        .stars-provider .text-muted { color: var(--accent-color) !important; opacity: 0.4; }
-
-        /* ── Seller description ───────────────────────────────── */
-        .seller-description { color: var(--text-secondary); line-height: 1.5; font-size: 0.8rem; margin-bottom: 0.75rem !important; }
-
-        /* ── Seller details grid ──────────────────────────────── */
-        .seller-details-grid .row { --bs-gutter-x: 0.5rem; --bs-gutter-y: 0.5rem; }
-        .seller-details-grid .detail-item-compact {
-            display: flex; align-items: flex-start; gap: 0.4rem; padding: 0.55rem 0.6rem;
-            background: var(--background-color); border: 1px solid var(--border-color);
-            border-radius: var(--radius-md); transition: transform 0.2s ease, box-shadow 0.2s ease; height: 100%;
-        }
-        .seller-details-grid .detail-item-compact:hover { transform: translateY(-1px); box-shadow: 0 2px 8px var(--shadow-color); border-color: var(--accent-color); }
-        .seller-details-grid .detail-item-compact i { color: var(--accent-color); font-size: 0.875rem; width: 16px; flex-shrink: 0; margin-top: 0.15rem; text-align: center; }
-        .seller-details-grid .detail-item-compact > div { flex: 1; min-width: 0; }
-        .seller-details-grid .detail-item-compact small { display: block; font-size: 0.625rem; color: var(--text-secondary); margin-bottom: 0.1rem; }
-        .seller-details-grid .detail-item-compact .fw-medium { font-size: 0.8rem; font-weight: 600; line-height: 1.3; }
-
-        /* Business info */
-        .business-link { font-size: 0.8rem; color: var(--primary-color); text-decoration: none; font-weight: 500; }
-        .business-link:hover { color: var(--accent-color); text-decoration: underline; }
-        .business-contact-grid { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; }
-        .contact-item {
-            display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.625rem;
-            background-color: var(--card-background); border: 1px solid var(--border-color);
-            border-radius: var(--radius-md); font-size: 0.8rem; color: var(--text-primary); transition: border-color 0.2s ease;
-        }
-        .contact-item:hover { border-color: var(--accent-color); }
-        .contact-item i { color: var(--accent-color); flex-shrink: 0; }
-        .pro-seller-icon { color: #0d6efd !important; font-size: 1.1rem; filter: drop-shadow(0 1px 3px rgba(13,110,253,0.3)); animation: subtle-glow 2s ease-in-out infinite alternate; vertical-align: middle; }
-        @keyframes subtle-glow { from { filter: drop-shadow(0 1px 3px rgba(13,110,253,0.3)); } to { filter: drop-shadow(0 2px 5px rgba(13,110,253,0.5)); } }
-
-        /* ── Reviews ─────────────────────────────────────────── */
-        .reviews-section { background-color: var(--card-background); border: 1px solid var(--border-color); border-radius: var(--radius-md); }
-        .review-item { background-color: var(--background-color); border: 1px solid var(--border-color); border-radius: var(--radius-sm); }
-        .review-text { font-size: 0.875rem; color: var(--text-primary); margin-bottom: 0; }
-        .reply-item { background-color: var(--card-background); border-left: 3px solid var(--accent-color); padding: 0.5rem 0.75rem; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; font-size: 0.82rem; }
-        .rating-stars i { font-size: 0.75rem; }
-        .bi-star-fill.text-warning { color: var(--accent-color) !important; }
-
-        /* ── Safety tips card ─────────────────────────────────── */
-        .safety-tips-card { background: var(--card-background); border: 1px solid var(--border-color); border-radius: var(--radius-lg); box-shadow: 0 2px 12px var(--shadow-color); transition: box-shadow 0.3s ease; }
-        .safety-tips-card .card-header { padding: 0.625rem 0.875rem; }
-        .safety-tips-card .card-header h5 { font-size: 0.9rem; font-weight: 700; margin-bottom: 0; }
-        .safety-tips-card .card-body { padding: 0.75rem 0.875rem; }
-        .safety-tips-card li { color: var(--text-primary); font-size: 0.825rem; line-height: 1.5; margin-bottom: 0.375rem; display: flex; align-items: flex-start; gap: 0.4rem; }
-        .safety-tips-card .fa-check-circle { color: var(--success); font-size: 0.875rem; margin-top: 0.1rem; flex-shrink: 0; }
-        #toggle-tips-service { color: var(--primary-color); transition: color 0.25s ease; font-size: 0.825rem; display: inline-flex; align-items: center; gap: 0.35rem; }
-        #toggle-tips-service:hover { color: var(--accent-color); }
-        .toggle-icon { transition: transform 0.2s ease; font-size: 0.8rem; }
-        [aria-expanded="true"] .toggle-icon { transform: rotate(180deg); }
-
-        /* ── Section title ────────────────────────────────────── */
-        .section-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem !important; }
-
-        /* ── Responsive ──────────────────────────────────────── */
-        @media (max-width: 992px) {
-            .main-carousel-wrapper { height: 440px; }
-            .status-chip { padding: 0.5rem 0.65rem; min-height: 54px; gap: 0.45rem; }
-            .status-icon { width: 28px; height: 28px; }
-            .status-icon i { font-size: 0.95rem; }
-            .status-label { font-size: 0.6rem; }
-            .status-value { font-size: 0.75rem; }
-        }
-        @media (max-width: 768px) {
-            .service-title { font-size: 1.75rem !important; }
-            .main-carousel-wrapper { height: 380px; }
-            .service-action-buttons .btn { border-radius: var(--radius-lg); padding: 0.55rem 0.625rem; font-size: 0.8rem; }
-            .verification-status-row .row { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
-            .verification-status-row .col-12.col-md-4 { flex: 0 0 auto; min-width: 140px; }
-            .status-chip { padding: 0.4rem 0.5rem; min-height: 50px; gap: 0.4rem; }
-            .status-icon { width: 24px; height: 24px; }
-            .status-icon i { font-size: 0.875rem; }
-            .status-label { font-size: 0.575rem; }
-            .status-value { font-size: 0.7rem; }
-            .seller-avatar-unified, .seller-avatar-placeholder-unified { width: 68px; height: 68px; }
-            .seller-profile-unified .col-md-4 { margin-bottom: 0.75rem; }
-            .contact-buttons-grid .btn-contact { padding: 0.55rem 0.4rem; font-size: 0.775rem; }
-            .contact-buttons-grid .btn-contact i { font-size: 0.95rem; }
-            .no-images-placeholder { height: 280px; }
-        }
-        @media (max-width: 576px) {
-            .service-title { font-size: 1.4rem !important; }
-            .main-carousel-wrapper { height: 320px; }
-            .breadcrumb { font-size: 0.7rem; }
-            .service-detail-container { padding: 0.75rem; }
-            .service-action-buttons .btn { padding: 0.5rem 0.5rem; font-size: 0.775rem; }
-            .status-chip { padding: 0.375rem 0.425rem; min-height: 46px; gap: 0.3rem; }
-            .status-icon { width: 22px; height: 22px; }
-            .status-icon i { font-size: 0.825rem; }
-            .status-label { font-size: 0.55rem; }
-            .status-value { font-size: 0.675rem; }
-            .seller-avatar-unified, .seller-avatar-placeholder-unified { width: 60px; height: 60px; }
-            .contact-buttons-grid .btn-contact { padding: 0.5rem 0.35rem; font-size: 0.75rem; }
-            .contact-buttons-grid .btn-contact i { font-size: 0.9rem; }
-            .contact-buttons-grid .btn-contact span { font-size: 0.73rem; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-            .status-chip, .status-icon, .contact-item, .seller-card, .detail-item, .thumbnail-wrapper, .btn-back { transition: none; }
-            .status-chip:hover { transform: none; }
-            .status-chip:hover .status-icon { transform: none; }
-            .status-chip::before { display: none; }
-            .pro-seller-icon { animation: none; }
-            .detail-item:hover { transform: none; }
-            .btn-back:hover { transform: none; }
-        }
-        .status-chip:focus, .contact-item:focus, .btn-back:focus { outline: 2px solid var(--primary-color); outline-offset: 2px; }
-
-        /* ── Carousel dot indicators ─────────────────────────── */
-        .carousel-dots { display: flex; justify-content: center; gap: 6px; margin-top: 0.5rem; }
-        .carousel-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border-color); border: none; cursor: pointer; padding: 0; transition: background 0.2s, transform 0.2s; }
-        .carousel-dot.active { background: var(--primary-color); transform: scale(1.3); }
-
-        /* ── Image Lightbox ──────────────────────────────────── */
-        #imgLightbox { display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.93); align-items: center; justify-content: center; touch-action: pan-y pinch-zoom; }
-        #imgLightbox.lb-open { display: flex; }
-        #imgLightbox .lb-img { max-width: 94vw; max-height: 90vh; object-fit: contain; border-radius: 4px; user-select: none; -webkit-user-drag: none; transition: opacity 0.18s ease; }
-        #imgLightbox .lb-img.lb-fade { opacity: 0; }
-        #imgLightbox .lb-close { position: fixed; top: 1rem; right: 1rem; width: 2.2rem; height: 2.2rem; border-radius: 50%; background: rgba(255,255,255,0.15); border: none; color: #fff; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: background 0.2s; z-index: 10001; }
-        #imgLightbox .lb-close:hover { background: rgba(255,255,255,0.28); }
-        #imgLightbox .lb-nav { position: fixed; top: 50%; transform: translateY(-50%); width: 2.4rem; height: 2.4rem; border-radius: 50%; background: rgba(255,255,255,0.15); border: none; color: #fff; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: background 0.2s; z-index: 10001; }
-        #imgLightbox .lb-nav:hover { background: rgba(255,255,255,0.28); }
-        #imgLightbox .lb-prev { left: 0.75rem; } #imgLightbox .lb-next { right: 0.75rem; }
-        #imgLightbox .lb-dots { position: fixed; bottom: 1.25rem; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 10001; }
-        #imgLightbox .lb-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.35); border: none; cursor: pointer; padding: 0; transition: background 0.2s, transform 0.2s; }
-        #imgLightbox .lb-dot.active { background: #fff; transform: scale(1.3); }
-        #imgLightbox .lb-counter { position: fixed; top: 1rem; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.7); font-size: 0.8rem; background: rgba(0,0,0,0.4); padding: 0.2rem 0.6rem; border-radius: 999px; z-index: 10001; }
-        .carousel-img-clickable { cursor: zoom-in; }
-    </style>
+/* Reviews. Class names match what js/pages/services.js may inject on "Load more". */
+.ox-revs-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+#reviewsList { display: flex; flex-direction: column; gap: var(--gap-cards); }
+.review-item { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); }
+.review-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); }
+.review-head > div { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.review-head b { font-size: var(--font-size-base); font-weight: 600; overflow-wrap: anywhere; }
+.rating-stars { display: flex; gap: var(--sp-1); font-size: var(--font-size-sm); }
+.rating-stars .bi-star-fill { color: var(--accent-color); }
+.rating-stars .bi-star { color: var(--text-secondary); }
+.review-text { margin: 0; font-size: var(--font-size-sm); overflow-wrap: anywhere; }
+.reply-item { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-2) var(--pad-s); border-left: 3px solid var(--accent-color); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; background: var(--hover-bg); font-size: var(--font-size-sm); }
+.reply-item p { margin: 0; }
+.ox-stars-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--sp-1); }
+</style>
 {% endblock %}
 
 {% block page_js %}
-    <script type="text/javascript" src="{% static 'js/pages/services.js' %}"></script>
+<script type="text/javascript" src="{% static 'js/pages/services.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var $ = function (s, r) { return (r || document).querySelector(s); };
+    var $$ = function (s, r) { return [].slice.call((r || document).querySelectorAll(s)); };
+
+    /* Toast */
+    var toastTimer;
+    function toast(msg) {
+        var old = $('.ox-toast'); if (old) old.remove();
+        clearTimeout(toastTimer);
+        var t = document.createElement('div');
+        t.className = 'ox-toast'; t.setAttribute('role', 'status'); t.textContent = msg;
+        document.body.appendChild(t);
+        toastTimer = setTimeout(function () { t.remove(); }, 2800);
+    }
+
+    /* 4. Safety tips toggle text */
+    var tips = document.getElementById('hidden-tips-service'), tipsText = document.getElementById('toggle-text-service');
+    if (tips && tipsText) {
+        tips.addEventListener('show.bs.collapse', function () { tipsText.textContent = 'See fewer safety tips'; });
+        tips.addEventListener('hide.bs.collapse', function () { tipsText.textContent = 'See more safety tips'; });
+    }
+
+    /* 5. Share */
+    function copyText(text) {
+        if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+        return new Promise(function (resolve, reject) {
+            var ta = document.createElement('textarea');
+            ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy') ? resolve() : reject(); } catch (e) { reject(e); }
+            document.body.removeChild(ta);
+        });
+    }
+    var shareBtn = document.getElementById('shareButton');
+    if (shareBtn) {
+        shareBtn.addEventListener('click', function () {
+            var url = window.location.href;
+            var title = (($('.ox-title') || {}).textContent || 'Service').trim();
+            var price = (($('.ox-price') || {}).textContent || '').trim();
+            var text = 'Check out this service on OpenSell: ' + title + (price ? ' (' + price + ')' : '');
+            var mobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            function fallback() {
+                copyText(url).then(function () {
+                    var span = $('span', shareBtn), old = span.textContent;
+                    span.textContent = 'Copied!';
+                    setTimeout(function () { span.textContent = old; }, 2500);
+                    toast('Service link copied');
+                }, function () { toast('Could not copy the link'); });
+            }
+            if (navigator.share && mobile) {
+                navigator.share({ title: title + ' - OpenSell', text: text, url: url }).catch(fallback);
+            } else { fallback(); }
+        });
+    }
+
+    /* Hide the contact bar while a form field is being typed in */
+    var bar = $('.ox-bar');
+    if (bar) {
+        document.addEventListener('focusin', function (e) { if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) bar.classList.add('is-hidden'); });
+        document.addEventListener('focusout', function () { bar.classList.remove('is-hidden'); });
+    }
+
+    /* 7. Carousel dots and lightbox */
+    var carouselEl = document.getElementById('serviceCarousel');
+    function carousel() { return carouselEl && bootstrap.Carousel.getOrCreateInstance(carouselEl); }
+    if (carouselEl) {
+        carouselEl.addEventListener('slide.bs.carousel', function (e) {
+            $$('.carousel-dot').forEach(function (d, i) { d.classList.toggle('active', i === e.to); });
+        });
+    }
+    var dots = document.getElementById('carouselDots');
+    if (dots) dots.addEventListener('click', function (e) {
+        var b = e.target.closest('.carousel-dot');
+        if (b && carousel()) carousel().to(parseInt(b.dataset.index, 10));
+    });
+
+    var lb = document.getElementById('imgLightbox');
+    if (lb) {
+        document.body.appendChild(lb);   /* escape any overflow:hidden ancestor */
+        var urls = $$('#lightboxImages span[data-url]').map(function (s) { return s.dataset.url; });
+        var idx = 0, startX = 0;
+        var lbImg = document.getElementById('lbImg'), lbDots = document.getElementById('lbDots'), lbCounter = document.getElementById('lbCounter');
+        function show(i) {
+            idx = (i + urls.length) % urls.length;
+            lbImg.style.opacity = '0';
+            lbImg.src = urls[idx];
+            lbImg.onload = function () { lbImg.style.transition = 'opacity .18s ease'; lbImg.style.opacity = '1'; };
+            if (lbImg.complete && lbImg.naturalWidth) lbImg.style.opacity = '1';
+            $$('#lbDots .lb-dot').forEach(function (d, k) { d.classList.toggle('active', k === idx); });
+            lbCounter.textContent = urls.length > 1 ? (idx + 1) + ' / ' + urls.length : '';
+            lbCounter.style.display = urls.length > 1 ? '' : 'none';
+            if (carousel()) carousel().to(idx);
+        }
+        urls.forEach(function (_, i) {
+            if (urls.length <= 1) return;
+            var b = document.createElement('button');
+            b.className = 'lb-dot' + (i === 0 ? ' active' : '');
+            b.setAttribute('aria-label', 'Go to image ' + (i + 1));
+            b.addEventListener('click', function () { show(i); });
+            lbDots.appendChild(b);
+        });
+        var nav = function () { return $('.navbar, nav[class*="navbar"], header'); };
+        function open(i) {
+            show(i); lb.classList.add('lb-open');
+            document.documentElement.style.overflow = 'hidden'; document.body.style.overflow = 'hidden';
+            var n = nav(); if (n) n.style.zIndex = '1';
+        }
+        function close() {
+            lb.classList.remove('lb-open');
+            document.documentElement.style.overflow = ''; document.body.style.overflow = '';
+            var n = nav(); if (n) n.style.zIndex = '';
+            lbImg.src = ''; lbImg.style.opacity = '0';
+        }
+        $$('.carousel-img-clickable').forEach(function (el) {
+            el.addEventListener('click', function () { open(parseInt(el.dataset.index, 10) || 0); });
+        });
+        $('.lb-close', lb).addEventListener('click', close);
+        $('.lb-prev', lb).addEventListener('click', function () { show(idx - 1); });
+        $('.lb-next', lb).addEventListener('click', function () { show(idx + 1); });
+        document.addEventListener('keydown', function (e) {
+            if (!lb.classList.contains('lb-open')) return;
+            if (e.key === 'Escape') close();
+            if (e.key === 'ArrowLeft') show(idx - 1);
+            if (e.key === 'ArrowRight') show(idx + 1);
+        });
+        lb.addEventListener('click', function (e) { if (e.target === lb) close(); });
+        lb.addEventListener('touchstart', function (e) { startX = e.touches[0].clientX; }, { passive: true });
+        lb.addEventListener('touchend', function (e) {
+            var d = startX - e.changedTouches[0].clientX;
+            if (Math.abs(d) > 40) show(idx + (d > 0 ? 1 : -1));
+        }, { passive: true });
+    }
+
+    /* 8. Lazy images */
+    if ('IntersectionObserver' in window) {
+        var io = new IntersectionObserver(function (entries, obs) {
+            entries.forEach(function (en) {
+                if (en.isIntersecting) { en.target.src = en.target.dataset.src; en.target.removeAttribute('data-src'); obs.unobserve(en.target); }
+            });
+        });
+        $$('img[data-src]').forEach(function (img) { io.observe(img); });
+    }
+
+    /* Submit guard: disable and show a spinner, unless another handler took over the submit */
+    function guardForm(id) {
+        var f = document.getElementById(id);
+        if (!f) return;
+        var btn = f.querySelector('button[type="submit"]');
+        if (!btn) return;
+        var label = btn.innerHTML;
+        f.addEventListener('submit', function (e) {
+            setTimeout(function () {
+                if (e.defaultPrevented) return;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Sending...';
+            }, 0);
+        });
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted) { btn.disabled = false; btn.innerHTML = label; }
+        });
+    }
+    guardForm('messageForm');
+});
+</script>
 {% endblock %}
 
 {% block 'Body' %}
+<div class="ox{% if user != service.provider.user %} ox-has-bar{% endif %}">
 
-<div class="card service-detail-card">
-    <div class="service-detail-container">
-        <div class="row g-4">
-
-            <!-- ═══════════════════════════════════════════════════
-                 LEFT COLUMN — Images
-            ════════════════════════════════════════════════════ -->
-            <div class="col-md-6">
-                <!-- Main Carousel -->
-                <div class="main-carousel-wrapper mb-2" style="border: 1px solid var(--border-color);">
-                    {% if images %}
-                        <div id="serviceCarousel" class="carousel slide w-100 h-100">
-                            <div class="carousel-inner h-100" style="border-radius: var(--radius-md);">
-                                {% for image in images %}
-                                <div class="carousel-item {% if image.is_primary %}active{% elif forloop.first %}active{% endif %}">
-                                    <div class="carousel-img-clickable" onclick="openLightbox({{ forloop.counter0 }})" title="Click to view full image">
-                                        <img src="{{ image.image.url }}" class="carousel-main-img"
-                                             alt="{{ image.caption|default:service.title }}">
-                                    </div>
+    <article class="ox-card ox-product">
+        <!-- Gallery -->
+        <div>
+            <div class="ox-gal-frame">
+                {% if images %}
+                <div id="serviceCarousel" class="carousel slide">
+                    <div class="carousel-inner">
+                        {% for image in images %}
+                            <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                                <div class="carousel-img-clickable" data-index="{{ forloop.counter0 }}" title="Click to view full image">
+                                    <img src="{{ image.image.url }}" class="carousel-main-img" alt="{{ image.caption|default:service.title }}">
                                 </div>
-                                {% endfor %}
                             </div>
-                            {% if images|length > 1 %}
-                            <button class="carousel-control-prev" type="button" data-bs-target="#serviceCarousel" data-bs-slide="prev">
-                                <span class="carousel-control-prev-icon" aria-hidden="true" style="filter:invert(1)"></span>
-                                <span class="visually-hidden">Previous</span>
-                            </button>
-                            <button class="carousel-control-next" type="button" data-bs-target="#serviceCarousel" data-bs-slide="next">
-                                <span class="carousel-control-next-icon" aria-hidden="true" style="filter:invert(1)"></span>
-                                <span class="visually-hidden">Next</span>
-                            </button>
-                            {% endif %}
-                        </div>
-                    {% else %}
-                        <div class="no-images-placeholder w-100">
-                            {% if service.service_type == 'digital' %}<i class="bi bi-laptop"></i>
-                            {% elif service.service_type == 'physical' %}<i class="bi bi-tools"></i>
-                            {% elif service.service_type == 'consulting' %}<i class="bi bi-chat-dots"></i>
-                            {% else %}<i class="bi bi-briefcase"></i>{% endif %}
-                            <h5 class="mb-1">{{ service.get_service_type_display }} Service</h5>
-                            <p class="mb-0 small">No images provided for this service</p>
-                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if images|length > 1 %}
+                        <button class="carousel-control-prev" type="button" data-bs-target="#serviceCarousel" data-bs-slide="prev">
+                            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                            <span class="visually-hidden">Previous</span>
+                        </button>
+                        <button class="carousel-control-next" type="button" data-bs-target="#serviceCarousel" data-bs-slide="next">
+                            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                            <span class="visually-hidden">Next</span>
+                        </button>
                     {% endif %}
                 </div>
-
-                <!-- Dot Indicators -->
-                {% if images|length > 1 %}
-                <div class="carousel-dots" id="carouselDots">
-                    {% for image in images %}
-                        <button class="carousel-dot {% if image.is_primary %}active{% elif forloop.first %}active{% endif %}"
-                                data-index="{{ forloop.counter0 }}"
-                                onclick="goToSlide('serviceCarousel', {{ forloop.counter0 }})"
-                                aria-label="Go to image {{ forloop.counter }}"></button>
-                    {% endfor %}
-                </div>
-                {% endif %}
-
-                <!-- Hidden image URLs for lightbox -->
-                <div id="lightboxImages" style="display:none;">
-                    {% for image in images %}
-                        <span data-url="{{ image.image.url }}"></span>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <!-- ═══════════════════════════════════════════════════
-                 RIGHT COLUMN — Details
-            ════════════════════════════════════════════════════ -->
-            <div class="col-md-6">
-                <div class="service-details h-100">
-                    <div class="card-body p-2">
-
-                        <!-- Service Header -->
-                        <div class="product-header mb-4">
-                            <nav aria-label="breadcrumb">
-                                <ol class="breadcrumb small mb-2">
-                                    <li class="breadcrumb-item">Services</li>
-                                    {% if service.category %}<li class="breadcrumb-item"><a href="{% url 'services:list' %}?category={{ service.category }}">{{ service.get_category_display }}</a></li>{% endif %}
-                                    <li class="breadcrumb-item active">{{ service.title|truncatechars:40 }}</li>
-                                </ol>
-                            </nav>
-                            <h1 class="service-title display-6 mb-2">{{ service.title }}</h1>
-                            <div class="d-flex flex-wrap gap-1 mb-3">
-                                <span class="badge bg-primary">{{ service.get_service_type_display }}</span>
-                                <span class="badge bg-info">{{ service.get_experience_level_display }}</span>
-                                {% if provider_details.is_verified_business %}<span class="badge bg-success"><i class="bi bi-shield-check me-1"></i>Verified Provider</span>{% endif %}
-                            </div>
-                            <div class="price-badge p-3 mb-4">
-                                <span class="h2 mb-0 fw-bold">{{ formatted_price }}</span>
-                                <div class="small mt-1 opacity-75">{{ service.get_pricing_type_display }}</div>
-                            </div>
-                        </div>
-
-                        <!-- Service Info Grid -->
-                        <div class="product-info-advanced mb-2">
-                            <div class="info-section mb-4 p-3">
-                                <h4 class="fw-semibold mb-3"><i class="fas fa-info-circle me-2"></i>Service Details</h4>
-                                <div class="row g-2">
-                                    <div class="col-6">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="bi bi-tag me-2"></i>
-                                            <div>
-                                                <div class="small">Category</div>
-                                                <div>{{ service.get_category_display|default:"General" }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="bi bi-bar-chart me-2"></i>
-                                            <div>
-                                                <div class="small">Experience</div>
-                                                <div>{{ service.get_experience_level_display }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="bi bi-truck me-2"></i>
-                                            <div>
-                                                <div class="small">Delivery</div>
-                                                <div>{{ service.get_delivery_method_display }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% comment %} Listed date hidden from viewers - not relevant for established sellers
-                                    <div class="col-6">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="fas fa-clock me-2"></i>
-                                            <div>
-                                                <div class="small">Listed</div>
-                                                <div>{{ created_at|timesince }} ago</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endcomment %}
-                                    {% if service.location %}
-                                    <div class="col-6">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="fas fa-map-marker-alt me-2"></i>
-                                            <div>
-                                                <div class="small">Location</div>
-                                                <div>{{ service.location }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                    <div class="col-6">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="fas fa-eye me-2"></i>
-                                            <div>
-                                                <div class="small">Views</div>
-                                                <div>{{ service.view_count }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="bi bi-calendar-check me-2"></i>
-                                            <div>
-                                                <div class="small">Availability</div>
-                                                <div>{{ service.get_availability_display }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% if service.languages %}
-                                    <div class="col-6">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="bi bi-translate me-2"></i>
-                                            <div>
-                                                <div class="small">Languages</div>
-                                                <div>{{ service.languages }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                    {% if service.delivery_time %}
-                                    <div class="col-6">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="bi bi-stopwatch me-2"></i>
-                                            <div>
-                                                <div class="small">Delivery Time</div>
-                                                <div>{{ service.delivery_time }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                    <div class="col-6">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="bi bi-hourglass-split me-2"></i>
-                                            <div>
-                                                <div class="small">Delivery Days</div>
-                                                <div>{{ service.delivery_days }} day{{ service.delivery_days|pluralize }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="bi bi-arrow-repeat me-2"></i>
-                                            <div>
-                                                <div class="small">Revisions</div>
-                                                <div>{{ service.revision_limit }} included</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% if service.years_of_experience %}
-                                    <div class="col-6">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="bi bi-award me-2"></i>
-                                            <div>
-                                                <div class="small">Years of Experience</div>
-                                                <div>{{ service.years_of_experience }} yr{{ service.years_of_experience|pluralize }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                    <div class="col-6">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="bi bi-geo-alt me-2"></i>
-                                            <div>
-                                                <div class="small">Serves Nationwide</div>
-                                                <div>{% if service.serves_nationwide %}Yes{% else %}No{% endif %}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Description -->
-                            <div class="service-description mb-4 p-3">
-                                <h4 class="fw-semibold mb-3"><i class="fas fa-align-left me-2"></i>Service Description</h4>
-                                <div class="description-content">{{ service.description|linebreaks }}</div>
-                            </div>
-
-                            <!-- What You Get -->
-                            {% if service.what_you_get %}
-                            <div class="service-description mb-4 p-3">
-                                <h4 class="fw-semibold mb-3"><i class="bi bi-gift me-2"></i>What You Get</h4>
-                                <div class="description-content">{{ service.what_you_get|linebreaks }}</div>
-                            </div>
-                            {% endif %}
-
-                            <!-- Skills & Expertise -->
-                            {% if service.skills_offered %}
-                            <div class="service-description mb-4 p-3">
-                                <h4 class="fw-semibold mb-3"><i class="bi bi-tools me-2"></i>Skills &amp; Expertise</h4>
-                                <div class="description-content">{{ service.skills_offered|linebreaks }}</div>
-                            </div>
-                            {% endif %}
-
-                            <!-- Requirements -->
-                            {% if service.requirements %}
-                            <div class="service-description mb-4 p-3">
-                                <h4 class="fw-semibold mb-3"><i class="bi bi-clipboard-check me-2"></i>Requirements</h4>
-                                <div class="description-content">{{ service.requirements|linebreaks }}</div>
-                            </div>
-                            {% endif %}
-
-                            <!-- Tools Used -->
-                            {% if service.tools_used %}
-                            <div class="service-description mb-4 p-3">
-                                <h4 class="fw-semibold mb-3"><i class="bi bi-wrench me-2"></i>Tools &amp; Equipment</h4>
-                                <div class="description-content">{{ service.tools_used|linebreaks }}</div>
-                            </div>
-                            {% endif %}
-
-                            <!-- Extra Services -->
-                            {% if service.extra_services %}
-                            <div class="service-description mb-4 p-3">
-                                <h4 class="fw-semibold mb-3"><i class="bi bi-plus-circle me-2"></i>Additional Services</h4>
-                                <div class="description-content">{{ service.extra_services|linebreaks }}</div>
-                            </div>
-                            {% endif %}
-
-                            <!-- Certifications -->
-                            {% if service.certifications %}
-                            <div class="service-description mb-4 p-3">
-                                <h4 class="fw-semibold mb-3"><i class="bi bi-patch-check me-2"></i>Certifications &amp; Qualifications</h4>
-                                <div class="description-content">{{ service.certifications|linebreaks }}</div>
-                            </div>
-                            {% endif %}
-
-                            <!-- Portfolio URL -->
-                            {% if service.portfolio_url %}
-                            <div class="service-description mb-4 p-3">
-                                <h4 class="fw-semibold mb-3"><i class="bi bi-briefcase me-2"></i>Portfolio</h4>
-                                <a href="{{ service.portfolio_url }}" target="_blank" rel="noopener noreferrer"
-                                   class="btn btn-outline-primary btn-sm">
-                                    <i class="bi bi-box-arrow-up-right me-1"></i>View Portfolio
-                                </a>
-                            </div>
-                            {% endif %}
-
-                            <!-- Contact Instructions -->
-                            {% if service.contact_instructions %}
-                            <div class="service-description mb-4 p-3">
-                                <h4 class="fw-semibold mb-3"><i class="bi bi-chat-left-text me-2"></i>Contact Instructions</h4>
-                                <div class="description-content">{{ service.contact_instructions|linebreaks }}</div>
-                            </div>
-                            {% endif %}
-
-                            <!-- Documents & Portfolio -->
-                            {% if documents %}
-                            <div class="service-description mb-4 p-3">
-                                <h4 class="fw-semibold mb-3"><i class="bi bi-file-earmark-text me-2"></i>Documents &amp; Portfolio</h4>
-                                <div class="row g-3">
-                                    {% for document in documents %}
-                                    <div class="col-md-6">
-                                        <div class="document-item p-3">
-                                            <div class="d-flex align-items-center gap-3">
-                                                <i class="bi bi-file-earmark-text"></i>
-                                                <div class="flex-grow-1">
-                                                    <h6 class="mb-0 small fw-semibold">{{ document.title }}</h6>
-                                                    <small class="text-muted">{{ document.document.size|filesizeformat }}</small>
-                                                </div>
-                                                <a href="{{ document.document.url }}" class="btn btn-sm btn-outline-primary" target="_blank">
-                                                    <i class="bi bi-download"></i>
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            {% endif %}
-                        </div>
-
-                        <!-- Action Buttons Row (Share + Save or Edit/Delete for owner) -->
-                        <div class="service-action-buttons mb-4">
-                            <div class="row g-2">
-                                <div class="col-6">
-                                    <button type="button" class="btn-action-primary" onclick="shareService()">
-                                        <i class="fas fa-share-alt me-2"></i>
-                                        <span>Share</span>
-                                    </button>
-                                </div>
-
-                                {% if user.is_authenticated and user == service.provider.user %}
-                                    <!-- OWNER: Boost/manage -->
-                                    <div class="col-6">
-                                        <a href="{% url 'manage_listings' %}?tab=services" class="btn-action-boost">
-                                            <i class="bi bi-list-ul me-2"></i>My Services
-                                        </a>
-                                    </div>
-                                {% else %}
-                                    <!-- VISITOR: Save -->
-                                    <div class="col-6">
-                                        {% if user.is_authenticated %}
-                                            <button type="button"
-                                                    class="btn-action-secondary save-service-btn {% if is_saved %}saved-state{% endif %}"
-                                                    data-service-id="{{ service.id }}"
-                                                    onclick="toggleSave(event, '{{ service.id }}', 'service')"
-                                                    data-saved="{% if is_saved %}true{% else %}false{% endif %}">
-                                                <i class="bi {% if is_saved %}bi-bookmark-fill{% else %}bi-bookmark{% endif %} me-2"></i>
-                                                <span class="save-text">{% if is_saved %}Saved{% else %}Save{% endif %}</span>
-                                            </button>
-                                        {% else %}
-                                            <a href="{% url 'account_login' %}" class="btn-action-secondary">
-                                                <i class="bi bi-bookmark me-2"></i>Save
-                                            </a>
-                                        {% endif %}
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
-
-                        <!-- Status Section -->
-                        <div class="service-status-section mb-4">
-                            <div class="stock-status mb-3">
-                                <h6 class="fw-semibold mb-2"><i class="fas fa-circle me-2"></i>Status</h6>
-                                <div class="d-flex flex-wrap align-items-center gap-2">
-                                    {% if service.is_suspended %}
-                                        <span class="text-danger"><i class="fas fa-ban me-1"></i>Suspended</span>
-                                    {% elif not service.is_active %}
-                                        <span class="text-secondary"><i class="fas fa-pause-circle me-1"></i>Inactive</span>
-                                    {% elif service.expiration_date and service.expiration_date < now %}
-                                        <span class="text-warning"><i class="fas fa-clock me-1"></i>Expired</span>
-                                    {% else %}
-                                        <span class="text-success"><i class="fas fa-check-circle me-1"></i>Active</span>
-                                    {% endif %}
-
-                                    {% if service.is_featured %}
-                                        <span class="text-warning"><i class="fas fa-star me-1"></i>Featured</span>
-                                    {% endif %}
-
-                                    {% if service.expiration_date and not service.is_suspended and service.is_active %}
-                                        {% if service.days_until_expiration is not None and service.days_until_expiration <= 7 and service.days_until_expiration > 0 %}
-                                            <span class="text-warning"><i class="fas fa-exclamation-triangle me-1"></i>Expires in {{ service.days_until_expiration }} day{{ service.days_until_expiration|pluralize }}</span>
-                                        {% endif %}
-                                    {% endif %}
-                                </div>
-                            </div>
-
-                            <!-- Owner only actions -->
-                            {% if user.is_authenticated and user == service.provider.user %}
-                            <div class="quick-actions">
-                                <h6 class="fw-semibold mb-2"><i class="fas fa-bolt me-2"></i>Actions</h6>
-                                <div class="d-flex gap-2">
-                                    <a href="{% url 'services:update' pk=service.id %}" class="btn btn-sm btn-primary">
-                                        <i class="fas fa-edit me-2"></i>Edit
-                                    </a>
-                                    <a href="{% url 'services:delete' pk=service.id %}" class="btn btn-sm btn-danger">
-                                        <i class="fas fa-trash me-2"></i>Delete
-                                    </a>
-                                </div>
-                            </div>
-                            {% endif %}
-                        </div>
-
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Stats Bar (full width, inside main card) -->
-        <div class="service-stats p-3 mt-2 mb-2">
-            <div class="row g-0">
-                <div class="col-4">
-                    <div class="stat-item">
-                        <i class="bi bi-eye text-primary"></i>
-                        <h5>{{ service.view_count }}</h5>
-                        <small>Views</small>
-                    </div>
-                </div>
-                <div class="col-4" style="border-left: 1px solid var(--border-color); border-right: 1px solid var(--border-color);">
-                    <div class="stat-item">
-                        <i class="bi bi-chat-dots text-success"></i>
-                        <h5>{{ service.inquiries.count }}</h5>
-                        <small>Inquiries</small>
-                    </div>
-                </div>
-                <div class="col-4">
-                    <div class="stat-item">
-                        <i class="bi bi-star-fill text-warning"></i>
-                        <h5>{{ average_rating|floatformat:1 }}</h5>
-                        <small>Rating</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Contact Buttons Grid (visitor actions, full width inside main card) -->
-        {% if user != service.provider.user %}
-        <div class="contact-buttons-grid mt-2 mb-2">
-            <div class="row g-2">
-                {% if can_inquire %}
-                <div class="col-6">
-                    <button class="btn btn-success w-100 btn-contact" data-bs-toggle="modal" data-bs-target="#inquiryModal">
-                        <i class="bi bi-chat-dots"></i>
-                        <span>Send Inquiry</span>
-                    </button>
-                </div>
-                <div class="col-6">
-                    {% if conversation %}
-                    <a href="{% url 'conversation_detail' conversation_uuid=conversation.uuid %}" class="btn btn-primary w-100 btn-contact">
-                        <i class="bi bi-envelope-open"></i>
-                        <span>Continue Chat</span>
-                    </a>
-                    {% else %}
-                    <button class="btn btn-outline-primary w-100 btn-contact" data-bs-toggle="modal" data-bs-target="#messageModal">
-                        <i class="bi bi-envelope"></i>
-                        <span>Send Message</span>
-                    </button>
-                    {% endif %}
-                </div>
-                <div class="col-6">
-                    <a href="{% url 'user_store' username=service.provider.user.username %}" class="btn btn-secondary w-100 btn-contact">
-                        <i class="fas fa-store"></i>
-                        <span>Store</span>
-                    </a>
-                </div>
-                <div class="col-6">
-                    <a href="{% url 'report_item' 'service' service.id %}" class="btn btn-outline-danger w-100 btn-contact">
-                        <i class="fas fa-flag"></i>
-                        <span>Report</span>
-                    </a>
-                </div>
-
-                {% elif user.is_authenticated %}
-                <div class="col-12">
-                    <div class="alert alert-warning text-center mb-2 py-2 small">
-                        <i class="bi bi-exclamation-triangle me-2"></i>You've already sent an inquiry for this service
-                    </div>
-                </div>
-                {% if user_inquiry %}
-                <div class="col-6">
-                    <a href="{% url 'services:inquiry_detail' pk=user_inquiry.id %}" class="btn btn-outline-primary w-100 btn-contact">
-                        <i class="bi bi-eye"></i>
-                        <span>View Inquiry</span>
-                    </a>
-                </div>
-                {% endif %}
-                <div class="col-6">
-                    {% if conversation %}
-                    <a href="{% url 'conversation_detail' conversation_uuid=conversation.uuid %}" class="btn btn-outline-primary w-100 btn-contact">
-                        <i class="bi bi-envelope-open"></i>
-                        <span>View Messages</span>
-                    </a>
-                    {% else %}
-                    <button class="btn btn-outline-primary w-100 btn-contact" data-bs-toggle="modal" data-bs-target="#messageModal">
-                        <i class="bi bi-envelope"></i>
-                        <span>Send Message</span>
-                    </button>
-                    {% endif %}
-                </div>
-                <div class="col-6">
-                    <a href="{% url 'report_item' 'service' service.id %}" class="btn btn-outline-danger w-100 btn-contact">
-                        <i class="fas fa-flag"></i>
-                        <span>Report</span>
-                    </a>
-                </div>
-
                 {% else %}
-                <div class="col-12">
-                    <a href="{% url 'account_login' %}?next={{ service.get_absolute_url }}" class="btn btn-primary w-100 btn-contact">
-                        <i class="bi bi-box-arrow-in-right"></i>
-                        <span>Login to Inquire</span>
-                    </a>
+                <div class="ox-noimg ox-noimg-txt">
+                    {% if service.service_type == 'digital' %}<i class="bi bi-laptop" aria-hidden="true"></i>
+                    {% elif service.service_type == 'physical' %}<i class="bi bi-tools" aria-hidden="true"></i>
+                    {% elif service.service_type == 'consulting' %}<i class="bi bi-chat-dots" aria-hidden="true"></i>
+                    {% else %}<i class="bi bi-briefcase" aria-hidden="true"></i>{% endif %}
+                    <b>{{ service.get_service_type_display }} service</b>
+                    <small>No images provided</small>
                 </div>
                 {% endif %}
             </div>
-        </div>
-        {% endif %}
 
-    </div>
-</div>
-
-{% if global_banners %}
-{% include 'banner.html' with banners=global_banners %}
-{% endif %}
-
-<!-- Provider Information Card -->
-{% if user != service.provider.user %}
-<div class="card seller-card mt-3 mb-4">
-    <div class="card-header py-3">
-        <h5 class="mb-0 fw-bold">
-            <i class="fas fa-user-circle me-2"></i>
-            {% if provider_details.is_verified_business %}Business{% else %}Provider{% endif %} Information
-        </h5>
-    </div>
-
-    <!-- Verification Status Row -->
-    <div class="verification-status-row">
-        <div class="container-fluid px-3 py-2">
-            <div class="row g-2">
-                <div class="col-12 col-md-4">
-                    <div class="status-chip {% if provider_details.is_verified_business %}verified{% else %}unverified{% endif %}">
-                        <div class="status-icon">
-                            {% if provider_details.is_verified_business %}<i class="bi bi-patch-check-fill"></i>
-                            {% else %}<i class="bi bi-shield-exclamation"></i>{% endif %}
-                        </div>
-                        <div class="status-content">
-                            <div class="status-label">Business</div>
-                            <div class="status-value">{% if provider_details.is_verified_business %}Verified{% else %}Unverified{% endif %}</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-12 col-md-4">
-                    <div class="status-chip {% if service.provider.user.is_active %}verified{% else %}unverified{% endif %}">
-                        <div class="status-icon">
-                            {% if service.provider.user.is_active %}<i class="bi bi-person-check-fill"></i>
-                            {% else %}<i class="bi bi-person-x-fill"></i>{% endif %}
-                        </div>
-                        <div class="status-content">
-                            <div class="status-label">Account</div>
-                            <div class="status-value">{% if service.provider.user.is_active %}Active{% else %}Inactive{% endif %}</div>
-                        </div>
-                    </div>
-                </div>
+            {% if images|length > 1 %}
+            <div class="carousel-dots" id="carouselDots">
+                {% for image in images %}
+                    <button type="button" class="carousel-dot {% if forloop.first %}active{% endif %}" data-index="{{ forloop.counter0 }}" aria-label="Go to image {{ forloop.counter }}"></button>
+                {% endfor %}
             </div>
-        </div>
-    </div>
-
-    <div class="card-body py-3">
-        <div class="seller-profile-unified">
-            <div class="row g-3">
-                <!-- Left: Avatar & Basic Info -->
-                <div class="col-md-4">
-                    <div class="text-center">
-                        {% if service.provider.user.profile.photo %}
-                            <img src="{{ service.provider.user.profile.photo.url }}"
-                                 alt="{{ provider_details.name }}"
-                                 class="seller-avatar-unified mb-2">
-                        {% else %}
-                            <div class="seller-avatar-placeholder-unified mb-2">
-                                <span class="h4 mb-0">{{ provider_details.name|first|upper }}</span>
-                            </div>
-                        {% endif %}
-
-                        <h5 class="fw-bold mb-1">
-                            {{ provider_details.business_name|default:provider_details.name }}
-                            {% if provider_details.is_verified_business %}
-                                <i class="bi bi-patch-check-fill pro-seller-icon"></i>
-                            {% endif %}
-                        </h5>
-                        <p class="text-muted small mb-2">
-                            {% if provider_details.is_verified_business %}
-                                {{ provider_details.business_type|default:"Business" }}
-                            {% else %}
-                                @{{ service.provider.user.username }}
-                            {% endif %}
-                        </p>
-
-                        {% if provider_details.average_rating %}
-                        <div class="rating-wrapper mb-2">
-                            <div class="d-flex align-items-center justify-content-center gap-1">
-                                <div class="stars-provider">
-                                    {% for i in "12345"|make_list %}
-                                        {% if forloop.counter <= provider_details.average_rating|floatformat:0|add:0 %}
-                                            <i class="bi bi-star-fill"></i>
-                                        {% else %}
-                                            <i class="bi bi-star text-muted"></i>
-                                        {% endif %}
-                                    {% endfor %}
-                                </div>
-                                <span class="small fw-semibold">{{ provider_details.average_rating|floatformat:1 }}</span>
-                            </div>
-                            <small class="text-muted">{{ provider_details.total_reviews }} reviews</small>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <!-- Right: Details -->
-                <div class="col-md-8">
-                    {% if provider_details.is_verified_business and provider_details.business_description %}
-                    <div class="seller-description mb-3">
-                        <p class="small mb-0">{{ provider_details.business_description|truncatechars:200 }}</p>
-                    </div>
-                    {% elif service.provider.user.profile.bio %}
-                    <div class="seller-description mb-3">
-                        <p class="small mb-0">{{ service.provider.user.profile.bio|truncatechars:200 }}</p>
-                    </div>
-                    {% endif %}
-
-                    <div class="seller-details-grid">
-                        <div class="row g-2">
-                            <div class="col-6">
-                                <div class="detail-item-compact">
-                                    <i class="fas fa-calendar-alt"></i>
-                                    <div>
-                                        <small class="text-muted">Member Since</small>
-                                        <div class="fw-medium small">{{ provider_details.member_since|date:"M Y" }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="detail-item-compact">
-                                    <i class="bi bi-briefcase"></i>
-                                    <div>
-                                        <small class="text-muted">Total Services</small>
-                                        <div class="fw-medium small">{{ provider_details.total_services }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="detail-item-compact">
-                                    <i class="bi bi-star-fill"></i>
-                                    <div>
-                                        <small class="text-muted">Avg Rating</small>
-                                        <div class="fw-medium small">{{ provider_details.average_rating|floatformat:1 }}/5</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="detail-item-compact">
-                                    <i class="bi bi-chat-square-text"></i>
-                                    <div>
-                                        <small class="text-muted">Total Reviews</small>
-                                        <div class="fw-medium small">{{ provider_details.total_reviews }}</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {% if provider_details.is_verified_business and provider_details.business_phone %}
-                            <div class="col-6">
-                                <div class="detail-item-compact">
-                                    <i class="fas fa-phone"></i>
-                                    <div>
-                                        <small class="text-muted">Business Phone</small>
-                                        <div class="fw-medium small">{{ provider_details.business_phone }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            {% endif %}
-
-                            {% if provider_details.is_verified_business and provider_details.business_website %}
-                            <div class="col-12">
-                                <div class="detail-item-compact">
-                                    <i class="fas fa-globe"></i>
-                                    <div>
-                                        <small class="text-muted">Website</small>
-                                        <a href="{{ provider_details.business_website }}" target="_blank" class="business-link small">
-                                            Visit Website <i class="bi bi-box-arrow-up-right"></i>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <!-- Business contact info for verified businesses -->
-                    {% if provider_details.is_verified_business %}
-                    <div class="mt-3">
-                        <div class="business-contact-grid">
-                            {% if provider_details.business_email %}
-                            <div class="contact-item">
-                                <i class="bi bi-envelope-fill"></i>
-                                <span class="small">{{ provider_details.business_email }}</span>
-                            </div>
-                            {% endif %}
-                            {% if provider_details.business_phone %}
-                            <div class="contact-item">
-                                <i class="bi bi-telephone-fill"></i>
-                                <span class="small">{{ provider_details.business_phone }}</span>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endif %}
-
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
-
-<!-- Reviews Section -->
-{% if reviews %}
-<div class="mt-0 container-fluid">
-    <div class="reviews-section p-3 mt-3 mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0 fw-semibold"><i class="bi bi-star-fill text-warning me-2"></i>Reviews ({{ total_reviews }})</h5>
-            {% if has_more_reviews %}
-            <button class="btn btn-outline-primary btn-sm" id="loadMoreReviews">Load More</button>
             {% endif %}
+
+            <div id="lightboxImages" hidden>
+                {% for image in images %}<span data-url="{{ image.image.url }}"></span>{% endfor %}
+            </div>
+        </div>
+
+        <!-- Details -->
+        <div class="ox-details">
+            <ol class="ox-crumbs" aria-label="Category">
+                <li>Services</li>
+                {% if service.category %}<li><a href="{% url 'services:list' %}?category={{ service.category }}">{{ service.get_category_display }}</a></li>{% endif %}
+            </ol>
+            <h1 class="ox-title service-title">{{ service.title }}</h1>
+
+            <div class="ox-pricerow">
+                <span class="ox-price">{{ formatted_price }}</span>
+                <span class="ox-fine">{{ service.get_pricing_type_display }}</span>
+            </div>
+
+            <div class="ox-chips">
+                {% if service.is_suspended %}
+                    <span class="ox-stock t-red"><i class="bi bi-ban" aria-hidden="true"></i>Suspended</span>
+                {% elif not service.is_active %}
+                    <span class="ox-stock t-navy"><i class="bi bi-pause-circle-fill" aria-hidden="true"></i>Inactive</span>
+                {% elif service.expiration_date and service.expiration_date < now %}
+                    <span class="ox-stock t-orange"><i class="bi bi-clock-fill" aria-hidden="true"></i>Expired</span>
+                {% else %}
+                    <span class="ox-stock t-green"><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Active</span>
+                {% endif %}
+                {% if service.expiration_date and not service.is_suspended and service.is_active %}
+                    {% if service.days_until_expiration is not None and service.days_until_expiration <= 7 and service.days_until_expiration > 0 %}
+                        <span class="ox-stock t-orange"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>Expires in {{ service.days_until_expiration }} day{{ service.days_until_expiration|pluralize }}</span>
+                    {% endif %}
+                {% endif %}
+                <span class="ox-stock t-navy"><i class="bi bi-tag-fill" aria-hidden="true"></i>{{ service.get_service_type_display }}</span>
+                <span class="ox-stock t-teal"><i class="bi bi-bar-chart-fill" aria-hidden="true"></i>{{ service.get_experience_level_display }}</span>
+                {% if service.is_featured %}<span class="ox-stock t-orange"><i class="bi bi-star-fill" aria-hidden="true"></i>Featured</span>{% endif %}
+                {% if provider_details.is_verified_business %}<span class="ox-stock t-green"><i class="bi bi-shield-check" aria-hidden="true"></i>Verified provider</span>{% endif %}
+            </div>
+
+            <div class="ox-acts">
+                <button type="button" class="ox-act ox-act-pri" id="shareButton"><i class="bi bi-share-fill" aria-hidden="true"></i><span>Share</span></button>
+                {% if user.is_authenticated and user == service.provider.user %}
+                    <a href="{% url 'manage_listings' %}?tab=services" class="ox-act ox-act-boost"><i class="bi bi-list-ul" aria-hidden="true"></i><span>My services</span></a>
+                {% elif user.is_authenticated %}
+                    <button type="button"
+                            class="ox-act ox-act-save ox-tint t-red btn-action-secondary save-service-btn {% if is_saved %}saved-state{% endif %}"
+                            data-service-id="{{ service.id }}"
+                            data-item-id="{{ service.id }}"
+                            data-item-type="service"
+                            data-saved="{% if is_saved %}true{% else %}false{% endif %}"
+                            onclick="toggleSave(event, '{{ service.id }}', 'service')">
+                        <i class="bi {% if is_saved %}bi-bookmark-fill{% else %}bi-bookmark{% endif %}" aria-hidden="true"></i>
+                        <span class="save-text">{% if is_saved %}Saved{% else %}Save{% endif %}</span>
+                    </button>
+                {% else %}
+                    <a href="{% url 'account_login' %}" class="ox-act ox-act-save ox-tint t-red btn-action-secondary"><i class="bi bi-bookmark" aria-hidden="true"></i><span>Save</span></a>
+                {% endif %}
+            </div>
+
+            <section class="ox-sec" aria-labelledby="ox-ld">
+                <h2 class="ox-h2 t-orange" id="ox-ld"><i class="bi bi-list-check" aria-hidden="true"></i>Service details</h2>
+                <ul class="ox-cells">
+                    <li class="ox-cell t-teal"><span class="ox-ico ox-ico-s"><i class="bi bi-tag-fill" aria-hidden="true"></i></span><span><small>Category</small><b>{{ service.get_category_display|default:"General" }}</b></span></li>
+                    <li class="ox-cell t-purple"><span class="ox-ico ox-ico-s"><i class="bi bi-bar-chart-fill" aria-hidden="true"></i></span><span><small>Experience</small><b>{{ service.get_experience_level_display }}</b></span></li>
+                    <li class="ox-cell t-green"><span class="ox-ico ox-ico-s"><i class="bi bi-truck" aria-hidden="true"></i></span><span><small>Delivery</small><b>{{ service.get_delivery_method_display }}</b></span></li>
+                    {% if service.location %}<li class="ox-cell t-purple"><span class="ox-ico ox-ico-s"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i></span><span><small>Location</small><b>{{ service.location }}</b></span></li>{% endif %}
+                    <li class="ox-cell t-navy"><span class="ox-ico ox-ico-s"><i class="bi bi-calendar-check-fill" aria-hidden="true"></i></span><span><small>Availability</small><b>{{ service.get_availability_display }}</b></span></li>
+                    {% if service.languages %}<li class="ox-cell t-teal"><span class="ox-ico ox-ico-s"><i class="bi bi-translate" aria-hidden="true"></i></span><span><small>Languages</small><b>{{ service.languages }}</b></span></li>{% endif %}
+                    {% if service.delivery_time %}<li class="ox-cell t-orange"><span class="ox-ico ox-ico-s"><i class="bi bi-stopwatch-fill" aria-hidden="true"></i></span><span><small>Delivery time</small><b>{{ service.delivery_time }}</b></span></li>{% endif %}
+                    <li class="ox-cell t-green"><span class="ox-ico ox-ico-s"><i class="bi bi-hourglass-split" aria-hidden="true"></i></span><span><small>Delivery days</small><b>{{ service.delivery_days }} day{{ service.delivery_days|pluralize }}</b></span></li>
+                    <li class="ox-cell t-purple"><span class="ox-ico ox-ico-s"><i class="bi bi-arrow-repeat" aria-hidden="true"></i></span><span><small>Revisions</small><b>{{ service.revision_limit }} included</b></span></li>
+                    {% if service.years_of_experience %}<li class="ox-cell t-orange"><span class="ox-ico ox-ico-s"><i class="bi bi-award-fill" aria-hidden="true"></i></span><span><small>Years of experience</small><b>{{ service.years_of_experience }} yr{{ service.years_of_experience|pluralize }}</b></span></li>{% endif %}
+                    <li class="ox-cell t-navy"><span class="ox-ico ox-ico-s"><i class="bi bi-globe-americas" aria-hidden="true"></i></span><span><small>Serves nationwide</small><b>{% if service.serves_nationwide %}Yes{% else %}No{% endif %}</b></span></li>
+                </ul>
+            </section>
+
+            <section class="ox-sec" aria-labelledby="ox-desc">
+                <h2 class="ox-h2 t-navy" id="ox-desc"><i class="bi bi-text-left" aria-hidden="true"></i>Service description</h2>
+                <div class="ox-desc-box"><div class="ox-desc" tabindex="0">{{ service.description|linebreaks }}</div></div>
+            </section>
+
+            {% if service.what_you_get %}
+            <section class="ox-sec" aria-labelledby="ox-wyg">
+                <h2 class="ox-h2 t-green" id="ox-wyg"><i class="bi bi-gift-fill" aria-hidden="true"></i>What you get</h2>
+                <div class="ox-desc-box"><div class="ox-desc" tabindex="0">{{ service.what_you_get|linebreaks }}</div></div>
+            </section>
+            {% endif %}
+
+            {% if service.skills_offered %}
+            <section class="ox-sec" aria-labelledby="ox-skills">
+                <h2 class="ox-h2 t-purple" id="ox-skills"><i class="bi bi-tools" aria-hidden="true"></i>Skills &amp; expertise</h2>
+                <div class="ox-desc-box"><div class="ox-desc" tabindex="0">{{ service.skills_offered|linebreaks }}</div></div>
+            </section>
+            {% endif %}
+
+            {% if service.requirements %}
+            <section class="ox-sec" aria-labelledby="ox-req">
+                <h2 class="ox-h2 t-teal" id="ox-req"><i class="bi bi-clipboard-check-fill" aria-hidden="true"></i>Requirements</h2>
+                <div class="ox-desc-box"><div class="ox-desc" tabindex="0">{{ service.requirements|linebreaks }}</div></div>
+            </section>
+            {% endif %}
+
+            {% if service.tools_used %}
+            <section class="ox-sec" aria-labelledby="ox-tools">
+                <h2 class="ox-h2 t-orange" id="ox-tools"><i class="bi bi-wrench-adjustable" aria-hidden="true"></i>Tools &amp; equipment</h2>
+                <div class="ox-desc-box"><div class="ox-desc" tabindex="0">{{ service.tools_used|linebreaks }}</div></div>
+            </section>
+            {% endif %}
+
+            {% if service.extra_services %}
+            <section class="ox-sec" aria-labelledby="ox-extra">
+                <h2 class="ox-h2 t-green" id="ox-extra"><i class="bi bi-plus-circle-fill" aria-hidden="true"></i>Additional services</h2>
+                <div class="ox-desc-box"><div class="ox-desc" tabindex="0">{{ service.extra_services|linebreaks }}</div></div>
+            </section>
+            {% endif %}
+
+            {% if service.certifications %}
+            <section class="ox-sec" aria-labelledby="ox-cert">
+                <h2 class="ox-h2 t-purple" id="ox-cert"><i class="bi bi-patch-check-fill" aria-hidden="true"></i>Certifications &amp; qualifications</h2>
+                <div class="ox-desc-box"><div class="ox-desc" tabindex="0">{{ service.certifications|linebreaks }}</div></div>
+            </section>
+            {% endif %}
+
+            {% if service.contact_instructions %}
+            <section class="ox-sec" aria-labelledby="ox-ci">
+                <h2 class="ox-h2 t-teal" id="ox-ci"><i class="bi bi-chat-left-text-fill" aria-hidden="true"></i>Contact instructions</h2>
+                <div class="ox-desc-box"><div class="ox-desc" tabindex="0">{{ service.contact_instructions|linebreaks }}</div></div>
+            </section>
+            {% endif %}
+
+            {% if service.portfolio_url or documents %}
+            <section class="ox-sec" aria-labelledby="ox-docs">
+                <h2 class="ox-h2 t-navy" id="ox-docs"><i class="bi bi-briefcase-fill" aria-hidden="true"></i>Portfolio &amp; documents</h2>
+                <ul class="ox-cells">
+                    {% if service.portfolio_url %}
+                    <li class="ox-cell t-purple ox-span2"><span class="ox-ico ox-ico-s"><i class="bi bi-briefcase-fill" aria-hidden="true"></i></span><span><small>Portfolio</small><b><a href="{{ service.portfolio_url }}" target="_blank" rel="noopener noreferrer" class="ox-link">View portfolio <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a></b></span></li>
+                    {% endif %}
+                    {% for document in documents %}
+                    <li class="ox-cell t-orange ox-span2"><span class="ox-ico ox-ico-s"><i class="bi bi-file-earmark-text-fill" aria-hidden="true"></i></span><span><small>{{ document.document.size|filesizeformat }}</small><b><a href="{{ document.document.url }}" target="_blank" rel="noopener noreferrer" class="ox-link">{{ document.title }} <i class="bi bi-download" aria-hidden="true"></i></a></b></span></li>
+                    {% endfor %}
+                </ul>
+            </section>
+            {% endif %}
+
+            <div class="ox-stats" role="group" aria-label="Service activity">
+                <div class="ox-stat ox-tint t-navy"><span class="ox-ico ox-ico-s"><i class="bi bi-eye-fill" aria-hidden="true"></i></span><b>{{ service.view_count }}</b><small>Views</small></div>
+                <div class="ox-stat ox-tint t-green"><span class="ox-ico ox-ico-s"><i class="bi bi-chat-dots-fill" aria-hidden="true"></i></span><b>{{ service.inquiries.count }}</b><small>Inquiries</small></div>
+                <div class="ox-stat ox-tint t-orange"><span class="ox-ico ox-ico-s"><i class="bi bi-star-fill" aria-hidden="true"></i></span><b>{{ average_rating|floatformat:1 }}</b><small>Rating</small></div>
+            </div>
+
+            {% if user.is_authenticated and user == service.provider.user %}
+            <section class="ox-owner ox-tint t-orange" aria-labelledby="ox-own">
+                <h2 class="ox-h2" id="ox-own"><i class="bi bi-gear-fill" aria-hidden="true"></i>Owner tools</h2>
+                <div class="ox-owner-btns">
+                    <a href="{% url 'services:update' pk=service.id %}" class="ox-mini"><i class="bi bi-pencil-fill" aria-hidden="true"></i>Edit</a>
+                    <a href="{% url 'services:delete' pk=service.id %}" class="ox-mini ox-mini-danger"><i class="bi bi-trash-fill" aria-hidden="true"></i>Delete</a>
+                </div>
+            </section>
+            {% endif %}
+        </div>
+    </article>
+
+    {% if global_banners %}
+        {% include 'banner.html' with banners=global_banners %}
+    {% endif %}
+
+    {% if user != service.provider.user %}
+    <section class="ox-card ox-seller" aria-labelledby="ox-seller-h">
+        <h2 class="ox-h2 t-navy" id="ox-seller-h"><i class="bi bi-person-circle" aria-hidden="true"></i>{% if provider_details.is_verified_business %}Business{% else %}Provider{% endif %} information</h2>
+
+        <div class="ox-vchips">
+            <div class="ox-vchip ox-tint {% if provider_details.is_verified_business %}t-green{% else %}t-red{% endif %}">
+                <span class="ox-ico ox-ico-s"><i class="bi {% if provider_details.is_verified_business %}bi-patch-check-fill{% else %}bi-shield-exclamation{% endif %}" aria-hidden="true"></i></span>
+                <span><small>Business</small><b>{% if provider_details.is_verified_business %}Verified{% else %}Unverified{% endif %}</b></span>
+            </div>
+            <div class="ox-vchip ox-tint {% if service.provider.user.is_active %}t-green{% else %}t-red{% endif %}">
+                <span class="ox-ico ox-ico-s"><i class="bi {% if service.provider.user.is_active %}bi-person-check-fill{% else %}bi-person-x-fill{% endif %}" aria-hidden="true"></i></span>
+                <span><small>Account</small><b>{% if service.provider.user.is_active %}Active{% else %}Inactive{% endif %}</b></span>
+            </div>
+        </div>
+
+        <div class="ox-seller-main">
+            <div class="ox-seller-id">
+                {% if service.provider.user.profile.photo %}
+                    <img src="{{ service.provider.user.profile.photo.url }}" alt="{{ provider_details.name }}" class="ox-avatar" width="72" height="72">
+                {% else %}
+                    <span class="ox-avatar">{{ provider_details.name|first|upper }}</span>
+                {% endif %}
+                <h3 class="ox-seller-name">
+                    {{ provider_details.business_name|default:provider_details.name }}
+                    {% if provider_details.is_verified_business %}<i class="bi bi-patch-check-fill" aria-hidden="true"></i>{% endif %}
+                </h3>
+                <p class="ox-fine">{% if provider_details.is_verified_business %}{{ provider_details.business_type|default:"Business" }}{% else %}@{{ service.provider.user.username }}{% endif %}</p>
+                {% if provider_details.average_rating %}
+                <div class="rating-wrapper">
+                    <div class="ox-stars-row">
+                        <span class="ox-stars">
+                            {% for i in "12345"|make_list %}{% if forloop.counter <= provider_details.average_rating|floatformat:0|add:0 %}<i class="bi bi-star-fill" aria-hidden="true"></i>{% else %}<i class="bi bi-star" aria-hidden="true"></i>{% endif %}{% endfor %}
+                        </span>
+                        <b class="ox-fine">{{ provider_details.average_rating|floatformat:1 }}</b>
+                    </div>
+                    <p class="ox-fine">{{ provider_details.total_reviews }} reviews</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="ox-seller-info">
+                {% if provider_details.is_verified_business and provider_details.business_description %}
+                    <p class="ox-fine">{{ provider_details.business_description|truncatechars:200 }}</p>
+                {% elif service.provider.user.profile.bio %}
+                    <p class="ox-fine">{{ service.provider.user.profile.bio|truncatechars:200 }}</p>
+                {% endif %}
+                <ul class="ox-cells">
+                    <li class="ox-cell t-navy"><span class="ox-ico ox-ico-s"><i class="bi bi-calendar-event-fill" aria-hidden="true"></i></span><span><small>Member since</small><b>{{ provider_details.member_since|date:"M Y" }}</b></span></li>
+                    <li class="ox-cell t-orange"><span class="ox-ico ox-ico-s"><i class="bi bi-briefcase-fill" aria-hidden="true"></i></span><span><small>Total services</small><b>{{ provider_details.total_services }}</b></span></li>
+                    <li class="ox-cell t-green"><span class="ox-ico ox-ico-s"><i class="bi bi-star-fill" aria-hidden="true"></i></span><span><small>Avg rating</small><b>{{ provider_details.average_rating|floatformat:1 }}/5</b></span></li>
+                    <li class="ox-cell t-purple"><span class="ox-ico ox-ico-s"><i class="bi bi-chat-square-text-fill" aria-hidden="true"></i></span><span><small>Total reviews</small><b>{{ provider_details.total_reviews }}</b></span></li>
+                    {% if provider_details.is_verified_business and provider_details.business_phone %}<li class="ox-cell t-teal"><span class="ox-ico ox-ico-s"><i class="bi bi-telephone-fill" aria-hidden="true"></i></span><span><small>Business phone</small><b>{{ provider_details.business_phone }}</b></span></li>{% endif %}
+                    {% if provider_details.is_verified_business and provider_details.business_email %}<li class="ox-cell t-green"><span class="ox-ico ox-ico-s"><i class="bi bi-envelope-fill" aria-hidden="true"></i></span><span><small>Business email</small><b>{{ provider_details.business_email }}</b></span></li>{% endif %}
+                    {% if provider_details.is_verified_business and provider_details.business_website %}<li class="ox-cell t-purple ox-span2"><span class="ox-ico ox-ico-s"><i class="bi bi-globe" aria-hidden="true"></i></span><span><small>Website</small><b><a href="{{ provider_details.business_website }}" target="_blank" rel="noopener noreferrer" class="ox-link">Visit website <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a></b></span></li>{% endif %}
+                </ul>
+            </div>
+        </div>
+
+        <nav class="ox-tiles ox-tiles-2" aria-label="Provider links">
+            <a href="{% url 'user_store' username=service.provider.user.username %}" class="ox-tile ox-tint t-navy"><span class="ox-ico"><i class="bi bi-shop" aria-hidden="true"></i></span>Store</a>
+            <a href="{% url 'report_item' 'service' service.id %}" class="ox-tile ox-tint t-red"><span class="ox-ico"><i class="bi bi-flag-fill" aria-hidden="true"></i></span>Report</a>
+        </nav>
+    </section>
+    {% endif %}
+
+    {% if reviews %}
+    <section class="ox-sec" aria-labelledby="ox-rev-h">
+        <div class="ox-revs-head">
+            <h2 class="ox-h2 t-orange" id="ox-rev-h"><i class="bi bi-star-fill" aria-hidden="true"></i>Reviews ({{ total_reviews }})</h2>
+            {% if has_more_reviews %}<button type="button" class="ox-mini" id="loadMoreReviews">Load more</button>{% endif %}
         </div>
         <div id="reviewsList">
             {% for review in reviews %}
-            <div class="review-item mb-3 p-3">
-                <div class="d-flex justify-content-between align-items-start mb-2">
+            <article class="review-item">
+                <div class="review-head">
                     <div>
-                        <strong class="small">{{ review.reviewer.username }}</strong>
-                        <div class="rating-stars mt-1">
-                            {% for i in "12345"|make_list %}
-                                {% if forloop.counter <= review.rating %}
-                                    <i class="bi bi-star-fill text-warning"></i>
-                                {% else %}
-                                    <i class="bi bi-star text-muted"></i>
-                                {% endif %}
-                            {% endfor %}
+                        <b>{{ review.reviewer.username }}</b>
+                        <div class="rating-stars">
+                            {% for i in "12345"|make_list %}{% if forloop.counter <= review.rating %}<i class="bi bi-star-fill" aria-hidden="true"></i>{% else %}<i class="bi bi-star" aria-hidden="true"></i>{% endif %}{% endfor %}
                         </div>
                     </div>
-                    <small class="text-muted">{{ review.created_at|timesince }} ago</small>
+                    <small class="ox-fine">{{ review.created_at|timesince }} ago</small>
                 </div>
                 <p class="review-text">{{ review.comment }}</p>
-                {% if review.replies.all %}
-                <div class="mt-2">
-                    {% for reply in review.replies.all %}
-                    <div class="reply-item">
-                        <div class="d-flex justify-content-between mb-1">
-                            <strong>{{ reply.replier.username }}</strong>
-                            <small class="text-muted">{{ reply.created_at|timesince }} ago</small>
-                        </div>
-                        <p class="mb-0">{{ reply.reply_text }}</p>
+                {% for reply in review.replies.all %}
+                <div class="reply-item">
+                    <div class="review-head">
+                        <b>{{ reply.replier.username }}</b>
+                        <small class="ox-fine">{{ reply.created_at|timesince }} ago</small>
                     </div>
-                    {% endfor %}
+                    <p>{{ reply.reply_text }}</p>
                 </div>
-                {% endif %}
-            </div>
+                {% endfor %}
+            </article>
             {% endfor %}
         </div>
-    </div>
-</div>
-{% endif %}
+    </section>
+    {% endif %}
 
-<!-- Safety Tips Card -->
-<div class="mt-0 container-fluid">
-    <div class="card safety-tips-card mt-3 mb-4">
-        <div class="card-header py-2">
-            <h5 class="mb-0 fw-bold">
-                <i class="fas fa-shield-alt me-2"></i>Safety Tips
-            </h5>
-        </div>
-        <div class="card-body py-3">
-            <ul class="list-unstyled mb-0">
-                <li class="mb-2"><i class="fas fa-check-circle me-2" style="color: var(--success)"></i>Verify provider credentials before hiring.</li>
-                <li class="mb-2"><i class="fas fa-check-circle me-2" style="color: var(--success)"></i>Discuss project details and timeline clearly.</li>
+    <section class="ox-card ox-tips" aria-labelledby="ox-tips-h">
+        <h2 class="ox-h2 t-green" id="ox-tips-h"><i class="bi bi-shield-check" aria-hidden="true"></i>Safety tips</h2>
+        <ul>
+            <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Verify provider credentials before hiring.</li>
+            <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Discuss project details and timeline clearly.</li>
+        </ul>
+        <div class="collapse" id="hidden-tips-service">
+            <ul class="ox-mt-s">
+                <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Use secure payment methods.</li>
+                <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Start with smaller projects for new providers.</li>
+                <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Report suspicious services or providers immediately.</li>
             </ul>
-            <div class="collapse" id="hidden-tips-service">
-                <ul class="list-unstyled mt-3 mb-0">
-                    <li class="mb-2"><i class="fas fa-check-circle me-2" style="color: var(--success)"></i>Use secure payment methods.</li>
-                    <li class="mb-2"><i class="fas fa-check-circle me-2" style="color: var(--success)"></i>Start with smaller projects for new providers.</li>
-                    <li class="mb-0"><i class="fas fa-check-circle me-2" style="color: var(--success)"></i>Report suspicious services or providers immediately.</li>
-                </ul>
+        </div>
+        <button type="button" id="toggle-tips-service" class="ox-tips-toggle" data-bs-toggle="collapse" data-bs-target="#hidden-tips-service" aria-expanded="false" aria-controls="hidden-tips-service">
+            <i class="bi bi-chevron-down" aria-hidden="true"></i><span id="toggle-text-service">See more safety tips</span>
+        </button>
+    </section>
+
+    {% if related_services %}
+    <section aria-labelledby="ox-rel-h">
+        <h2 class="ox-h2 t-orange" id="ox-rel-h"><i class="bi bi-grid-fill" aria-hidden="true"></i>Related services</h2>
+        <div class="ox-grid">
+            {% for related_service in related_services %}
+                <div>{% include 'services/service_card.html' with service=related_service %}</div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if user != service.provider.user %}
+    <div class="ox-bar" role="group" aria-label="Contact the provider">
+        {% if can_inquire %}
+            <p class="ox-bar-title"><i class="bi bi-headset" aria-hidden="true"></i>Interested in this service?</p>
+            <div class="ox-bar-btns">
+                <button type="button" class="ox-cbtn ox-c-msg" data-bs-toggle="modal" data-bs-target="#inquiryModal"><i class="bi bi-chat-dots-fill" aria-hidden="true"></i><span>Send inquiry</span></button>
+                {% if conversation %}
+                    <a href="{% url 'conversation_detail' conversation_uuid=conversation.uuid %}" class="ox-cbtn ox-c-call"><i class="bi bi-envelope-open-fill" aria-hidden="true"></i><span>Continue chat</span></a>
+                {% else %}
+                    <button type="button" class="ox-cbtn ox-c-call" data-bs-toggle="modal" data-bs-target="#messageModal"><i class="bi bi-envelope-fill" aria-hidden="true"></i><span>Message</span></button>
+                {% endif %}
             </div>
-            <a id="toggle-tips-service"
-               class="d-block text-decoration-none mt-3"
-               data-bs-toggle="collapse"
-               href="#hidden-tips-service"
-               role="button"
-               aria-expanded="false"
-               aria-controls="hidden-tips-service">
-                <span class="text-primary fw-medium">
-                    <i class="fas fa-chevron-down toggle-icon me-2"></i>
-                    <span id="toggle-text-service">See more safety tips</span>
-                </span>
-            </a>
-        </div>
+        {% elif user.is_authenticated %}
+            <p class="ox-bar-title"><i class="bi bi-check-circle-fill" aria-hidden="true"></i>You've already sent an inquiry</p>
+            <div class="ox-bar-btns">
+                {% if user_inquiry %}
+                    <a href="{% url 'services:inquiry_detail' pk=user_inquiry.id %}" class="ox-cbtn ox-c-msg"><i class="bi bi-eye-fill" aria-hidden="true"></i><span>View inquiry</span></a>
+                {% endif %}
+                {% if conversation %}
+                    <a href="{% url 'conversation_detail' conversation_uuid=conversation.uuid %}" class="ox-cbtn ox-c-call"><i class="bi bi-envelope-open-fill" aria-hidden="true"></i><span>View messages</span></a>
+                {% else %}
+                    <button type="button" class="ox-cbtn ox-c-call" data-bs-toggle="modal" data-bs-target="#messageModal"><i class="bi bi-envelope-fill" aria-hidden="true"></i><span>Message</span></button>
+                {% endif %}
+            </div>
+        {% else %}
+            <p class="ox-bar-title"><i class="bi bi-headset" aria-hidden="true"></i>Interested in this service?</p>
+            <div class="ox-bar-btns">
+                <a href="{% url 'account_login' %}?next={{ service.get_absolute_url }}" class="ox-cbtn ox-c-msg"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i><span>Log in to inquire</span></a>
+            </div>
+        {% endif %}
     </div>
+    {% endif %}
 </div>
 
-<!-- Related Services -->
-{% if related_services %}
-<div class="mt-0 container-fluid">
-    <h2 class="section-title text-center mb-4">Related Services</h2>
-    <div class="row g-3">
-        {% for related_service in related_services %}
-        <div class="col-6 col-md-4 col-lg-3">
-            {% include 'services/service_card.html' with service=related_service %}
-        </div>
-        {% empty %}
-        <p>No related services found.</p>
-        {% endfor %}
-    </div>
-</div>
-{% endif %}
-
-<!-- ── Inquiry Modal ──────────────────────────────────────────── -->
 {% if can_inquire %}
+<!-- Inquiry modal -->
 <div class="modal fade" id="inquiryModal" tabindex="-1" aria-labelledby="inquiryModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content" style="background-color:var(--card-background);border-color:var(--border-color);">
-            <div class="modal-header" style="border-color:var(--border-color);">
-                <h5 class="modal-title" id="inquiryModalLabel" style="color:var(--text-primary);">
-                    <i class="bi bi-chat-dots me-2"></i>Send Inquiry — {{ service.title|truncatechars:40 }}
-                </h5>
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content ox-modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="inquiryModalLabel"><i class="bi bi-chat-dots-fill" aria-hidden="true"></i>Send inquiry</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="post" action="{% url 'services:create_inquiry' service.id %}" id="inquiryForm">
                 {% csrf_token %}
                 <div class="modal-body">
-                    <div id="inquiryFormError" class="alert alert-danger d-none"></div>
+                    <div id="inquiryFormError" class="alert alert-danger d-none" role="alert"></div>
                     {{ inquiry_form.as_p }}
                 </div>
-                <div class="modal-footer" style="border-color:var(--border-color);">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="bi bi-send me-2"></i>Send Inquiry</button>
+                <div class="modal-footer">
+                    <button type="button" class="ox-act ox-act-ghost" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="ox-act ox-act-pri"><i class="bi bi-send-fill" aria-hidden="true"></i><span>Send inquiry</span></button>
                 </div>
             </form>
         </div>
@@ -1209,23 +798,21 @@
 </div>
 {% endif %}
 
-<!-- ── Message Modal ──────────────────────────────────────────── -->
 {% if user.is_authenticated and user != service.provider.user %}
+<!-- Message modal -->
 <div class="modal fade" id="messageModal" tabindex="-1" aria-labelledby="messageModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content" style="background-color:var(--card-background);border-color:var(--border-color);">
-            <div class="modal-header" style="border-color:var(--border-color);">
-                <h5 class="modal-title" id="messageModalLabel" style="color:var(--text-primary);">
-                    <i class="bi bi-envelope me-2"></i>Send Message
-                </h5>
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content ox-modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="messageModalLabel"><i class="bi bi-envelope-fill" aria-hidden="true"></i>Send message</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="post" action="{% url 'services:send_message' service.id %}" id="messageForm">
                 {% csrf_token %}
                 <div class="modal-body">{{ message_form.as_p }}</div>
-                <div class="modal-footer" style="border-color:var(--border-color);">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="bi bi-send me-2"></i>Send Message</button>
+                <div class="modal-footer">
+                    <button type="button" class="ox-act ox-act-ghost" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="ox-act ox-act-pri"><i class="bi bi-send-fill" aria-hidden="true"></i><span>Send message</span></button>
                 </div>
             </form>
         </div>
@@ -1233,145 +820,21 @@
 </div>
 {% endif %}
 
-<!-- ── Share Modal ────────────────────────────────────────────── -->
-<div class="modal fade" id="shareModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content" style="background-color:var(--card-background);border-color:var(--border-color);">
-            <div class="modal-header" style="border-color:var(--border-color);">
-                <h5 class="modal-title" style="color:var(--text-primary);">Share Service</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="row g-3 text-center mb-3">
-                    <div class="col-4">
-                        <button class="btn btn-outline-success w-100 py-2" onclick="shareToWhatsApp()">
-                            <i class="bi bi-whatsapp fs-5 d-block mb-1"></i><small>WhatsApp</small>
-                        </button>
-                    </div>
-                    <div class="col-4">
-                        <button class="btn btn-outline-info w-100 py-2" onclick="shareToTwitter()">
-                            <i class="bi bi-twitter-x fs-5 d-block mb-1"></i><small>Twitter/X</small>
-                        </button>
-                    </div>
-                    <div class="col-4">
-                        <button class="btn btn-outline-secondary w-100 py-2" onclick="copyServiceLink()">
-                            <i class="bi bi-link-45deg fs-5 d-block mb-1"></i><small>Copy Link</small>
-                        </button>
-                    </div>
-                </div>
-                <div class="input-group">
-                    <input type="text" id="shareUrl" class="form-control form-control-sm"
-                           value="{{ request.build_absolute_uri }}" readonly
-                           style="background-color:var(--card-background);color:var(--text-primary);border-color:var(--border-color);">
-                    <button class="btn btn-outline-primary btn-sm" onclick="copyServiceLink()"><i class="bi bi-clipboard"></i></button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-function shareService() { new bootstrap.Modal(document.getElementById('shareModal')).show(); }
-function shareToWhatsApp() {
-    const text = encodeURIComponent('Check out this service: {{ service.title }}\n{{ service.get_absolute_url }}');
-    window.open('https://wa.me/?text=' + text, '_blank');
-}
-function shareToTwitter() {
-    const text = encodeURIComponent('Found this great service: {{ service.title }}');
-    const url  = encodeURIComponent('{{ service.get_absolute_url }}');
-    window.open('https://twitter.com/intent/tweet?text=' + text + '&url=' + url, '_blank');
-}
-function copyServiceLink() {
-    const shareUrl = document.getElementById('shareUrl');
-    shareUrl.select();
-    navigator.clipboard.writeText(shareUrl.value);
-    const btn = event.target.closest('button');
-    const orig = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-check"></i>';
-    setTimeout(() => { btn.innerHTML = orig; }, 2000);
-}
-// Toggle safety tips text
-document.addEventListener('DOMContentLoaded', function () {
-    const tipToggle = document.getElementById('toggle-tips-service');
-    if (tipToggle) {
-        tipToggle.addEventListener('click', function () {
-            const txt = document.getElementById('toggle-text-service');
-            const expanded = this.getAttribute('aria-expanded') === 'true';
-            if (txt) txt.textContent = expanded ? 'See more safety tips' : 'See fewer safety tips';
-        });
-    }
-});
-</script>
-
-<!-- ── Image Lightbox ───────────────────────────────────────── -->
+<!-- Image lightbox -->
 <div id="imgLightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
-    <button class="lb-close" onclick="closeLightbox()" aria-label="Close"><i class="bi bi-x-lg"></i></button>
-    <button class="lb-nav lb-prev" onclick="lbNav(-1)" aria-label="Previous"><i class="bi bi-chevron-left"></i></button>
-    <img class="lb-img" id="lbImg" src="" alt="Image">
-    <button class="lb-nav lb-next" onclick="lbNav(1)" aria-label="Next"><i class="bi bi-chevron-right"></i></button>
+    <button type="button" class="lb-close" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+    <button type="button" class="lb-nav lb-prev" aria-label="Previous"><i class="bi bi-chevron-left"></i></button>
+    <img class="lb-img" id="lbImg" src="" alt="Service image">
+    <button type="button" class="lb-nav lb-next" aria-label="Next"><i class="bi bi-chevron-right"></i></button>
     <div class="lb-dots" id="lbDots"></div>
     <div class="lb-counter" id="lbCounter"></div>
 </div>
-
-<script>
-(function () {
-    'use strict';
-    const lbUrls = Array.from(document.querySelectorAll('#lightboxImages span[data-url]')).map(s => s.dataset.url);
-    let lbIndex = 0, startX = 0;
-    const lb = document.getElementById('imgLightbox');
-    const lbImg = document.getElementById('lbImg');
-    const lbDots = document.getElementById('lbDots');
-    const lbCounter = document.getElementById('lbCounter');
-
-    function buildLbDots() {
-        lbDots.innerHTML = '';
-        if (lbUrls.length <= 1) return;
-        lbUrls.forEach((_, i) => {
-            const b = document.createElement('button');
-            b.className = 'lb-dot' + (i === 0 ? ' active' : '');
-            b.setAttribute('aria-label', 'Go to image ' + (i + 1));
-            b.onclick = () => lbShow(i);
-            lbDots.appendChild(b);
-        });
-    }
-    buildLbDots();
-
-    function lbShow(index) {
-        lbIndex = (index + lbUrls.length) % lbUrls.length;
-        lbImg.classList.add('lb-fade');
-        setTimeout(() => { lbImg.src = lbUrls[lbIndex]; lbImg.onload = () => lbImg.classList.remove('lb-fade'); }, 100);
-        document.querySelectorAll('#lbDots .lb-dot').forEach((d, i) => d.classList.toggle('active', i === lbIndex));
-        lbCounter.textContent = lbUrls.length > 1 ? (lbIndex + 1) + ' / ' + lbUrls.length : '';
-        lbCounter.style.display = lbUrls.length > 1 ? '' : 'none';
-        const bsCar = bootstrap.Carousel.getInstance(document.getElementById('serviceCarousel'));
-        if (bsCar) bsCar.to(lbIndex);
-    }
-
-    window.openLightbox = function (index) { lbShow(index); lb.classList.add('lb-open'); document.body.style.overflow = 'hidden'; };
-    window.closeLightbox = function () { lb.classList.remove('lb-open'); document.body.style.overflow = ''; lbImg.src = ''; };
-    window.lbNav = function (dir) { lbShow(lbIndex + dir); };
-    window.goToSlide = function (carouselId, index) { const bsCar = bootstrap.Carousel.getOrCreateInstance(document.getElementById(carouselId)); bsCar.to(index); };
-
-    document.addEventListener('keydown', function (e) { if (!lb.classList.contains('lb-open')) return; if (e.key === 'Escape') closeLightbox(); if (e.key === 'ArrowLeft') lbNav(-1); if (e.key === 'ArrowRight') lbNav(1); });
-    lb.addEventListener('click', function (e) { if (e.target === lb) closeLightbox(); });
-    lb.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
-    lb.addEventListener('touchend', e => { const diff = startX - e.changedTouches[0].clientX; if (Math.abs(diff) > 40) lbNav(diff > 0 ? 1 : -1); }, { passive: true });
-
-    const carouselEl = document.getElementById('serviceCarousel');
-    if (carouselEl) {
-        carouselEl.addEventListener('slide.bs.carousel', function (e) {
-            document.querySelectorAll('.carousel-dot').forEach((d, i) => d.classList.toggle('active', i === e.to));
-        });
-    }
-})();
-</script>
-
 {% endblock %}
 {% block 'Footer' %}{% endblock %}
 
 {% block additional_js %}
 <script>
-/* Inquiry form — prevent double-submit, AJAX handling */
+/* Inquiry form: prevent double-submit, AJAX handling */
 (function () {
     'use strict';
     function attachInquiryHandler() {

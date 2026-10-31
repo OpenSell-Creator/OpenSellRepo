@@ -1,1084 +1,736 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load compress %}
 
 {% block page_css %}
-    <link rel="stylesheet" type="text/css" href="{% static 'css/pages/product_detail.css' %}">
-    <style>
-        .back-button-container {
-            margin-bottom: 1rem;
-            padding: 0.5rem 0;
-        }
-        
-        .btn-back {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            background-color: var(--background-color);
-            border: 1px solid var(--border-color);
-            border-radius: 0.5rem;
-            color: var(--text-primary);
-            text-decoration: none;
-            transition: all 0.3s ease;
-            font-weight: 500;
-        }
-        
-        .btn-back:hover {
-            background-color: var(--card-background);
-            border-color: var(--accent-color);
-            color: var(--accent-color);
-            transform: translateX(-5px);
-        }
-        
-        .btn-back i {
-            font-size: 1rem;
-            transition: transform 0.3s ease;
-        }
-        
-        .btn-back:hover i {
-            transform: translateX(-3px);
-        }
+<style>
+/* Richness kit subset (assets/home-kit.css): vars, hues, icon badge, tint wash */
+.ox {
+    --ox-navy: var(--primary-color);
+    --ox-orange: var(--accent-color);
+    --ox-teal: var(--bs-teal, var(--primary-color));
+    --ox-green: var(--bs-success, var(--primary-color));
+    --ox-purple: var(--bs-purple, var(--primary-color));
+    --ox-red: var(--bs-danger, var(--accent-color));
+    display: flex; flex-direction: column; gap: var(--gap-sections);
+    color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-body);
+}
+.ox-has-bar { padding-bottom: 10.5rem; }
+.ox a { text-decoration: none; }
+.ox p { margin: 0; }
+.t-navy { --tint: var(--ox-navy); } .t-orange { --tint: var(--ox-orange); } .t-teal { --tint: var(--ox-teal); }
+.t-green { --tint: var(--ox-green); } .t-purple { --tint: var(--ox-purple); } .t-red { --tint: var(--ox-red); }
+.ox-ico { display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-lg); }
+.ox-ico-s { width: 1.75rem; height: 1.75rem; font-size: var(--font-size-base); }
+.ox-tint { position: relative; isolation: isolate; }
+.ox-tint::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .ox-tint::before { opacity: .09; }
+.ox-h2 { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-snug); }
+.ox-h2 .bi { margin-right: var(--sp-2); color: var(--tint); }
+.ox-fine { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.ox-card { border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); }
+@media (min-width: 768px) { .ox-h2 { font-size: var(--font-size-xl); } }
 
-        /* ── Lightbox ──────────────────────────────────────────── */
-        #imgLightbox {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            width: 100vw; height: 100vh;
-            z-index: 99999;
-            background: rgba(0,0,0,0.95);
-            align-items: center;
-            justify-content: center;
-            touch-action: pan-y pinch-zoom;
-            /* Ensure it's never clipped by a parent */
-            transform: none !important;
-            overflow: hidden;
-        }
-        #imgLightbox.lb-open { display: flex; }
-        #imgLightbox .lb-img {
-            max-width: 94vw;
-            max-height: 90vh;
-            object-fit: contain;
-            border-radius: 4px;
-            user-select: none;
-            -webkit-user-drag: none;
-            display: block;
-        }
-        #imgLightbox .lb-close {
-            position: fixed;
-            top: 1rem; right: 1rem;
-            width: 2.4rem; height: 2.4rem;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.18);
-            border: none; color: #fff;
-            font-size: 1.2rem; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            backdrop-filter: blur(6px);
-            -webkit-backdrop-filter: blur(6px);
-            transition: background 0.2s;
-            z-index: 100001;
-        }
-        #imgLightbox .lb-close:hover { background: rgba(255,255,255,0.32); }
-        #imgLightbox .lb-nav {
-            position: fixed;
-            top: 50%; transform: translateY(-50%);
-            width: 2.6rem; height: 2.6rem;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.18);
-            border: none; color: #fff;
-            font-size: 1.1rem; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            backdrop-filter: blur(6px);
-            -webkit-backdrop-filter: blur(6px);
-            transition: background 0.2s;
-            z-index: 100001;
-        }
-        #imgLightbox .lb-nav:hover { background: rgba(255,255,255,0.32); }
-        #imgLightbox .lb-prev { left: 0.75rem; }
-        #imgLightbox .lb-next { right: 0.75rem; }
-        #imgLightbox .lb-dots {
-            position: fixed;
-            bottom: 1.25rem; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 7px; z-index: 100001;
-        }
-        #imgLightbox .lb-dot {
-            width: 7px; height: 7px; border-radius: 50%;
-            background: rgba(255,255,255,0.35);
-            border: none; cursor: pointer; padding: 0;
-            transition: background 0.2s, transform 0.2s;
-        }
-        #imgLightbox .lb-dot.active {
-            background: #fff;
-            transform: scale(1.35);
-        }
-        #imgLightbox .lb-counter {
-            position: fixed;
-            top: 1rem; left: 50%; transform: translateX(-50%);
-            color: rgba(255,255,255,0.75);
-            font-size: 0.8rem;
-            background: rgba(0,0,0,0.45);
-            padding: 0.2rem 0.65rem;
-            border-radius: 999px;
-            z-index: 100001;
-            white-space: nowrap;
-        }
+/* Product: gallery and details */
+.ox-product { display: grid; grid-template-columns: 1fr; gap: var(--sp-4); padding: var(--pad-m); }
+@media (min-width: 768px) { .ox-product { grid-template-columns: 1fr 1fr; gap: var(--sp-6); padding: var(--pad-l); } }
+.ox-gal-frame { position: relative; height: 20rem; overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--hover-bg); }
+@media (min-width: 576px) { .ox-gal-frame { height: 24rem; } }
+@media (min-width: 768px) { .ox-gal-frame { height: 27.5rem; } }
+@media (min-width: 993px) { .ox-gal-frame { height: 32.5rem; } }
+.ox-gal-frame .carousel, .ox-gal-frame .carousel-inner, .ox-gal-frame .carousel-item { height: 100%; }
+.carousel-img-clickable { display: block; width: 100%; height: 100%; cursor: zoom-in; }
+.carousel-main-img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+.ox-noimg { display: grid; place-items: center; height: 100%; color: var(--text-secondary); font-size: var(--font-size-3xl); }
+.ox-gal-frame .carousel-control-prev, .ox-gal-frame .carousel-control-next { width: 3.25rem; }
+.ox-gal-frame .carousel-control-prev-icon, .ox-gal-frame .carousel-control-next-icon { width: 2.25rem; height: 2.25rem; border-radius: var(--radius-full); background-color: rgba(0, 0, 0, .5); background-size: 50%; }
+.carousel-dots { display: flex; justify-content: center; gap: var(--sp-2); margin-top: var(--sp-2); }
+.carousel-dot { width: .5rem; height: .5rem; padding: 0; border: 0; border-radius: var(--radius-full); background: var(--border-color); transition: background .2s, transform .2s; touch-action: manipulation; }
+.carousel-dot.active { background: var(--primary-color); transform: scale(1.3); }
+[data-bs-theme="dark"] .carousel-dot.active { background: var(--accent-color); }
 
-        /* ── Carousel dot indicators (below main carousel) ──── */
-        .carousel-dots {
-            display: flex;
-            justify-content: center;
-            gap: 6px;
-            margin-top: 0.5rem;
-        }
-        .carousel-dot {
-            width: 7px; height: 7px; border-radius: 50%;
-            background: var(--border-color);
-            border: none; cursor: pointer; padding: 0;
-            transition: background 0.2s, transform 0.2s;
-        }
-        .carousel-dot.active {
-            background: var(--primary-color);
-            transform: scale(1.3);
-        }
+.ox-details { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.ox-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1); margin: 0; padding: 0; list-style: none; font-size: var(--font-size-xs); color: var(--text-secondary); }
+.ox-crumbs li + li::before { content: "\F285"; margin-right: var(--sp-1); font-family: "bootstrap-icons"; }
+.ox-title { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-tight); overflow-wrap: anywhere; }
+@media (min-width: 768px) { .ox-title { font-size: var(--font-size-3xl); } }
+.ox-pricerow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+.ox-price { font-size: var(--font-size-3xl); font-weight: 600; line-height: 1; color: var(--accent-color); }
+.ox-stock { display: inline-flex; align-items: center; gap: var(--sp-1); padding: 0 var(--sp-2); border-radius: var(--radius-full); border: 1px solid var(--border-color); background: var(--card-background); font-size: var(--font-size-xs); font-weight: 600; line-height: var(--lh-body); }
+.ox-stock .bi { color: var(--tint); }
 
-        /* ── Zoom cursor hint on carousel ─────────────────────── */
-        .carousel-img-clickable { cursor: zoom-in; }
-    </style>
+/* Action buttons: solid fills */
+.ox-acts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+.ox-act { box-sizing: border-box; position: relative; isolation: isolate; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-3); border: 1px solid transparent; border-radius: var(--radius-md); font: inherit; font-size: var(--font-size-sm); font-weight: 600; line-height: var(--lh-tight); text-align: center; cursor: pointer; touch-action: manipulation; }
+.ox-act-pri { background: var(--primary-color); border-color: var(--primary-color); color: var(--bs-white); }
+[data-bs-theme="dark"] .ox-act-pri { border-color: rgba(255, 255, 255, .35); }
+.ox-act-boost { background: var(--accent-color); border-color: var(--accent-color); color: var(--bs-white); }
+.ox-act-done { background: var(--bs-success); border-color: var(--bs-success); color: var(--bs-white); cursor: default; }
+.ox-act-save { border-color: var(--border-color); background: var(--card-background); color: var(--text-primary); }
+.ox-act-save::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .ox-act-save::before { opacity: .09; }
+.ox-act-save .bi, .ox-act-save .fa-heart { color: var(--tint); }
+.ox-act-save.saved, .ox-act-save.saved-state, .ox-act-save[data-saved="true"] { background: var(--bs-danger); border-color: var(--bs-danger); color: var(--bs-white); }
+.ox-act-save.saved::before, .ox-act-save.saved-state::before, .ox-act-save[data-saved="true"]::before { display: none; }
+.ox-act-save.saved i, .ox-act-save.saved-state i, .ox-act-save[data-saved="true"] i { color: var(--bs-white); }
+.ox a.ox-act-pri:hover, .ox a.ox-act-boost:hover { color: var(--bs-white); }
+
+/* Listing details and seller facts: compact two-column grid */
+.ox-cells { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-cards); margin: 0; padding: 0; list-style: none; }
+.ox-cell { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; min-height: 2.75rem; padding: var(--sp-2) var(--pad-s); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); line-height: var(--lh-tight); }
+.ox-cell > span:last-child { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.ox-cell small { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.ox-cell b { font-size: var(--font-size-sm); font-weight: 600; overflow-wrap: anywhere; }
+.ox-cell .ox-link { font-size: var(--font-size-sm); }
+.ox-span2 { grid-column: 1 / -1; }
+.ox-sec { display: flex; flex-direction: column; gap: var(--sp-2); }
+.ox-desc-box { padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); }
+.ox-desc { max-height: 13.75rem; overflow-y: auto; padding-right: var(--sp-2); color: var(--text-secondary); font-size: var(--font-size-sm); line-height: var(--lh-body); overflow-wrap: anywhere; scrollbar-width: thin; scrollbar-color: var(--border-color) transparent; }
+.ox-desc::-webkit-scrollbar { width: 3px; }
+.ox-desc::-webkit-scrollbar-thumb { border-radius: var(--radius-full); background-color: var(--border-color); }
+.ox-desc p { margin: 0 0 var(--sp-2); }
+.ox-desc p:last-child { margin-bottom: 0; }
+.ox-mt { margin-top: var(--sp-3); }
+.ox-mt-s { margin-top: var(--sp-2); }
+#ox-tips-h, #ox-rel-h { margin-bottom: var(--sp-3); }
+.ox-proof.ox-proof-row { flex-direction: row; align-items: center; gap: var(--sp-3); }
+.ox-proof { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--pad-m); border-radius: var(--r-card-s); border: 1px solid var(--border-color); background: var(--card-background); }
+.ox-proof-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); }
+.ox-proof-grid img { width: 100%; height: 5.5rem; object-fit: cover; border: 1px solid var(--border-color); border-radius: var(--radius-sm); }
+.ox-proof-grid small { display: block; margin-top: var(--sp-1); font-size: var(--font-size-xs); text-align: center; color: var(--text-secondary); }
+
+/* Owner tools */
+.ox-owner { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); }
+.ox-owner-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.countdown-timer { display: inline-flex; align-items: baseline; gap: var(--sp-1); padding: var(--sp-1) var(--sp-3); border-radius: var(--radius-md); background: var(--primary-color); color: var(--bs-white); font-size: var(--font-size-base); font-weight: 600; font-variant-numeric: tabular-nums; }
+[data-bs-theme="dark"] .countdown-timer { border: 1px solid rgba(255, 255, 255, .35); }
+.countdown-timer .days, .countdown-timer .hours, .countdown-timer .minutes, .countdown-timer .seconds { margin-left: var(--sp-1); }
+.deletion-warning { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); padding: var(--pad-s); border-radius: var(--r-card-s); font-size: var(--font-size-sm); font-weight: 600; }
+.ox-owner-btns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+.ox-mini { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: var(--h-control); padding: 0 var(--sp-3); border: 1px solid transparent; border-radius: var(--radius-md); background: var(--primary-color); color: var(--bs-white); font: inherit; font-size: var(--font-size-sm); font-weight: 600; cursor: pointer; touch-action: manipulation; }
+.ox-mini-danger { background: var(--bs-danger); }
+.ox a.ox-mini:hover { color: var(--bs-white); }
+.ox-toast { position: fixed; left: 50%; bottom: 11rem; z-index: 1060; display: flex; align-items: center; gap: var(--sp-2); max-width: calc(100% - 2rem); padding: var(--sp-2) var(--sp-4); border-radius: var(--radius-full); background: var(--primary-color); color: var(--bs-white); font-size: var(--font-size-sm); font-weight: 600; box-shadow: var(--shadow-md); transform: translateX(-50%); }
+
+/* Seller card */
+.ox-seller { display: flex; flex-direction: column; gap: var(--sp-4); padding: var(--pad-m); }
+@media (min-width: 768px) { .ox-seller { padding: var(--pad-l); } }
+.ox-vchips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+.ox-vchip { display: flex; align-items: center; gap: var(--sp-2); padding: var(--pad-s); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); line-height: var(--lh-tight); }
+.ox-vchip small { display: block; font-size: var(--font-size-xs); color: var(--text-secondary); }
+.ox-vchip b { font-size: var(--font-size-sm); font-weight: 600; }
+.ox-seller-main { display: grid; grid-template-columns: 1fr; gap: var(--sp-4); }
+@media (min-width: 768px) { .ox-seller-main { grid-template-columns: 1fr 2fr; } }
+.ox-seller-id { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); text-align: center; }
+.ox-avatar { display: grid; place-items: center; width: 4.5rem; height: 4.5rem; border-radius: var(--radius-full); background: var(--primary-color); color: var(--bs-white); font-size: var(--font-size-xl); font-weight: 600; object-fit: cover; border: 2px solid var(--border-color); }
+.ox-seller-name { margin: 0; font-size: var(--font-size-lg); font-weight: 600; overflow-wrap: anywhere; }
+.ox-seller-name .bi { color: var(--accent-color); }
+.ox-stars { color: var(--accent-color); font-size: var(--font-size-sm); }
+.ox-seller-info { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.ox-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap-cards); }
+.ox-tile { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); padding: var(--pad-s); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-sm); font-weight: 600; line-height: var(--lh-tight); text-align: center; }
+.ox-link { color: var(--primary-color); font-weight: 600; }
+[data-bs-theme="dark"] .ox-link { color: var(--text-primary); text-decoration: underline; }
+
+/* Floating contact bar above the bottom navigation */
+.ox-bar { position: fixed; left: 50%; bottom: 5.75rem; z-index: 1040; display: flex; flex-direction: column; gap: var(--sp-1); width: calc(100% - 2rem); max-width: 21rem; padding: var(--sp-2); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); box-shadow: var(--shadow-md); transform: translateX(-50%); }
+.ox-bar.is-hidden { display: none; }
+@media (min-width: 768px) { .ox-bar { bottom: 5rem; } }
+.ox-bar-title { display: flex; align-items: center; justify-content: center; gap: var(--sp-1); font-size: var(--font-size-xs); font-weight: 600; line-height: var(--lh-tight); }
+.ox-bar-title .bi { color: var(--accent-color); }
+.ox-bar-btns { display: flex; gap: var(--sp-1); }
+.ox-cbtn { box-sizing: border-box; display: flex; flex: 1 1 0; align-items: center; justify-content: center; gap: var(--sp-2); min-width: 0; min-height: var(--h-control); margin: 0; padding: 0 var(--sp-2); border: 1px solid transparent; border-radius: var(--radius-full); font: inherit; font-size: var(--font-size-xs); font-weight: 600; line-height: var(--lh-tight); color: var(--bs-white); cursor: pointer; touch-action: manipulation; }
+.ox-c-wa { background: var(--bs-success); border-color: var(--bs-success); }
+.ox-c-call { background: var(--primary-color); border-color: var(--primary-color); }
+[data-bs-theme="dark"] .ox-c-call { border-color: rgba(255, 255, 255, .35); }
+.ox-c-msg { background: var(--accent-color); border-color: var(--accent-color); }
+.ox a.ox-cbtn:hover { color: var(--bs-white); }
+
+/* Safety tips and related */
+.ox-tips { padding: var(--pad-m); }
+.ox-tips ul { display: flex; flex-direction: column; gap: var(--sp-2); margin: 0; padding: 0; list-style: none; font-size: var(--font-size-sm); }
+.ox-tips li .bi { margin-right: var(--sp-2); color: var(--bs-success); }
+.ox-tips-toggle { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; padding: 0; border: 0; background: none; color: var(--primary-color); font: inherit; font-size: var(--font-size-sm); font-weight: 600; cursor: pointer; touch-action: manipulation; }
+[data-bs-theme="dark"] .ox-tips-toggle { color: var(--text-primary); }
+.ox-tips-toggle .bi { transition: transform .2s ease; }
+.ox-tips-toggle[aria-expanded="true"] .bi { transform: rotate(180deg); }
+.ox-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-cards); }
+.ox-grid > * { min-width: 0; }
+@media (min-width: 768px) { .ox-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 992px) { .ox-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.ox a:focus-visible, .ox button:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+@media (hover: hover) { .ox-tile:hover { border-color: var(--primary-color); } }
+@media (prefers-reduced-motion: reduce) { .carousel-dot, .ox-tips-toggle .bi { transition: none; } }
+
+/* Lightbox: unchanged behaviour */
+#imgLightbox { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh; z-index: 99999; background: rgba(0, 0, 0, .95); align-items: center; justify-content: center; touch-action: pan-y pinch-zoom; transform: none !important; overflow: hidden; }
+#imgLightbox.lb-open { display: flex; }
+#imgLightbox .lb-img { display: block; max-width: 94vw; max-height: 90vh; object-fit: contain; border-radius: 4px; user-select: none; -webkit-user-drag: none; }
+#imgLightbox .lb-close, #imgLightbox .lb-nav { position: fixed; display: flex; align-items: center; justify-content: center; border: none; border-radius: 50%; background: rgba(255, 255, 255, .18); color: var(--bs-white); cursor: pointer; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); z-index: 100001; touch-action: manipulation; }
+#imgLightbox .lb-close { top: 1rem; right: 1rem; width: 2.75rem; height: 2.75rem; font-size: 1.2rem; }
+#imgLightbox .lb-nav { top: 50%; width: 2.75rem; height: 2.75rem; font-size: 1.1rem; transform: translateY(-50%); }
+#imgLightbox .lb-prev { left: .75rem; } #imgLightbox .lb-next { right: .75rem; }
+#imgLightbox .lb-dots { position: fixed; bottom: 1.25rem; left: 50%; display: flex; gap: 7px; transform: translateX(-50%); z-index: 100001; }
+#imgLightbox .lb-dot { width: 7px; height: 7px; padding: 0; border: none; border-radius: 50%; background: rgba(255, 255, 255, .35); cursor: pointer; transition: background .2s, transform .2s; }
+#imgLightbox .lb-dot.active { background: var(--bs-white); transform: scale(1.35); }
+#imgLightbox .lb-counter { position: fixed; top: 1rem; left: 50%; padding: .2rem .65rem; border-radius: 999px; background: rgba(0, 0, 0, .45); color: rgba(255, 255, 255, .75); font-size: var(--font-size-sm); white-space: nowrap; transform: translateX(-50%); z-index: 100001; }
+@media (hover: hover) { #imgLightbox .lb-close:hover, #imgLightbox .lb-nav:hover { background: rgba(255, 255, 255, .32); } }
+</style>
 {% endblock %}
 
 {% block page_js %}
-    <script type="text/javascript" src="{% static 'js/pages/product_detail.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var $ = function (s, r) { return (r || document).querySelector(s); };
+    var $$ = function (s, r) { return [].slice.call((r || document).querySelectorAll(s)); };
+
+    /* Toast */
+    var toastTimer;
+    function toast(msg) {
+        var old = $('.ox-toast'); if (old) old.remove();
+        clearTimeout(toastTimer);
+        var t = document.createElement('div');
+        t.className = 'ox-toast'; t.setAttribute('role', 'status'); t.textContent = msg;
+        document.body.appendChild(t);
+        toastTimer = setTimeout(function () { t.remove(); }, 2800);
+    }
+
+    /* 1. Countdown (owner) */
+    function pad(n) { return String(n).padStart(2, '0'); }
+    function runTimer(timer, dateStr) {
+        clearInterval(timer._id);
+        if (!timer._tpl) timer._tpl = timer.innerHTML;
+        var end = new Date(dateStr);
+        if (isNaN(end.getTime())) { timer.textContent = 'Invalid date'; return; }
+        if (!$('.days', timer)) timer.innerHTML = timer._tpl;
+        function tick() {
+            var ms = end - new Date();
+            if (ms <= 0) { timer.innerHTML = 'Expired'; clearInterval(timer._id); return; }
+            var set = function (c, v) { var el = $('.' + c, timer); if (el) el.textContent = v; };
+            set('days', Math.floor(ms / 864e5));
+            set('hours', pad(Math.floor(ms % 864e5 / 36e5)));
+            set('minutes', pad(Math.floor(ms % 36e5 / 6e4)));
+            set('seconds', pad(Math.floor(ms % 6e4 / 1e3)));
+        }
+        tick();
+        timer._id = setInterval(tick, 1000);
+    }
+    $$('.countdown-timer').forEach(function (t) {
+        if (!t.dataset.expiration) { t.textContent = 'Date not set'; return; }
+        runTimer(t, t.dataset.expiration);
+    });
+
+    /* 2. Review star rating (reviews_section.html) */
+    var ratingSelect = document.getElementById('rating');
+    if (ratingSelect) {
+        var starRating = document.createElement('div');
+        starRating.classList.add('star-rating');
+        ratingSelect.parentNode.insertBefore(starRating, ratingSelect);
+        ratingSelect.style.display = 'none';
+        var updateStars = function () {
+            for (var k = 0; k < starRating.children.length; k++) {
+                starRating.children[k].innerHTML = k < ratingSelect.value ? '&#9733;' : '&#9734;';
+            }
+        };
+        [1, 2, 3, 4, 5].forEach(function (i) {
+            var star = document.createElement('span');
+            star.addEventListener('click', function () { ratingSelect.value = i; updateStars(); });
+            starRating.appendChild(star);
+        });
+        ratingSelect.addEventListener('change', updateStars);
+        updateStars();
+    }
+
+    /* 3. Quick update (owner) */
+    var quickForm = document.getElementById('quickUpdateForm');
+    if (quickForm) {
+        quickForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var btn = quickForm.querySelector('button[type="submit"]');
+            var label = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Updating...';
+            fetch(quickForm.action, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': quickForm.querySelector('[name="csrfmiddlewaretoken"]').value },
+                credentials: 'same-origin'
+            }).then(function (r) { return r.json(); }).then(function (data) {
+                if (data.success) {
+                    var timer = $('.countdown-timer');
+                    if (timer) { timer.dataset.expiration = data.expiration_date; runTimer(timer, data.expiration_date); }
+                    var w = $('.deletion-warning'); if (w) w.remove();
+                    toast(data.message || 'Listing updated');
+                } else { toast('Could not update the listing'); }
+            }).catch(function () { toast('Error updating listing'); })
+              .finally(function () { btn.disabled = false; btn.innerHTML = label; });
+        });
+    }
+
+    /* 4. Safety tips toggle text */
+    var tips = document.getElementById('hidden-tips'), tipsText = document.getElementById('toggle-text');
+    if (tips && tipsText) {
+        tips.addEventListener('show.bs.collapse', function () { tipsText.textContent = 'See fewer safety tips'; });
+        tips.addEventListener('hide.bs.collapse', function () { tipsText.textContent = 'See more safety tips'; });
+    }
+
+    /* 5. Share */
+    function copyText(text) {
+        if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+        return new Promise(function (resolve, reject) {
+            var ta = document.createElement('textarea');
+            ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy') ? resolve() : reject(); } catch (e) { reject(e); }
+            document.body.removeChild(ta);
+        });
+    }
+    var shareBtn = document.getElementById('shareButton');
+    if (shareBtn) {
+        shareBtn.addEventListener('click', function () {
+            var url = window.location.href;
+            var title = (($('.ox-title') || {}).textContent || 'Product').trim();
+            var price = (($('.ox-price') || {}).textContent || '').trim();
+            var text = 'Check out this ' + title + (price ? ' for ' + price : '') + ' on OpenSell!';
+            var mobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            function fallback() {
+                copyText(url).then(function () {
+                    var span = $('span', shareBtn), old = span.textContent;
+                    span.textContent = 'Copied!';
+                    setTimeout(function () { span.textContent = old; }, 2500);
+                    toast('Product link copied');
+                }, function () { toast('Could not copy the link'); });
+            }
+            if (navigator.share && mobile) {
+                navigator.share({ title: title + ' - OpenSell', text: text, url: url }).catch(fallback);
+            } else { fallback(); }
+        });
+    }
+
+    /* 6. Contact: WhatsApp with a pre-filled message */
+    function cleanPhone(p) {
+        var c = (p || '').replace(/\D/g, '');
+        if (!c) return '';
+        if (c.indexOf('234') === 0) return c;
+        if (c.charAt(0) === '0') return '234' + c.substring(1);
+        if (c.length === 10) return '234' + c;
+        return c;
+    }
+    var wa = document.getElementById('oxWhatsapp');
+    if (wa) {
+        wa.addEventListener('click', function () {
+            var phone = cleanPhone(wa.dataset.sellerPhone);
+            if (!phone) { toast('Seller phone number not available'); return; }
+            var msg = [
+                'Hello ' + (wa.dataset.sellerName || 'there') + '!', '',
+                "I'm interested in your product listed on OpenSell:", '',
+                '*' + (wa.dataset.productTitle || 'Product') + '*',
+                'Price: ' + (wa.dataset.productPrice || 'not available'), '',
+                'Could you please tell me more about:',
+                '- Availability and condition',
+                '- Payment and delivery options', '',
+                'Listing: ' + (wa.dataset.productUrl || window.location.href), '',
+                '_Sent via OpenSell Marketplace_'
+            ].join('\n');
+            window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank', 'noopener');
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'whatsapp_contact', { event_category: 'contact', event_label: wa.dataset.productTitle });
+            }
+        });
+    }
+
+    /* Hide the contact bar while a form field is being typed in */
+    var bar = $('.ox-bar');
+    if (bar) {
+        document.addEventListener('focusin', function (e) { if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) bar.classList.add('is-hidden'); });
+        document.addEventListener('focusout', function () { bar.classList.remove('is-hidden'); });
+    }
+
+    /* 7. Carousel dots and lightbox */
+    var carouselEl = document.getElementById('productCarousel');
+    function carousel() { return carouselEl && bootstrap.Carousel.getOrCreateInstance(carouselEl); }
+    if (carouselEl) {
+        carouselEl.addEventListener('slide.bs.carousel', function (e) {
+            $$('.carousel-dot').forEach(function (d, i) { d.classList.toggle('active', i === e.to); });
+        });
+    }
+    var dots = document.getElementById('carouselDots');
+    if (dots) dots.addEventListener('click', function (e) {
+        var b = e.target.closest('.carousel-dot');
+        if (b && carousel()) carousel().to(parseInt(b.dataset.index, 10));
+    });
+
+    var lb = document.getElementById('imgLightbox');
+    if (lb) {
+        document.body.appendChild(lb);   /* escape any overflow:hidden ancestor */
+        var urls = $$('#lightboxImages span[data-url]').map(function (s) { return s.dataset.url; });
+        var idx = 0, startX = 0;
+        var lbImg = document.getElementById('lbImg'), lbDots = document.getElementById('lbDots'), lbCounter = document.getElementById('lbCounter');
+        function show(i) {
+            idx = (i + urls.length) % urls.length;
+            lbImg.style.opacity = '0';
+            lbImg.src = urls[idx];
+            lbImg.onload = function () { lbImg.style.transition = 'opacity .18s ease'; lbImg.style.opacity = '1'; };
+            if (lbImg.complete && lbImg.naturalWidth) lbImg.style.opacity = '1';
+            $$('#lbDots .lb-dot').forEach(function (d, k) { d.classList.toggle('active', k === idx); });
+            lbCounter.textContent = urls.length > 1 ? (idx + 1) + ' / ' + urls.length : '';
+            lbCounter.style.display = urls.length > 1 ? '' : 'none';
+            if (carousel()) carousel().to(idx);
+        }
+        urls.forEach(function (_, i) {
+            if (urls.length <= 1) return;
+            var b = document.createElement('button');
+            b.className = 'lb-dot' + (i === 0 ? ' active' : '');
+            b.setAttribute('aria-label', 'Go to image ' + (i + 1));
+            b.addEventListener('click', function () { show(i); });
+            lbDots.appendChild(b);
+        });
+        var nav = function () { return $('.navbar, nav[class*="navbar"], header'); };
+        function open(i) {
+            show(i); lb.classList.add('lb-open');
+            document.documentElement.style.overflow = 'hidden'; document.body.style.overflow = 'hidden';
+            var n = nav(); if (n) n.style.zIndex = '1';
+        }
+        function close() {
+            lb.classList.remove('lb-open');
+            document.documentElement.style.overflow = ''; document.body.style.overflow = '';
+            var n = nav(); if (n) n.style.zIndex = '';
+            lbImg.src = ''; lbImg.style.opacity = '0';
+        }
+        $$('.carousel-img-clickable').forEach(function (el) {
+            el.addEventListener('click', function () { open(parseInt(el.dataset.index, 10) || 0); });
+        });
+        $('.lb-close', lb).addEventListener('click', close);
+        $('.lb-prev', lb).addEventListener('click', function () { show(idx - 1); });
+        $('.lb-next', lb).addEventListener('click', function () { show(idx + 1); });
+        document.addEventListener('keydown', function (e) {
+            if (!lb.classList.contains('lb-open')) return;
+            if (e.key === 'Escape') close();
+            if (e.key === 'ArrowLeft') show(idx - 1);
+            if (e.key === 'ArrowRight') show(idx + 1);
+        });
+        lb.addEventListener('click', function (e) { if (e.target === lb) close(); });
+        lb.addEventListener('touchstart', function (e) { startX = e.touches[0].clientX; }, { passive: true });
+        lb.addEventListener('touchend', function (e) {
+            var d = startX - e.changedTouches[0].clientX;
+            if (Math.abs(d) > 40) show(idx + (d > 0 ? 1 : -1));
+        }, { passive: true });
+    }
+
+    /* 8. Lazy images */
+    if ('IntersectionObserver' in window) {
+        var io = new IntersectionObserver(function (entries, obs) {
+            entries.forEach(function (en) {
+                if (en.isIntersecting) { en.target.src = en.target.dataset.src; en.target.removeAttribute('data-src'); obs.unobserve(en.target); }
+            });
+        });
+        $$('img[data-src]').forEach(function (img) { io.observe(img); });
+    }
+});
+</script>
 {% endblock %}
+
 {% block 'Body' %}
+<div class="ox{% if user != product.seller.user %} ox-has-bar{% endif %}">
 
-<div class="card product-detail-card">
-    <div class="product-detail-container">
-        <div class="row g-4">
-            <!-- Product Images Column -->
-            <div class="col-md-6">
-                <!-- Main Carousel -->
-                <div class="main-carousel-wrapper" style="border: 1px solid var(--border-color);">
-                    <div id="productCarousel" class="carousel slide h-100 w-100">
-                        <div class="carousel-inner rounded-3 h-100">
-                            {% for image in images %}
-                                <div class="carousel-item {% if forloop.first %}active{% endif %}">
-                                    <div class="carousel-img-clickable"
-                                         onclick="openLightbox({{ forloop.counter0 }})"
-                                         title="Click to view full image">
-                                        <img src="{{ image.image.url }}"
-                                             data-full-url="{{ image.image.url }}"
-                                             class="carousel-main-img"
-                                             alt="{{ product.title }}">
-                                    </div>
+    <article class="ox-card ox-product">
+        <!-- Gallery -->
+        <div>
+            <div class="ox-gal-frame">
+                <div id="productCarousel" class="carousel slide">
+                    <div class="carousel-inner">
+                        {% for image in images %}
+                            <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                                <div class="carousel-img-clickable" data-index="{{ forloop.counter0 }}" title="Click to view full image">
+                                    <img src="{{ image.image.url }}" data-full-url="{{ image.image.url }}" class="carousel-main-img" alt="{{ product.title }}">
                                 </div>
-                            {% endfor %}
-                        </div>
-                        {% if images|length > 1 %}
-                            <button class="carousel-control-prev" type="button" data-bs-target="#productCarousel" data-bs-slide="prev">
-                                <span class="carousel-control-prev-icon" aria-hidden="true" style="filter: invert(1);"></span>
-                                <span class="visually-hidden">Previous</span>
-                            </button>
-                            <button class="carousel-control-next" type="button" data-bs-target="#productCarousel" data-bs-slide="next">
-                                <span class="carousel-control-next-icon" aria-hidden="true" style="filter: invert(1);"></span>
-                                <span class="visually-hidden">Next</span>
-                            </button>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <!-- Dot Indicators -->
-                {% if images|length > 1 %}
-                <div class="carousel-dots" id="carouselDots">
-                    {% for image in images %}
-                        <button class="carousel-dot {% if forloop.first %}active{% endif %}"
-                                data-index="{{ forloop.counter0 }}"
-                                onclick="goToSlide({{ forloop.counter0 }})"
-                                aria-label="Go to image {{ forloop.counter }}"></button>
-                    {% endfor %}
-                </div>
-                {% endif %}
-
-                <!-- Hidden image URLs for lightbox -->
-                <div id="lightboxImages" style="display:none;">
-                    {% for image in images %}
-                        <span data-url="{{ image.image.url }}"></span>
-                    {% endfor %}
-                </div>
-                            <!-- ══ Proof of Purchase ══ -->
-            {% if product.has_receipt %}
-            <div class="mt-3">
-                {% if receipt_visibility == 'public' and receipts %}
-                    <div class="info-section p-3">
-                        <h6 class="fw-semibold mb-3"><i class="bi bi-receipt me-2"></i>Proof of Purchase</h6>
-                        <div class="row g-2">
-                            {% for receipt in receipts %}
-                            <div class="col-4">
-                                <a href="{{ receipt.image.url }}" target="_blank" rel="noopener">
-                                    <img src="{{ receipt.image.url }}"
-                                        class="img-thumbnail w-100"
-                                        style="height: 90px; object-fit: cover;"
-                                        alt="{{ receipt.get_receipt_type_display }}">
-                                </a>
-                                <div class="small text-muted text-center mt-1">{{ receipt.get_receipt_type_display }}</div>
-                                {% if receipt.notes %}
-                                <div class="small text-muted text-center">{{ receipt.notes }}</div>
-                                {% endif %}
                             </div>
-                            {% endfor %}
-                        </div>
+                        {% empty %}
+                            <div class="carousel-item active"><div class="ox-noimg"><i class="bi bi-image" aria-hidden="true"></i></div></div>
+                        {% endfor %}
                     </div>
-                {% elif receipt_visibility == 'on_request' %}
-                    <div class="info-section p-3 d-flex align-items-center gap-2">
-                        <i class="bi bi-shield-check text-success fs-5"></i>
-                        <div>
-                            <span class="fw-semibold">Proof of purchase available</span>
-                            <div class="small text-muted">Ask the seller to share it with you.</div>
-                        </div>
-                    </div>
-                {% endif %}
+                    {% if images|length > 1 %}
+                        <button class="carousel-control-prev" type="button" data-bs-target="#productCarousel" data-bs-slide="prev">
+                            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                            <span class="visually-hidden">Previous</span>
+                        </button>
+                        <button class="carousel-control-next" type="button" data-bs-target="#productCarousel" data-bs-slide="next">
+                            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                            <span class="visually-hidden">Next</span>
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if images|length > 1 %}
+            <div class="carousel-dots" id="carouselDots">
+                {% for image in images %}
+                    <button type="button" class="carousel-dot {% if forloop.first %}active{% endif %}" data-index="{{ forloop.counter0 }}" aria-label="Go to image {{ forloop.counter }}"></button>
+                {% endfor %}
             </div>
             {% endif %}
+
+            <div id="lightboxImages" hidden>
+                {% for image in images %}<span data-url="{{ image.image.url }}"></span>{% endfor %}
             </div>
 
-            <!-- Product Details Column -->
-            <div class="col-md-6">
-                <div class="product-details h-100">
-                    <div class="card-body p-2">
-                        <!-- Product Header -->
-                        <div class="product-header mb-4">
-                            <nav aria-label="breadcrumb">
-                                <ol class="breadcrumb small mb-2">
-                                    <li class="breadcrumb-item">{{ product.category.name }}</li>
-                                    <li class="breadcrumb-item">{{ product.subcategory.name }}</li>
-                                    <li class="breadcrumb-item active">{{ product.brand.name }}</li>
-                                </ol>
-                            </nav>
-                            <h1 class="product-title display-6 mb-3">{{ product.title }}</h1>
-                            <div class="price-badge p-3 mb-4">
-                                <span class="h2 mb-0 fw-bold">{{ formatted_price }}.00</span>
-                            </div>
+            {% if product.has_receipt %}
+                {% if receipt_visibility == 'public' and receipts %}
+                <div class="ox-proof ox-mt t-green">
+                    <h2 class="ox-h2"><i class="bi bi-receipt" aria-hidden="true"></i>Proof of purchase</h2>
+                    <div class="ox-proof-grid">
+                        {% for receipt in receipts %}
+                        <div>
+                            <a href="{{ receipt.image.url }}" target="_blank" rel="noopener"><img src="{{ receipt.image.url }}" alt="{{ receipt.get_receipt_type_display }}"></a>
+                            <small>{{ receipt.get_receipt_type_display }}</small>
+                            {% if receipt.notes %}<small>{{ receipt.notes }}</small>{% endif %}
                         </div>
-
-                        <!-- Product Info Grid -->
-                        <div class="product-info-advanced mb-2">
-                            <div class="info-section mb-4 p-3">
-                                <div class="row g-2">
-                                    <!-- Info Items -->
-                                    <div class="col-6">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="fas fa-certificate me-2"></i>
-                                            <div>
-                                                <div class="small">Condition</div>
-                                                <div>{{ product.get_condition_display }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% comment %} Listed date hidden from viewers - not relevant for established sellers
-                                    <div class="col-6">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="fas fa-clock me-2"></i>
-                                            <div>
-                                                <div class="small">Listed</div>
-                                                <div>{{ time_since_creation }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endcomment %}
-                                    <div class="col-6">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="fas fa-map-marker-alt me-2"></i>
-                                            <div>
-                                                <div class="small">Location</div>
-                                                <div>
-                                                    {% if product.seller.location.city %}
-                                                        {{ product.seller.location.city }}{% if product.seller.location.state %}, {% endif %}
-                                                    {% endif %}
-                                                    {% if product.seller.location.state %}
-                                                        {{ product.seller.location.state.name }}
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="fas fa-eye me-2"></i>
-                                            <div>
-                                                <div class="small">Views</div>
-                                                <div>{{ product.view_count }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- ══ Listing Details ══ -->
-                            {% if product.negotiable or product.delivery_available or product.inspection_allowed or product.swap_accepted or product.original_accessories_included or product.bundle_description or product.reason_for_selling %}
-                            <div class="info-section mb-4 p-3">
-                                <h5 class="fw-semibold mb-3"><i class="bi bi-list-check me-2"></i>Listing Details</h5>
-                                <div class="row g-2">
-
-                                    {% if product.negotiable %}
-                                    <div class="col-6">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="bi bi-chat-dots me-2"></i>
-                                            <div>
-                                                <div class="small">Price</div>
-                                                <div>Negotiable</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endif %}
-
-                                    {% if product.delivery_available %}
-                                    <div class="col-6">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="bi bi-truck me-2"></i>
-                                            <div>
-                                                <div class="small">Delivery</div>
-                                                <div>Available</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endif %}
-
-                                    {% if product.inspection_allowed %}
-                                    <div class="col-{% if product.inspection_location %}12{% else %}6{% endif %}">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="bi bi-eye me-2"></i>
-                                            <div>
-                                                <div class="small">Inspection</div>
-                                                <div>Allowed{% if product.inspection_location %} — {{ product.inspection_location }}{% endif %}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endif %}
-
-                                    {% if product.swap_accepted %}
-                                    <div class="col-{% if product.swap_preference %}12{% else %}6{% endif %}">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="bi bi-arrow-left-right me-2"></i>
-                                            <div>
-                                                <div class="small">Swap</div>
-                                                <div>Open to swap{% if product.swap_preference %} — {{ product.swap_preference }}{% endif %}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endif %}
-
-                                    {% if product.original_accessories_included %}
-                                    <div class="col-6">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="bi bi-box-seam me-2"></i>
-                                            <div>
-                                                <div class="small">Accessories</div>
-                                                <div>Included</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endif %}
-
-                                    {% if product.bundle_description %}
-                                    <div class="col-12">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="bi bi-collection me-2"></i>
-                                            <div>
-                                                <div class="small">Bundle</div>
-                                                <div>{{ product.bundle_description }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endif %}
-
-                                    {% if product.reason_for_selling %}
-                                    <div class="col-12">
-                                        <div class="detail-item d-flex align-items-center p-2">
-                                            <i class="bi bi-question-circle me-2"></i>
-                                            <div>
-                                                <div class="small">Reason for Selling</div>
-                                                <div>{{ product.get_reason_for_selling_display }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endif %}
-
-                                </div>
-                            </div>
-                            {% endif %}
-                            
-                            <!-- Description Section -->
-                            <div class="product-description mb-4 p-3">
-                                <h4 class="fw-semibold mb-3"><i class="fas fa-align-left me-2"></i>Product Description</h4>
-                                <div class="description-content">
-                                    {{ product.description|linebreaks }}
-                                </div>
-                            </div>
-                    </div>
-                    
-                    <div class="product-action-buttons mb-4">
-                    <div class="row g-2">
-                        
-                        <div class="col-6">
-                            <button type="button"
-                                    class="btn-action-primary"
-                                    onclick="shareProduct()"
-                                    id="shareButton">
-                                <i class="fas fa-share-alt me-2"></i>
-                                <span>Share</span>
-                            </button>
-                        </div>
-
-                        {% if user == product.seller.user %}
-                            <div class="col-6">
-                                {% if product.is_boosted %}
-                                    <button type="button"
-                                            class="btn-action-success"
-                                            disabled>
-                                        <i class="bi bi-rocket-fill me-2"></i>
-                                        <span>Boosted</span>
-                                    </button>
-                                {% else %}
-                                    <a href="{% url 'boost_product' product.id %}"
-                                       class="btn-action-boost">
-                                        <i class="bi bi-rocket me-2"></i>
-                                        <span>Boost</span>
-                                    </a>
-                                {% endif %}
-                            </div>
-                        {% else %}
-
-                        <!-- Save Button for non-owners -->
-                            <div class="col-6">
-                                {% if user.is_authenticated %}
-                                    <button type="button"
-                                            class="btn-action-secondary save-product-btn {% if product.is_saved %}saved{% endif %}"
-                                            data-item-id="{{ product.id }}"
-                                            data-item-type="product"
-                                            data-saved="{% if product.is_saved %}true{% else %}false{% endif %}"
-                                            onclick="toggleSave(event, '{{ product.id }}', 'product')">
-                                        <i class="{% if product.is_saved %}fas fa-heart{% else %}far fa-heart{% endif %} me-2"></i>
-                                        <span class="btn-text">{% if product.is_saved %}Saved{% else %}Save{% endif %}</span>
-                                    </button>
-                                {% else %}
-                                    <a href="{% url 'account_login' %}"
-                                       class="btn-action-secondary">
-                                        <i class="far fa-heart me-2"></i>
-                                        <span>Save</span>
-                                    </a>
-                                {% endif %}
-                            </div>
-                        {% endif %}
-                    </div>
-                    </div>
-                    <div class="product-status-section mb-4">
-                        <!-- Stock Status (Visible to All) -->
-                        <div class="stock-status mb-3">
-                            <h6 class="fw-semibold mb-2"><i class="fas fa-box me-2"></i>Stock Status</h6>
-                            <div class="d-flex align-items-center gap-2">
-                                {% if product.stock_status == 'always_available' %}
-                                    <span class="text-success">
-                                        <i class="fas fa-check-circle me-2"></i>
-                                        Always Available
-                                    </span>
-                                {% elif product.stock_status == 'out_of_stock' %}
-                                    <span class="text-danger">
-                                        <i class="fas fa-times-circle me-2"></i>
-                                        Out of Stock
-                                    </span>
-                                {% elif product.stock_status == 'low_stock' %}
-                                    <span class="text-warning">
-                                        <i class="fas fa-exclamation-triangle me-2"></i>
-                                        Only {{ product.quantity }} left!
-                                    </span>
-                                {% else %}
-                                    <span class="text-primary">
-                                        <i class="fas fa-inventory me-2"></i>
-                                        In Stock
-                                    </span>
-                                {% endif %}
-                            </div>
-                        </div>
-                    
-                        <!-- Seller-Only Section -->
-                        {% if user == product.seller.user %}
-
-                        <!-- Listing Type -->
-                        <div class="listing-type mb-3">
-                            <h6 class="fw-semibold mb-2"><i class="fas fa-tag me-2"></i>Listing Type</h6>
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="text-accent">
-                                    <i class="fas fa-info-circle me-2"></i>
-                                    {{ product.get_listing_type_display }}
-                                </span>
-                            </div>
-                        </div>
-                        
-                        
-                        {% if product.listing_type != 'permanent' %}
-                        <div class="listing-timer mb-3">
-                            <h6 class="fw-semibold mb-2">
-                                <i class="fas fa-clock me-2"></i>Expires in
-                            </h6>
-                            <div class="countdown-timer" data-expiration="{{ product.expiration_date|date:'c' }}">
-                                {% if time_remaining %}
-                                    <span class="days">{{ time_remaining.days|default:"0" }}</span>d
-                                    <span class="hours">{{ time_remaining.hours|default:"0" }}</span>h
-                                    <span class="minutes">{{ time_remaining.minutes|default:"0" }}</span>m
-                                    <span class="seconds">{{ time_remaining.seconds|default:"0" }}</span>s
-                                {% else %}
-                                    <span class="days">0</span>d
-                                    <span class="hours">0</span>h
-                                    <span class="minutes">0</span>m
-                                    <span class="seconds">0</span>s
-                                {% endif %}
-                            </div>
-                        
-                            <!-- Update Button -->
-                            {% if time_remaining.days <= 3 %}
-                            {% if user == product.seller.user %}
-                            <div class="quick-actions mt-2">
-                                <div class="deletion-warning alert1 alert-warning">
-                                    <i class="fas fa-exclamation-triangle me-2"></i>Update your listing before it expires
-                                <form id="quickUpdateForm" method="POST" action="{% url 'product_quick_update' product.pk %}" class="d-inline">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-outline-primary quick-update-btn">
-                                        <i class="fas fa-sync-alt me-1"></i>Quick Update
-                                    </button>
-                                </form>
-                                </div>
-                            </div>
-                            {% endif %}
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                        <!-- Quick Actions -->
-                        <div class="quick-actions">
-                            <h6 class="fw-semibold mb-2"><i class="fas fa-bolt me-2"></i>Actions</h6>
-                            <div class="d-flex gap-2">
-                                <a href="{% url 'product_update' product.id %}" class="btn btn-sm btn-primary">
-                                    <i class="fas fa-edit me-2"></i>Edit
-                                </a>
-                                <a href="{% url 'product_delete' product.id %}" class="btn btn-sm btn-danger">
-                                    <i class="fas fa-trash me-2"></i>Delete
-                                </a>
-                            </div>
-                        </div>
-                        {% endif %}
-                        </div>
+                        {% endfor %}
                     </div>
                 </div>
+                {% elif receipt_visibility == 'on_request' %}
+                <div class="ox-proof ox-proof-row ox-mt t-green">
+                    <span class="ox-ico"><i class="bi bi-shield-check" aria-hidden="true"></i></span>
+                    <div>
+                        <b>Proof of purchase available</b>
+                        <p class="ox-fine">Ask the seller to share it with you.</p>
+                    </div>
+                </div>
+                {% endif %}
+            {% endif %}
+        </div>
+
+        <!-- Details -->
+        <div class="ox-details">
+            <ol class="ox-crumbs" aria-label="Category">
+                <li>{{ product.category.name }}</li>
+                {% if product.subcategory %}<li>{{ product.subcategory.name }}</li>{% endif %}
+                {% if product.brand %}<li>{{ product.brand.name }}</li>{% endif %}
+            </ol>
+            <h1 class="ox-title product-title">{{ product.title }}</h1>
+
+            <div class="ox-pricerow">
+                <span class="ox-price">{{ formatted_price }}.00</span>
+                {% if product.stock_status == 'always_available' %}
+                    <span class="ox-stock t-green"><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Always available</span>
+                {% elif product.stock_status == 'out_of_stock' %}
+                    <span class="ox-stock t-red"><i class="bi bi-x-circle-fill" aria-hidden="true"></i>Out of stock</span>
+                {% elif product.stock_status == 'low_stock' %}
+                    <span class="ox-stock t-orange"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>Only {{ product.quantity }} left!</span>
+                {% else %}
+                    <span class="ox-stock t-navy"><i class="bi bi-box-seam" aria-hidden="true"></i>In stock</span>
+                {% endif %}
+            </div>
+
+            <div class="ox-acts">
+                <button type="button" class="ox-act ox-act-pri" id="shareButton"><i class="bi bi-share-fill" aria-hidden="true"></i><span>Share</span></button>
+                {% if user == product.seller.user %}
+                    {% if product.is_boosted %}
+                        <button type="button" class="ox-act ox-act-done" disabled><i class="bi bi-rocket-fill" aria-hidden="true"></i><span>Boosted</span></button>
+                    {% else %}
+                        <a href="{% url 'boost_product' product.id %}" class="ox-act ox-act-boost"><i class="bi bi-rocket" aria-hidden="true"></i><span>Boost</span></a>
+                    {% endif %}
+                {% elif user.is_authenticated %}
+                    <button type="button"
+                            class="ox-act ox-act-save ox-tint t-red btn-action-secondary save-product-btn {% if product.is_saved %}saved{% endif %}"
+                            data-item-id="{{ product.id }}"
+                            data-item-type="product"
+                            data-saved="{% if product.is_saved %}true{% else %}false{% endif %}"
+                            onclick="toggleSave(event, '{{ product.id }}', 'product')">
+                        <i class="{% if product.is_saved %}fas fa-heart{% else %}far fa-heart{% endif %}"></i>
+                        <span class="btn-text">{% if product.is_saved %}Saved{% else %}Save{% endif %}</span>
+                    </button>
+                {% else %}
+                    <a href="{% url 'account_login' %}" class="ox-act ox-act-save ox-tint t-red btn-action-secondary"><i class="far fa-heart"></i><span>Save</span></a>
+                {% endif %}
+            </div>
+
+            <section class="ox-sec" aria-labelledby="ox-ld">
+                <h2 class="ox-h2 t-orange" id="ox-ld"><i class="bi bi-list-check" aria-hidden="true"></i>Listing details</h2>
+                <ul class="ox-cells">
+                    <li class="ox-cell t-teal"><span class="ox-ico ox-ico-s"><i class="bi bi-patch-check-fill" aria-hidden="true"></i></span><span><small>Condition</small><b>{{ product.get_condition_display }}</b></span></li>
+                    <li class="ox-cell t-purple"><span class="ox-ico ox-ico-s"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i></span><span><small>Location</small><b>{% if product.seller.location.city %}{{ product.seller.location.city }}{% if product.seller.location.state %}, {% endif %}{% endif %}{% if product.seller.location.state %}{{ product.seller.location.state.name }}{% endif %}</b></span></li>
+                    {% if product.negotiable %}<li class="ox-cell t-green"><span class="ox-ico ox-ico-s"><i class="bi bi-chat-dots-fill" aria-hidden="true"></i></span><span><small>Price</small><b>Negotiable</b></span></li>{% endif %}
+                    {% if product.delivery_available %}<li class="ox-cell t-teal"><span class="ox-ico ox-ico-s"><i class="bi bi-truck" aria-hidden="true"></i></span><span><small>Delivery</small><b>Available</b></span></li>{% endif %}
+                    {% if product.inspection_allowed and not product.inspection_location %}<li class="ox-cell t-navy"><span class="ox-ico ox-ico-s"><i class="bi bi-eye-fill" aria-hidden="true"></i></span><span><small>Inspection</small><b>Allowed</b></span></li>{% endif %}
+                    {% if product.swap_accepted and not product.swap_preference %}<li class="ox-cell t-purple"><span class="ox-ico ox-ico-s"><i class="bi bi-arrow-left-right" aria-hidden="true"></i></span><span><small>Swap</small><b>Open to swap</b></span></li>{% endif %}
+                    {% if product.original_accessories_included %}<li class="ox-cell t-orange"><span class="ox-ico ox-ico-s"><i class="bi bi-box-seam" aria-hidden="true"></i></span><span><small>Accessories</small><b>Included</b></span></li>{% endif %}
+                    <li class="ox-cell t-navy"><span class="ox-ico ox-ico-s"><i class="bi bi-eye-fill" aria-hidden="true"></i></span><span><small>Views</small><b>{{ product.view_count }}</b></span></li>
+                    {% if product.inspection_allowed and product.inspection_location %}<li class="ox-cell t-navy ox-span2"><span class="ox-ico ox-ico-s"><i class="bi bi-eye-fill" aria-hidden="true"></i></span><span><small>Inspection</small><b>Allowed — {{ product.inspection_location }}</b></span></li>{% endif %}
+                    {% if product.swap_accepted and product.swap_preference %}<li class="ox-cell t-purple ox-span2"><span class="ox-ico ox-ico-s"><i class="bi bi-arrow-left-right" aria-hidden="true"></i></span><span><small>Swap</small><b>Open to swap — {{ product.swap_preference }}</b></span></li>{% endif %}
+                    {% if product.bundle_description %}<li class="ox-cell t-teal ox-span2"><span class="ox-ico ox-ico-s"><i class="bi bi-collection-fill" aria-hidden="true"></i></span><span><small>Bundle</small><b>{{ product.bundle_description }}</b></span></li>{% endif %}
+                    {% if product.reason_for_selling %}<li class="ox-cell t-navy ox-span2"><span class="ox-ico ox-ico-s"><i class="bi bi-question-circle-fill" aria-hidden="true"></i></span><span><small>Reason for selling</small><b>{{ product.get_reason_for_selling_display }}</b></span></li>{% endif %}
+                </ul>
+            </section>
+
+            <section class="ox-sec" aria-labelledby="ox-desc">
+                <h2 class="ox-h2 t-navy" id="ox-desc"><i class="bi bi-text-left" aria-hidden="true"></i>Description</h2>
+                <div class="ox-desc-box"><div class="ox-desc" tabindex="0">{{ product.description|linebreaks }}</div></div>
+            </section>
+
+            {% if user == product.seller.user %}
+            <section class="ox-owner ox-tint t-orange" aria-labelledby="ox-own">
+                <h2 class="ox-h2" id="ox-own"><i class="bi bi-gear-fill" aria-hidden="true"></i>Owner tools</h2>
+                <div class="ox-owner-row">
+                    <span class="ox-fine">Listing type</span>
+                    <b>{{ product.get_listing_type_display }}</b>
+                </div>
+                {% if product.listing_type != 'permanent' %}
+                <div class="listing-timer">
+                    <div class="ox-owner-row">
+                        <span class="ox-fine">Expires in</span>
+                        <div class="countdown-timer" data-expiration="{{ product.expiration_date|date:'c' }}">
+                            {% if time_remaining %}
+                                <span class="days">{{ time_remaining.days|default:"0" }}</span>d
+                                <span class="hours">{{ time_remaining.hours|default:"0" }}</span>h
+                                <span class="minutes">{{ time_remaining.minutes|default:"0" }}</span>m
+                                <span class="seconds">{{ time_remaining.seconds|default:"0" }}</span>s
+                            {% else %}
+                                <span class="days">0</span>d
+                                <span class="hours">0</span>h
+                                <span class="minutes">0</span>m
+                                <span class="seconds">0</span>s
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if time_remaining.days <= 3 %}
+                    <div class="deletion-warning ox-tint ox-mt-s t-orange">
+                        <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>Update your listing before it expires
+                        <form id="quickUpdateForm" method="POST" action="{% url 'product_quick_update' product.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="ox-mini quick-update-btn"><i class="fas fa-sync-alt" aria-hidden="true"></i>Quick update</button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+                <div class="ox-owner-btns">
+                    <a href="{% url 'product_update' product.id %}" class="ox-mini"><i class="bi bi-pencil-fill" aria-hidden="true"></i>Edit</a>
+                    <a href="{% url 'product_delete' product.id %}" class="ox-mini ox-mini-danger"><i class="bi bi-trash-fill" aria-hidden="true"></i>Delete</a>
+                </div>
+            </section>
+            {% endif %}
+        </div>
+    </article>
+
+    {% if global_banners %}
+        {% include 'banner.html' with banners=global_banners %}
+    {% endif %}
+
+    {% if user != product.seller.user %}
+    <section class="ox-card ox-seller" aria-labelledby="ox-seller-h">
+        <h2 class="ox-h2 t-navy" id="ox-seller-h"><i class="bi bi-person-circle" aria-hidden="true"></i>{% if product.seller_is_verified_business %}Business{% else %}Seller{% endif %} information</h2>
+
+        <div class="ox-vchips">
+            <div class="ox-vchip ox-tint {% if product.seller_is_verified_business %}t-green{% elif product.seller.has_pending_verification %}t-orange{% else %}t-red{% endif %}">
+                <span class="ox-ico ox-ico-s"><i class="bi {% if product.seller_is_verified_business %}bi-patch-check-fill{% elif product.seller.has_pending_verification %}bi-clock-history{% else %}bi-shield-exclamation{% endif %}" aria-hidden="true"></i></span>
+                <span><small>Business</small><b>{% if product.seller_is_verified_business %}Verified{% elif product.seller.has_pending_verification %}Pending{% else %}Unverified{% endif %}</b></span>
+            </div>
+            <div class="ox-vchip ox-tint {% if product.seller.user.is_active %}t-green{% else %}t-red{% endif %}">
+                <span class="ox-ico ox-ico-s"><i class="bi {% if product.seller.user.is_active %}bi-person-check-fill{% else %}bi-person-x-fill{% endif %}" aria-hidden="true"></i></span>
+                <span><small>Account</small><b>{% if product.seller.user.is_active %}Active{% else %}Inactive{% endif %}</b></span>
             </div>
         </div>
-    </div>
-</div>
 
-{% if global_banners %}
-{% include 'banner.html' with banners=global_banners %}
-{% endif %}
-
-<!-- Enhanced Seller Information Card -->
-{% if user != product.seller.user %}
-<div class="card seller-card mt-3 mb-4">
-    <div class="card-header py-3">
-        <h5 class="mb-0 fw-bold">
-            <i class="fas fa-user-circle me-2"></i>
-            {% if product.seller_is_verified_business %}Business{% else %}Seller{% endif %} Information
-        </h5>
-    </div>
-    
-    <!-- Verification Status Row -->
-    <div class="verification-status-row">
-        <div class="container-fluid px-3 py-2">
-            <div class="row g-2">
-                <!-- Business Verification Status -->
-                <div class="col-12 col-md-4">
-                    <div class="status-chip {% if product.seller_is_verified_business %}verified{% elif product.seller.has_pending_verification %}pending{% else %}unverified{% endif %}">
-                        <div class="status-icon">
-                            {% if product.seller_is_verified_business %}
-                                <i class="bi bi-patch-check-fill"></i>
-                            {% elif product.seller.has_pending_verification %}
-                                <i class="bi bi-clock-history"></i>
-                            {% else %}
-                                <i class="bi bi-shield-exclamation"></i>
-                            {% endif %}
-                        </div>
-                        <div class="status-content">
-                            <div class="status-label">Business</div>
-                            <div class="status-value">
-                                {% if product.seller_is_verified_business %}
-                                    Verified
-                                {% elif product.seller.has_pending_verification %}
-                                    Pending
-                                {% else %}
-                                    Unverified
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-
-                <!-- Account Status -->
-                <div class="col-12 col-md-4">
-                    <div class="status-chip {% if product.seller.user.is_active %}verified{% else %}unverified{% endif %}">
-                        <div class="status-icon">
-                            {% if product.seller.user.is_active %}
-                                <i class="bi bi-person-check-fill"></i>
-                            {% else %}
-                                <i class="bi bi-person-x-fill"></i>
-                            {% endif %}
-                        </div>
-                        <div class="status-content">
-                            <div class="status-label">Account</div>
-                            <div class="status-value">
-                                {% if product.seller.user.is_active %}
-                                    Active
-                                {% else %}
-                                    Inactive
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
+        <div class="ox-seller-main">
+            <div class="ox-seller-id">
+                {% if product.seller.user.profile.photo %}
+                    <img src="{{ product.seller.user.profile.photo.url }}" alt="{{ product.seller.user.username }}" class="ox-avatar" width="72" height="72">
+                {% else %}
+                    <span class="ox-avatar">{{ product.seller.user.username|make_list|first|upper }}</span>
+                {% endif %}
+                <h3 class="ox-seller-name">
+                    {% if product.seller_is_verified_business %}{{ product.seller.business_name }}{% else %}{{ product.seller.user.username }}{% endif %}
+                    {% if product.is_pro_seller %}<i class="bi bi-patch-check-fill" aria-hidden="true"></i>{% endif %}
+                </h3>
+                <p class="ox-fine">{% if product.seller_is_verified_business %}{{ product.seller.get_business_type_display|default:"Business" }}{% else %}@{{ product.seller.user.username }}{% endif %}</p>
+                <div class="rating-wrapper">
+                    <span class="ox-stars">
+                        {% for i in "12345" %}{% if forloop.counter <= seller_average_rating|floatformat:0|add:0 %}<i class="fas fa-star"></i>{% else %}<i class="far fa-star"></i>{% endif %}{% endfor %}
+                    </span>
+                    <b class="small">{{ seller_average_rating|floatformat:1 }}</b>
+                    <p class="ox-fine">{{ total_seller_reviews }} reviews</p>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <div class="card-body py-3">
-        <!-- Unified Profile Section -->
-        <div class="seller-profile-unified">
-            <div class="row g-3">
-                <!-- Left: Avatar & Basic Info -->
-                <div class="col-md-4">
-                    <div class="text-center">
-                        {% if product.seller.user.profile.photo %}
-                            <img src="{{ product.seller.user.profile.photo.url }}" 
-                                alt="{{ product.seller.user.username }}" 
-                                class="seller-avatar-unified mb-2">
-                        {% else %}
-                            <div class="seller-avatar-placeholder-unified mb-2">
-                                <span class="h4 mb-0">
-                                    {{ product.seller.user.username|make_list|first|upper }}
-                                </span>
-                            </div>
-                        {% endif %}
-                        
-                        <!-- Username/Business Name -->
-                        <h5 class="fw-bold mb-1">
-                            {% if product.seller_is_verified_business %}
-                                {{ product.seller.business_name }}
-                            {% else %}
-                                {{ product.seller.user.username }}
-                            {% endif %}
-                            {% if product.is_pro_seller %}
-                                <i class="bi bi-patch-check-fill pro-seller-icon"></i>
-                            {% endif %}
-                        </h5>
-                        
-                        <!-- Business Type or Username -->
-                        <p class="text-muted small mb-2">
-                            {% if product.seller_is_verified_business %}
-                                {{ product.seller.get_business_type_display|default:"Business" }}
-                            {% else %}
-                                @{{ product.seller.user.username }}
-                            {% endif %}
-                        </p>
-                        
-                        <!-- Rating -->
-                        <div class="rating-wrapper mb-2">
-                            <div class="d-flex align-items-center justify-content-center gap-1">
-                                <div class="stars">
-                                    {% for i in "12345" %}
-                                        {% if forloop.counter <= seller_average_rating|floatformat:0|add:0 %}
-                                            <i class="fas fa-star"></i>
-                                        {% else %}
-                                            <i class="far fa-star"></i>
-                                        {% endif %}
-                                    {% endfor %}
-                                </div>
-                                <span class="rating-value fw-semibold small">
-                                    {{ seller_average_rating|floatformat:1 }}
-                                </span>
-                            </div>
-                            <small class="text-muted">{{ total_seller_reviews }} reviews</small>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Right: Details & Description -->
-                <div class="col-md-8">
-                    <!-- Description/Bio -->
-                    <div class="seller-description mb-3">
-                        <p class="small mb-0">
-                            {% if product.seller_is_verified_business and product.seller.business_description %}
-                                {{ product.seller.business_description|truncatechars:200 }}
-                            {% else %}
-                                {{ product.seller.user.profile.bio|default:"No bio provided"|truncatechars:200 }}
-                            {% endif %}
-                        </p>
-                    </div>
-                    
-                    <!-- Seller Details Grid -->
-                    <div class="seller-details-grid">
-                        <div class="row g-2">
-                            <!-- Member Since -->
-                            <div class="col-6">
-                                <div class="detail-item-compact">
-                                    <i class="fas fa-calendar-alt"></i>
-                                    <div>
-                                        <small class="text-muted">Member Since</small>
-                                        <div class="fw-medium small">{{ product.seller.user.date_joined|date:"M Y" }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Total Listed -->
-                            <div class="col-6">
-                                <div class="detail-item-compact">
-                                    <i class="fas fa-box"></i>
-                                    <div>
-                                        <small class="text-muted">Total Listed</small>
-                                        <div class="fw-medium small">{{ seller_product_stats.total_ever_listed }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Active Products -->
-                            <div class="col-6">
-                                <div class="detail-item-compact">
-                                    <i class="fas fa-check-circle text-success"></i>
-                                    <div>
-                                        <small class="text-muted">Active</small>
-                                        <div class="fw-medium small text-success">{{ seller_product_stats.active_products }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Business Phone (if verified) -->
-                            {% if product.seller_is_verified_business and product.seller.business_phone %}
-                            <div class="col-6">
-                                <div class="detail-item-compact">
-                                    <i class="fas fa-phone"></i>
-                                    <div>
-                                        <small class="text-muted">Business Phone</small>
-                                        <div class="fw-medium small">{{ product.seller.business_phone }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            {% endif %}
-                            
-                            <!-- Business Website (if verified) -->
-                            {% if product.seller_is_verified_business and product.seller.business_website %}
-                            <div class="col-12">
-                                <div class="detail-item-compact">
-                                    <i class="fas fa-globe"></i>
-                                    <div>
-                                        <small class="text-muted">Website</small>
-                                        <a href="{{ product.seller.business_website }}" target="_blank" class="business-link small">
-                                            Visit Website <i class="bi bi-box-arrow-up-right"></i>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                            {% endif %}
-                            
-                            <!-- Business Address (if visible) -->
-                            {% if product.seller_is_verified_business and product.seller.business_address_visible and product.seller.location %}
-                            <div class="col-12">
-                                <div class="detail-item-compact">
-                                    <i class="fas fa-map-marker-alt"></i>
-                                    <div>
-                                        <small class="text-muted">Address</small>
-                                        <div class="small">
-                                            {% if product.seller.location.city %}{{ product.seller.location.city }}, {% endif %}
-                                            {% if product.seller.location.state %}{{ product.seller.location.state.name }}{% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Contact Buttons Grid -->
-        <div class="contact-buttons-grid mt-4">
-            <div class="row g-2">
-                <div class="col-6">
-                    <a href="javascript:void(0)" 
-                        class="btn btn-success w-100 btn-contact" 
-                        onclick="openWhatsAppWithMessage()"
-                        data-seller-name="{{ product.seller.user.username }}"
-                        data-seller-phone="{{ product.seller.phone_number }}"
-                        data-product-title="{{ product.title }}"
-                        data-product-price="{{ formatted_price }}"
-                        data-product-url="{{ request.build_absolute_uri }}">
-                        <i class="fab fa-whatsapp"></i>
-                        <span>WhatsApp</span>
-                    </a>
-                </div>
-                <div class="col-6">
-                    <a href="tel:{{ product.seller.phone_number }}" 
-                        class="btn btn-primary w-100 btn-contact">
-                        <i class="fas fa-phone"></i>
-                        <span>Call</span>
-                    </a>
-                </div>
-                <div class="col-6">
-                    <a href="{% url 'user_store' username=product.seller.user.username %}" 
-                        class="btn btn-secondary w-100 btn-contact">
-                        <i class="fas fa-store"></i>
-                        <span>Store</span>
-                    </a>
-                </div>
-                <div class="col-6">
-                    <a href="{% url 'send_message' product.id %}" 
-                        class="btn btn-outline-primary w-100 btn-contact">
-                        <i class="fas fa-envelope"></i>
-                        <span>Message</span>
-                    </a>
-                </div>
-                <div class="col-6">
-                    <a href="{% url 'all_seller_reviews' username=product.seller.user.username %}" 
-                        class="btn btn-outline-info w-100 btn-contact">
-                        <i class="fas fa-star"></i>
-                        <span>Reviews</span>
-                    </a>
-                </div>
-                <div class="col-6">
-                    <a href="{% url 'report_item' 'product' product.id %}" 
-                        class="btn btn-outline-danger w-100 btn-contact">
-                        <i class="fas fa-flag"></i>
-                        <span>Report</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-{% endif %}
-
-
-<!-- Safety Tips Card -->
-<div class="mt-0 container-fluid">
-    <div class="card safety-tips-card mt-3 mb-4">
-        <div class="card-header py-2">
-            <h5 class="mb-0 fw-bold">
-                <i class="fas fa-shield-alt me-2"></i>
-                Safety Tips
-            </h5>
-        </div>
-        <div class="card-body py-3">
-            <!-- Visible Safety Tips -->
-            <ul class="list-unstyled mb-0">
-                <li class="mb-2">
-                    <i class="fas fa-check-circle me-2" style="color: var(--success)"></i>
-                    Always meet in a public place.
-                </li>
-                <li class="mb-2">
-                    <i class="fas fa-check-circle me-2" style="color: var(--success)"></i>
-                    Inspect the product before payment.
-                </li>
-            </ul>
-
-            <!-- Hidden Safety Tips (Collapsible) -->
-            <div class="collapse" id="hidden-tips">
-                <ul class="list-unstyled mt-3 mb-0">
-                    <li class="mb-2">
-                        <i class="fas fa-check-circle me-2" style="color: var(--success)"></i>
-                        Avoid sharing personal information.
-                    </li>
-                    <li class="mb-2">
-                        <i class="fas fa-check-circle me-2" style="color: var(--success)"></i>
-                        Use secure payment methods.
-                    </li>
-                    <li class="mb-2">
-                        <i class="fas fa-check-circle me-2" style="color: var(--success)"></i>
-                        Trust your instincts; if something feels off, walk away.
-                    </li>
+            <div class="ox-seller-info">
+                <p class="ox-fine">
+                    {% if product.seller_is_verified_business and product.seller.business_description %}{{ product.seller.business_description|truncatechars:200 }}{% else %}{{ product.seller.user.profile.bio|default:"No bio provided"|truncatechars:200 }}{% endif %}
+                </p>
+                <ul class="ox-cells">
+                    <li class="ox-cell t-navy"><span class="ox-ico ox-ico-s"><i class="bi bi-calendar-event-fill" aria-hidden="true"></i></span><span><small>Member since</small><b>{{ product.seller.user.date_joined|date:"M Y" }}</b></span></li>
+                    <li class="ox-cell t-orange"><span class="ox-ico ox-ico-s"><i class="bi bi-box-seam-fill" aria-hidden="true"></i></span><span><small>Total listed</small><b>{{ seller_product_stats.total_ever_listed }}</b></span></li>
+                    <li class="ox-cell t-green"><span class="ox-ico ox-ico-s"><i class="bi bi-check-circle-fill" aria-hidden="true"></i></span><span><small>Active</small><b>{{ seller_product_stats.active_products }}</b></span></li>
+                    {% if product.seller_is_verified_business and product.seller.business_phone %}<li class="ox-cell t-teal"><span class="ox-ico ox-ico-s"><i class="bi bi-telephone-fill" aria-hidden="true"></i></span><span><small>Business phone</small><b>{{ product.seller.business_phone }}</b></span></li>{% endif %}
+                    {% if product.seller_is_verified_business and product.seller.business_website %}<li class="ox-cell t-purple ox-span2"><span class="ox-ico ox-ico-s"><i class="bi bi-globe" aria-hidden="true"></i></span><span><small>Website</small><b><a href="{{ product.seller.business_website }}" target="_blank" rel="noopener noreferrer" class="ox-link">Visit website <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a></b></span></li>{% endif %}
+                    {% if product.seller_is_verified_business and product.seller.business_address_visible and product.seller.location %}<li class="ox-cell t-purple ox-span2"><span class="ox-ico ox-ico-s"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i></span><span><small>Address</small><b>{% if product.seller.location.city %}{{ product.seller.location.city }}, {% endif %}{% if product.seller.location.state %}{{ product.seller.location.state.name }}{% endif %}</b></span></li>{% endif %}
                 </ul>
             </div>
+        </div>
 
-            <!-- Toggle Button -->
-            <a id="toggle-tips" 
-            class="d-block text-decoration-none mt-3" 
-            data-bs-toggle="collapse" 
-            href="#hidden-tips" 
-            role="button" 
-            aria-expanded="false" 
-            aria-controls="hidden-tips">
-                <span class="text-primary fw-medium">
-                    <i class="fas fa-chevron-down toggle-icon me-2"></i>
-                    <span id="toggle-text">See more safety tips</span>
-                </span>
-            </a>
+        <nav class="ox-tiles" aria-label="Seller links">
+            <a href="{% url 'user_store' username=product.seller.user.username %}" class="ox-tile ox-tint t-navy"><span class="ox-ico"><i class="bi bi-shop" aria-hidden="true"></i></span>Store</a>
+            <a href="{% url 'all_seller_reviews' username=product.seller.user.username %}" class="ox-tile ox-tint t-orange"><span class="ox-ico"><i class="bi bi-star-fill" aria-hidden="true"></i></span>Reviews</a>
+            <a href="{% url 'report_product' product.id %}" class="ox-tile ox-tint t-red"><span class="ox-ico"><i class="bi bi-flag-fill" aria-hidden="true"></i></span>Report</a>
+        </nav>
+    </section>
+    {% endif %}
+
+    <section class="ox-card ox-tips" aria-labelledby="ox-tips-h">
+        <h2 class="ox-h2 t-green" id="ox-tips-h"><i class="bi bi-shield-check" aria-hidden="true"></i>Safety tips</h2>
+        <ul>
+            <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Always meet in a public place.</li>
+            <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Inspect the product before payment.</li>
+        </ul>
+        <div class="collapse" id="hidden-tips">
+            <ul class="ox-mt-s">
+                <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Avoid sharing personal information.</li>
+                <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Use secure payment methods.</li>
+                <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Trust your instincts; if something feels off, walk away.</li>
+            </ul>
+        </div>
+        <button type="button" id="toggle-tips" class="ox-tips-toggle" data-bs-toggle="collapse" data-bs-target="#hidden-tips" aria-expanded="false" aria-controls="hidden-tips">
+            <i class="bi bi-chevron-down" aria-hidden="true"></i><span id="toggle-text">See more safety tips</span>
+        </button>
+    </section>
+
+    <div>{% include 'reviews_section.html' %}</div>
+
+    <section aria-labelledby="ox-rel-h">
+        <h2 class="ox-h2 t-orange" id="ox-rel-h"><i class="bi bi-grid-fill" aria-hidden="true"></i>Related products</h2>
+        <div class="ox-grid">
+            {% for related_product in related_products %}
+                <div>{% include 'product_card.html' with product=related_product %}</div>
+            {% empty %}
+                <p class="ox-fine">No related products found.</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    {% if user != product.seller.user %}
+    <div class="ox-bar" role="group" aria-label="Contact the seller">
+        <p class="ox-bar-title"><i class="bi bi-headset" aria-hidden="true"></i>Contact the seller</p>
+        <div class="ox-bar-btns">
+            {% if product.seller.phone_number %}
+            <button type="button" class="ox-cbtn ox-c-wa" id="oxWhatsapp"
+                    data-seller-name="{{ product.seller.user.username }}"
+                    data-seller-phone="{{ product.seller.phone_number }}"
+                    data-product-title="{{ product.title }}"
+                    data-product-price="{{ formatted_price }}"
+                    data-product-url="{{ request.build_absolute_uri }}"><i class="bi bi-whatsapp" aria-hidden="true"></i><span>WhatsApp</span></button>
+            <a href="tel:{{ product.seller.phone_number }}" class="ox-cbtn ox-c-call"><i class="bi bi-telephone-fill" aria-hidden="true"></i><span>Call</span></a>
+            {% endif %}
+            <a href="{% url 'send_message' product.id %}" class="ox-cbtn ox-c-msg"><i class="bi bi-chat-dots-fill" aria-hidden="true"></i><span>Message</span></a>
         </div>
     </div>
+    {% endif %}
 </div>
 
-
-<!--Reviews Form Card-->
-<div class="mt-0 container-fluid">
-    {% include 'reviews_section.html' %}
-</div>
-
-<!--Related Products-->
-<div class="mt-0 container-fluid">
-    <h2 class="section-title text-center mb-4">Related Products</h2>
-    <div class="row g-3">
-    {% for related_product in related_products %}
-        <div class="col-6 col-md-4 col-lg-3">
-            {% include 'product_card.html' with product=related_product %}
-        </div>
-    {% empty %}
-        <p>No related products found.</p>
-    {% endfor %}
-    </div>
-</div>
-
-<!-- ── Image Lightbox ───────────────────────────────────────── -->
+<!-- Image lightbox -->
 <div id="imgLightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
-    <button class="lb-close" onclick="closeLightbox()" aria-label="Close"><i class="bi bi-x-lg"></i></button>
-    <button class="lb-nav lb-prev" onclick="lbNav(-1)" aria-label="Previous"><i class="bi bi-chevron-left"></i></button>
+    <button type="button" class="lb-close" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+    <button type="button" class="lb-nav lb-prev" aria-label="Previous"><i class="bi bi-chevron-left"></i></button>
     <img class="lb-img" id="lbImg" src="" alt="Product image">
-    <button class="lb-nav lb-next" onclick="lbNav(1)" aria-label="Next"><i class="bi bi-chevron-right"></i></button>
+    <button type="button" class="lb-nav lb-next" aria-label="Next"><i class="bi bi-chevron-right"></i></button>
     <div class="lb-dots" id="lbDots"></div>
     <div class="lb-counter" id="lbCounter"></div>
 </div>
-
-<script>
-(function () {
-    'use strict';
-
-    /* Move lightbox to <body> so it escapes any overflow:hidden ancestor */
-    const lb = document.getElementById('imgLightbox');
-    document.body.appendChild(lb);
-
-    /* ── Collect image URLs ── */
-    const lbUrls = Array.from(
-        document.querySelectorAll('#lightboxImages span[data-url]')
-    ).map(s => s.dataset.url);
-
-    let lbIndex = 0;
-    let startX = 0;
-
-    const lbImg     = document.getElementById('lbImg');
-    const lbDots    = document.getElementById('lbDots');
-    const lbCounter = document.getElementById('lbCounter');
-
-    /* Build lightbox dots */
-    function buildLbDots() {
-        lbDots.innerHTML = '';
-        if (lbUrls.length <= 1) return;
-        lbUrls.forEach((_, i) => {
-            const b = document.createElement('button');
-            b.className = 'lb-dot' + (i === 0 ? ' active' : '');
-            b.setAttribute('aria-label', 'Go to image ' + (i + 1));
-            b.onclick = () => lbShow(i);
-            lbDots.appendChild(b);
-        });
-    }
-    buildLbDots();
-
-    function lbShow(index) {
-        lbIndex = (index + lbUrls.length) % lbUrls.length;
-
-        /* Set src immediately — don't hide behind display:none timing */
-        lbImg.style.opacity = '0';
-        lbImg.src = lbUrls[lbIndex];
-        lbImg.onload = function () {
-            lbImg.style.transition = 'opacity 0.18s ease';
-            lbImg.style.opacity = '1';
-        };
-        /* In case image is already cached and onload doesn't fire */
-        if (lbImg.complete && lbImg.naturalWidth) lbImg.style.opacity = '1';
-
-        /* Update dots */
-        document.querySelectorAll('#lbDots .lb-dot').forEach((d, i) => {
-            d.classList.toggle('active', i === lbIndex);
-        });
-
-        /* Update counter */
-        if (lbUrls.length > 1) {
-            lbCounter.textContent = (lbIndex + 1) + ' / ' + lbUrls.length;
-            lbCounter.style.display = '';
-        } else {
-            lbCounter.style.display = 'none';
-        }
-
-        /* Sync main carousel */
-        const bsCar = bootstrap.Carousel.getInstance(document.getElementById('productCarousel'));
-        if (bsCar) bsCar.to(lbIndex);
-    }
-
-    window.openLightbox = function (index) {
-        lbShow(index);
-        lb.classList.add('lb-open');
-        /* Lock scroll on html AND body */
-        document.documentElement.style.overflow = 'hidden';
-        document.body.style.overflow = 'hidden';
-        /* Push navbar behind lightbox */
-        const navbar = document.querySelector('.navbar, nav[class*="navbar"], header');
-        if (navbar) navbar.style.zIndex = '1';
-    };
-
-    window.closeLightbox = function () {
-        lb.classList.remove('lb-open');
-        document.documentElement.style.overflow = '';
-        document.body.style.overflow = '';
-        /* Restore navbar */
-        const navbar = document.querySelector('.navbar, nav[class*="navbar"], header');
-        if (navbar) navbar.style.zIndex = '';
-        lbImg.src = '';
-        lbImg.style.opacity = '0';
-    };
-
-    window.lbNav = function (dir) { lbShow(lbIndex + dir); };
-
-    /* Keyboard */
-    document.addEventListener('keydown', function (e) {
-        if (!lb.classList.contains('lb-open')) return;
-        if (e.key === 'Escape')      closeLightbox();
-        if (e.key === 'ArrowLeft')   lbNav(-1);
-        if (e.key === 'ArrowRight')  lbNav(1);
-    });
-
-    /* Click backdrop to close */
-    lb.addEventListener('click', function (e) {
-        if (e.target === lb) closeLightbox();
-    });
-
-    /* Touch swipe */
-    lb.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
-    lb.addEventListener('touchend', e => {
-        const diff = startX - e.changedTouches[0].clientX;
-        if (Math.abs(diff) > 40) lbNav(diff > 0 ? 1 : -1);
-    }, { passive: true });
-
-    /* Sync carousel dots with Bootstrap carousel slide events */
-    const carouselEl = document.getElementById('productCarousel');
-    if (carouselEl) {
-        carouselEl.addEventListener('slide.bs.carousel', function (e) {
-            document.querySelectorAll('.carousel-dot').forEach((d, i) => {
-                d.classList.toggle('active', i === e.to);
-            });
-        });
-    }
-
-    /* goToSlide helper for dot buttons */
-    window.goToSlide = function (index) {
-        const bsCar = bootstrap.Carousel.getOrCreateInstance(
-            document.getElementById('productCarousel')
-        );
-        bsCar.to(index);
-    };
-})();
-</script>
-
 {% endblock %}
-{% block 'Footer'%}{% endblock %}

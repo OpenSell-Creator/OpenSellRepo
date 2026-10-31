@@ -1,259 +1,130 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}Delete service{% endblock %}
+
 {% block page_css %}
 <style>
-/* Delete Confirmation Page Styles */
-.delete-confirmation-card {
-    background: var(--card-background);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    box-shadow: 0 4px 20px var(--shadow-color);
-    overflow: hidden;
+/* Delete confirmation: shared OpenSell design (navy header band, token-based card, pill buttons). */
+.dl {
+    display: flex; flex-direction: column; align-items: center; gap: var(--gap-sections);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-6));
+    color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-body);
 }
+.dl a { text-decoration: none; }
+.dl p, .dl h1, .dl h2, .dl ul { margin: 0; }
 
-.delete-confirmation-card .card-header {
-    background: linear-gradient(135deg, rgba(220, 38, 38, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
-    border-bottom: 1px solid var(--border-color);
-    padding: 2rem;
-}
+/* Navy header band: full-bleed, tucks under the navbar */
+.dl-head { align-self: stretch; display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); margin: -2rem -1rem 0; padding: calc(2rem + var(--sp-4)) var(--sp-5) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); text-align: center; }
+.dl-head-ico { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin-bottom: var(--sp-1); border-radius: var(--radius-full); background: rgba(255, 255, 255, .14); font-size: var(--font-size-xl); }
+.dl-head h1 { font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-snug); }
+.dl-head p { font-size: var(--font-size-sm); line-height: var(--lh-snug); opacity: .85; }
+@media (min-width: 768px) { .dl-head h1 { font-size: var(--font-size-3xl); } .dl-head p { font-size: var(--font-size-base); } }
 
-.warning-icon {
-    width: 80px;
-    height: 80px;
-    background: rgba(220, 38, 38, 0.1);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto;
-}
+/* Card */
+.dl-card { position: relative; z-index: 1; display: flex; flex-direction: column; gap: var(--gap-sections); box-sizing: border-box; width: 100%; max-width: 30rem; padding: var(--pad-l); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); box-shadow: var(--shadow-md); }
 
-.warning-icon i {
-    font-size: 2.5rem;
-    color: #dc2626;
-}
+/* Item summary */
+.dl-prod { display: flex; align-items: center; gap: var(--sp-3); padding: var(--pad-s); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--background-color); }
+.dl-ico { display: grid; place-items: center; flex: none; width: 2.75rem; height: 2.75rem; border-radius: var(--radius-full); background: var(--tint, var(--primary-color)); color: var(--bs-white); font-size: var(--font-size-xl); }
+.t-teal { --tint: var(--bs-teal, var(--primary-color)); }
+.dl-prod-txt { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.dl-prod-title { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); overflow-wrap: anywhere; }
+.dl-tags { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+.dl-tag { display: inline-flex; align-items: center; min-height: 1.5rem; padding: 0 var(--sp-2); border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--card-background); font-size: var(--font-size-xs); font-weight: 600; white-space: nowrap; }
 
-.delete-confirmation-card h3 {
-    color: var(--text-primary);
-    font-weight: 700;
-    margin: 0;
-}
+/* Warning */
+.dl-warn { position: relative; isolation: isolate; display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-md); font-size: var(--font-size-sm); line-height: var(--lh-snug); }
+.dl-warn::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--bs-danger); opacity: .14; }
+[data-bs-theme="dark"] .dl-warn::before { opacity: .09; }
+.dl-warn > i { margin-top: 1px; color: var(--bs-danger); }
+.dl-warn-body { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.dl-warn ul { padding-left: var(--sp-4); }
 
-.delete-confirmation-card .card-body {
-    padding: 2rem;
-}
+/* Actions */
+.dl-form { display: flex; flex-direction: column; gap: var(--sp-2); margin: 0; }
+@media (min-width: 480px) { .dl-form { flex-direction: row; } .dl-form > * { flex: 1 1 0; } }
+.dl-btn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-4); border: 1px solid transparent; border-radius: 22px; font: inherit; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); text-align: center; cursor: pointer; touch-action: manipulation; }
+.dl a.dl-btn-ghost { border-color: var(--border-color); background: var(--card-background); color: var(--text-primary); }
+.dl-btn-danger { border: 2px solid var(--bs-white); background: var(--bs-danger); color: var(--bs-white); box-shadow: 0 4px 12px rgba(0, 0, 0, .2); }
+.dl-btn-danger:disabled { opacity: .7; cursor: default; }
+.dl-btn .spinner-border { width: 1rem; height: 1rem; border-width: .15em; }
 
-.service-preview {
-    background: var(--background-color);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: 1.5rem;
-    text-align: center;
-}
-
-.service-title {
-    color: var(--text-primary);
-    font-weight: 600;
-    margin-bottom: 0.75rem;
-}
-
-.service-meta {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-.alert-danger {
-    background: rgba(220, 38, 38, 0.05);
-    border: 1px solid rgba(220, 38, 38, 0.2);
-    border-radius: var(--radius-md);
-    color: var(--text-primary);
-}
-
-.alert-danger .alert-heading {
-    color: #dc2626;
-    font-weight: 600;
-}
-
-.alert-danger ul {
-    padding-left: 1.25rem;
-}
-
-.alert-danger ul li {
-    margin-bottom: 0.25rem;
-}
-
-.button-group {
-    display: flex;
-    gap: 1rem;
-}
-
-.btn {
-    padding: 0.75rem 1.5rem;
-    border-radius: var(--radius-md);
-    font-weight: 600;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-    border: none;
-}
-
-.btn-secondary {
-    background: var(--background-color);
-    color: var(--text-primary);
-    border: 2px solid var(--border-color);
-}
-
-.btn-secondary:hover {
-    background: var(--hover-bg);
-    color: var(--text-primary);
-    border-color: var(--accent-color);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px var(--shadow-color);
-}
-
-.btn-danger {
-    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-    color: white;
-    border: 2px solid transparent;
-}
-
-.btn-danger:hover {
-    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
-}
-
-/* Dark Theme Support */
-[data-bs-theme="dark"] .alert-danger {
-    background: rgba(220, 38, 38, 0.1);
-    border-color: rgba(220, 38, 38, 0.3);
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-    .delete-confirmation-card .card-header {
-        padding: 1.5rem;
-    }
-
-    .delete-confirmation-card .card-body {
-        padding: 1.5rem;
-    }
-
-    .warning-icon {
-        width: 60px;
-        height: 60px;
-    }
-
-    .warning-icon i {
-        font-size: 2rem;
-    }
-
-    .delete-confirmation-card h3 {
-        font-size: 1.5rem;
-    }
-
-    .button-group {
-        flex-direction: column;
-    }
-
-    .btn {
-        width: 100%;
-    }
-}
-
-@media (max-width: 576px) {
-    .service-preview {
-        padding: 1rem;
-    }
-
-    .service-title {
-        font-size: 1rem;
-    }
-
-    .alert-danger {
-        padding: 1rem;
-    }
-}
+.dl a:focus-visible, .dl button:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; border-radius: var(--radius-sm); }
+@media (hover: hover) { .dl a.dl-btn-ghost:hover { background: var(--hover-bg); border-color: var(--primary-color); } }
 </style>
 {% endblock %}
 
 {% block 'Body' %}
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-lg-6 col-md-8">
-            <div class="delete-confirmation-card">
-                <div class="card-header text-center">
-                    <div class="warning-icon">
-                        <i class="bi bi-exclamation-triangle"></i>
-                    </div>
-                    <h3 class="mt-3">Delete Service</h3>
-                </div>
-                
-                <div class="card-body">
-                    <div class="service-preview mb-4">
-                        <h5 class="service-title">{{ object.title }}</h5>
-                        <div class="service-meta">
-                            <span class="badge bg-primary me-2">{{ object.get_category_display }}</span>
-                            <span class="badge bg-info">{{ object.get_service_type_display }}</span>
-                        </div>
-                    </div>
+<div class="dl">
 
-                    <div class="alert alert-danger">
-                        <h6 class="alert-heading">
-                            <i class="bi bi-exclamation-circle me-2"></i>
-                            Warning: This action cannot be undone
-                        </h6>
-                        <p class="mb-0">Are you sure you want to delete this service? This will permanently remove:</p>
-                        <ul class="mt-2 mb-0">
-                            <li>The service listing</li>
-                            <li>All service images ({{ object.images.count }})</li>
-                            <li>All service documents ({{ object.documents.count }})</li>
-                            <li>All inquiries ({{ object.inquiries.count }})</li>
-                            <li>All reviews ({{ object.reviews.count }})</li>
-                        </ul>
-                    </div>
+    <header class="dl-head">
+        <span class="dl-head-ico" aria-hidden="true"><i class="bi bi-trash3-fill"></i></span>
+        <h1>Delete service</h1>
+        <p>Are you sure you want to delete this service?</p>
+    </header>
 
-                    <form method="post" id="deleteForm">
-                        {% csrf_token %}
-                        
-                        <div class="button-group d-flex gap-3 mt-4">
-                            <a href="{% url 'services:detail' pk=object.pk %}" 
-                               class="btn btn-secondary flex-fill">
-                                <i class="bi bi-x-circle me-2"></i>
-                                Cancel
-                            </a>
-                            <button type="submit" class="btn btn-danger flex-fill">
-                                <i class="bi bi-trash me-2"></i>
-                                Yes, Delete Service
-                            </button>
-                        </div>
-                    </form>
+    <div class="dl-card">
+
+        <div class="dl-prod">
+            <span class="dl-ico t-teal" aria-hidden="true"><i class="bi bi-briefcase-fill"></i></span>
+            <div class="dl-prod-txt">
+                <h2 class="dl-prod-title">{{ object.title }}</h2>
+                <div class="dl-tags">
+                    <span class="dl-tag">{{ object.get_category_display }}</span>
+                    <span class="dl-tag">{{ object.get_service_type_display }}</span>
                 </div>
             </div>
         </div>
+
+        <div class="dl-warn" role="alert">
+            <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+            <div class="dl-warn-body">
+                <p><strong>This action cannot be undone.</strong> This will permanently remove:</p>
+                <ul>
+                    <li>The service listing</li>
+                    <li>All service images ({{ object.images.count }})</li>
+                    <li>All service documents ({{ object.documents.count }})</li>
+                    <li>All inquiries ({{ object.inquiries.count }})</li>
+                    <li>All reviews ({{ object.reviews.count }})</li>
+                </ul>
+            </div>
+        </div>
+
+        <form method="post" class="dl-form" id="deleteForm">
+            {% csrf_token %}
+            <a href="{% url 'services:detail' pk=object.pk %}" class="dl-btn dl-btn-ghost"><i class="bi bi-arrow-left" aria-hidden="true"></i>Cancel</a>
+            <button type="submit" class="dl-btn dl-btn-danger" id="dlDelete"><i class="bi bi-trash3-fill" aria-hidden="true"></i>Delete service</button>
+        </form>
+
     </div>
 </div>
 
-
-
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const deleteForm = document.getElementById('deleteForm');
-    
-    deleteForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        // Show confirmation dialog
-        if (confirm('Are you absolutely sure you want to delete this service? This action CANNOT be undone.')) {
-            // Submit the form
-            this.submit();
-        }
-    });
-});
+    /* Final confirmation, then guard against double-submitting. */
+    (function () {
+        var form = document.getElementById('deleteForm');
+        var btn = document.getElementById('dlDelete');
+        if (!form || !btn) return;
+        var label = btn.innerHTML;
+        form.addEventListener('submit', function (e) {
+            if (!confirm('Are you absolutely sure you want to delete this service? This action CANNOT be undone.')) {
+                e.preventDefault();
+                return;
+            }
+            // Delay so the browser has already collected the form data
+            setTimeout(function () {
+                btn.disabled = true;
+                btn.setAttribute('aria-busy', 'true');
+                btn.innerHTML = '<span class="spinner-border" aria-hidden="true"></span><span>Deleting…</span>';
+            }, 0);
+        });
+        // Coming back with the Back button restores the page from cache
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted) { btn.disabled = false; btn.removeAttribute('aria-busy'); btn.innerHTML = label; }
+        });
+    })();
 </script>
 {% endblock %}
 
-{% block 'Footer'%}{% endblock %}
+{% block 'Footer' %}{% endblock %}

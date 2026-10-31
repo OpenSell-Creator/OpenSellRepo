@@ -1,0 +1,750 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Boosts - {{ block.super }}{% endblock %}
+
+{% block page_css %}
+<style>
+/* Highlight colour: navy in light mode, orange in dark mode (same as dashboard) */
+:root, [data-bs-theme="light"] { --hl: var(--primary-color); --hl-edge: var(--primary-color); --hl-soft: var(--primary-soft); }
+[data-bs-theme="dark"] { --hl: var(--accent-text); --hl-edge: var(--accent-color); --hl-soft: var(--accent-soft); }
+
+/* Shared core (same as dashboard_home / transaction_history) */
+.ox {
+    --ox-navy: var(--primary-color);
+    --ox-orange: var(--accent-color);
+    --ox-green: var(--bs-success, var(--primary-color));
+    --ox-purple: var(--bs-purple, var(--primary-color));
+    --ox-red: var(--bs-danger, var(--accent-color));
+    --ox-w: 72rem;
+    --pos: #1e7e34;
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+    line-height: var(--lh-body);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-4));
+}
+[data-bs-theme="dark"] .ox { --pos: #4cc16a; }
+.ox a { text-decoration: none; }
+.ox p { margin: 0; }
+.ox [hidden] { display: none !important; }
+.t-navy { --tint: var(--ox-navy); } .t-orange { --tint: var(--ox-orange); } .t-green { --tint: var(--ox-green); }
+.t-purple { --tint: var(--ox-purple); } .t-red { --tint: var(--ox-red); }
+.ox-ico { display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-xl); }
+.t-orange .ox-ico, .t-orange.ox-ico { color: var(--on-accent); }
+.ox-ico-sm { width: 2rem; height: 2rem; font-size: var(--font-size-lg); }
+.ox-wash { position: relative; isolation: isolate; }
+.ox-wash::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .ox-wash::before { opacity: .09; }
+.ox a:focus-visible, .ox button:focus-visible, .ox [tabindex]:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+
+/* Buttons */
+.ox-btn { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: var(--h-control-lg); padding: 0 var(--sp-5); border: 2px solid var(--bs-white); border-radius: var(--radius-full); background: var(--primary-color); color: var(--bs-white); font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); box-shadow: var(--shadow-md); touch-action: manipulation; }
+@media (hover: hover) { .ox-btn:hover { background: var(--accent-color); color: var(--on-accent); } }
+
+/* Header: navy, full-bleed */
+.ox-head { margin: -2rem -1rem var(--gap-sections); padding: calc(2rem + var(--sp-4)) var(--sp-4) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); }
+.ox-head-in { display: grid; gap: var(--sp-4); max-width: var(--ox-w); margin: 0 auto; }
+.ox-head-l { display: flex; align-items: center; gap: var(--sp-2); }
+.ox-back { display: grid; place-items: center; flex: none; width: 2.75rem; height: 2.75rem; margin-left: calc(var(--sp-2) * -1); border-radius: var(--radius-full); color: var(--bs-white); font-size: var(--font-size-xl); }
+.ox-title { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-tight); }
+.ox-sub { margin: var(--sp-1) 0 0; font-size: var(--font-size-sm); color: rgba(255, 255, 255, .85); }
+.ox-panel { padding: var(--pad-l); border-radius: var(--radius-lg); background: var(--card-background); color: var(--text-primary); }
+.ox-panel-l { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.ox-total { margin: 0; font-size: var(--font-size-3xl); font-weight: 600; line-height: var(--lh-tight); }
+.ox-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--border-color); }
+.ox-split b { display: block; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-tight); }
+.ox-split span { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.ox-act { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: 3rem; margin-top: var(--sp-3); padding: var(--sp-2) var(--sp-4); border: 2px solid var(--bs-white); border-radius: var(--r-card-s); background: var(--accent-color); color: var(--bs-white); font-size: var(--font-size-base); font-weight: 600; touch-action: manipulation; }
+@media (hover: hover) { .ox-act:hover { background: var(--accent-dark); color: var(--bs-white); } }
+
+/* Layout */
+.ox-main { display: flex; flex-direction: column; gap: var(--gap-sections); max-width: var(--ox-w); margin: 0 auto; }
+.ox-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-sections); }
+.ox-card { padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); }
+@media (min-width: 768px) { .ox-card { padding: var(--pad-l); } }
+.ox-sec-h { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.ox-sec-t { flex: 1 1 auto; min-width: 0; }
+.ox-h2 { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-tight); }
+.ox-card-sub { margin: var(--sp-1) 0 0; font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+
+/* Stat tiles */
+.ox-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-cards); }
+.ox-stat { box-sizing: border-box; display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); color: var(--text-primary); }
+.ox-stat-top { display: flex; align-items: center; margin-bottom: var(--sp-1); }
+.ox-stat-l { font-size: var(--font-size-xs); color: var(--text-secondary); line-height: var(--lh-tight); }
+.ox-stat-v { font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-tight); overflow-wrap: anywhere; }
+.ox-stat-s { font-size: var(--font-size-sm); color: var(--text-secondary); line-height: var(--lh-snug); }
+
+/* List rows inside cards */
+.ox-list { display: flex; flex-direction: column; }
+.ox-item { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; padding: var(--sp-3) 0; border-top: 1px solid var(--border-color); color: inherit; }
+.ox-item:first-child { border-top: 0; padding-top: 0; }
+.ox-item:last-child { padding-bottom: 0; }
+.ox-item-t { display: flex; flex-direction: column; gap: var(--sp-1); flex: 1 1 auto; min-width: 0; line-height: var(--lh-tight); }
+.ox-item-t a { padding: .375rem 0; margin: -.375rem 0; }
+.ox-item-t b, .ox-item-t a { overflow: hidden; color: var(--text-primary); font-size: var(--font-size-sm); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.ox-item-t small { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.ox-amt { flex: none; font-size: var(--font-size-base); font-weight: 600; white-space: nowrap; }
+.ox-end { display: flex; flex-direction: column; align-items: flex-end; gap: var(--sp-1); flex: none; }
+.ox-pill { display: inline-flex; align-items: center; gap: var(--sp-1); padding: 0 var(--sp-2); border: 1px solid var(--tint, var(--border-color)); border-radius: var(--radius-full); color: var(--text-primary); font-size: var(--font-size-xs); font-weight: 600; line-height: var(--lh-body); white-space: nowrap; }
+.ox-pill-sm { font-size: var(--font-size-sm); }
+.ox-rank { display: grid; place-items: center; flex: none; width: 2rem; height: 2rem; border-radius: var(--radius-full); background: var(--hover-bg); font-size: var(--font-size-sm); font-weight: 600; }
+
+/* Empty state */
+.ox-empty { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); padding: var(--sp-5) var(--sp-3); text-align: center; }
+.ox-empty-t { margin: 0; font-size: var(--font-size-lg); font-weight: 600; }
+.ox-empty p { max-width: 30rem; font-size: var(--font-size-base); color: var(--text-secondary); }
+
+/* ---------- Boost performance chart ---------- */
+/* Categorical slots 1-4 from the validated reference palette (adjacent-pair CVD safe), selected per mode.
+   Marker shape is the second channel; baseline is a neutral dashed line. */
+.bc { --bc-1: #2a78d6; --bc-2: #eb6834; --bc-3: #1baf7a; --bc-4: #eda100; --bc-base: #898781; --bc-grid: #e1e0d9; --bc-axis: #c3c2b7; --bc-muted: #898781; }
+[data-bs-theme="dark"] .bc { --bc-1: #3987e5; --bc-2: #d95926; --bc-3: #199e70; --bc-4: #c98500; --bc-grid: #2c2c2a; --bc-axis: #383835; }
+.bc-featured { --c: var(--bc-1); } .bc-urgent { --c: var(--bc-2); } .bc-spotlight { --c: var(--bc-3); } .bc-premium { --c: var(--bc-4); } .bc-none { --c: var(--bc-base); }
+.bc-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.bc-seg { display: inline-flex; overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--radius-full); }
+.bc-seg a, .bc-seg button { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1); min-width: 2.75rem; min-height: 2.5rem; margin: 0; padding: 0 var(--sp-3); border: 0; background: var(--card-background); color: var(--text-secondary); font: inherit; font-size: var(--font-size-sm); font-weight: 600; cursor: pointer; }
+.bc-seg a + a, .bc-seg button + button { border-left: 1px solid var(--border-color); }
+.bc-seg .is-on { background: var(--primary-color); color: var(--bs-white); }
+@media (hover: hover) { .bc-seg a:not(.is-on):hover, .bc-seg button:not(.is-on):hover { background: var(--hover-bg); color: var(--text-primary); } }
+.bc-plot { position: relative; width: 100%; }
+.bc-plot svg { display: block; width: 100%; touch-action: pan-y; }
+.bc-grid { stroke: var(--bc-grid); stroke-width: 1; }
+.bc-axisline { stroke: var(--bc-axis); stroke-width: 1; }
+.bc-tick { fill: var(--bc-muted); font-size: 11px; font-family: inherit; }
+.bc-line { fill: none; stroke: var(--c); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.bc-line.bc-none { stroke-dasharray: 5 4; }
+.bc-mark { fill: var(--c); stroke: var(--card-background); stroke-width: 2; }
+.bc-guide { stroke: var(--bc-muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.bc-tip { position: absolute; z-index: 2; min-width: 10.5rem; max-width: 15rem; padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--card-background); box-shadow: var(--shadow-md); pointer-events: none; font-size: var(--font-size-sm); }
+.bc-tip-d { margin-bottom: var(--sp-1); font-size: var(--font-size-xs); color: var(--text-secondary); }
+.bc-tr { display: flex; align-items: center; gap: var(--sp-2); padding: 2px 0; }
+.bc-tr b { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text-primary); }
+.bc-tr span { color: var(--text-secondary); }
+.bc-key { flex: none; width: 1rem; height: 0; border-top: 2px solid var(--c); }
+.bc-tr.bc-none .bc-key { border-top-style: dashed; }
+
+.bc-legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(21rem, 1fr)); gap: var(--sp-2); margin-top: var(--sp-3); }
+.bc-lg { box-sizing: border-box; display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: 3rem; margin: 0; padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); color: var(--text-primary); font: inherit; text-align: left; cursor: pointer; touch-action: manipulation; }
+.bc-lg.is-off { opacity: .45; }
+@media (hover: hover) { .bc-lg:hover { border-color: var(--hl-edge); } }
+.bc-lg-t { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; line-height: var(--lh-tight); }
+.bc-lg-t b { font-size: var(--font-size-sm); font-weight: 600; }
+.bc-lg-t small { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.bc-lift { display: inline-flex; align-items: center; flex: none; font-size: var(--font-size-sm); font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+.bc-lift.is-up { color: var(--pos); }
+.bc-lift.is-down { color: var(--error-text); }
+/* Legend swatch = line key + marker shape (second channel besides colour) */
+.bc-sw { position: relative; flex: none; width: 1.75rem; height: .75rem; }
+.bc-sw::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; background: var(--c); }
+.bc-none .bc-sw::before { background: repeating-linear-gradient(90deg, var(--c) 0 5px, transparent 5px 8px); }
+.bc-sw::after { content: ""; position: absolute; left: 50%; top: 50%; width: .625rem; height: .625rem; transform: translate(-50%, -50%); background: var(--c); }
+.bc-featured .bc-sw::after { border-radius: 50%; }
+.bc-spotlight .bc-sw::after { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.bc-premium .bc-sw::after { clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.bc-none .bc-sw::after { display: none; }
+.bc-note { margin-top: var(--sp-3); font-size: var(--font-size-xs); color: var(--text-secondary); }
+
+.bc-tw { overflow-x: auto; border: 1px solid var(--border-color); border-radius: var(--r-card-s); }
+.bc-table { width: 100%; border-collapse: collapse; font-size: var(--font-size-sm); }
+.bc-table th { padding: var(--sp-2) var(--sp-3); background: var(--hover-bg); color: var(--text-secondary); font-weight: 600; text-align: right; white-space: nowrap; }
+.bc-table th:first-child, .bc-table td:first-child { text-align: left; }
+.bc-table td { padding: var(--sp-2) var(--sp-3); border-top: 1px solid var(--border-color); text-align: right; font-variant-numeric: tabular-nums; }
+
+.bc-sort { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--font-size-sm); color: var(--text-secondary); }
+.bc-sort select { min-height: 2.5rem; padding: 0 var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); color: var(--text-primary); font: inherit; font-size: var(--font-size-sm); }
+.bc-btn { display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 2.5rem; margin: 0; padding: 0 var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); color: var(--text-primary); font: inherit; font-size: var(--font-size-sm); font-weight: 600; cursor: pointer; }
+.bc-btn.is-on { border-color: var(--hl-edge); }
+@media (hover: hover) { .bc-btn:hover { border-color: var(--hl-edge); } }
+.bc-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.bc-live { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); font-size: var(--font-size-xs); color: var(--text-secondary); }
+.bc-live label { display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 2rem; cursor: pointer; }
+.bc-dot { width: .5rem; height: .5rem; border-radius: var(--radius-full); background: var(--pos); }
+.bc-metrics { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: none; }
+.bc-bars { display: flex; flex-direction: column; gap: var(--sp-3); }
+.bc-brow { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr) 4.5rem; align-items: center; gap: var(--sp-3); font-size: var(--font-size-sm); }
+.bc-brow b { overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.bc-btrack { height: .75rem; overflow: hidden; border-radius: var(--radius-full); background: var(--hover-bg); }
+.bc-bfill { display: block; height: 100%; min-width: 2px; border-radius: var(--radius-full); background: var(--c); }
+.bc-brow span:last-child { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.bc-cmp { margin-top: var(--sp-3); padding: var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--r-card-s); }
+.bc-cmp-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.bc-cmp-row select { min-height: 2.5rem; padding: 0 var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); color: var(--text-primary); font: inherit; font-size: var(--font-size-sm); }
+.bc-cmp-out { margin-top: var(--sp-3); display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: var(--sp-2); }
+.bc-cmp-cell { padding: var(--sp-2) var(--sp-3); border-radius: var(--r-card-s); background: var(--hover-bg); font-size: var(--font-size-sm); }
+.bc-cmp-cell b { display: block; font-size: var(--font-size-lg); font-weight: 600; }
+.bc-cmp-cell span { color: var(--text-secondary); font-size: var(--font-size-xs); }
+.bc-cmp-sum { grid-column: 1 / -1; font-weight: 600; }
+@media (max-width: 575px) { .bc-brow { grid-template-columns: 5.5rem minmax(0, 1fr) 3.5rem; } }
+@media (min-width: 768px) {
+    .ox-head-in { grid-template-columns: minmax(0, 1fr) minmax(0, 26rem); align-items: center; gap: var(--sp-5); }
+    .ox-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (min-width: 992px) { .ox-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } }
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+
+    <header class="ox-head">
+        <div class="ox-head-in">
+            <div class="ox-head-l">
+                <a href="{% url 'dashboard_home' %}" class="ox-back" aria-label="Back to dashboard"><i class="bi bi-arrow-left" aria-hidden="true"></i></a>
+                <div>
+                    <h1 class="ox-title">Boosts</h1>
+                    <p class="ox-sub">Track your boosts and see what they bring in</p>
+                </div>
+            </div>
+
+            <div>
+                <div class="ox-panel">
+                    <span class="ox-panel-l">Total spent on boosts</span>
+                    <p class="ox-total">₦{{ total_spent|floatformat:"0g" }}</p>
+                    <div class="ox-split">
+                        <div><span>Active now</span><b>{{ active_boosts_count }}</b></div>
+                        <div><span>All time</span><b>{{ total_boosts }} boost{{ total_boosts|pluralize }}</b></div>
+                    </div>
+                </div>
+                <a href="{% url 'my_store' %}" class="ox-act"><i class="bi bi-rocket-takeoff" aria-hidden="true"></i>Boost a listing</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="ox-main">
+
+        <section class="ox-stats" aria-label="Boost summary">
+            <div class="ox-stat ox-wash t-green">
+                <span class="ox-stat-top"><span class="ox-ico ox-ico-sm"><i class="bi bi-piggy-bank" aria-hidden="true"></i></span></span>
+                <span class="ox-stat-l">Saved with Pro</span>
+                <b class="ox-stat-v">₦{{ total_savings|floatformat:"0g" }}</b>
+                {% if boost_analytics %}<span class="ox-stat-s">{{ boost_analytics.discount_rate|floatformat:"0" }}% off list price</span>{% endif %}
+            </div>
+            {% if boost_analytics %}
+            <div class="ox-stat ox-wash t-orange">
+                <span class="ox-stat-top"><span class="ox-ico ox-ico-sm"><i class="bi bi-cash-coin" aria-hidden="true"></i></span></span>
+                <span class="ox-stat-l">Average cost per boost</span>
+                <b class="ox-stat-v">₦{{ boost_analytics.avg_cost|floatformat:"0g" }}</b>
+            </div>
+            <div class="ox-stat ox-wash t-navy">
+                <span class="ox-stat-top"><span class="ox-ico ox-ico-sm"><i class="bi bi-calendar-check" aria-hidden="true"></i></span></span>
+                <span class="ox-stat-l">Total boosted days</span>
+                <b class="ox-stat-v">{{ boost_analytics.total_days }}</b>
+            </div>
+            <div class="ox-stat ox-wash t-purple">
+                <span class="ox-stat-top"><span class="ox-ico ox-ico-sm"><i class="bi bi-graph-up" aria-hidden="true"></i></span></span>
+                <span class="ox-stat-l">Average cost per day</span>
+                <b class="ox-stat-v">₦{{ boost_analytics.cost_per_day|floatformat:"0g" }}</b>
+            </div>
+            {% endif %}
+        </section>
+
+        {# ---- Boost performance: views per listing, one line per boost type, by day / week / month / overall ---- #}
+        <section class="ox-card bc" aria-labelledby="perfTitle" id="bcRoot" data-feed="{% url 'boost_chart_data' %}">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-orange ox-wash"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i></span>
+                <div class="ox-sec-t">
+                    <h2 class="ox-h2" id="perfTitle">Boost performance</h2>
+                    <p class="ox-card-sub">Average views per listing per day, by boost type</p>
+                </div>
+            </div>
+
+            <div class="bc-bar">
+                <div class="bc-seg" role="group" aria-label="Group by">
+                    {% for g in boost_chart.controls.groups %}<a href="{{ g.href }}" class="{% if g.active %}is-on{% endif %}"{% if g.active %} aria-current="true"{% endif %}>{{ g.label }}</a>{% endfor %}
+                </div>
+                {% if boost_chart.controls.spans %}
+                <div class="bc-seg" role="group" aria-label="Period length">
+                    {% for s in boost_chart.controls.spans %}<a href="{{ s.href }}" class="{% if s.active %}is-on{% endif %}"{% if s.active %} aria-current="true"{% endif %}>{{ s.label }}</a>{% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="bc-bar">
+                <label class="bc-sort"><span>Sort by</span>
+                    <select id="bcSort">
+                        <option value="default">Boost type</option>
+                        <option value="avg">Average views</option>
+                        <option value="change">Change vs previous</option>
+                        <option value="views">Total views</option>
+                    </select>
+                </label>
+                <div class="bc-tools">
+                    <button type="button" class="bc-btn" id="bcCmpBtn" aria-expanded="false"><i class="bi bi-arrow-left-right" aria-hidden="true"></i>Compare</button>
+                    <div class="bc-seg" role="group" aria-label="Chart or table">
+                        <button type="button" class="is-on" id="bcShowChart" aria-pressed="true"><i class="bi bi-graph-up" aria-hidden="true"></i>Chart</button>
+                        <button type="button" id="bcShowTable" aria-pressed="false"><i class="bi bi-table" aria-hidden="true"></i>Table</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bc-live">
+                <span class="bc-dot" aria-hidden="true"></span>
+                <span id="bcStamp" role="status">Updated {{ boost_chart.updated }}</span>
+                <button type="button" class="bc-btn" id="bcRefresh"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i>Refresh</button>
+                <label><input type="checkbox" id="bcAuto" checked> Auto-refresh</label>
+            </div>
+
+            <div class="ox-empty" id="bcEmpty" hidden>
+                <span class="ox-ico t-orange ox-wash"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i></span>
+                <h3 class="ox-empty-t">No views recorded yet</h3>
+                <p>Once your listings get visits, you'll see how each boost type compares with listings that have no boost.</p>
+            </div>
+
+            <div id="bcBody" hidden>
+                <div id="bcChartView">
+                    <div class="bc-plot" id="bcPlot" tabindex="0" aria-label="Line chart of average views per listing for each boost type. Use the left and right arrow keys to move between periods.">
+                        <svg role="img" aria-label="Average views per listing by boost type"></svg>
+                        <div class="bc-tip" id="bcTip" hidden></div>
+                    </div>
+                </div>
+                <div class="bc-bars" id="bcBarsView" hidden></div>
+                <div class="bc-tw" id="bcTableView" hidden></div>
+
+                <div class="bc-cmp" id="bcCmp" hidden>
+                    <div class="bc-cmp-row">
+                        <select id="bcCmpA" aria-label="First boost type"></select>
+                        <span>vs</span>
+                        <select id="bcCmpB" aria-label="Second boost type"></select>
+                    </div>
+                    <div class="bc-cmp-out" id="bcCmpOut"></div>
+                </div>
+
+                <div class="bc-legend" id="bcLegend"></div>
+                <p class="bc-note">Click a legend item to hide or show it. "Previous" is the period of the same length just before the one shown. A listing with several live boosts counts under each type. This compares averages and does not prove a boost caused the difference.</p>
+            </div>
+
+            {{ boost_chart|json_script:"boostChartData" }}
+        </section>
+
+        <div class="ox-cols">
+
+            <section class="ox-card" aria-labelledby="actTitle">
+                <div class="ox-sec-h">
+                    <span class="ox-ico t-green ox-wash"><i class="bi bi-rocket-takeoff" aria-hidden="true"></i></span>
+                    <div class="ox-sec-t">
+                        <h2 class="ox-h2" id="actTitle">Active boosts</h2>
+                        <p class="ox-card-sub">Listings being promoted right now</p>
+                    </div>
+                    {% if active_boosts %}<span class="ox-pill ox-wash t-green">{{ active_boosts_count }} active</span>{% endif %}
+                </div>
+                {% if active_boosts %}
+                <div class="ox-list">
+                    {% for boost in active_boosts %}
+                    <div class="ox-item">
+                        <span class="ox-ico ox-ico-sm ox-wash {% if boost.boost_type == 'featured' %}t-orange{% elif boost.boost_type == 'urgent' %}t-red{% elif boost.boost_type == 'spotlight' %}t-navy{% else %}t-purple{% endif %}"><i class="bi {% if boost.boost_type == 'featured' %}bi-star-fill{% elif boost.boost_type == 'urgent' %}bi-clock-fill{% elif boost.boost_type == 'spotlight' %}bi-lightning-fill{% else %}bi-gem{% endif %}" aria-hidden="true"></i></span>
+                        <span class="ox-item-t">
+                            <a href="{% url 'product_detail' boost.product.id %}">{{ boost.product.title|truncatechars:34 }}</a>
+                            <small>{{ boost.get_boost_type_display }} · ends {{ boost.end_date|date:'M d, Y' }}</small>
+                        </span>
+                        {% if boost.days_remaining <= 1 %}
+                        <span class="ox-pill ox-pill-sm ox-wash t-red"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i>Expires today</span>
+                        {% elif boost.days_remaining <= 3 %}
+                        <span class="ox-pill ox-pill-sm ox-wash t-orange"><i class="bi bi-clock" aria-hidden="true"></i>{{ boost.days_remaining }} days left</span>
+                        {% else %}
+                        <span class="ox-pill ox-pill-sm ox-wash t-green"><i class="bi bi-check-circle" aria-hidden="true"></i>{{ boost.days_remaining }} days left</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="ox-empty">
+                    <span class="ox-ico t-green ox-wash"><i class="bi bi-rocket-takeoff" aria-hidden="true"></i></span>
+                    <h3 class="ox-empty-t">No active boosts</h3>
+                    <p>Boost a listing to get it in front of more buyers</p>
+                    <a href="{% url 'my_store' %}" class="ox-btn">Pick a listing</a>
+                </div>
+                {% endif %}
+            </section>
+
+            <section class="ox-card" aria-labelledby="topTitle">
+                <div class="ox-sec-h">
+                    <span class="ox-ico t-purple ox-wash"><i class="bi bi-trophy" aria-hidden="true"></i></span>
+                    <div class="ox-sec-t">
+                        <h2 class="ox-h2" id="topTitle">Most boosted listings</h2>
+                        <p class="ox-card-sub">Views are each listing's all-time total</p>
+                    </div>
+                </div>
+                {% if boost_analytics.top_products %}
+                <div class="ox-list">
+                    {% for p in boost_analytics.top_products %}
+                    <div class="ox-item">
+                        <span class="ox-rank">{{ forloop.counter }}</span>
+                        <span class="ox-item-t">
+                            <a href="{% url 'product_detail' p.product_id %}">{{ p.product__title|truncatechars:34 }}</a>
+                            <small>{{ p.count }} boost{{ p.count|pluralize }} · {{ p.views|default:0 }} views</small>
+                        </span>
+                        <span class="ox-amt">₦{{ p.spent|floatformat:"0g" }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="ox-empty">
+                    <span class="ox-ico t-purple ox-wash"><i class="bi bi-trophy" aria-hidden="true"></i></span>
+                    <h3 class="ox-empty-t">Nothing to rank yet</h3>
+                    <p>Your most boosted listings will show here</p>
+                </div>
+                {% endif %}
+            </section>
+
+        </div>
+
+        <section class="ox-card" aria-labelledby="histTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-navy ox-wash"><i class="bi bi-clock-history" aria-hidden="true"></i></span>
+                <div class="ox-sec-t">
+                    <h2 class="ox-h2" id="histTitle">Boost history</h2>
+                    <p class="ox-card-sub">Your 20 most recent boosts</p>
+                </div>
+            </div>
+            {% if boost_history %}
+            <div class="ox-list">
+                {% for boost in boost_history %}
+                <div class="ox-item">
+                    <span class="ox-ico ox-ico-sm ox-wash {% if boost.boost_type == 'featured' %}t-orange{% elif boost.boost_type == 'urgent' %}t-red{% elif boost.boost_type == 'spotlight' %}t-navy{% else %}t-purple{% endif %}"><i class="bi {% if boost.boost_type == 'featured' %}bi-star-fill{% elif boost.boost_type == 'urgent' %}bi-clock-fill{% elif boost.boost_type == 'spotlight' %}bi-lightning-fill{% else %}bi-gem{% endif %}" aria-hidden="true"></i></span>
+                    <span class="ox-item-t">
+                        <a href="{% url 'product_detail' boost.product.id %}">{{ boost.product.title|truncatechars:34 }}</a>
+                        <small>{{ boost.get_boost_type_display }} · {{ boost.duration_days }} day{{ boost.duration_days|pluralize }} · {{ boost.start_date|date:'M d, Y' }} – {{ boost.end_date|date:'M d, Y' }}</small>
+                    </span>
+                    <span class="ox-end">
+                        <span class="ox-amt">₦{{ boost.final_cost|floatformat:"0g" }}</span>
+                        {% if boost.is_active and not boost.is_expired %}
+                        <span class="ox-pill ox-wash t-green">Active</span>
+                        {% else %}
+                        <span class="ox-pill">Ended</span>
+                        {% endif %}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="ox-empty">
+                <span class="ox-ico t-navy ox-wash"><i class="bi bi-clock-history" aria-hidden="true"></i></span>
+                <h3 class="ox-empty-t">No boosts yet</h3>
+                <p>Your boost history will appear here</p>
+            </div>
+            {% endif %}
+        </section>
+
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var root = document.getElementById('bcRoot');
+    var dataEl = document.getElementById('boostChartData');
+    if (!root || !dataEl) return;
+    var data = JSON.parse(dataEl.textContent);
+    var feed = root.dataset.feed;
+    var $ = function (id) { return document.getElementById(id); };
+    var plot = $('bcPlot'), svg = plot.querySelector('svg'), tip = $('bcTip');
+    var legend = $('bcLegend'), chartView = $('bcChartView'), barsView = $('bcBarsView'), tableView = $('bcTableView');
+    var body = $('bcBody'), empty = $('bcEmpty'), stamp = $('bcStamp');
+    var NS = 'http://www.w3.org/2000/svg';
+    var hidden = {}, sortKey = 'default', mode = 'chart', active = -1, geo = null, cmpOpen = false;
+    var shapes = { featured: 'circle', urgent: 'square', spotlight: 'diamond', premium: 'triangle', none: null };
+
+    var el = function (tag, cls, text) {
+        var e = document.createElement(tag);
+        if (cls) e.className = cls;
+        if (text !== undefined) e.textContent = text;
+        return e;
+    };
+    var make = function (name, attrs, parent) {
+        var e = document.createElementNS(NS, name);
+        Object.keys(attrs || {}).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+        if (parent) parent.appendChild(e);
+        return e;
+    };
+    var pct = function (v) { return (v >= 0 ? '+' : '') + v + '%'; };
+    var fmt = function (v) { return v === null || v === undefined ? '–' : String(v); };
+    var niceStep = function (raw) {
+        var p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p;
+        return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+    };
+    var cmpNull = function (a, b) { return (b === null ? -Infinity : b) - (a === null ? -Infinity : a); };
+
+    function ordered() {
+        var s = data.series.slice();
+        if (sortKey === 'avg') s.sort(function (a, b) { return b.avg - a.avg; });
+        else if (sortKey === 'change') s.sort(function (a, b) { return cmpNull(a.change, b.change); });
+        else if (sortKey === 'views') s.sort(function (a, b) { return b.views - a.views; });
+        return s;
+    }
+    var visible = function () { return ordered().filter(function (s) { return !hidden[s.key]; }); };
+
+    /* ---------- legend (progress + vs baseline) ---------- */
+    function renderLegend() {
+        legend.textContent = '';
+        ordered().forEach(function (s) {
+            var b = el('button', 'bc-lg bc-' + s.key + (hidden[s.key] ? ' is-off' : ''));
+            b.type = 'button';
+            b.setAttribute('aria-pressed', hidden[s.key] ? 'false' : 'true');
+            var sw = el('span', 'bc-sw'); sw.setAttribute('aria-hidden', 'true');
+            var t = el('span', 'bc-lg-t');
+            t.appendChild(el('b', '', s.label));
+            t.appendChild(el('small', '', s.avg + ' views/day · ' + s.listings + ' listing' + (s.listings === 1 ? '' : 's')));
+            var m = el('span', 'bc-metrics');
+            if (s.key === 'none') m.appendChild(el('span', 'bc-lift', 'Baseline'));
+            else if (s.lift !== null) m.appendChild(el('span', 'bc-lift ' + (s.lift >= 0 ? 'is-up' : 'is-down'), pct(s.lift) + ' vs not boosted'));
+            if (data.group !== 'all') {
+                if (s.change !== null) m.appendChild(el('span', 'bc-lift ' + (s.change >= 0 ? 'is-up' : 'is-down'), pct(s.change) + ' vs previous period'));
+                else m.appendChild(el('span', 'bc-lift', 'No earlier data'));
+            }
+            b.appendChild(sw); b.appendChild(t); b.appendChild(m);
+            b.addEventListener('click', function () { hidden[s.key] = !hidden[s.key]; hide(); renderAll(); });
+            legend.appendChild(b);
+        });
+    }
+
+    /* ---------- overall bars ---------- */
+    function renderBars() {
+        barsView.textContent = '';
+        var vis = visible();
+        var max = Math.max.apply(null, vis.map(function (s) { return s.avg; }).concat([0.1]));
+        vis.forEach(function (s) {
+            var r = el('div', 'bc-brow bc-' + s.key);
+            r.appendChild(el('b', '', s.label));
+            var tr = el('span', 'bc-btrack'), f = el('span', 'bc-bfill');
+            f.style.width = (s.avg / max * 100) + '%';
+            tr.appendChild(f); r.appendChild(tr);
+            r.appendChild(el('span', '', String(s.avg)));
+            barsView.appendChild(r);
+        });
+    }
+
+    /* ---------- table ---------- */
+    function renderTable() {
+        tableView.textContent = '';
+        var tbl = el('table', 'bc-table'), thead = el('thead'), hr = el('tr'), tb = el('tbody');
+        var th = function (t) { var h = el('th', '', t); h.scope = 'col'; hr.appendChild(h); };
+        var td = function (row, t) { row.appendChild(el('td', '', t)); };
+        var vis = ordered();
+        if (data.group === 'all') {
+            ['Type', 'Avg views/day', 'Listings', 'Total views', 'vs not boosted'].forEach(th);
+            vis.forEach(function (s) {
+                var r = el('tr');
+                td(r, s.label); td(r, String(s.avg)); td(r, String(s.listings)); td(r, String(s.views));
+                td(r, s.key === 'none' ? 'Baseline' : (s.lift === null ? '–' : pct(s.lift)));
+                tb.appendChild(r);
+            });
+        } else {
+            th('Period');
+            vis.forEach(function (s) { th(s.label); });
+            data.full_labels.forEach(function (lab, i) {
+                var r = el('tr'); td(r, lab);
+                vis.forEach(function (s) { td(r, fmt(s.points[i])); });
+                tb.appendChild(r);
+            });
+        }
+        thead.appendChild(hr); tbl.appendChild(thead); tbl.appendChild(tb); tableView.appendChild(tbl);
+    }
+
+    /* ---------- compare two boost types ---------- */
+    var selA = $('bcCmpA'), selB = $('bcCmpB'), cmpOut = $('bcCmpOut');
+    function fillCmpOptions() {
+        var a = selA.value, b = selB.value;
+        [selA, selB].forEach(function (sel) {
+            sel.textContent = '';
+            data.series.forEach(function (s) { var o = el('option', '', s.label); o.value = s.key; sel.appendChild(o); });
+        });
+        var keys = data.series.map(function (s) { return s.key; });
+        selA.value = keys.indexOf(a) >= 0 ? a : (keys.filter(function (k) { return k !== 'none'; })[0] || keys[0]);
+        selB.value = keys.indexOf(b) >= 0 ? b : (keys.indexOf('none') >= 0 ? 'none' : keys[keys.length - 1]);
+    }
+    function renderCompare() {
+        cmpOut.textContent = '';
+        var find = function (k) { return data.series.filter(function (s) { return s.key === k; })[0]; };
+        var a = find(selA.value), b = find(selB.value);
+        if (!a || !b) return;
+        [a, b].forEach(function (s) {
+            var c = el('div', 'bc-cmp-cell bc-' + s.key);
+            c.appendChild(el('b', '', s.avg + ' views/day'));
+            c.appendChild(el('span', '', s.label + ' · ' + s.listings + ' listing' + (s.listings === 1 ? '' : 's') + ' · ' + s.views + ' views'));
+            if (data.group !== 'all') {
+                var d = el('span', '', s.change === null ? 'No earlier data' : pct(s.change) + ' vs previous period');
+                d.style.display = 'block';
+                c.appendChild(d);
+            }
+            cmpOut.appendChild(c);
+        });
+        var sum = el('div', 'bc-cmp-cell bc-cmp-sum');
+        if (a.key === b.key) sum.textContent = 'Pick two different boost types.';
+        else if (b.avg > 0) {
+            var diff = Math.round((a.avg - b.avg) / b.avg * 100);
+            sum.textContent = a.label + ' gets ' + Math.abs(diff) + '% ' + (diff >= 0 ? 'more' : 'fewer') + ' views per listing per day than ' + b.label + '.';
+        } else sum.textContent = b.label + ' has no views in this period to compare against.';
+        cmpOut.appendChild(sum);
+    }
+    selA.addEventListener('change', renderCompare);
+    selB.addEventListener('change', renderCompare);
+    $('bcCmpBtn').addEventListener('click', function () {
+        cmpOpen = !cmpOpen;
+        $('bcCmp').hidden = !cmpOpen;
+        this.classList.toggle('is-on', cmpOpen);
+        this.setAttribute('aria-expanded', cmpOpen ? 'true' : 'false');
+        if (cmpOpen) renderCompare();
+    });
+
+    /* ---------- line chart ---------- */
+    function marker(parent, shape, cx, cy, cls) {
+        var r = 4.5, e;
+        if (shape === 'circle') e = make('circle', { cx: cx, cy: cy, r: r });
+        else if (shape === 'square') e = make('rect', { x: cx - r + 0.5, y: cy - r + 0.5, width: 2 * r - 1, height: 2 * r - 1 });
+        else if (shape === 'diamond') e = make('polygon', { points: [cx, cy - r - 1, cx + r + 1, cy, cx, cy + r + 1, cx - r - 1, cy].join(' ') });
+        else if (shape === 'triangle') e = make('polygon', { points: [cx, cy - r - 1, cx + r + 1, cy + r, cx - r - 1, cy + r].join(' ') });
+        else return null;
+        e.setAttribute('class', 'bc-mark ' + cls);
+        parent.appendChild(e);
+        return e;
+    }
+
+    function draw() {
+        if (chartView.hidden) return;
+        var n = data.labels.length;
+        var W = plot.clientWidth || 600, H = W < 480 ? 240 : 300;
+        var m = { l: 40, r: 14, t: 14, b: 28 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+        svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+        while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+        var vis = visible(), max = 0;
+        vis.forEach(function (s) { s.points.forEach(function (p) { if (p !== null && p > max) max = p; }); });
+        if (max <= 0) max = 1;
+        var step = niceStep(max / 4), ticks = Math.max(1, Math.ceil(max / step - 1e-9)), top = step * ticks;
+        var x = function (i) { return n === 1 ? m.l + iw / 2 : m.l + iw * i / (n - 1); };
+        var y = function (v) { return m.t + ih - (v / top) * ih; };
+
+        for (var k = 0; k <= ticks; k++) {
+            var yy = y(k * step);
+            make('line', { class: k === 0 ? 'bc-axisline' : 'bc-grid', x1: m.l, x2: W - m.r, y1: yy, y2: yy }, svg);
+            var t = make('text', { class: 'bc-tick', x: m.l - 8, y: yy + 4, 'text-anchor': 'end' }, svg);
+            t.textContent = step < 1 ? (k * step).toFixed(1) : String(Math.round(k * step * 10) / 10);
+        }
+        var every = Math.ceil(n / (W < 480 ? 4 : 8));
+        data.labels.forEach(function (lab, i) {
+            if (i % every !== 0 && i !== n - 1) return;
+            if (i !== n - 1 && n - 1 - i < every / 2) return;
+            var tx = make('text', { class: 'bc-tick', x: x(i), y: H - 8, 'text-anchor': i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle' }, svg);
+            tx.textContent = lab;
+        });
+
+        var guide = make('line', { class: 'bc-guide', y1: m.t, y2: m.t + ih, visibility: 'hidden' }, svg);
+        vis.forEach(function (s) {
+            var cls = 'bc-' + s.key, d = '', pen = false;
+            s.points.forEach(function (p, i) {
+                if (p === null) { pen = false; return; }
+                d += (pen ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(p).toFixed(1);
+                pen = true;
+            });
+            make('path', { class: 'bc-line ' + cls, d: d }, svg);
+            var shape = shapes[s.key];
+            if (!shape) return;
+            s.points.forEach(function (p, i) {
+                if (p === null) return;
+                var lonely = (i === 0 || s.points[i - 1] === null) && (i === n - 1 || s.points[i + 1] === null);
+                if (n <= 14 || lonely) marker(svg, shape, x(i), y(p), cls);
+            });
+        });
+        var hl = make('g', {}, svg);
+        geo = { m: m, iw: iw, x: x, y: y, guide: guide, hl: hl, vis: vis, W: W, n: n };
+        if (active >= 0 && active < n) show(active);
+    }
+
+    function show(i) {
+        if (!geo) return;
+        active = i;
+        var g = geo;
+        g.guide.setAttribute('x1', g.x(i)); g.guide.setAttribute('x2', g.x(i)); g.guide.setAttribute('visibility', 'visible');
+        while (g.hl.firstChild) g.hl.removeChild(g.hl.firstChild);
+        tip.textContent = '';
+        tip.appendChild(el('div', 'bc-tip-d', data.full_labels[i]));
+        g.vis.forEach(function (s) {
+            var v = s.points[i], row = el('div', 'bc-tr bc-' + s.key);
+            row.appendChild(el('span', 'bc-key'));
+            row.appendChild(el('b', '', fmt(v)));
+            row.appendChild(el('span', '', s.label));
+            tip.appendChild(row);
+            if (v !== null) marker(g.hl, shapes[s.key] || 'circle', g.x(i), g.y(v), 'bc-' + s.key);
+        });
+        tip.hidden = false;
+        var tw = tip.offsetWidth, px = g.x(i), left = px + 14;
+        if (left + tw > g.W - 4) left = px - tw - 14;
+        tip.style.left = Math.max(4, left) + 'px';
+        tip.style.top = (g.m.t + 4) + 'px';
+    }
+    function hide() {
+        active = -1; tip.hidden = true;
+        if (geo) { geo.guide.setAttribute('visibility', 'hidden'); while (geo.hl.firstChild) geo.hl.removeChild(geo.hl.firstChild); }
+    }
+    var nearest = function (evt) {
+        var r = svg.getBoundingClientRect(), n = geo.n;
+        var i = n === 1 ? 0 : Math.round((evt.clientX - r.left - geo.m.l) / geo.iw * (n - 1));
+        return Math.max(0, Math.min(n - 1, i));
+    };
+    plot.addEventListener('pointermove', function (e) { if (geo) show(nearest(e)); });
+    plot.addEventListener('pointerdown', function (e) { if (geo) show(nearest(e)); });
+    plot.addEventListener('pointerleave', hide);
+    plot.addEventListener('blur', hide);
+    plot.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' || !geo) return;
+        e.preventDefault();
+        var n = geo.n, i = active < 0 ? (e.key === 'ArrowLeft' ? n - 1 : 0) : active + (e.key === 'ArrowRight' ? 1 : -1);
+        show(Math.max(0, Math.min(n - 1, i)));
+    });
+
+    /* ---------- composition ---------- */
+    function renderAll() {
+        var has = data.has_data;
+        empty.hidden = has;
+        body.hidden = !has;
+        stamp.textContent = 'Updated ' + data.updated;
+        if (!has) return;
+        var isAll = data.group === 'all';
+        chartView.hidden = mode === 'table' || isAll;
+        barsView.hidden = mode === 'table' || !isAll;
+        tableView.hidden = mode !== 'table';
+        legend.hidden = false;
+        renderLegend();
+        fillCmpOptions();
+        if (cmpOpen) renderCompare();
+        if (isAll) renderBars();
+        if (mode === 'table') renderTable();
+        draw();
+    }
+
+    $('bcSort').addEventListener('change', function () { sortKey = this.value; renderAll(); });
+    var setMode = function (m) {
+        mode = m;
+        $('bcShowChart').classList.toggle('is-on', m === 'chart');
+        $('bcShowTable').classList.toggle('is-on', m === 'table');
+        $('bcShowChart').setAttribute('aria-pressed', m === 'chart' ? 'true' : 'false');
+        $('bcShowTable').setAttribute('aria-pressed', m === 'table' ? 'true' : 'false');
+        hide(); renderAll();
+    };
+    $('bcShowChart').addEventListener('click', function () { setMode('chart'); });
+    $('bcShowTable').addEventListener('click', function () { setMode('table'); });
+
+    /* ---------- live refresh (polls the JSON endpoint) ---------- */
+    var busy = false;
+    function refresh() {
+        if (busy) return;
+        busy = true;
+        fetch(feed + window.location.search, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+            .then(function (r) { if (!r.ok) throw new Error('bad'); return r.json(); })
+            .then(function (d) { data = d; renderAll(); })
+            .catch(function () { stamp.textContent = 'Could not refresh. Showing the last update at ' + data.updated; })
+            .then(function () { busy = false; });
+    }
+    $('bcRefresh').addEventListener('click', refresh);
+    setInterval(function () {
+        if ($('bcAuto').checked && !document.hidden) refresh();
+    }, 45000);
+
+    var lastW = 0;
+    var redraw = function () { var w = plot.clientWidth; if (w && w !== lastW) { lastW = w; draw(); } };
+    if (window.ResizeObserver) new ResizeObserver(redraw).observe(plot); else window.addEventListener('resize', redraw);
+    renderAll();
+});
+</script>
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

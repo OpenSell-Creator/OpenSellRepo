@@ -1,351 +1,184 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}Delete request{% endblock %}
+
 {% block page_css %}
-    <link rel="stylesheet" type="text/css" href="{% static 'css/pages/buyer_requests.css' %}">
+<style>
+/* Delete confirmation: shared OpenSell design (navy header band, token-based card, pill buttons). */
+.dl {
+    display: flex; flex-direction: column; align-items: center; gap: var(--gap-sections);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-6));
+    color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-body);
+}
+.dl a { text-decoration: none; }
+.dl p, .dl h1, .dl h2, .dl ul, .dl dl { margin: 0; }
+
+/* Navy header band: full-bleed, tucks under the navbar */
+.dl-head { align-self: stretch; display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); margin: -2rem -1rem 0; padding: calc(2rem + var(--sp-4)) var(--sp-5) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); text-align: center; }
+.dl-head-ico { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin-bottom: var(--sp-1); border-radius: var(--radius-full); background: rgba(255, 255, 255, .14); font-size: var(--font-size-xl); }
+.dl-head h1 { font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-snug); }
+.dl-head p { font-size: var(--font-size-sm); line-height: var(--lh-snug); opacity: .85; }
+@media (min-width: 768px) { .dl-head h1 { font-size: var(--font-size-3xl); } .dl-head p { font-size: var(--font-size-base); } }
+
+/* Card */
+.dl-card { position: relative; z-index: 1; display: flex; flex-direction: column; gap: var(--gap-sections); box-sizing: border-box; width: 100%; max-width: 34rem; padding: var(--pad-l); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); box-shadow: var(--shadow-md); }
+
+/* Request summary */
+.dl-prod { display: flex; align-items: center; gap: var(--sp-3); padding: var(--pad-s); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--background-color); }
+.dl-thumb { position: relative; display: grid; place-items: center; flex: none; width: 4rem; height: 4rem; overflow: hidden; border-radius: var(--radius-md); background: var(--hover-bg); color: var(--text-secondary); font-size: var(--font-size-xl); }
+.dl-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.dl-prod-txt { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.dl-prod-title { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); overflow-wrap: anywhere; }
+.dl-tags { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+.dl-tag { display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 1.5rem; padding: 0 var(--sp-2); border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--card-background); font-size: var(--font-size-xs); font-weight: 600; white-space: nowrap; }
+.dl-tag i { color: var(--accent-color); }
+
+/* Details (table-style rows) */
+.dl-kv { border: 1px solid var(--border-color); border-radius: var(--r-card-s); padding: 0 var(--pad-m); }
+.dl-kv > div { display: grid; grid-template-columns: 6rem minmax(0, 1fr); align-items: baseline; gap: var(--sp-1) var(--sp-3); padding: var(--sp-2) 0; }
+.dl-kv > div + div { border-top: 1px solid var(--border-color); }
+.dl-kv dt { font-size: var(--font-size-xs); font-weight: 400; color: var(--text-secondary); }
+.dl-kv dd { min-width: 0; margin: 0; font-size: var(--font-size-sm); font-weight: 600; overflow-wrap: anywhere; }
+.dl-status { display: inline-flex; align-items: center; min-height: 1.5rem; padding: 0 var(--sp-2); border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); font-size: var(--font-size-xs); font-weight: 600; }
+
+/* Stats */
+.dl-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--border-color); }
+.dl-stat { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); padding: var(--pad-s) var(--sp-1); background: var(--card-background); text-align: center; }
+.dl-stat i { color: var(--tint); font-size: var(--font-size-lg); }
+.dl-stat b { font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-tight); }
+.dl-stat span { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.t-teal { --tint: var(--bs-teal, var(--primary-color)); } .t-green { --tint: var(--bs-success, var(--primary-color)); } .t-purple { --tint: var(--bs-purple, var(--primary-color)); }
+
+/* Warning */
+.dl-warn { position: relative; isolation: isolate; display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-md); font-size: var(--font-size-sm); line-height: var(--lh-snug); }
+.dl-warn::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--bs-danger); opacity: .14; }
+[data-bs-theme="dark"] .dl-warn::before { opacity: .09; }
+.dl-warn > i { margin-top: 1px; color: var(--bs-danger); }
+.dl-warn-body { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.dl-warn ul { padding-left: var(--sp-4); }
+.dl-warn .dl-tip { color: var(--text-secondary); }
+
+/* Actions: delete on top, the two safer choices below */
+.dl-form { display: flex; flex-direction: column; gap: var(--sp-2); margin: 0; }
+.dl-alt { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+.dl-btn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-4); border: 1px solid transparent; border-radius: 22px; font: inherit; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); text-align: center; cursor: pointer; touch-action: manipulation; }
+.dl a.dl-btn-ghost { border-color: var(--border-color); background: var(--card-background); color: var(--text-primary); }
+.dl-btn-danger { border: 2px solid var(--bs-white); background: var(--bs-danger); color: var(--bs-white); box-shadow: 0 4px 12px rgba(0, 0, 0, .2); }
+.dl-btn-danger:disabled { opacity: .7; cursor: default; }
+.dl-btn .spinner-border { width: 1rem; height: 1rem; border-width: .15em; }
+@media (max-width: 399.98px) { .dl-alt { grid-template-columns: 1fr; } }
+
+.dl a:focus-visible, .dl button:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; border-radius: var(--radius-sm); }
+@media (hover: hover) { .dl a.dl-btn-ghost:hover { background: var(--hover-bg); border-color: var(--primary-color); } }
+</style>
 {% endblock %}
 
 {% block 'Body' %}
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <div class="card">
-                <div class="card-header bg-danger text-white">
-                    <h4 class="mb-0">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                        Delete Request
-                    </h4>
-                </div>
-                
-                <div class="card-body p-4">
-                    <!-- Request Preview -->
-                    <div class="request-preview mb-4">
-                        <div class="row align-items-center">
-                            <div class="col-md-3">
-                                {% if object.primary_image %}
-                                    <img src="{{ object.primary_image.image.url }}" 
-                                         class="img-fluid rounded" 
-                                         alt="{{ object.title }}"
-                                         style="max-height: 120px; width: 100%; object-fit: cover;">
-                                {% else %}
-                                    <div class="no-image-placeholder" style="height: 120px;">
-                                        <div class="request-type-icon">
-                                            {% if object.request_type == 'product' %}
-                                                <i class="bi bi-box-seam"></i>
-                                            {% elif object.request_type == 'service' %}
-                                                <i class="bi bi-tools"></i>
-                                            {% elif object.request_type == 'skill' %}
-                                                <i class="bi bi-person-gear"></i>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                {% endif %}
-                            </div>
-                            
-                            <div class="col-md-9">
-                                <h5 class="request-title mb-2">{{ object.title }}</h5>
-                                
-                                <div class="request-meta mb-2">
-                                    <span class="badge bg-primary me-2">{{ object.get_request_type_display }}</span>
-                                    <span class="badge bg-{{ object.urgency_color }} me-2">{{ object.get_urgency_display }}</span>
-                                    {% if object.is_featured %}
-                                    <span class="badge bg-warning text-dark me-2">
-                                        <i class="bi bi-star-fill"></i> Featured
-                                    </span>
-                                    {% endif %}
-                                </div>
-                                
-                                <div class="request-details">
-                                    <div class="detail-row">
-                                        <strong>Category:</strong>
-                                        {% if object.category %}
-                                            {{ object.category.name }}
-                                            {% if object.subcategory %} > {{ object.subcategory.name }}{% endif %}
-                                        {% elif object.service_category %}
-                                            {{ object.get_service_category_display }}
-                                        {% endif %}
-                                    </div>
-                                    
-                                    <div class="detail-row">
-                                        <strong>Budget:</strong>
-                                        {{ object.budget_display }}
-                                    </div>
-                                    
-                                    <div class="detail-row">
-                                        <strong>Posted:</strong>
-                                        {{ object.created_at|date:"M d, Y g:i A" }}
-                                    </div>
-                                    
-                                    <div class="detail-row">
-                                        <strong>Status:</strong>
-                                        <span class="status-badge status-{{ object.status }}">
-                                            {{ object.get_status_display }}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+<div class="dl">
 
-                    <!-- Warning Message -->
-                    <div class="alert alert-danger">
-                        <h5 class="alert-heading">
-                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                            Are you sure you want to delete this request?
-                        </h5>
-                        <p class="mb-3">This action cannot be undone. Deleting this request will:</p>
-                        <ul class="mb-3">
-                            <li><strong>Permanently remove</strong> the request from the platform</li>
-                            <li><strong>Delete all responses</strong> from sellers ({{ object.response_count }} response{{ object.response_count|pluralize }})</li>
-                            <li><strong>Remove all conversations</strong> related to this request</li>
-                            <li><strong>Delete all images</strong> associated with this request</li>
-                            <li><strong>Remove from saved lists</strong> of users who bookmarked it</li>
-                        </ul>
-                        <p class="mb-0">
-                            <strong>Consider pausing or editing the request instead of deleting it.</strong>
-                        </p>
-                    </div>
+    <header class="dl-head">
+        <span class="dl-head-ico" aria-hidden="true"><i class="bi bi-trash3-fill"></i></span>
+        <h1>Delete request</h1>
+        <p>Are you sure you want to delete this request?</p>
+    </header>
 
-                    <!-- Stats Summary -->
-                    {% if object.view_count or object.response_count or object.contact_count %}
-                    <div class="stats-summary mb-4">
-                        <h6>Request Statistics</h6>
-                        <div class="row g-3">
-                            <div class="col-4 text-center">
-                                <div class="stat-item">
-                                    <i class="bi bi-eye text-primary"></i>
-                                    <div class="stat-value">{{ object.view_count }}</div>
-                                    <div class="stat-label">Views</div>
-                                </div>
-                            </div>
-                            <div class="col-4 text-center">
-                                <div class="stat-item">
-                                    <i class="bi bi-chat-dots text-success"></i>
-                                    <div class="stat-value">{{ object.response_count }}</div>
-                                    <div class="stat-label">Responses</div>
-                                </div>
-                            </div>
-                            <div class="col-4 text-center">
-                                <div class="stat-item">
-                                    <i class="bi bi-telephone text-info"></i>
-                                    <div class="stat-value">{{ object.contact_count }}</div>
-                                    <div class="stat-label">Contacts</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
+    <div class="dl-card">
 
-                    <!-- Form Actions -->
-                    <form method="post" class="d-inline">
-                        {% csrf_token %}
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="alternative-actions">
-                                <a href="{% url 'buyer_requests:update' pk=object.pk %}" 
-                                   class="btn btn-outline-primary me-2">
-                                    <i class="bi bi-pencil me-1"></i>
-                                    Edit Instead
-                                </a>
-                                
-                                <a href="{% url 'buyer_requests:detail' pk=object.pk %}" 
-                                   class="btn btn-outline-secondary">
-                                    <i class="bi bi-arrow-left me-1"></i>
-                                    Cancel
-                                </a>
-                            </div>
-                            
-                            <button type="submit" class="btn btn-danger" onclick="return confirmDelete()">
-                                <i class="bi bi-trash me-1"></i>
-                                Yes, Delete Request
-                            </button>
-                        </div>
-                    </form>
+        <div class="dl-prod">
+            <span class="dl-thumb" aria-hidden="true">
+                {% if object.primary_image %}
+                    <img src="{{ object.primary_image.image.url }}" alt="" loading="lazy">
+                {% elif object.request_type == 'service' %}<i class="bi bi-tools"></i>
+                {% elif object.request_type == 'skill' %}<i class="bi bi-person-gear"></i>
+                {% else %}<i class="bi bi-box-seam"></i>{% endif %}
+            </span>
+            <div class="dl-prod-txt">
+                <h2 class="dl-prod-title">{{ object.title }}</h2>
+                <div class="dl-tags">
+                    <span class="dl-tag">{{ object.get_request_type_display }}</span>
+                    <span class="dl-tag">{{ object.get_urgency_display }}</span>
+                    {% if object.is_featured %}<span class="dl-tag"><i class="bi bi-star-fill" aria-hidden="true"></i>Featured</span>{% endif %}
                 </div>
             </div>
         </div>
+
+        <dl class="dl-kv">
+            <div>
+                <dt>Category</dt>
+                <dd>{% if object.category %}{{ object.category.name }}{% if object.subcategory %} &rsaquo; {{ object.subcategory.name }}{% endif %}{% elif object.service_category %}{{ object.get_service_category_display }}{% else %}General{% endif %}</dd>
+            </div>
+            <div><dt>Budget</dt><dd>{{ object.budget_display|default:"Not specified" }}</dd></div>
+            <div><dt>Posted</dt><dd>{{ object.created_at|date:"M d, Y g:i A" }}</dd></div>
+            <div><dt>Status</dt><dd><span class="dl-status">{{ object.get_status_display }}</span></dd></div>
+        </dl>
+
+        {% if object.view_count or object.response_count or object.contact_count %}
+        <div class="dl-stats" role="group" aria-label="Request statistics">
+            <div class="dl-stat t-teal"><i class="bi bi-eye-fill" aria-hidden="true"></i><b>{{ object.view_count }}</b><span>Views</span></div>
+            <div class="dl-stat t-green"><i class="bi bi-chat-dots-fill" aria-hidden="true"></i><b>{{ object.response_count }}</b><span>Responses</span></div>
+            <div class="dl-stat t-purple"><i class="bi bi-telephone-fill" aria-hidden="true"></i><b>{{ object.contact_count }}</b><span>Contacts</span></div>
+        </div>
+        {% endif %}
+
+        <div class="dl-warn" role="alert">
+            <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+            <div class="dl-warn-body">
+                <p><strong>This action cannot be undone.</strong> Deleting this request will:</p>
+                <ul>
+                    <li><strong>Permanently remove</strong> the request from the platform</li>
+                    <li><strong>Delete all responses</strong> from sellers ({{ object.response_count }} response{{ object.response_count|pluralize }})</li>
+                    <li><strong>Remove all conversations</strong> related to this request</li>
+                    <li><strong>Delete all images</strong> associated with this request</li>
+                    <li><strong>Remove it from saved lists</strong> of users who bookmarked it</li>
+                </ul>
+                <p class="dl-tip">Consider pausing or editing the request instead of deleting it.</p>
+            </div>
+        </div>
+
+        <form method="post" class="dl-form" id="deleteForm">
+            {% csrf_token %}
+            <button type="submit" class="dl-btn dl-btn-danger" id="dlDelete"><i class="bi bi-trash3-fill" aria-hidden="true"></i>Yes, delete request</button>
+            <div class="dl-alt">
+                <a href="{% url 'buyer_requests:update' pk=object.pk %}" class="dl-btn dl-btn-ghost"><i class="bi bi-pencil" aria-hidden="true"></i>Edit instead</a>
+                <a href="{% url 'buyer_requests:detail' pk=object.pk %}" class="dl-btn dl-btn-ghost"><i class="bi bi-arrow-left" aria-hidden="true"></i>Cancel</a>
+            </div>
+        </form>
+
     </div>
 </div>
 
 <script>
-function confirmDelete() {
-    return confirm(
-        'Are you absolutely sure you want to delete this request?\n\n' +
-        'This will permanently remove:\n' +
-        '• The request and all its data\n' +
-        '• All {{ object.response_count }} response(s) from sellers\n' +
-        '• All conversations and messages\n' +
-        '• All uploaded images\n\n' +
-        'This action cannot be undone!'
-    );
-}
+    /* Final confirmation, then guard against double-submitting. */
+    (function () {
+        var form = document.getElementById('deleteForm');
+        var btn = document.getElementById('dlDelete');
+        if (!form || !btn) return;
+        var label = btn.innerHTML;
+        form.addEventListener('submit', function (e) {
+            var ok = confirm(
+                'Are you absolutely sure you want to delete this request?\n\n' +
+                'This will permanently remove:\n' +
+                '• The request and all its data\n' +
+                '• All {{ object.response_count }} response(s) from sellers\n' +
+                '• All conversations and messages\n' +
+                '• All uploaded images\n\n' +
+                'This action cannot be undone!'
+            );
+            if (!ok) { e.preventDefault(); return; }
+            // Delay so the browser has already collected the form data
+            setTimeout(function () {
+                btn.disabled = true;
+                btn.setAttribute('aria-busy', 'true');
+                btn.innerHTML = '<span class="spinner-border" aria-hidden="true"></span><span>Deleting…</span>';
+            }, 0);
+        });
+        // Coming back with the Back button restores the page from cache
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted) { btn.disabled = false; btn.removeAttribute('aria-busy'); btn.innerHTML = label; }
+        });
+    })();
 </script>
-
-<style>
-.request-preview {
-    background: var(--background-color);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: 1.5rem;
-}
-
-.request-title {
-    color: var(--text-primary);
-    font-weight: 600;
-    line-height: 1.3;
-}
-
-.request-meta {
-    margin-bottom: 1rem;
-}
-
-.request-details {
-    font-size: 0.9rem;
-}
-
-.detail-row {
-    margin-bottom: 0.5rem;
-    color: var(--text-secondary);
-}
-
-.detail-row strong {
-    color: var(--text-primary);
-    margin-right: 0.5rem;
-}
-
-.status-badge {
-    padding: 0.25rem 0.5rem;
-    border-radius: var(--radius-sm);
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-.status-badge.status-active {
-    background-color: var(--success);
-    color: white;
-}
-
-.status-badge.status-paused {
-    background-color: var(--warning);
-    color: white;
-}
-
-.status-badge.status-fulfilled {
-    background-color: var(--info);
-    color: white;
-}
-
-.status-badge.status-expired {
-    background-color: var(--secondary);
-    color: white;
-}
-
-.status-badge.status-cancelled {
-    background-color: var(--danger);
-    color: white;
-}
-
-.stats-summary {
-    background: var(--card-background);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: 1.5rem;
-}
-
-.stats-summary h6 {
-    color: var(--text-primary);
-    font-weight: 600;
-    margin-bottom: 1rem;
-    text-align: center;
-}
-
-.stat-item {
-    padding: 0.75rem;
-    background: var(--background-color);
-    border-radius: var(--radius-sm);
-}
-
-.stat-item i {
-    font-size: 1.5rem;
-    margin-bottom: 0.5rem;
-}
-
-.stat-value {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--text-primary);
-}
-
-.stat-label {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.alternative-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-/* Dark theme support */
-[data-bs-theme="dark"] .request-preview {
-    background: var(--dark-background-color);
-    border-color: var(--dark-border-color);
-}
-
-[data-bs-theme="dark"] .stats-summary {
-    background: var(--dark-card-background);
-    border-color: var(--dark-border-color);
-}
-
-[data-bs-theme="dark"] .stat-item {
-    background: var(--dark-background-color);
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .request-preview {
-        padding: 1rem;
-    }
-    
-    .request-preview .row {
-        text-align: center;
-    }
-    
-    .request-preview .col-md-3 {
-        margin-bottom: 1rem;
-    }
-    
-    .alternative-actions {
-        justify-content: center;
-        margin-bottom: 1rem;
-    }
-    
-    .d-flex.justify-content-between {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .btn-danger {
-        width: 100%;
-    }
-}
-
-@media (max-width: 576px) {
-    .stats-summary .row {
-        gap: 1rem;
-    }
-    
-    .alternative-actions {
-        flex-direction: column;
-    }
-    
-    .alternative-actions .btn {
-        width: 100%;
-    }
-}
-</style>
 {% endblock %}
 
-{% block 'Footer'%}{% endblock %}
+{% block 'Footer' %}{% endblock %}

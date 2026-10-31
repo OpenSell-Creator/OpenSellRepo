@@ -1,1391 +1,562 @@
 {% extends "base.html" %}
 {% load static %}
 
+{% block title %}Transaction History - {{ block.super }}{% endblock %}
+
 {% block page_css %}
-
 <style>
-    /* Base Styles */
-    .dashboard-container {
-        background-color: var(--background-color);
-        min-height: 100vh;
-        font-size: 0.9rem;
-    }
-
-    /* Header Styles */
-    .dashboard-header {
-        background-color: var(--primary-color);
-        margin: 0rem -1rem 1.5rem -1rem;
-        border-radius: 0 0 1rem 1rem;
-    }
-
-    .dashboard-title {
-        color: white;
-        font-weight: 700;
-        font-size: 1.5rem;
-        margin-bottom: 0.25rem;
-    }
-
-    .dashboard-subtitle {
-        color: rgba(255, 255, 255, 0.85);
-        font-size: 0.9rem;
-        margin-bottom: 0;
-    }
-
-    .btn-back {
-        background-color: transparent;
-        color: white;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        padding: 0.5rem 1rem;
-        border-radius: var(--radius-md);
-        font-weight: 500;
-        transition: all 0.3s ease;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        font-size: 0.9rem;
-    }
-
-    .btn-back:hover {
-        background-color: rgba(255, 255, 255, 0.1);
-        border-color: rgba(255, 255, 255, 0.5);
-        color: white;
-    }
-
-    /* Stats Cards in Header */
-    .stat-card {
-        background-color: var(--background-color);
-        border-radius: 0.75rem;
-        padding: 0.75rem;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        transition: all 0.3s ease;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-    }
-
-    .stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-
-    .stat-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 0.5rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.1rem;
-        flex-shrink: 0;
-    }
-
-    .stat-icon.deposits {
-        background-color: rgba(46, 204, 113, 0.15);
-        color: #2ecc71;
-    }
-
-    .stat-icon.spending {
-        background-color: rgba(231, 76, 60, 0.15);
-        color: #e74c3c;
-    }
-
-    .stat-icon.transactions {
-        background-color: rgba(52, 152, 219, 0.15);
-        color: #3498db;
-    }
-
-    .stat-icon.balance {
-        background-color: rgba(241, 196, 15, 0.15);
-        color: #f1c40f;
-    }
-
-    .stat-content {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .stat-label {
-        color: var(--text-secondary);
-        font-size: 0.75rem;
-        margin-bottom: 0.125rem;
-        font-weight: 500;
-    }
-
-    .stat-value {
-        color: var(--text-primary);
-        font-weight: 700;
-        font-size: 0.95rem;
-    }
-
-    /* Dashboard Cards */
-    .dashboard-card {
-        background-color: var(--card-background);
-        border: 1px solid var(--border-color);
-        border-radius: 0.75rem;
-        box-shadow: 0 2px 8px var(--shadow-color);
-    }
-
-    .card-header {
-        background-color: transparent;
-        border-bottom: 1px solid var(--border-color);
-        padding: 1rem;
-    }
-
-    .card-title {
-        color: var(--text-primary);
-        font-weight: 600;
-        margin-bottom: 0;
-        font-size: 1rem;
-        display: flex;
-        align-items: center;
-    }
-
-    .card-body {
-        padding: 1rem;
-    }
-
-    /* Filter Styles */
-    .filter-group {
-        margin-bottom: 0;
-    }
-
-    .filter-label {
-        color: var(--text-primary);
-        font-weight: 500;
-        margin-bottom: 0.5rem;
-        font-size: 0.85rem;
-        display: flex;
-        align-items: center;
-    }
-
-    .form-control,
-    .form-select {
-        border: 2px solid var(--border-color);
-        border-radius: 0.5rem;
-        padding: 0.625rem 0.875rem;
-        background-color: var(--card-background);
-        color: var(--text-primary);
-        transition: all 0.3s ease;
-        font-size: 0.875rem;
-    }
-
-    .form-control:focus,
-    .form-select:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
-        background-color: var(--card-background);
-        color: var(--text-primary);
-        outline: none;
-    }
-
-    .form-control::placeholder {
-        color: var(--text-muted);
-        opacity: 0.7;
-    }
-
-    /* Dark theme support for select options */
-    .form-select option {
-        background-color: var(--card-background);
-        color: var(--text-primary);
-    }
-
-    .filter-actions {
-        border-top: 1px solid var(--border-color);
-        padding-top: 1rem;
-        margin-top: 0.5rem;
-    }
-
-    /* View Toggle */
-    .view-toggle .btn-group .btn {
-        border-color: var(--border-color);
-        color: var(--text-muted);
-        background-color: var(--card-background);
-    }
-
-    .view-toggle .btn-group .btn:hover {
-        background-color: var(--hover-bg);
-        color: var(--text-primary);
-    }
-
-    .view-toggle .btn-group .btn.active {
-        background-color: var(--primary-color);
-        border-color: var(--primary-color);
-        color: white;
-    }
-
-    /* Table Styles */
-    .table {
-        margin-bottom: 0;
-        color: var(--text-primary);
-    }
-
-    .table th {
-        background-color: var(--hover-bg);
-        border-bottom: 2px solid var(--border-color);
-        color: var(--text-primary);
-        font-weight: 600;
-        padding: 0.875rem;
-        vertical-align: middle;
-        font-size: 0.85rem;
-    }
-
-    .table td {
-        padding: 0.875rem;
-        vertical-align: middle;
-        border-bottom: 1px solid var(--border-color);
-        font-size: 0.85rem;
-    }
-
-    .table tbody tr:hover {
-        background-color: var(--hover-bg);
-    }
-
-    /* Transaction Row Elements */
-    .transaction-date {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .date-primary {
-        color: var(--text-primary);
-        font-weight: 600;
-        font-size: 0.85rem;
-    }
-
-    .date-secondary {
-        color: var(--text-muted);
-        font-size: 0.75rem;
-    }
-
-    .transaction-type {
-        display: flex;
-        align-items: center;
-        gap: 0.625rem;
-    }
-
-    .type-icon {
-        width: 32px;
-        height: 32px;
-        border-radius: 0.5rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.95rem;
-        flex-shrink: 0;
-    }
-
-    .type-icon.deposit {
-        background-color: rgba(46, 204, 113, 0.1);
-        color: #2ecc71;
-    }
-
-    .type-icon.boost_fee {
-        background-color: rgba(155, 89, 182, 0.1);
-        color: #9b59b6;
-    }
-
-    .type-icon.subscription {
-        background-color: rgba(241, 196, 15, 0.1);
-        color: #f1c40f;
-    }
-
-    .type-icon.refund {
-        background-color: rgba(52, 152, 219, 0.1);
-        color: #3498db;
-    }
-
-    .type-name {
-        color: var(--text-primary);
-        font-weight: 500;
-        font-size: 0.85rem;
-    }
-
-    .transaction-description {
-        color: var(--text-secondary);
-        line-height: 1.4;
-        font-size: 0.85rem;
-    }
-
-    .transaction-reference {
-        margin-top: 0.25rem;
-    }
-
-    .transaction-amount {
-        font-weight: 700;
-        font-size: 0.95rem;
-    }
-
-    .transaction-amount.positive {
-        color: #2ecc71;
-    }
-
-    .transaction-amount.negative {
-        color: #e74c3c;
-    }
-
-    .balance-after {
-        color: var(--text-primary);
-        font-weight: 600;
-        font-size: 0.85rem;
-    }
-
-    /* Status Badge */
-    .status-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        padding: 0.375rem 0.625rem;
-        border-radius: var(--radius-full);
-        font-size: 0.75rem;
-        font-weight: 500;
-    }
-
-    .status-badge.completed {
-        background-color: rgba(46, 204, 113, 0.1);
-        color: #2ecc71;
-        border: 1px solid rgba(46, 204, 113, 0.2);
-    }
-
-    .status-badge.pending {
-        background-color: rgba(241, 196, 15, 0.1);
-        color: #f1c40f;
-        border: 1px solid rgba(241, 196, 15, 0.2);
-    }
-
-    .status-badge.failed {
-        background-color: rgba(231, 76, 60, 0.1);
-        color: #e74c3c;
-        border: 1px solid rgba(231, 76, 60, 0.2);
-    }
-
-    /* Transaction Actions */
-    .transaction-actions {
-        display: flex;
-        gap: 0.25rem;
-    }
-
-    .transaction-actions .btn {
-        padding: 0.375rem 0.5rem;
-    }
-
-    /* Cards View */
-    .transaction-card {
-        background-color: var(--card-background);
-        border: 1px solid var(--border-color);
-        border-radius: 0.75rem;
-        padding: 1rem;
-        height: 100%;
-        transition: all 0.3s ease;
-    }
-
-    .transaction-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px var(--shadow-color);
-        border-color: var(--primary-color);
-    }
-
-    .transaction-card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 1rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid var(--border-color);
-    }
-
-    .transaction-card .transaction-type {
-        display: flex;
-        align-items: center;
-        gap: 0.625rem;
-    }
-
-    .transaction-card .type-details h6 {
-        margin-bottom: 0.25rem;
-        font-weight: 600;
-        color: var(--text-primary);
-        font-size: 0.9rem;
-    }
-
-    .transaction-card .transaction-date {
-        color: var(--text-muted);
-        font-size: 0.8rem;
-        margin-bottom: 0;
-    }
-
-    .transaction-card-body {
-        margin-bottom: 1rem;
-    }
-
-    .transaction-meta {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        margin-top: 1rem;
-    }
-
-    .meta-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .meta-label {
-        color: var(--text-muted);
-        font-size: 0.8rem;
-    }
-
-    .meta-value {
-        color: var(--text-primary);
-        font-weight: 600;
-        font-size: 0.85rem;
-    }
-
-    .transaction-card-footer {
-        border-top: 1px solid var(--border-color);
-        padding-top: 1rem;
-    }
-
-    /* Pagination */
-    .pagination-container {
-        padding: 1rem;
-        border-top: 1px solid var(--border-color);
-        background-color: var(--hover-bg);
-    }
-
-    .pagination .page-link {
-        color: var(--text-primary);
-        background-color: var(--card-background);
-        border: 1px solid var(--border-color);
-        margin: 0 0.125rem;
-        border-radius: 0.375rem;
-        font-size: 0.85rem;
-        padding: 0.5rem 0.75rem;
-    }
-
-    .pagination .page-item.active .page-link {
-        background-color: var(--primary-color);
-        border-color: var(--primary-color);
-        color: white;
-    }
-
-    .pagination .page-link:hover {
-        background-color: var(--hover-bg);
-        border-color: var(--primary-color);
-        color: var(--primary-color);
-    }
-
-    /* Empty State */
-    .empty-state {
-        text-align: center;
-        padding: 3rem 1rem;
-        color: var(--text-muted);
-    }
-
-    .empty-icon {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-        opacity: 0.5;
-        color: var(--text-muted);
-    }
-
-    .empty-state h5 {
-        color: var(--text-secondary);
-        margin-bottom: 0.5rem;
-        font-size: 1.1rem;
-    }
-
-    .empty-state p {
-        margin-bottom: 1.5rem;
-        color: var(--text-muted);
-    }
-
-    /* Modal Styles */
-    .modal-content {
-        border-radius: 0.75rem;
-        border: 1px solid var(--border-color);
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-        background-color: var(--card-background);
-    }
-
-    .modal-header {
-        background-color: var(--hover-bg);
-        border-bottom: 1px solid var(--border-color);
-        border-radius: 0.75rem 0.75rem 0 0;
-    }
-
-    .modal-title {
-        color: var(--text-primary);
-        font-weight: 600;
-    }
-
-    .modal-body {
-        background-color: var(--card-background);
-        color: var(--text-primary);
-    }
-
-    .btn-close {
-        filter: var(--bs-btn-close-filter, invert(1));
-    }
-
-    /* Buttons */
-    .btn-primary {
-        background-color: var(--primary-color);
-        border-color: var(--primary-color);
-        color: white;
-    }
-
-    .btn-primary:hover {
-        background-color: var(--primary-hover);
-        border-color: var(--primary-hover);
-    }
-
-    .btn-outline-primary {
-        color: var(--primary-color);
-        border-color: var(--primary-color);
-        background-color: transparent;
-    }
-
-    .btn-outline-primary:hover {
-        background-color: var(--primary-color);
-        border-color: var(--primary-color);
-        color: white;
-    }
-
-    .btn-outline-secondary {
-        color: var(--text-secondary);
-        border-color: var(--border-color);
-        background-color: var(--card-background);
-    }
-
-    .btn-outline-secondary:hover {
-        background-color: var(--hover-bg);
-        border-color: var(--border-color);
-        color: var(--text-primary);
-    }
-
-    /* Wallet Notice */
-    .wallet-notice {
-        background-color: rgba(13, 110, 253, 0.07);
-        border: 1px solid rgba(13, 110, 253, 0.2);
-        border-left: 4px solid #0d6efd;
-        border-radius: 0.5rem;
-        padding: 0.6rem 0.9rem;
-        font-size: 0.8rem;
-        color: var(--text-primary);
-        display: flex;
-        align-items: flex-start;
-        gap: 0.5rem;
-        margin-top: 0.5rem;
-    }
-    .wallet-notice i { color: #0d6efd; flex-shrink: 0; margin-top: 1px; }
-
-    .btn-transfer-header {
-        background-color: transparent;
-        color: white;
-        border: 2px solid rgba(255,255,255,0.3);
-        padding: 0.5rem 1rem;
-        border-radius: var(--radius-md);
-        font-weight: 500;
-        transition: all 0.3s ease;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        font-size: 0.9rem;
-    }
-    .btn-transfer-header:hover {
-        background-color: rgba(255,255,255,0.15);
-        border-color: rgba(255,255,255,0.6);
-        color: white;
-    }
-
-    /* Responsive Design */
-    @media (max-width: 768px) {
-        .dashboard-title {
-            font-size: 1.25rem;
-        }
-
-        .dashboard-subtitle {
-            font-size: 0.8rem;
-        }
-
-        .btn-back {
-            padding: 0.375rem 0.75rem;
-            font-size: 0.85rem;
-        }
-
-        /* Stats cards - 2 columns */
-        .stat-card {
-            padding: 0.625rem;
-        }
-
-        .stat-icon {
-            width: 35px;
-            height: 35px;
-            font-size: 1rem;
-        }
-
-        .stat-label {
-            font-size: 0.7rem;
-        }
-
-        .stat-value {
-            font-size: 0.85rem;
-        }
-
-        .card-header,
-        .card-body {
-            padding: 0.875rem;
-        }
-
-        .filter-actions {
-            text-align: center;
-        }
-
-        .filter-actions .btn {
-            width: 100%;
-            margin-bottom: 0.5rem;
-            margin-left: 0 !important;
-        }
-
-        .table-responsive {
-            font-size: 0.8rem;
-        }
-
-        .table th,
-        .table td {
-            padding: 0.625rem 0.5rem;
-        }
-
-        .type-icon {
-            width: 28px;
-            height: 28px;
-            font-size: 0.85rem;
-        }
-
-        .type-name {
-            font-size: 0.8rem;
-        }
-
-        .transaction-card {
-            padding: 0.875rem;
-        }
-
-        .empty-state {
-            padding: 2rem 1rem;
-        }
-
-        .empty-icon {
-            font-size: 2.5rem;
-        }
-    }
-
-    @media (max-width: 576px) {
-        .dashboard-header {
-            margin: -1rem -0.5rem 1rem -0.5rem;
-        }
-
-        .dashboard-title {
-            font-size: 1.1rem;
-        }
-
-        .btn-back {
-            padding: 0.375rem 0.625rem;
-            font-size: 0.8rem;
-        }
-
-        .stat-card {
-            padding: 0.5rem;
-        }
-
-        .stat-icon {
-            width: 32px;
-            height: 32px;
-            font-size: 0.9rem;
-            margin-right: 0.5rem;
-        }
-
-        .stat-content {
-            min-width: 0;
-        }
-
-        .stat-label {
-            font-size: 0.65rem;
-        }
-
-        .stat-value {
-            font-size: 0.8rem;
-        }
-
-        .view-toggle {
-            margin-top: 0.5rem;
-        }
-
-        .transaction-actions {
-            flex-direction: column;
-            width: 100%;
-        }
-
-        .transaction-actions .btn {
-            width: 100%;
-            margin-bottom: 0.25rem;
-        }
-    }
+/* Highlight colour for hover, selection and links: navy in light mode, orange in dark mode (no blue) */
+:root, [data-bs-theme="light"] { --hl: var(--primary-color); --hl-edge: var(--primary-color); --hl-soft: var(--primary-soft); }
+[data-bs-theme="dark"] { --hl: var(--accent-text); --hl-edge: var(--accent-color); --hl-soft: var(--accent-soft); }
+/* Buttons: same pill as login, profile and the wallet pages. Hover fills with the brand orange. */
+.ox-btn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-4); border: 2px solid var(--bs-white); border-radius: var(--radius-full); background: var(--primary-color); color: var(--bs-white); font: inherit; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); text-align: center; text-decoration: none; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); cursor: pointer; touch-action: manipulation; }
+.ox-btn:disabled { opacity: .7; cursor: default; }
+.ox-btn .spinner-border { width: 1rem; height: 1rem; border-width: .15em; }
+.ox-btn-sm { min-height: 2.5rem; width: auto; padding: 0 var(--sp-4); font-size: var(--font-size-sm); }
+.ox-btn.ox-btn-neutral { border: 1px solid var(--border-color); background: var(--card-background); color: var(--text-primary); box-shadow: none; }
+.ox-btn.ox-btn-light { border-color: var(--bs-white); background: var(--bs-white); color: var(--primary-color); box-shadow: none; }
+.ox-btn.ox-btn-ghost { border-color: var(--bs-white); background: transparent; color: var(--bs-white); box-shadow: none; }
+.ox-btn:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+@media (hover: hover) {
+    .ox-btn.ox-btn:not(:disabled):hover { background: var(--accent-color); color: var(--on-accent); }
+    .ox-btn.ox-btn-neutral:not(:disabled):hover { background: var(--hover-bg); color: var(--text-primary); border-color: var(--hl-edge); }
+}
+/* Shared core */
+.ox {
+    --ox-navy: var(--primary-color);
+    --ox-orange: var(--accent-color);
+    --ox-green: var(--bs-success, var(--primary-color));
+    --ox-red: var(--bs-danger, var(--accent-color));
+    --ox-purple: var(--bs-purple, var(--primary-color));
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+    line-height: var(--lh-body);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-4));
+}
+.ox a { text-decoration: none; }
+.ox p { margin: 0; }
+.ox [hidden] { display: none !important; }
+.t-navy { --tint: var(--ox-navy); } .t-orange { --tint: var(--ox-orange); } .t-green { --tint: var(--ox-green); } .t-red { --tint: var(--ox-red); } .t-purple { --tint: var(--ox-purple); }
+.ox-ico { display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-lg); }
+.t-orange .ox-ico, .t-orange.ox-ico { color: var(--on-accent); }
+.ox-wash { position: relative; isolation: isolate; }
+.ox-wash::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .ox-wash::before { opacity: .09; }
+.ox a:focus-visible, .ox button:focus-visible, .ox summary:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+
+/* Header */
+.ox-head { margin: -2rem -1rem var(--gap-sections); padding: calc(2rem + var(--sp-4)) var(--sp-4) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); }
+.ox-head-in { display: grid; gap: var(--sp-4); max-width: var(--ox-w); margin: 0 auto; }
+.ox-head-l { display: flex; align-items: center; gap: var(--sp-2); }
+.ox-back { display: grid; place-items: center; flex: none; width: 2.75rem; height: 2.75rem; margin-left: calc(var(--sp-2) * -1); border-radius: var(--radius-full); color: var(--bs-white); font-size: var(--font-size-xl); }
+.ox-title { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-tight); }
+.ox-sub { margin: var(--sp-1) 0 0; font-size: var(--font-size-sm); color: rgba(255, 255, 255, .85); }
+.ox-bal { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--pad-l); border-radius: var(--radius-lg); background: var(--card-background); color: var(--text-primary); }
+.ox-bal-l { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.ox-total { margin: 0; font-size: var(--font-size-3xl); font-weight: 600; line-height: var(--lh-tight); }
+.ox-link { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1); min-height: 2.75rem; padding: 0 var(--sp-2); color: var(--hl); font-size: var(--font-size-sm); font-weight: 600; }
+@media (hover: hover) { .ox-link:hover { text-decoration: underline; } }
+
+/* Layout and cards */
+.ox-main { display: flex; flex-direction: column; gap: var(--gap-sections); max-width: var(--ox-w); margin: 0 auto; }
+.ox-card { padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); }
+@media (min-width: 768px) { .ox-card { padding: var(--pad-l); } }
+.ox-sec-h { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.ox-sec-t { flex: 1 1 auto; min-width: 0; }
+.ox-h2 { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-tight); }
+.ox-card-sub { margin: var(--sp-1) 0 0; font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+.ox-pill { display: inline-flex; align-items: center; gap: var(--sp-1); padding: 0 var(--sp-2); border: 1px solid var(--tint); border-radius: var(--radius-full); font-size: var(--font-size-xs); font-weight: 600; line-height: var(--lh-body); white-space: nowrap; }
+.ox-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-cards); }
+.ox-tile { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); line-height: var(--lh-tight); }
+.ox-tile .ox-ico { width: 2rem; height: 2rem; margin-bottom: var(--sp-1); color: var(--bs-white); font-size: var(--font-size-lg); }
+.ox-tile .t-orange.ox-ico { color: var(--on-accent); }
+.ox-tile b { font-size: var(--font-size-xl); font-weight: 600; overflow-wrap: anywhere; }
+.ox-tile span { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.ox-dl { margin: 0; border: 1px solid var(--border-color); border-radius: var(--r-card-s); }
+.ox-dl div { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3); border-top: 1px solid var(--border-color); }
+.ox-dl div:first-child { border-top: 0; }
+.ox-dl dt { font-size: var(--font-size-sm); font-weight: 400; color: var(--text-secondary); }
+.ox-dl dd { margin: 0; font-size: var(--font-size-base); font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+@media (min-width: 768px) { .ox-head-in { gap: var(--sp-5); } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+/* Status pills: one tint per state. The icon and the label carry the meaning, not the colour alone. */
+.st { --tint: var(--text-secondary); }
+.st-pending { --tint: var(--ox-orange); }
+.st-completed { --tint: var(--ox-green); }
+.st-rejected, .st-failed { --tint: var(--ox-red); }
+.ox { --ox-w: 64rem; --pos: #1e7e34; }
+[data-bs-theme="dark"] .ox { --pos: #4cc16a; }
+
+/* Stats */
+.tx-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-cards); }
+.tx-stats .ox-tile:nth-child(3) { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: var(--sp-3); }
+.tx-stats .ox-tile:nth-child(3) .ox-ico { margin-bottom: 0; }
+@media (min-width: 600px) {
+    .tx-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .tx-stats .ox-tile:nth-child(3) { grid-column: auto; flex-direction: column; align-items: stretch; gap: var(--sp-1); }
+    .tx-stats .ox-tile:nth-child(3) .ox-ico { margin-bottom: var(--sp-1); }
+}
+
+/* Filters: native details so the long form stays out of the way on a phone */
+.tx-filters > summary { display: flex; align-items: center; gap: var(--sp-3); min-height: 2.75rem; list-style: none; cursor: pointer; }
+.tx-filters > summary::-webkit-details-marker { display: none; }
+.tx-filters > summary:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; border-radius: var(--radius-md); }
+.tx-chev { color: var(--text-secondary); transition: transform .2s ease; }
+.tx-filters[open] .tx-chev { transform: rotate(180deg); }
+.tx-form { margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--border-color); }
+.tx-fields { display: grid; grid-template-columns: 1fr; gap: var(--gap-fields); }
+.tx-custom { margin-top: var(--gap-fields); }
+@media (min-width: 600px) { .tx-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-fields) var(--sp-3); } }
+@media (min-width: 900px) { .tx-fields.is-main { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.tx-field { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.tx-lab { font-size: var(--font-size-sm); font-weight: 600; }
+.tx-ctl { box-sizing: border-box; width: 100%; min-height: var(--h-control-lg); padding: 0 var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--background-color); color: var(--text-primary); font: inherit; font-size: var(--font-size-base); }
+select.tx-ctl { padding-right: 2rem; }
+.tx-ctl::placeholder { color: var(--text-secondary); opacity: 1; }
+.tx-ctl:focus { outline: 2px solid var(--accent-color); outline-offset: 1px; border-color: var(--accent-color); box-shadow: none; background-color: var(--background-color); color: var(--text-primary); }
+[data-bs-theme="dark"] .tx-ctl { color-scheme: dark; }
+@supports (-webkit-touch-callout: none) { .tx-ctl { font-size: 16px; } }
+.tx-acts { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); }
+.tx-acts .ox-btn { flex: 1 1 calc(50% - var(--sp-2)); width: auto; }
+.tx-acts .ox-btn:first-child { flex-basis: 100%; }
+@media (min-width: 600px) { .tx-acts { justify-content: flex-end; } .tx-acts .ox-btn, .tx-acts .ox-btn:first-child { flex: 0 0 auto; min-width: 10rem; } }
+
+/* Results header */
+.tx-count { --tint: var(--text-secondary); }
+.tx-toggle { display: none; }
+@media (min-width: 768px) {
+    .tx-toggle { display: inline-flex; overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--radius-full); }
+    .tx-toggle button { display: grid; place-items: center; width: 2.75rem; height: 2.5rem; margin: 0; padding: 0; border: 0; background: var(--card-background); color: var(--text-secondary); font-size: var(--font-size-lg); cursor: pointer; }
+    .tx-toggle button + button { border-left: 1px solid var(--border-color); }
+    .tx-toggle button.active { background: var(--primary-color); color: var(--bs-white); }
+}
+@media (hover: hover) { .tx-toggle button:not(.active):hover { background: var(--hover-bg); color: var(--text-primary); } }
+
+/* Views */
+.tx-views[data-mode="cards"] .tx-table-view { display: none; }
+.tx-views[data-mode="table"] .tx-cards-view { display: none; }
+@media (max-width: 767px) { .tx-table-view { display: none !important; } .tx-cards-view { display: block !important; } }
+
+.tx-ico { width: 2rem; height: 2rem; font-size: var(--font-size-lg); }
+.tx-tw { overflow-x: auto; border: 1px solid var(--border-color); border-radius: var(--r-card-s); }
+.tx-table { width: 100%; border-collapse: collapse; font-size: var(--font-size-base); }
+.tx-table th { padding: var(--sp-3); background: var(--hover-bg); color: var(--text-secondary); font-size: var(--font-size-sm); font-weight: 600; text-align: left; white-space: nowrap; }
+.tx-table td { padding: var(--sp-3); border-top: 1px solid var(--border-color); vertical-align: middle; }
+.tx-table .is-num { text-align: right; white-space: nowrap; }
+@media (hover: hover) { .tx-table tbody tr:hover { background: var(--hover-bg); } }
+.tx-d1 { font-weight: 600; white-space: nowrap; }
+.tx-d2 { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.tx-type { display: flex; align-items: center; gap: var(--sp-2); font-weight: 600; white-space: nowrap; }
+.tx-ref { display: block; margin-top: 2px; font-size: var(--font-size-sm); color: var(--text-secondary); }
+.tx-amt { font-weight: 600; font-variant-numeric: tabular-nums; }
+.tx-amt.is-pos { color: var(--pos); }
+.tx-amt.is-neg { color: var(--error-text); }
+.tx-table .ox-btn { min-width: 2.75rem; padding: 0; }
+
+.tx-cards { display: grid; grid-template-columns: 1fr; gap: var(--gap-cards); }
+@media (min-width: 600px) { .tx-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 992px) { .tx-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.tx-card { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); }
+.tx-card-h { display: flex; align-items: center; gap: var(--sp-3); }
+.tx-card-t { flex: 1 1 auto; min-width: 0; line-height: var(--lh-snug); }
+.tx-card-t b { display: block; font-size: var(--font-size-base); font-weight: 600; }
+.tx-card-t span { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.tx-card .tx-amt { font-size: var(--font-size-lg); white-space: nowrap; }
+.tx-desc { font-size: var(--font-size-base); color: var(--text-secondary); overflow-wrap: anywhere; }
+.tx-meta { margin: 0; padding-top: var(--sp-3); border-top: 1px solid var(--border-color); }
+.tx-meta div { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: 2px 0; }
+.tx-meta dt { font-size: var(--font-size-sm); font-weight: 400; color: var(--text-secondary); }
+.tx-meta dd { margin: 0; font-size: var(--font-size-base); font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+.tx-card .ox-btn { margin-top: auto; }
+
+/* Pagination */
+.tx-pg { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-1); margin: var(--sp-4) 0 0; padding: 0; list-style: none; }
+.tx-pg a, .tx-pg span { display: grid; place-items: center; box-sizing: border-box; min-width: 2.75rem; height: 2.75rem; padding: 0 var(--sp-2); border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-base); font-weight: 600; }
+.tx-pg [aria-current="page"] { border-color: var(--primary-color); background: var(--primary-color); color: var(--bs-white); }
+@media (hover: hover) { .tx-pg a:hover { border-color: var(--hl-edge); color: var(--hl); } }
+
+/* Empty */
+.tx-empty { display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); padding: 2rem var(--sp-2); text-align: center; }
+.tx-empty .ox-ico { width: 3rem; height: 3rem; font-size: var(--font-size-3xl); }
+.tx-empty .ox-btn { width: auto; }
+.tx-empty h3 { margin: 0 0 var(--sp-1); font-size: var(--font-size-lg); font-weight: 600; }
+.tx-empty p { max-width: 22rem; font-size: var(--font-size-base); color: var(--text-secondary); }
+
+/* Details modal */
+.ox .modal-content { --bs-modal-bg: var(--card-background); --bs-modal-color: var(--text-primary); --bs-modal-border-color: var(--border-color); --bs-modal-border-radius: var(--r-card); --bs-modal-inner-border-radius: var(--r-card); background: var(--card-background); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--r-card); }
+.ox .modal-dialog { max-width: 26rem; margin-right: var(--sp-4); margin-left: var(--sp-4); }
+@media (min-width: 468px) { .ox .modal-dialog { margin-right: auto; margin-left: auto; } }
+.ox .modal-header { display: flex; align-items: center; gap: var(--sp-3); padding: var(--pad-l) var(--pad-l) 0; border: 0; }
+.ox .modal-title { flex: 1 1 auto; margin: 0; font-size: var(--font-size-lg); font-weight: 600; }
+.ox .modal-body { padding: var(--pad-m) var(--pad-l) var(--pad-l); }
+.tx-m-amt { margin: 0 0 var(--sp-3); font-size: var(--font-size-5xl); font-weight: 600; line-height: var(--lh-tight); text-align: center; font-variant-numeric: tabular-nums; }
+.tx-m-amt.is-pos { color: var(--pos); }
+.tx-m-amt.is-neg { color: var(--error-text); }
 </style>
-
 {% endblock %}
 
-{% block 'Body'%}
-<div class="dashboard-container">
-    <!-- Transaction History Header -->
-    <div class="dashboard-header">
-        <div class="container">
-            <div class="row align-items-center py-3">
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <h1 class="dashboard-title">
-                        <i class="bi bi-clock-history me-2"></i>Transaction History
-                    </h1>
-                    <div class="d-flex gap-2 flex-wrap">
-                        <a href="{% url 'wallet_transfer' %}" class="btn-transfer-header">
-                            <i class="bi bi-send-fill me-2"></i>Transfer Funds
-                        </a>
-                        <a href="{% url 'dashboard_home' %}" class="btn btn-back">
-                            <i class="bi bi-arrow-left me-2"></i>Back
-                        </a>
-                    </div>
-                </div>
-                <p class="dashboard-subtitle">View and manage all your account transactions</p>
-            </div>
+{% block 'Body' %}
+<div class="ox">
 
-            <!-- Quick Stats -->
-            <div class="container pb-3">
-                <div class="row g-2">
-                    <div class="col-6 col-lg-3">
-                        <div class="stat-card">
-                            <div class="stat-icon deposits">
-                                <i class="bi bi-arrow-down-circle"></i>
-                            </div>
-                            <div class="stat-content">
-                                <span class="stat-label">Total Deposits</span>
-                                <span class="stat-value">₦{{ total_deposits|default:0|floatformat:0 }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-lg-3">
-                        <div class="stat-card">
-                            <div class="stat-icon spending">
-                                <i class="bi bi-arrow-up-circle"></i>
-                            </div>
-                            <div class="stat-content">
-                                <span class="stat-label">Total Spent</span>
-                                <span class="stat-value">₦{{ total_spent|default:0|floatformat:0 }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-lg-3">
-                        <div class="stat-card">
-                            <div class="stat-icon transactions">
-                                <i class="bi bi-list-ul"></i>
-                            </div>
-                            <div class="stat-content">
-                                <span class="stat-label">Total Transactions</span>
-                                <span class="stat-value">{{ total_transactions|default:0 }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-lg-3">
-                        <div class="stat-card">
-                            <div class="stat-icon balance">
-                                <i class="bi bi-wallet2"></i>
-                            </div>
-                            <div class="stat-content">
-                                <span class="stat-label">Current Balance</span>
-                                <span class="stat-value">₦{{ request.user.account.balance|floatformat:0 }}</span>
-                            </div>
-                        </div>
-                    </div>
+    <header class="ox-head">
+        <div class="ox-head-in">
+            <div class="ox-head-l">
+                <a href="{% url 'dashboard_home' %}" class="ox-back" aria-label="Back to dashboard"><i class="bi bi-arrow-left" aria-hidden="true"></i></a>
+                <div>
+                    <h1 class="ox-title">Transaction history</h1>
+                    <p class="ox-sub">View and manage all your account transactions</p>
                 </div>
-                
+            </div>
+            <div class="ox-bal">
+                <div>
+                    <span class="ox-bal-l">Current balance</span>
+                    <p class="ox-total">₦{{ request.user.account.balance|floatformat:"0g" }}</p>
+                </div>
+                <a href="{% url 'wallet_transfer' %}" class="ox-link"><i class="bi bi-send-fill" aria-hidden="true"></i>Transfer funds</a>
             </div>
         </div>
-    </div>
+    </header>
 
-    <!-- Transaction History Content -->
-    <div class="container">
-        <!-- Filters and Search -->
-        <div class="row mb-3">
-            <div class="col-12">
-                <div class="dashboard-card filters-card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="card-title">
-                            <i class="bi bi-funnel me-2"></i>Filter Transactions
-                        </h5>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="clearFilters">
-                            <i class="bi bi-x-lg me-1"></i>Clear All
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <form method="get" id="filterForm">
-                            <div class="row g-3">
-                                <!-- Search -->
-                                <div class="col-12 col-md-6 col-lg-3">
-                                    <div class="filter-group">
-                                        <label class="filter-label">
-                                            <i class="bi bi-search me-1"></i>Search
-                                        </label>
-                                        <input type="text" 
-                                               class="form-control" 
-                                               name="search" 
-                                               placeholder="Search transactions..."
-                                               value="{{ request.GET.search }}">
-                                    </div>
-                                </div>
+    <div class="ox-main">
 
-                                <!-- Transaction Type -->
-                                <div class="col-12 col-md-6 col-lg-3">
-                                    <div class="filter-group">
-                                        <label class="filter-label">
-                                            <i class="bi bi-tag me-1"></i>Type
-                                        </label>
-                                        <select class="form-select" name="type">
-                                            <option value="">All Types</option>
-                                            <option value="deposit" {% if request.GET.type == 'deposit' %}selected{% endif %}>Deposits</option>
-                                            <option value="boost_fee" {% if request.GET.type == 'boost_fee' %}selected{% endif %}>Boost Fees</option>
-                                            <option value="subscription" {% if request.GET.type == 'subscription' %}selected{% endif %}>Subscriptions</option>
-                                            <option value="refund" {% if request.GET.type == 'refund' %}selected{% endif %}>Refunds</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <!-- Date Range -->
-                                <div class="col-12 col-md-6 col-lg-3">
-                                    <div class="filter-group">
-                                        <label class="filter-label">
-                                            <i class="bi bi-calendar-range me-1"></i>Date Range
-                                        </label>
-                                        <select class="form-select" name="date_range" id="dateRangeSelect">
-                                            <option value="">All Time</option>
-                                            <option value="today" {% if request.GET.date_range == 'today' %}selected{% endif %}>Today</option>
-                                            <option value="week" {% if request.GET.date_range == 'week' %}selected{% endif %}>This Week</option>
-                                            <option value="month" {% if request.GET.date_range == 'month' %}selected{% endif %}>This Month</option>
-                                            <option value="quarter" {% if request.GET.date_range == 'quarter' %}selected{% endif %}>This Quarter</option>
-                                            <option value="year" {% if request.GET.date_range == 'year' %}selected{% endif %}>This Year</option>
-                                            <option value="custom" {% if request.GET.date_range == 'custom' %}selected{% endif %}>Custom Range</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <!-- Amount Range -->
-                                <div class="col-12 col-md-6 col-lg-3">
-                                    <div class="filter-group">
-                                        <label class="filter-label">
-                                            <i class="bi bi-currency-exchange me-1"></i>Amount Range
-                                        </label>
-                                        <select class="form-select" name="amount_range">
-                                            <option value="">Any Amount</option>
-                                            <option value="0-1000" {% if request.GET.amount_range == '0-1000' %}selected{% endif %}>₦0 - ₦1,000</option>
-                                            <option value="1000-5000" {% if request.GET.amount_range == '1000-5000' %}selected{% endif %}>₦1,000 - ₦5,000</option>
-                                            <option value="5000-10000" {% if request.GET.amount_range == '5000-10000' %}selected{% endif %}>₦5,000 - ₦10,000</option>
-                                            <option value="10000-50000" {% if request.GET.amount_range == '10000-50000' %}selected{% endif %}>₦10,000 - ₦50,000</option>
-                                            <option value="50000+" {% if request.GET.amount_range == '50000+' %}selected{% endif %}>₦50,000+</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Custom Date Range -->
-                            <div class="row g-3 mt-2 custom-date-range {% if request.GET.date_range != 'custom' %}d-none{% endif %}">
-                                <div class="col-12 col-md-6">
-                                    <div class="filter-group">
-                                        <label class="filter-label">From Date</label>
-                                        <input type="date" 
-                                               class="form-control" 
-                                               name="date_from" 
-                                               value="{{ request.GET.date_from }}">
-                                    </div>
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <div class="filter-group">
-                                        <label class="filter-label">To Date</label>
-                                        <input type="date" 
-                                               class="form-control" 
-                                               name="date_to" 
-                                               value="{{ request.GET.date_to }}">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Filter Actions -->
-                            <div class="filter-actions mt-3">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="bi bi-search me-2"></i>Apply Filters
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary ms-2" id="exportBtn">
-                                    <i class="bi bi-download me-2"></i>Export CSV
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+        <div class="tx-stats">
+            <div class="ox-tile">
+                <span class="ox-ico t-green"><i class="bi bi-arrow-down-circle" aria-hidden="true"></i></span>
+                <b>₦{{ total_deposits|default:0|floatformat:"0g" }}</b>
+                <span>Total in</span>
+            </div>
+            <div class="ox-tile">
+                <span class="ox-ico t-red"><i class="bi bi-arrow-up-circle" aria-hidden="true"></i></span>
+                <b>₦{{ total_spent|default:0|floatformat:"0g" }}</b>
+                <span>Total out</span>
+            </div>
+            <div class="ox-tile">
+                <span class="ox-ico t-navy"><i class="bi bi-list-ul" aria-hidden="true"></i></span>
+                <b>{{ total_transactions|default:0 }}</b>
+                <span>Total transactions</span>
             </div>
         </div>
 
-        <!-- Transactions Table -->
-        <div class="row">
-            <div class="col-12">
-                <div class="dashboard-card transactions-card">
-                    <div class="card-header">
-                        <div class="d-flex justify-content-between align-items-center flex-wrap">
-                            <h5 class="card-title mb-2 mb-md-0">
-                                <i class="bi bi-list-ul me-2"></i>
-                                Transactions 
-                                {% if transactions %}
-                                    <span class="badge bg-primary ms-2">{{ transactions|length }} results</span>
-                                {% endif %}
-                            </h5>
-                            <div class="view-toggle">
-                                <div class="btn-group" role="group">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary active" data-view="table">
-                                        <i class="bi bi-table"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" data-view="cards">
-                                        <i class="bi bi-grid"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+        {# ---- Filters ---- #}
+        <details class="ox-card tx-filters"{% if request.GET.search or request.GET.type or request.GET.date_range or request.GET.amount_range or request.GET.date_from or request.GET.date_to %} open{% endif %}>
+            <summary>
+                <span class="ox-ico t-orange"><i class="bi bi-funnel" aria-hidden="true"></i></span>
+                <span class="ox-sec-t"><span class="ox-h2">Filter transactions</span></span>
+                {% if request.GET.search or request.GET.type or request.GET.date_range or request.GET.amount_range or request.GET.date_from or request.GET.date_to %}<span class="ox-pill ox-wash t-orange">Active</span>{% endif %}
+                <i class="bi bi-chevron-down tx-chev" aria-hidden="true"></i>
+            </summary>
+            <form method="get" id="filterForm" class="tx-form">
+                <div class="tx-fields is-main">
+                    <div class="tx-field">
+                        <label class="tx-lab" for="fSearch">Search</label>
+                        <input type="text" class="tx-ctl" id="fSearch" name="search" placeholder="Search by description or reference" value="{{ request.GET.search }}" autocomplete="off">
                     </div>
-                    <div class="card-body p-0">
-                        {% if transactions %}
-                        <!-- Table View -->
-                        <div class="table-view">
-                            <div class="table-responsive">
-                                <table class="table table-hover mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>Date</th>
-                                            <th>Type</th>
-                                            <th>Description</th>
-                                            <th>Amount</th>
-                                            <th>Balance After</th>
-                                            <th>Status</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for transaction in transactions %}
-                                        <tr class="transaction-row">
-                                            <td>
-                                                <div class="transaction-date">
-                                                    <div class="date-primary">{{ transaction.created_at|date:"M d, Y" }}</div>
-                                                    <div class="date-secondary">{{ transaction.created_at|date:"H:i" }}</div>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div class="transaction-type">
-                                                    <div class="type-icon {{ transaction.transaction_type }}">
-                                                        <i class="bi {% if transaction.transaction_type == 'deposit' %}bi-arrow-down-circle{% elif transaction.transaction_type == 'boost_fee' %}bi-rocket{% elif transaction.transaction_type == 'subscription' %}bi-star{% else %}bi-arrow-repeat{% endif %}"></i>
-                                                    </div>
-                                                    <span class="type-name">{{ transaction.get_transaction_type_display }}</span>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div class="transaction-description">
-                                                    {% if transaction.transaction_type == 'deposit' %}
-                                                        Fund deposit to account
-                                                    {% elif transaction.transaction_type == 'boost_fee' %}
-                                                        Product boost fee
-                                                    {% elif transaction.transaction_type == 'subscription' %}
-                                                        Pro subscription {% if transaction.amount < 0 %}purchase{% else %}refund{% endif %}
-                                                    {% else %}
-                                                        {{ transaction.get_transaction_type_display }}
-                                                    {% endif %}
-                                                    {% if transaction.reference %}
-                                                        <div class="transaction-reference">
-                                                            <small class="text-muted">Ref: {{ transaction.reference|truncatechars:20 }}</small>
-                                                        </div>
-                                                    {% endif %}
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div class="transaction-amount {% if transaction.amount > 0 %}positive{% else %}negative{% endif %}">
-                                                    {% if transaction.amount > 0 %}+{% endif %}₦{{ transaction.amount|floatformat:0 }}
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div class="balance-after">
-                                                    ₦{{ transaction.balance_after|default:0|floatformat:0 }}
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <span class="status-badge {{ transaction.status|default:'completed' }}">
-                                                    <i class="bi {% if transaction.status == 'completed' or not transaction.status %}bi-check-circle-fill{% elif transaction.status == 'pending' %}bi-clock-fill{% else %}bi-x-circle-fill{% endif %}"></i>
-                                                    {{ transaction.status|default:'Completed'|title }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div class="transaction-actions">
-                                                    <button type="button" 
-                                                            class="btn btn-sm btn-outline-primary" 
-                                                            data-bs-toggle="modal" 
-                                                            data-bs-target="#transactionModal"
-                                                            data-transaction="{{ transaction.id }}"
-                                                            onclick="loadTransactionDetails({{ transaction.id }})">
-                                                        <i class="bi bi-eye"></i>
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                    <div class="tx-field">
+                        <label class="tx-lab" for="fType">Type</label>
+                        <select class="tx-ctl form-select" id="fType" name="type">
+                            <option value="">All types</option>
+                            <option value="deposit" {% if request.GET.type == 'deposit' %}selected{% endif %}>Deposits</option>
+                            <option value="withdrawal" {% if request.GET.type == 'withdrawal' %}selected{% endif %}>Withdrawals</option>
+                            <option value="transfer_in" {% if request.GET.type == 'transfer_in' %}selected{% endif %}>Transfers received</option>
+                            <option value="transfer_out" {% if request.GET.type == 'transfer_out' %}selected{% endif %}>Transfers sent</option>
+                            <option value="boost_fee" {% if request.GET.type == 'boost_fee' %}selected{% endif %}>Boost fees</option>
+                            <option value="subscription" {% if request.GET.type == 'subscription' %}selected{% endif %}>Subscriptions</option>
+                            <option value="listing_fee" {% if request.GET.type == 'listing_fee' %}selected{% endif %}>Listing fees</option>
+                            <option value="refund" {% if request.GET.type == 'refund' %}selected{% endif %}>Refunds</option>
+                            <option value="bonus" {% if request.GET.type == 'bonus' %}selected{% endif %}>Bonuses</option>
+                        </select>
+                    </div>
+                    <div class="tx-field">
+                        <label class="tx-lab" for="dateRangeSelect">Date range</label>
+                        <select class="tx-ctl form-select" name="date_range" id="dateRangeSelect">
+                            <option value="">All time</option>
+                            <option value="today" {% if request.GET.date_range == 'today' %}selected{% endif %}>Today</option>
+                            <option value="week" {% if request.GET.date_range == 'week' %}selected{% endif %}>Last 7 days</option>
+                            <option value="month" {% if request.GET.date_range == 'month' %}selected{% endif %}>Last 30 days</option>
+                            <option value="quarter" {% if request.GET.date_range == 'quarter' %}selected{% endif %}>Last 90 days</option>
+                            <option value="year" {% if request.GET.date_range == 'year' %}selected{% endif %}>Last 365 days</option>
+                            <option value="custom" {% if request.GET.date_range == 'custom' %}selected{% endif %}>Custom range</option>
+                        </select>
+                    </div>
+                    <div class="tx-field">
+                        <label class="tx-lab" for="fAmount">Amount range</label>
+                        <select class="tx-ctl form-select" id="fAmount" name="amount_range">
+                            <option value="">Any amount</option>
+                            <option value="0-1000" {% if request.GET.amount_range == '0-1000' %}selected{% endif %}>₦0 - ₦1,000</option>
+                            <option value="1000-5000" {% if request.GET.amount_range == '1000-5000' %}selected{% endif %}>₦1,000 - ₦5,000</option>
+                            <option value="5000-10000" {% if request.GET.amount_range == '5000-10000' %}selected{% endif %}>₦5,000 - ₦10,000</option>
+                            <option value="10000-50000" {% if request.GET.amount_range == '10000-50000' %}selected{% endif %}>₦10,000 - ₦50,000</option>
+                            <option value="50000+" {% if request.GET.amount_range == '50000+' %}selected{% endif %}>₦50,000+</option>
+                        </select>
+                    </div>
+                </div>
 
-                        <!-- Cards View -->
-                        <div class="cards-view d-none">
-                            <div class="row g-3 p-3">
+                <div class="tx-fields tx-custom custom-date-range" id="customRange"{% if request.GET.date_range != 'custom' %} hidden{% endif %}>
+                    <div class="tx-field">
+                        <label class="tx-lab" for="fFrom">From date</label>
+                        <input type="date" class="tx-ctl" id="fFrom" name="date_from" value="{{ request.GET.date_from }}">
+                    </div>
+                    <div class="tx-field">
+                        <label class="tx-lab" for="fTo">To date</label>
+                        <input type="date" class="tx-ctl" id="fTo" name="date_to" value="{{ request.GET.date_to }}">
+                    </div>
+                </div>
+
+                <div class="tx-acts">
+                    <button type="submit" class="ox-btn"><i class="bi bi-search" aria-hidden="true"></i>Apply filters</button>
+                    <button type="button" class="ox-btn ox-btn-neutral" id="clearFilters"><i class="bi bi-x-lg" aria-hidden="true"></i>Clear all</button>
+                    <button type="button" class="ox-btn ox-btn-neutral" id="exportBtn"><i class="bi bi-download" aria-hidden="true"></i>Export CSV</button>
+                </div>
+            </form>
+        </details>
+
+        {# ---- Results ---- #}
+        <section class="ox-card" aria-labelledby="txTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-navy"><i class="bi bi-clock-history" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="txTitle">Transactions</h2></div>
+                {% if transactions %}
+                <span class="ox-pill tx-count">{{ transactions|length }} shown</span>
+                <div class="tx-toggle" role="group" aria-label="Choose a view">
+                    <button type="button" class="active" data-view="table" aria-pressed="true" aria-label="Table view"><i class="bi bi-table" aria-hidden="true"></i></button>
+                    <button type="button" data-view="cards" aria-pressed="false" aria-label="Card view"><i class="bi bi-grid" aria-hidden="true"></i></button>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if transactions %}
+            <div class="tx-views" id="txViews" data-mode="table">
+
+                {# Table view #}
+                <div class="tx-table-view table-view">
+                    <div class="tx-tw">
+                        <table class="tx-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Date</th>
+                                    <th scope="col">Type</th>
+                                    <th scope="col">Description</th>
+                                    <th scope="col" class="is-num">Amount</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col"><span class="visually-hidden">Details</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
                                 {% for transaction in transactions %}
-                                <div class="col-12 col-md-6 col-lg-4">
-                                    <div class="transaction-card">
-                                        <div class="transaction-card-header">
-                                            <div class="transaction-type">
-                                                <div class="type-icon {{ transaction.transaction_type }}">
-                                                    <i class="bi {% if transaction.transaction_type == 'deposit' %}bi-arrow-down-circle{% elif transaction.transaction_type == 'boost_fee' %}bi-rocket{% elif transaction.transaction_type == 'subscription' %}bi-star{% else %}bi-arrow-repeat{% endif %}"></i>
-                                                </div>
-                                                <div class="type-details">
-                                                    <h6 class="type-name">{{ transaction.get_transaction_type_display }}</h6>
-                                                    <p class="transaction-date">{{ transaction.created_at|date:"M d, Y \a\t H:i" }}</p>
-                                                </div>
-                                            </div>
-                                            <div class="transaction-amount {% if transaction.amount > 0 %}positive{% else %}negative{% endif %}">
-                                                {% if transaction.amount > 0 %}+{% endif %}₦{{ transaction.amount|floatformat:0 }}
-                                            </div>
+                                {% with st=transaction.status|default:'completed' %}
+                                <tr>
+                                    <td>
+                                        <div class="tx-d1">{{ transaction.created_at|date:"M d, Y" }}</div>
+                                        <div class="tx-d2">{{ transaction.created_at|date:"H:i" }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="tx-type">
+                                            <span class="ox-ico tx-ico {% if transaction.transaction_type == 'deposit' or transaction.transaction_type == 'transfer_in' or transaction.transaction_type == 'bonus' %}t-green{% elif transaction.transaction_type == 'boost_fee' %}t-purple{% elif transaction.transaction_type == 'subscription' %}t-orange{% elif transaction.transaction_type == 'withdrawal' or transaction.transaction_type == 'transfer_out' %}t-red{% else %}t-navy{% endif %}"><i class="bi {% if transaction.transaction_type == 'deposit' %}bi-arrow-down-circle{% elif transaction.transaction_type == 'boost_fee' %}bi-rocket{% elif transaction.transaction_type == 'subscription' %}bi-star{% elif transaction.transaction_type == 'withdrawal' %}bi-cash-stack{% elif transaction.transaction_type == 'transfer_in' or transaction.transaction_type == 'transfer_out' %}bi-send{% elif transaction.transaction_type == 'bonus' %}bi-gift{% else %}bi-arrow-repeat{% endif %}" aria-hidden="true"></i></span>
+                                            {{ transaction.get_transaction_type_display }}
                                         </div>
-                                        <div class="transaction-card-body">
-                                            <div class="transaction-description">
-                                                {% if transaction.transaction_type == 'deposit' %}
-                                                    Fund deposit to account
-                                                {% elif transaction.transaction_type == 'boost_fee' %}
-                                                    Product boost fee
-                                                {% elif transaction.transaction_type == 'subscription' %}
-                                                    Pro subscription {% if transaction.amount < 0 %}purchase{% else %}refund{% endif %}
-                                                {% else %}
-                                                    {{ transaction.get_transaction_type_display }}
-                                                {% endif %}
-                                            </div>
-                                            <div class="transaction-meta">
-                                                <div class="meta-item">
-                                                    <span class="meta-label">Balance After:</span>
-                                                    <span class="meta-value">₦{{ transaction.balance_after|default:0|floatformat:0 }}</span>
-                                                </div>
-                                                <div class="meta-item">
-                                                    <span class="meta-label">Status:</span>
-                                                    <span class="status-badge {{ transaction.status|default:'completed' }}">
-                                                        {{ transaction.status|default:'Completed'|title }}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="transaction-card-footer">
-                                            <button type="button" 
-                                                    class="btn btn-sm btn-outline-primary" 
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#transactionModal"
-                                                    onclick="loadTransactionDetails({{ transaction.id }})">
-                                                <i class="bi bi-eye me-1"></i>View Details
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
+                                    </td>
+                                    <td>
+                                        {% if transaction.description %}{{ transaction.description|truncatechars:60 }}{% else %}{{ transaction.get_transaction_type_display }}{% endif %}
+                                        {% if transaction.reference_id %}<span class="tx-ref">Ref: {{ transaction.reference_id|truncatechars:20 }}</span>{% endif %}
+                                    </td>
+                                    <td class="is-num"><span class="tx-amt {% if transaction.amount > 0 %}is-pos{% else %}is-neg{% endif %}">{% if transaction.amount > 0 %}+{% else %}−{% endif %}₦{{ transaction.amount|floatformat:"-2g"|cut:"-" }}</span></td>
+                                    <td>
+                                        <span class="ox-pill ox-wash st st-{{ st }}"><i class="bi {% if st == 'completed' %}bi-check-circle-fill{% elif st == 'pending' %}bi-clock-fill{% else %}bi-x-circle-fill{% endif %}" aria-hidden="true"></i>{{ st|title }}</span>
+                                    </td>
+                                    <td>
+                                        <button type="button" class="ox-btn ox-btn-neutral ox-btn-sm" data-bs-toggle="modal" data-bs-target="#transactionModal" aria-label="View details"
+                                                data-tx="{{ transaction.id }}" data-type="{{ transaction.get_transaction_type_display }}" data-date="{{ transaction.created_at|date:'M d, Y \a\t H:i' }}"
+                                                data-amount="{% if transaction.amount > 0 %}+{% else %}−{% endif %}₦{{ transaction.amount|floatformat:'-2g'|cut:'-' }}" data-pos="{% if transaction.amount > 0 %}1{% else %}0{% endif %}"
+                                                data-desc="{{ transaction.description }}" data-ref="{{ transaction.reference_id|default:'' }}"
+                                                data-status="{{ st|title }}" data-st="{{ st }}"><i class="bi bi-eye" aria-hidden="true"></i></button>
+                                    </td>
+                                </tr>
+                                {% endwith %}
                                 {% endfor %}
-                            </div>
-                        </div>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
 
-                        <!-- Pagination -->
-                        {% if transactions.has_other_pages %}
-                        <div class="pagination-container">
-                            <nav aria-label="Transaction pagination">
-                                <ul class="pagination justify-content-center">
-                                    {% if transactions.has_previous %}
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page={{ transactions.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}{% if request.GET.date_range %}&date_range={{ request.GET.date_range }}{% endif %}{% if request.GET.amount_range %}&amount_range={{ request.GET.amount_range }}{% endif %}">
-                                                <i class="bi bi-chevron-left"></i>
-                                            </a>
-                                        </li>
-                                    {% endif %}
-                                    
-                                    {% for num in transactions.paginator.page_range %}
-                                        {% if transactions.number == num %}
-                                            <li class="page-item active">
-                                                <span class="page-link">{{ num }}</span>
-                                            </li>
-                                        {% elif num > transactions.number|add:'-3' and num < transactions.number|add:'3' %}
-                                            <li class="page-item">
-                                                <a class="page-link" href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}{% if request.GET.date_range %}&date_range={{ request.GET.date_range }}{% endif %}{% if request.GET.amount_range %}&amount_range={{ request.GET.amount_range }}{% endif %}">{{ num }}</a>
-                                            </li>
-                                        {% endif %}
-                                    {% endfor %}
-                                    
-                                    {% if transactions.has_next %}
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page={{ transactions.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}{% if request.GET.date_range %}&date_range={{ request.GET.date_range }}{% endif %}{% if request.GET.amount_range %}&amount_range={{ request.GET.amount_range }}{% endif %}">
-                                                <i class="bi bi-chevron-right"></i>
-                                            </a>
-                                        </li>
-                                    {% endif %}
-                                </ul>
-                            </nav>
-                        </div>
-                        {% endif %}
-                        {% else %}
-                        <!-- Empty State -->
-                        <div class="empty-state">
-                            <div class="empty-icon">
-                                <i class="bi bi-clock-history"></i>
+                {# Cards view #}
+                <div class="tx-cards-view cards-view">
+                    <div class="tx-cards">
+                        {% for transaction in transactions %}
+                        {% with st=transaction.status|default:'completed' %}
+                        <article class="tx-card">
+                            <div class="tx-card-h">
+                                <span class="ox-ico tx-ico {% if transaction.transaction_type == 'deposit' or transaction.transaction_type == 'transfer_in' or transaction.transaction_type == 'bonus' %}t-green{% elif transaction.transaction_type == 'boost_fee' %}t-purple{% elif transaction.transaction_type == 'subscription' %}t-orange{% elif transaction.transaction_type == 'withdrawal' or transaction.transaction_type == 'transfer_out' %}t-red{% else %}t-navy{% endif %}"><i class="bi {% if transaction.transaction_type == 'deposit' %}bi-arrow-down-circle{% elif transaction.transaction_type == 'boost_fee' %}bi-rocket{% elif transaction.transaction_type == 'subscription' %}bi-star{% elif transaction.transaction_type == 'withdrawal' %}bi-cash-stack{% elif transaction.transaction_type == 'transfer_in' or transaction.transaction_type == 'transfer_out' %}bi-send{% elif transaction.transaction_type == 'bonus' %}bi-gift{% else %}bi-arrow-repeat{% endif %}" aria-hidden="true"></i></span>
+                                <div class="tx-card-t">
+                                    <b>{{ transaction.get_transaction_type_display }}</b>
+                                    <span>{{ transaction.created_at|date:"M d, Y \a\t H:i" }}</span>
+                                </div>
+                                <b class="tx-amt {% if transaction.amount > 0 %}is-pos{% else %}is-neg{% endif %}">{% if transaction.amount > 0 %}+{% else %}−{% endif %}₦{{ transaction.amount|floatformat:"-2g"|cut:"-" }}</b>
                             </div>
-                            <h5>No transactions found</h5>
-                            <p>
-                                {% if request.GET.search or request.GET.type or request.GET.date_range or request.GET.amount_range %}
-                                    Try adjusting your filters to see more results.
-                                {% else %}
-                                    Your transaction history will appear here after your first transaction.
-                                {% endif %}
-                            </p>
-                            {% if not request.GET.search and not request.GET.type and not request.GET.date_range and not request.GET.amount_range %}
-                            <a href="{% url 'deposit_with_monnify' %}" class="btn btn-primary">
-                                <i class="bi bi-plus-circle me-2"></i>Add Your First Deposit
-                            </a>
-                            {% else %}
-                            <button type="button" class="btn btn-outline-primary" id="clearFiltersBtn">
-                                <i class="bi bi-x-lg me-2"></i>Clear Filters
-                            </button>
-                            {% endif %}
-                        </div>
-                        {% endif %}
+                            <p class="tx-desc">{% if transaction.description %}{{ transaction.description|truncatechars:80 }}{% else %}{{ transaction.get_transaction_type_display }}{% endif %}</p>
+                            <dl class="tx-meta">
+                                <div><dt>Status</dt><dd><span class="ox-pill ox-wash st st-{{ st }}"><i class="bi {% if st == 'completed' %}bi-check-circle-fill{% elif st == 'pending' %}bi-clock-fill{% else %}bi-x-circle-fill{% endif %}" aria-hidden="true"></i>{{ st|title }}</span></dd></div>
+                                {% if transaction.reference_id %}<div><dt>Reference</dt><dd>{{ transaction.reference_id|truncatechars:20 }}</dd></div>{% endif %}
+                            </dl>
+                            <button type="button" class="ox-btn ox-btn-neutral ox-btn-sm" data-bs-toggle="modal" data-bs-target="#transactionModal"
+                                    data-tx="{{ transaction.id }}" data-type="{{ transaction.get_transaction_type_display }}" data-date="{{ transaction.created_at|date:'M d, Y \a\t H:i' }}"
+                                    data-amount="{% if transaction.amount > 0 %}+{% else %}−{% endif %}₦{{ transaction.amount|floatformat:'-2g'|cut:'-' }}" data-pos="{% if transaction.amount > 0 %}1{% else %}0{% endif %}"
+                                    data-desc="{{ transaction.description }}" data-ref="{{ transaction.reference_id|default:'' }}"
+                                    data-status="{{ st|title }}" data-st="{{ st }}"><i class="bi bi-eye" aria-hidden="true"></i>View details</button>
+                        </article>
+                        {% endwith %}
+                        {% endfor %}
                     </div>
                 </div>
             </div>
-        </div>
+
+            {% if transactions.has_other_pages %}
+            <nav aria-label="Transaction pagination">
+                <ul class="tx-pg">
+                    {% if transactions.has_previous %}
+                    <li><a href="?page={{ transactions.previous_page_number }}{% if request.GET.search %}&amp;search={{ request.GET.search|urlencode }}{% endif %}{% if request.GET.type %}&amp;type={{ request.GET.type|urlencode }}{% endif %}{% if request.GET.date_range %}&amp;date_range={{ request.GET.date_range|urlencode }}{% endif %}{% if request.GET.amount_range %}&amp;amount_range={{ request.GET.amount_range|urlencode }}{% endif %}{% if request.GET.date_from %}&amp;date_from={{ request.GET.date_from|urlencode }}{% endif %}{% if request.GET.date_to %}&amp;date_to={{ request.GET.date_to|urlencode }}{% endif %}" aria-label="Previous page"><i class="bi bi-chevron-left" aria-hidden="true"></i></a></li>
+                    {% endif %}
+                    {% for num in transactions.paginator.page_range %}
+                        {% if transactions.number == num %}
+                        <li><span aria-current="page">{{ num }}</span></li>
+                        {% elif num > transactions.number|add:'-3' and num < transactions.number|add:'3' %}
+                        <li><a href="?page={{ num }}{% if request.GET.search %}&amp;search={{ request.GET.search|urlencode }}{% endif %}{% if request.GET.type %}&amp;type={{ request.GET.type|urlencode }}{% endif %}{% if request.GET.date_range %}&amp;date_range={{ request.GET.date_range|urlencode }}{% endif %}{% if request.GET.amount_range %}&amp;amount_range={{ request.GET.amount_range|urlencode }}{% endif %}{% if request.GET.date_from %}&amp;date_from={{ request.GET.date_from|urlencode }}{% endif %}{% if request.GET.date_to %}&amp;date_to={{ request.GET.date_to|urlencode }}{% endif %}">{{ num }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+                    {% if transactions.has_next %}
+                    <li><a href="?page={{ transactions.next_page_number }}{% if request.GET.search %}&amp;search={{ request.GET.search|urlencode }}{% endif %}{% if request.GET.type %}&amp;type={{ request.GET.type|urlencode }}{% endif %}{% if request.GET.date_range %}&amp;date_range={{ request.GET.date_range|urlencode }}{% endif %}{% if request.GET.amount_range %}&amp;amount_range={{ request.GET.amount_range|urlencode }}{% endif %}{% if request.GET.date_from %}&amp;date_from={{ request.GET.date_from|urlencode }}{% endif %}{% if request.GET.date_to %}&amp;date_to={{ request.GET.date_to|urlencode }}{% endif %}" aria-label="Next page"><i class="bi bi-chevron-right" aria-hidden="true"></i></a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+            {% else %}
+            <div class="tx-empty">
+                <span class="ox-ico t-navy"><i class="bi bi-clock-history" aria-hidden="true"></i></span>
+                <div>
+                    <h3>No transactions found</h3>
+                    <p>{% if request.GET.search or request.GET.type or request.GET.date_range or request.GET.amount_range %}Try adjusting your filters to see more results.{% else %}Your transaction history will appear here after your first transaction.{% endif %}</p>
+                </div>
+                {% if not request.GET.search and not request.GET.type and not request.GET.date_range and not request.GET.amount_range %}
+                <a href="{% url 'deposit_with_monnify' %}" class="ox-btn"><i class="bi bi-plus-circle" aria-hidden="true"></i>Add your first deposit</a>
+                {% else %}
+                <button type="button" class="ox-btn ox-btn-neutral" id="clearFiltersBtn"><i class="bi bi-x-lg" aria-hidden="true"></i>Clear filters</button>
+                {% endif %}
+            </div>
+            {% endif %}
+        </section>
+
     </div>
-</div>
 
-<!-- Transaction Details Modal -->
-<div class="modal fade" id="transactionModal" tabindex="-1" aria-labelledby="transactionModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="transactionModalLabel">
-                    <i class="bi bi-receipt me-2"></i>Transaction Details
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" id="transactionModalBody">
-                <div class="text-center py-4">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
+    {# ---- Transaction details modal ---- #}
+    <div class="modal fade" id="transactionModal" tabindex="-1" aria-labelledby="transactionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <span class="ox-ico t-navy"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+                    <h2 class="modal-title" id="transactionModalLabel">Transaction details</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
+                <div class="modal-body" id="transactionModalBody"></div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Date range toggle
-    const dateRangeSelect = document.getElementById('dateRangeSelect');
-    const customDateRange = document.querySelector('.custom-date-range');
-    
-    if (dateRangeSelect && customDateRange) {
-        dateRangeSelect.addEventListener('change', function() {
-            if (this.value === 'custom') {
-                customDateRange.classList.remove('d-none');
-            } else {
-                customDateRange.classList.add('d-none');
-            }
-        });
+document.addEventListener('DOMContentLoaded', function () {
+    var byId = function (id) { return document.getElementById(id); };
+
+    // Custom date range
+    var dateRange = byId('dateRangeSelect');
+    var custom = byId('customRange');
+    if (dateRange && custom) {
+        dateRange.addEventListener('change', function () { custom.hidden = this.value !== 'custom'; });
     }
-    
-    // View toggle
-    const viewButtons = document.querySelectorAll('[data-view]');
-    const tableView = document.querySelector('.table-view');
-    const cardsView = document.querySelector('.cards-view');
-    
-    viewButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            // Remove active class from all buttons
-            viewButtons.forEach(btn => btn.classList.remove('active'));
-            
-            // Add active class to clicked button
-            this.classList.add('active');
-            
-            // Toggle views
-            if (this.dataset.view === 'table') {
-                tableView.classList.remove('d-none');
-                cardsView.classList.add('d-none');
-            } else {
-                tableView.classList.add('d-none');
-                cardsView.classList.remove('d-none');
-            }
+
+    // Table / cards toggle (desktop only; phones always get cards)
+    var views = byId('txViews');
+    var viewButtons = document.querySelectorAll('.tx-toggle [data-view]');
+    viewButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            viewButtons.forEach(function (b) {
+                var on = b === button;
+                b.classList.toggle('active', on);
+                b.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+            if (views) views.setAttribute('data-mode', button.getAttribute('data-view'));
         });
     });
-    
+
     // Clear filters
-    const clearFiltersBtn = document.getElementById('clearFilters');
-    if (clearFiltersBtn) {
-        clearFiltersBtn.addEventListener('click', function() {
-            window.location.href = window.location.pathname;
-        });
-    }
-    
-    const clearFiltersBtnAlt = document.getElementById('clearFiltersBtn');
-    if (clearFiltersBtnAlt) {
-        clearFiltersBtnAlt.addEventListener('click', function() {
-            window.location.href = window.location.pathname;
-        });
-    }
-    
-    // Export functionality
-    const exportBtn = document.getElementById('exportBtn');
+    ['clearFilters', 'clearFiltersBtn'].forEach(function (id) {
+        var el = byId(id);
+        if (el) el.addEventListener('click', function () { window.location.href = window.location.pathname; });
+    });
+
+    // Export CSV
+    var exportBtn = byId('exportBtn');
     if (exportBtn) {
-        exportBtn.addEventListener('click', function() {
-            // Get current URL parameters for export
-            const params = new URLSearchParams(window.location.search);
+        exportBtn.addEventListener('click', function () {
+            var params = new URLSearchParams(window.location.search);
             params.set('export', 'csv');
-            
-            // Create download link
-            const exportUrl = window.location.pathname + '?' + params.toString();
-            
-            // Trigger download
-            const link = document.createElement('a');
-            link.href = exportUrl;
+            var link = document.createElement('a');
+            link.href = window.location.pathname + '?' + params.toString();
             link.download = 'transactions.csv';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            
-            // Show notification
-            const originalHTML = this.innerHTML;
-            this.innerHTML = '<i class="bi bi-check-circle me-2"></i>Exported!';
-            this.disabled = true;
-            setTimeout(() => {
-                this.innerHTML = originalHTML;
-                this.disabled = false;
-            }, 2000);
+
+            var original = exportBtn.innerHTML;
+            exportBtn.innerHTML = '<i class="bi bi-check-circle" aria-hidden="true"></i>Exported!';
+            exportBtn.disabled = true;
+            setTimeout(function () { exportBtn.innerHTML = original; exportBtn.disabled = false; }, 2000);
         });
     }
-    
-    // Initialize tooltips if Bootstrap is available
-    if (typeof bootstrap !== 'undefined') {
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
+
+    // Details modal: filled from the row that opened it (real data, no extra request)
+    var modal = byId('transactionModal');
+    var body = byId('transactionModalBody');
+    var stIcon = function (st) { return st === 'completed' ? 'bi-check-circle-fill' : (st === 'pending' ? 'bi-clock-fill' : 'bi-x-circle-fill'); };
+    var row = function (label, valueNode) {
+        var d = document.createElement('div');
+        var dt = document.createElement('dt'); dt.textContent = label;
+        var dd = document.createElement('dd'); dd.appendChild(valueNode);
+        d.appendChild(dt); d.appendChild(dd);
+        return d;
+    };
+    var text = function (t) { return document.createTextNode(t); };
+    if (modal && body) {
+        modal.addEventListener('show.bs.modal', function (event) {
+            var src = event.relatedTarget;
+            if (!src || !src.dataset) return;
+            var d = src.dataset;
+            body.textContent = '';
+
+            var amt = document.createElement('p');
+            amt.className = 'tx-m-amt ' + (d.pos === '1' ? 'is-pos' : 'is-neg');
+            amt.textContent = d.amount || '';
+            body.appendChild(amt);
+
+            var dl = document.createElement('dl');
+            dl.className = 'ox-dl';
+            dl.appendChild(row('Type', text(d.type || '')));
+            dl.appendChild(row('Date', text(d.date || '')));
+            if (d.desc) dl.appendChild(row('Description', text(d.desc)));
+
+            var pill = document.createElement('span');
+            pill.className = 'ox-pill ox-wash st st-' + (d.st || 'completed');
+            var ic = document.createElement('i');
+            ic.className = 'bi ' + stIcon(d.st);
+            ic.setAttribute('aria-hidden', 'true');
+            pill.appendChild(ic);
+            pill.appendChild(text(d.status || ''));
+            dl.appendChild(row('Status', pill));
+
+            if (d.ref) dl.appendChild(row('Reference', text(d.ref)));
+            body.appendChild(dl);
         });
     }
 });
-
-// Load transaction details in modal
-function loadTransactionDetails(transactionId) {
-    const modalBody = document.getElementById('transactionModalBody');
-    
-    if (!modalBody) return;
-    
-    // Show loading spinner
-    modalBody.innerHTML = `
-        <div class="text-center py-4">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-2 text-muted">Loading transaction details...</p>
-        </div>
-    `;
-    
-    // Simulate API call (replace with actual AJAX call to your backend)
-    setTimeout(() => {
-        modalBody.innerHTML = `
-            <div class="transaction-details">
-                <div class="row g-3">
-                    <div class="col-12">
-                        <div class="detail-card">
-                            <h6 class="detail-title">Transaction Information</h6>
-                            <div class="detail-content">
-                                <div class="detail-item">
-                                    <span class="detail-label">Amount:</span>
-                                    <span class="detail-value text-success">+₦5,000</span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Date:</span>
-                                    <span class="detail-value">${new Date().toLocaleDateString()}</span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Status:</span>
-                                    <span class="status-badge completed">
-                                        <i class="bi bi-check-circle-fill"></i>
-                                        Completed
-                                    </span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Reference:</span>
-                                    <span class="detail-value">REF-${Math.random().toString(36).substr(2, 9).toUpperCase()}</span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Balance After:</span>
-                                    <span class="detail-value">₦25,000</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <style>
-                .transaction-details {
-                    padding: 1rem 0;
-                }
-                
-                .detail-card {
-                    background-color: var(--hover-bg);
-                    border: 1px solid var(--border-color);
-                    border-radius: 0.5rem;
-                    padding: 1.25rem;
-                }
-                
-                .detail-title {
-                    color: var(--text-primary);
-                    font-weight: 600;
-                    margin-bottom: 1rem;
-                    padding-bottom: 0.5rem;
-                    border-bottom: 1px solid var(--border-color);
-                    font-size: 0.95rem;
-                }
-                
-                .detail-item {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding: 0.75rem 0;
-                    border-bottom: 1px solid var(--border-color);
-                }
-                
-                .detail-item:last-child {
-                    border-bottom: none;
-                }
-                
-                .detail-label {
-                    color: var(--text-muted);
-                    font-weight: 500;
-                    font-size: 0.85rem;
-                }
-                
-                .detail-value {
-                    color: var(--text-primary);
-                    font-weight: 600;
-                    font-size: 0.85rem;
-                }
-            </style>
-        `;
-    }, 1000);
-}
 </script>
 {% endblock %}
 {% block 'Footer' %}{% endblock %}

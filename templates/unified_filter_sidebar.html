@@ -3,7 +3,7 @@
 
 {% with get_query=request.GET.query|default:'' get_category=request.GET.category|default:'' get_subcategory=request.GET.subcategory|default:'' get_brand=request.GET.brand|default:'' get_condition=request.GET.condition|default:'' %}
 {% with get_service_type=request.GET.service_type|default:'' get_category_code=request.GET.category|default:'' get_request_type=request.GET.request_type|default:'' get_urgency=request.GET.urgency|default:'' get_status=request.GET.status|default:'' %}
-{% with get_verified_business=request.GET.verified_business|default:'' get_verified_only=request.GET.verified_only|default:'' get_state=request.GET.state|default:'' get_lga=request.GET.lga|default:'' get_budget_range=request.GET.budget_range|default:'' %}
+{% with get_verified_business=request.GET.verified_business|default:'' get_verified_only=request.GET.verified_only|default:'' get_state=request.GET.state|default:'' get_lga=request.GET.lga|default:'' get_city=request.GET.city|default:'' get_budget_range=request.GET.budget_range|default:'' %}
 {% with get_min_price=request.GET.min_price|default:'' get_max_price=request.GET.max_price|default:'' get_experience_level=request.GET.experience_level|default:'' get_delivery_method=request.GET.delivery_method|default:'' get_availability_now=request.GET.available_only|default:'' get_availability_schedule=request.GET.availability|default:'' get_pricing_type=request.GET.pricing_type|default:'' get_sort=request.GET.sort|default:'' get_service_category=request.GET.service_category|default:'' %}
 
 {# ── Determine whether this include is inside the offcanvas (mobile) or not ── #}
@@ -18,6 +18,12 @@
      data-selected-lga="{{ selected_lga|default:get_lga }}">
 
     {# ── Active filter chips ─────────────────────────────────────────────── #}
+    {# ── Header band: title + live count of active filters (hidden inside the mobile sheet) #}
+    <div class="ufs-top">
+        <h2 class="ufs-top-title"><i class="bi bi-sliders2"></i>Refine results <span class="ufs-count" aria-live="polite"></span></h2>
+    </div>
+
+    {% if item_type != 'products' %}
     <div class="ufs-chips" id="ufs-chips-{{ item_type }}">
         {% if get_query %}<span class="ufs-chip">🔍 "{{ get_query }}"<button type="button" class="ufs-chip-x" data-clear="query" title="Remove">×</button></span>{% endif %}
         {% if get_request_type %}<span class="ufs-chip">{{ get_request_type|title }}<button type="button" class="ufs-chip-x" data-clear="request_type" title="Remove">×</button></span>{% endif %}
@@ -31,6 +37,7 @@
         {% if get_budget_range %}<span class="ufs-chip">Budget<button type="button" class="ufs-chip-x" data-clear="budget_range" title="Remove">×</button></span>{% endif %}
         {% if get_min_price or get_max_price %}<span class="ufs-chip">₦{{ get_min_price|default:"0" }}–{{ get_max_price|default:"∞" }}<button type="button" class="ufs-chip-x" data-clear="price" title="Remove">×</button></span>{% endif %}
         {% if get_state %}<span class="ufs-chip">Location<button type="button" class="ufs-chip-x" data-clear="state" title="Remove">×</button></span>{% endif %}
+        {% if get_city and item_type == 'products' %}<span class="ufs-chip">📍 {{ get_city }}<button type="button" class="ufs-chip-x" data-clear="city" title="Remove">×</button></span>{% endif %}
         {% if get_verified_business == 'true' or get_verified_only == 'true' %}<span class="ufs-chip ufs-chip--green">✓ Verified<button type="button" class="ufs-chip-x" data-clear="verified" title="Remove">×</button></span>{% endif %}
         {% if request.GET.negotiable == 'true' %}<span class="ufs-chip">Negotiable<button type="button" class="ufs-chip-x" data-clear="negotiable" title="Remove">×</button></span>{% endif %}
         {% if request.GET.delivery_available == 'true' %}<span class="ufs-chip">Delivery<button type="button" class="ufs-chip-x" data-clear="delivery_available" title="Remove">×</button></span>{% endif %}
@@ -43,9 +50,10 @@
         {% if get_availability_schedule %}<span class="ufs-chip">{{ get_availability_schedule|title }}<button type="button" class="ufs-chip-x" data-clear="availability" title="Remove">×</button></span>{% endif %}
         {% if get_pricing_type %}<span class="ufs-chip">{{ get_pricing_type|title }}<button type="button" class="ufs-chip-x" data-clear="pricing_type" title="Remove">×</button></span>{% endif %}
     </div>
+    {% endif %}
 
     <form method="get" action="{{ filter_action_url }}" class="ufs-form sidebar-filter-form"
-          data-item-type="{{ item_type }}"
+          data-item-type="{{ item_type }}" data-explicit-apply="1"
           data-selected-category="{{ selected_category|default:get_category }}"
           data-selected-subcategory="{{ selected_subcategory|default:get_subcategory }}"
           data-selected-brand="{{ selected_brand|default:get_brand }}"
@@ -55,7 +63,6 @@
 
     {# Preserve sort parameter silently across all filter submissions #}
     {% if get_sort %}<input type="hidden" name="sort" value="{{ get_sort }}">{% endif %}
-
     {# ── 1. SEARCH ─────────────────────────────────────────────────────── #}
     <div class="ufs-section">
         <div class="ufs-input-wrap">
@@ -67,11 +74,184 @@
                    autocomplete="off">
         </div>
     </div>
+    {# ═════════ PRODUCTS — advanced filter layout ═════════ #}
+    {% if item_type == 'products' %}
+    {% with sid=sidebar_id|default:'desktop' get_negotiable=request.GET.negotiable|default:'' get_delivery=request.GET.delivery_available|default:'' get_swap=request.GET.swap_accepted|default:'' get_inspection=request.GET.inspection_allowed|default:'' get_has_receipt=request.GET.has_receipt|default:'' %}
 
-    {# ── 2. REQUEST TYPE (requests only) ──────────────────────────────── #}
-    {% if item_type == 'requests' %}
+    {# Trusted sellers: the biggest buyer-confidence filter, never collapsed #}
     <div class="ufs-section">
-        <p class="ufs-label"><i class="bi bi-grid-3x3 me-2"></i>Request Type</p>
+        <label class="ufs-verify ufs-t-green" for="ufs_verified_{{ sid }}_products">
+            <span class="ufs-hico"><i class="bi bi-patch-check-fill"></i></span>
+            <span class="ufs-verified-text">
+                <strong>Verified sellers</strong>
+                <small>Checked by OpenSell</small>
+            </span>
+            <span class="ufs-switch">
+                <input class="ufs-sw-inp" type="checkbox" name="verified_business" value="true"
+                       id="ufs_verified_{{ sid }}_products" {% if get_verified_business == 'true' %}checked{% endif %}>
+                <span class="ufs-sw-track"></span>
+            </span>
+        </label>
+    </div>
+
+    {# Category, subcategory, brand #}
+    <div class="ufs-section ufs-coll ufs-open ufs-t-purple" data-sum-group="category">
+        <button type="button" class="ufs-head" aria-expanded="true">
+            <span class="ufs-hico"><i class="bi bi-grid-fill"></i></span>
+            <span class="ufs-htxt"><b>Category</b><small data-sum="category">All categories</small></span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body ufs-stack">
+            <div class="ufs-field">
+                <label for="ufs_cat_{{ sid }}" class="visually-hidden">Category</label>
+                <select name="category" class="form-select sidebar-select-category" id="ufs_cat_{{ sid }}">
+                    <option value="">All categories</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.slug|default:cat.id }}" data-id="{{ cat.id }}"
+                            {% if selected_category == cat.slug or get_category == cat.id|stringformat:"s" or get_category == cat.slug %}selected{% endif %}>{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="ufs-field">
+                <label for="ufs_sub_{{ sid }}">Subcategory</label>
+                <select name="subcategory" class="form-select sidebar-select-subcategory" id="ufs_sub_{{ sid }}" {% if not subcategories %}disabled{% endif %}>
+                    <option value="">All subcategories</option>
+                    {% for sub in subcategories %}
+                    <option value="{{ sub.slug|default:sub.id }}" data-id="{{ sub.id }}"
+                            {% if selected_subcategory == sub.slug or get_subcategory == sub.id|stringformat:"s" %}selected{% endif %}>{{ sub.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="ufs-field">
+                <label for="ufs_brand_{{ sid }}">Brand</label>
+                <select name="brand" class="form-select sidebar-select-brand" id="ufs_brand_{{ sid }}" {% if not brands %}disabled{% endif %}>
+                    <option value="">All brands</option>
+                    {% for brand in brands %}
+                    <option value="{{ brand.slug|default:brand.id }}" data-id="{{ brand.id }}"
+                            {% if selected_brand == brand.slug or get_brand == brand.id|stringformat:"s" %}selected{% endif %}>{{ brand.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+
+    {# Location #}
+    <div class="ufs-section ufs-coll ufs-t-orange {% if get_state or get_city %}ufs-open{% endif %}" data-sum-group="location">
+        <button type="button" class="ufs-head" aria-expanded="{% if get_state or get_city %}true{% else %}false{% endif %}">
+            <span class="ufs-hico"><i class="bi bi-geo-alt-fill"></i></span>
+            <span class="ufs-htxt"><b>Location</b><small data-sum="location">Anywhere in Nigeria</small></span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body ufs-stack">
+            <div class="ufs-field">
+                <label for="ufs_state_{{ sid }}">State</label>
+                <select name="state" class="form-select sidebar-select-state" id="ufs_state_{{ sid }}">
+                    <option value="">All states</option>
+                    {% for st in states %}
+                    <option value="{{ st.id }}" {% if get_state == st.id|stringformat:"s" %}selected{% endif %}>{{ st.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="ufs-field">
+                <label for="ufs_lga_{{ sid }}">Local government (LGA)</label>
+                <select name="lga" class="form-select sidebar-select-lga" id="ufs_lga_{{ sid }}" {% if not get_state %}disabled{% endif %}>
+                    <option value="">All LGAs</option>
+                    {% for lga in lgas %}
+                    <option value="{{ lga.id }}" {% if get_lga == lga.id|stringformat:"s" %}selected{% endif %}>{{ lga.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="ufs-field">
+                <label for="ufs_city_{{ sid }}">City or town</label>
+                <input type="text" name="city" class="form-control sidebar-input-city" id="ufs_city_{{ sid }}"
+                       placeholder="e.g. Ikeja" value="{{ get_city }}"
+                       maxlength="100" autocomplete="off" autocapitalize="words" enterkeyhint="search">
+            </div>
+        </div>
+    </div>
+
+    {# Price #}
+    <div class="ufs-section ufs-coll ufs-open ufs-t-green" data-sum-group="price">
+        <button type="button" class="ufs-head" aria-expanded="true">
+            <span class="ufs-hico"><i class="bi bi-cash-coin"></i></span>
+            <span class="ufs-htxt"><b>Price</b><small data-sum="price">Any price</small></span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body">
+            <div class="ufs-presets">
+                <button type="button" class="ufs-preset ufs-t-green js-price-preset" data-max="50000">Under ₦50k<small>Budget finds</small></button>
+                <button type="button" class="ufs-preset ufs-t-green js-price-preset" data-min="50000" data-max="200000">₦50k – ₦200k<small>Everyday buys</small></button>
+                <button type="button" class="ufs-preset ufs-t-green js-price-preset" data-min="200000" data-max="500000">₦200k – ₦500k<small>Mid-range</small></button>
+                <button type="button" class="ufs-preset ufs-t-green js-price-preset" data-min="500000">₦500k+<small>Premium</small></button>
+            </div>
+            <div class="ufs-price-row">
+                <div class="ufs-field">
+                    <label for="ufs_min_{{ sid }}">Min</label>
+                    <div class="ufs-money"><span>₦</span>
+                        <input type="number" name="min_price" id="ufs_min_{{ sid }}" class="form-control" inputmode="numeric" placeholder="0" min="0" step="100" enterkeyhint="search" value="{{ get_min_price }}">
+                    </div>
+                </div>
+                <span class="ufs-price-sep">–</span>
+                <div class="ufs-field">
+                    <label for="ufs_max_{{ sid }}">Max</label>
+                    <div class="ufs-money"><span>₦</span>
+                        <input type="number" name="max_price" id="ufs_max_{{ sid }}" class="form-control" inputmode="numeric" placeholder="Any" min="0" step="100" enterkeyhint="search" value="{{ get_max_price }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Condition: only values the listing view actually filters on #}
+    <div class="ufs-section ufs-coll ufs-open ufs-t-navy" data-sum-group="condition">
+        <button type="button" class="ufs-head" aria-expanded="true">
+            <span class="ufs-hico"><i class="bi bi-box-seam-fill"></i></span>
+            <span class="ufs-htxt"><b>Condition</b><small data-sum="condition">Any condition</small></span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body">
+            <div class="ufs-seg" role="radiogroup" aria-label="Condition">
+                <label class="ufs-seg-opt"><input type="radio" name="condition" value="" {% if not get_condition %}checked{% endif %}><span>Any</span></label>
+                <label class="ufs-seg-opt"><input type="radio" name="condition" value="new" {% if get_condition == 'new' %}checked{% endif %}><span><i class="bi bi-stars"></i>New</span></label>
+                <label class="ufs-seg-opt"><input type="radio" name="condition" value="used" {% if get_condition == 'used' %}checked{% endif %}><span>Used</span></label>
+            </div>
+        </div>
+    </div>
+
+    {# Deal options #}
+    <div class="ufs-section ufs-coll ufs-t-orange {% if get_negotiable or get_delivery or get_swap or get_inspection or get_has_receipt %}ufs-open{% endif %}" data-sum-group="deals">
+        <button type="button" class="ufs-head" aria-expanded="{% if get_negotiable or get_delivery or get_swap or get_inspection or get_has_receipt %}true{% else %}false{% endif %}">
+            <span class="ufs-hico"><i class="bi bi-stars"></i></span>
+            <span class="ufs-htxt"><b>Deal options</b><small data-sum="deals">Any</small></span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body">
+            <div class="ufs-feat-grid">
+                <label class="ufs-feat ufs-t-orange"><input type="checkbox" name="negotiable" value="true" {% if get_negotiable == 'true' %}checked{% endif %}>
+                    <span class="ufs-feat-card"><span class="ufs-hico"><i class="bi bi-chat-dots-fill"></i></span><b>Negotiable</b><small>Price can be discussed</small></span></label>
+                <label class="ufs-feat ufs-t-green"><input type="checkbox" name="delivery_available" value="true" {% if get_delivery == 'true' %}checked{% endif %}>
+                    <span class="ufs-feat-card"><span class="ufs-hico"><i class="bi bi-truck"></i></span><b>Delivery</b><small>Seller can deliver</small></span></label>
+                <label class="ufs-feat ufs-t-purple"><input type="checkbox" name="swap_accepted" value="true" {% if get_swap == 'true' %}checked{% endif %}>
+                    <span class="ufs-feat-card"><span class="ufs-hico"><i class="bi bi-arrow-left-right"></i></span><b>Swap accepted</b><small>Open to exchange</small></span></label>
+                <label class="ufs-feat ufs-t-navy"><input type="checkbox" name="inspection_allowed" value="true" {% if get_inspection == 'true' %}checked{% endif %}>
+                    <span class="ufs-feat-card"><span class="ufs-hico"><i class="bi bi-eye-fill"></i></span><b>Inspection</b><small>Check before you pay</small></span></label>
+                <label class="ufs-feat ufs-feat-wide ufs-t-green"><input type="checkbox" name="has_receipt" value="true" {% if get_has_receipt == 'true' %}checked{% endif %}>
+                    <span class="ufs-feat-card"><span class="ufs-hico"><i class="bi bi-receipt-cutoff"></i></span><span class="ufs-feat-txt"><b>Has proof of purchase</b><small>Receipt or invoice available</small></span></span></label>
+            </div>
+        </div>
+    </div>
+
+    {% endwith %}
+    {% endif %}
+
+    {# ═════════ SERVICES + REQUESTS: same components as products, same JS hooks ═════════ #}
+    {% if item_type != 'products' %}
+    {% with sid=sidebar_id|default:'desktop' %}
+
+    {# ── Request type (requests only) ───────────────────────────────── #}
+    {% if item_type == 'requests' %}
+    <div class="ufs-section ufs-t-navy">
+        <p class="ufs-label"><span class="ufs-hico"><i class="bi bi-grid-3x3-gap-fill"></i></span>Request type</p>
         <div class="ufs-toggle-group">
             <label class="ufs-toggle {% if not get_request_type %}ufs-toggle--on{% endif %}">
                 <input type="radio" name="request_type" value="" {% if not get_request_type %}checked{% endif %}>All
@@ -88,45 +268,12 @@
     </div>
     {% endif %}
 
-    {# ── 3. CATEGORY ──────────────────────────────────────────────────── #}
-
-    {# Products: dropdown + cascading subcategory #}
-    {% if item_type == 'products' %}
-    <div class="ufs-section ufs-coll {% if get_category %}ufs-open{% endif %}">
-        <button type="button" class="ufs-head">
-            <span><i class="bi bi-tag me-2"></i>Category</span>
-            <i class="bi bi-chevron-down ufs-chev"></i>
-        </button>
-        <div class="ufs-body">
-            <div class="form-floating mb-2">
-                <select name="category" class="form-select sidebar-select-category" id="ufs_cat_{{ item_type }}">
-                    <option value="">All Categories</option>
-                    {% for cat in categories %}
-                    <option value="{{ cat.slug|default:cat.id }}" data-id="{{ cat.id }}"
-                            {% if selected_category == cat.slug or get_category == cat.id|stringformat:"s" or get_category == cat.slug %}selected{% endif %}>{{ cat.name }}</option>
-                    {% endfor %}
-                </select>
-                <label for="ufs_cat_{{ item_type }}">Category</label>
-            </div>
-            <div class="form-floating">
-                <select name="subcategory" class="form-select sidebar-select-subcategory" id="ufs_sub_{{ item_type }}" {% if not subcategories %}disabled{% endif %}>
-                    <option value="">All Subcategories</option>
-                    {% for sub in subcategories %}
-                    <option value="{{ sub.slug|default:sub.id }}" data-id="{{ sub.id }}"
-                            {% if selected_subcategory == sub.slug or get_subcategory == sub.id|stringformat:"s" %}selected{% endif %}>{{ sub.name }}</option>
-                    {% endfor %}
-                </select>
-                <label for="ufs_sub_{{ item_type }}">Subcategory</label>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    {# Services: pill-style category selector — uses category.code #}
+    {# ── Category ───────────────────────────────────────────────────── #}
     {% if item_type == 'services' %}
-    <div class="ufs-section ufs-coll {% if get_category_code %}ufs-open{% endif %}">
-        <button type="button" class="ufs-head">
-            <span><i class="bi bi-tag me-2"></i>Category</span>
+    <div class="ufs-section ufs-coll ufs-t-purple ufs-open">
+        <button type="button" class="ufs-head" aria-expanded="true">
+            <span class="ufs-hico"><i class="bi bi-grid-fill"></i></span>
+            <span class="ufs-htxt"><b>Category</b><small data-auto-sum data-default="All categories">All categories</small></span>
             <i class="bi bi-chevron-down ufs-chev"></i>
         </button>
         <div class="ufs-body">
@@ -144,41 +291,43 @@
     </div>
     {% endif %}
 
-    {# Requests: product-category — JS reveals when request_type=product #}
     {% if item_type == 'requests' %}
-    <div class="ufs-section ufs-coll js-req-cat {% if get_category and get_request_type == 'product' %}ufs-open{% endif %}" style="{% if get_request_type != 'product' %}display:none;{% endif %}">
-        <button type="button" class="ufs-head">
-            <span><i class="bi bi-tag me-2"></i>Product Category</span>
+    {# Product category: JS reveals it when request_type=product #}
+    <div class="ufs-section ufs-coll ufs-t-purple js-req-cat {% if get_category and get_request_type == 'product' %}ufs-open{% endif %}" style="{% if get_request_type != 'product' %}display:none;{% endif %}">
+        <button type="button" class="ufs-head" aria-expanded="{% if get_category and get_request_type == 'product' %}true{% else %}false{% endif %}">
+            <span class="ufs-hico"><i class="bi bi-grid-fill"></i></span>
+            <span class="ufs-htxt"><b>Product category</b><small data-auto-sum data-default="All categories">All categories</small></span>
             <i class="bi bi-chevron-down ufs-chev"></i>
         </button>
-        <div class="ufs-body">
-            <div class="form-floating mb-2">
-                <select name="category" class="form-select sidebar-select-category">
-                    <option value="">All Categories</option>
+        <div class="ufs-body ufs-stack">
+            <div class="ufs-field">
+                <label for="ufs_cat_{{ sid }}_requests">Category</label>
+                <select name="category" id="ufs_cat_{{ sid }}_requests" class="form-select sidebar-select-category">
+                    <option value="">All categories</option>
                     {% for cat in product_categories|default:categories %}
                     <option value="{{ cat.id }}" data-id="{{ cat.id }}"
                             {% if get_category == cat.id|stringformat:"s" and get_request_type == 'product' %}selected{% endif %}>{{ cat.name }}</option>
                     {% endfor %}
                 </select>
-                <label>Category</label>
             </div>
-            <div class="form-floating">
-                <select name="subcategory" class="form-select sidebar-select-subcategory js-req-prod-only" {% if not subcategories %}disabled{% endif %}>
-                    <option value="">All Subcategories</option>
+            <div class="ufs-field">
+                <label for="ufs_sub_{{ sid }}_requests">Subcategory</label>
+                <select name="subcategory" id="ufs_sub_{{ sid }}_requests" class="form-select sidebar-select-subcategory js-req-prod-only" {% if not subcategories %}disabled{% endif %}>
+                    <option value="">All subcategories</option>
                     {% for sub in subcategories %}
                     <option value="{{ sub.id }}" data-id="{{ sub.id }}"
                             {% if get_subcategory == sub.id|stringformat:"s" %}selected{% endif %}>{{ sub.name }}</option>
                     {% endfor %}
                 </select>
-                <label>Subcategory</label>
             </div>
         </div>
     </div>
 
-    {# Requests: service category — JS reveals when request_type=service #}
-    <div class="ufs-section ufs-coll js-req-svc {% if get_service_category and get_request_type == 'service' %}ufs-open{% endif %}" style="{% if get_request_type != 'service' %}display:none;{% endif %}">
-        <button type="button" class="ufs-head">
-            <span><i class="bi bi-grid me-2"></i>Service Category</span>
+    {# Service category: JS reveals it when request_type=service #}
+    <div class="ufs-section ufs-coll ufs-t-purple js-req-svc {% if get_service_category and get_request_type == 'service' %}ufs-open{% endif %}" style="{% if get_request_type != 'service' %}display:none;{% endif %}">
+        <button type="button" class="ufs-head" aria-expanded="{% if get_service_category and get_request_type == 'service' %}true{% else %}false{% endif %}">
+            <span class="ufs-hico"><i class="bi bi-tools"></i></span>
+            <span class="ufs-htxt"><b>Service category</b><small data-auto-sum data-default="All categories">All categories</small></span>
             <i class="bi bi-chevron-down ufs-chev"></i>
         </button>
         <div class="ufs-body">
@@ -194,201 +343,139 @@
             </div>
         </div>
     </div>
-    {% endif %}
 
-    {# ── 4. BRAND (products always; requests product-type via JS) ──────── #}
-    {% if item_type == 'products' or item_type == 'requests' %}
-    <div class="ufs-section ufs-coll {% if item_type == 'requests' %}js-req-prod-only{% endif %} {% if get_brand %}ufs-open{% endif %}"
-         {% if item_type == 'requests' %}style="{% if get_request_type != 'product' %}display:none;{% endif %}"{% endif %}>
-        <button type="button" class="ufs-head">
-            <span><i class="bi bi-award me-2"></i>Brand</span>
+    {# Brand (product requests) #}
+    <div class="ufs-section ufs-coll ufs-t-navy js-req-prod-only {% if get_brand %}ufs-open{% endif %}" style="{% if get_request_type != 'product' %}display:none;{% endif %}">
+        <button type="button" class="ufs-head" aria-expanded="{% if get_brand %}true{% else %}false{% endif %}">
+            <span class="ufs-hico"><i class="bi bi-award-fill"></i></span>
+            <span class="ufs-htxt"><b>Brand</b><small data-auto-sum data-default="All brands">All brands</small></span>
             <i class="bi bi-chevron-down ufs-chev"></i>
         </button>
         <div class="ufs-body">
-            <div class="form-floating">
-                <select name="brand" class="form-select sidebar-select-brand" {% if not brands %}disabled{% endif %}>
-                    <option value="">All Brands</option>
+            <div class="ufs-field">
+                <label for="ufs_brand_{{ sid }}_requests" class="visually-hidden">Brand</label>
+                <select name="brand" id="ufs_brand_{{ sid }}_requests" class="form-select sidebar-select-brand" {% if not brands %}disabled{% endif %}>
+                    <option value="">All brands</option>
                     {% if brands %}{% for brand in brands %}
-                    {% if item_type == 'requests' %}
                     <option value="{{ brand.id }}" data-id="{{ brand.id }}" {% if get_brand == brand.id|stringformat:"s" %}selected{% endif %}>{{ brand.name }}</option>
-                    {% else %}
-                    <option value="{{ brand.slug|default:brand.id }}" data-id="{{ brand.id }}" {% if selected_brand == brand.slug or get_brand == brand.id|stringformat:"s" %}selected{% endif %}>{{ brand.name }}</option>
-                    {% endif %}
                     {% endfor %}{% endif %}
                 </select>
-                <label>Brand</label>
             </div>
         </div>
     </div>
     {% endif %}
 
-    {# ── 5. SERVICE TYPE (services page only) ─────────────────────────── #}
+    {# ── Service type (services) ───────────────────────────────────── #}
     {% if item_type == 'services' %}
-    <div class="ufs-section ufs-coll {% if get_service_type %}ufs-open{% endif %}">
-        <button type="button" class="ufs-head">
-            <span><i class="bi bi-list-ul me-2"></i>Service Type</span>
+    <div class="ufs-section ufs-coll ufs-t-navy {% if get_service_type %}ufs-open{% endif %}">
+        <button type="button" class="ufs-head" aria-expanded="{% if get_service_type %}true{% else %}false{% endif %}">
+            <span class="ufs-hico"><i class="bi bi-list-ul"></i></span>
+            <span class="ufs-htxt"><b>Service type</b><small data-auto-sum data-default="All types">All types</small></span>
             <i class="bi bi-chevron-down ufs-chev"></i>
         </button>
         <div class="ufs-body">
             <div class="ufs-checks">
-                <label class="ufs-chk"><input type="radio" name="service_type" value="" {% if not get_service_type %}checked{% endif %}><span>All Types</span></label>
-                <label class="ufs-chk"><input type="radio" name="service_type" value="skill" {% if get_service_type == 'skill' %}checked{% endif %}><span><i class="bi bi-person-badge me-1"></i>Professional Skill</span></label>
-                <label class="ufs-chk"><input type="radio" name="service_type" value="service" {% if get_service_type == 'service' %}checked{% endif %}><span><i class="bi bi-tools me-1"></i>Service Offering</span></label>
-                <label class="ufs-chk"><input type="radio" name="service_type" value="consultation" {% if get_service_type == 'consultation' %}checked{% endif %}><span><i class="bi bi-chat-square-text me-1"></i>Consultation</span></label>
-                <label class="ufs-chk"><input type="radio" name="service_type" value="maintenance" {% if get_service_type == 'maintenance' %}checked{% endif %}><span><i class="bi bi-wrench me-1"></i>Maintenance</span></label>
-                <label class="ufs-chk"><input type="radio" name="service_type" value="training" {% if get_service_type == 'training' %}checked{% endif %}><span><i class="bi bi-mortarboard me-1"></i>Training</span></label>
+                <label class="ufs-chk"><input type="radio" name="service_type" value="" {% if not get_service_type %}checked{% endif %}><span>All types</span></label>
+                <label class="ufs-chk"><input type="radio" name="service_type" value="skill" {% if get_service_type == 'skill' %}checked{% endif %}><span><i class="bi bi-person-badge"></i>Professional skill</span></label>
+                <label class="ufs-chk"><input type="radio" name="service_type" value="service" {% if get_service_type == 'service' %}checked{% endif %}><span><i class="bi bi-tools"></i>Service offering</span></label>
+                <label class="ufs-chk"><input type="radio" name="service_type" value="consultation" {% if get_service_type == 'consultation' %}checked{% endif %}><span><i class="bi bi-chat-square-text"></i>Consultation</span></label>
+                <label class="ufs-chk"><input type="radio" name="service_type" value="maintenance" {% if get_service_type == 'maintenance' %}checked{% endif %}><span><i class="bi bi-wrench"></i>Maintenance</span></label>
+                <label class="ufs-chk"><input type="radio" name="service_type" value="training" {% if get_service_type == 'training' %}checked{% endif %}><span><i class="bi bi-mortarboard"></i>Training</span></label>
             </div>
         </div>
     </div>
     {% endif %}
 
-    {# ── 6.  ──── #}
-    {% if item_type == 'products' or item_type == 'requests' %}
-    <div class="ufs-section ufs-coll {% if item_type == 'requests' %}js-req-prod-only{% endif %} {% if get_condition %}ufs-open{% endif %}"
-         {% if item_type == 'requests' %}style="{% if get_request_type != 'product' %}display:none;{% endif %}"{% endif %}>
-        <button type="button" class="ufs-head">
-            <span><i class="bi bi-shield-check me-2"></i>{% if item_type == 'products' %}Condition{% else %}Condition Wanted{% endif %}</span>
+    {# ── Condition wanted (product requests) ───────────────────────── #}
+    {% if item_type == 'requests' %}
+    <div class="ufs-section ufs-coll ufs-t-navy js-req-prod-only {% if get_condition %}ufs-open{% endif %}" style="{% if get_request_type != 'product' %}display:none;{% endif %}">
+        <button type="button" class="ufs-head" aria-expanded="{% if get_condition %}true{% else %}false{% endif %}">
+            <span class="ufs-hico"><i class="bi bi-box-seam-fill"></i></span>
+            <span class="ufs-htxt"><b>Condition wanted</b><small data-auto-sum data-default="Any condition">Any condition</small></span>
             <i class="bi bi-chevron-down ufs-chev"></i>
         </button>
         <div class="ufs-body">
             <div class="ufs-checks">
-                <label class="ufs-chk"><input type="radio" name="condition" value="" {% if not get_condition %}checked{% endif %}><span>Any</span></label>
-                <label class="ufs-chk"><input type="radio" name="condition" value="new" {% if get_condition == 'new' %}checked{% endif %}><span><i class="bi bi-star-fill me-1 text-warning"></i>New</span></label>
+                <label class="ufs-chk"><input type="radio" name="condition" value="" {% if not get_condition %}checked{% endif %}><span>Any condition</span></label>
+                <label class="ufs-chk"><input type="radio" name="condition" value="new" {% if get_condition == 'new' %}checked{% endif %}><span><i class="bi bi-stars"></i>New</span></label>
                 <label class="ufs-chk"><input type="radio" name="condition" value="used" {% if get_condition == 'used' %}checked{% endif %}><span>Used</span></label>
                 <label class="ufs-chk"><input type="radio" name="condition" value="refurbished" {% if get_condition == 'refurbished' %}checked{% endif %}><span>Refurbished</span></label>
             </div>
         </div>
     </div>
-    {% endif %}
 
-    {# ── 7. URGENCY (requests only — shown for ALL request types) ────── #}
-    {% if item_type == 'requests' %}
-    <div class="ufs-section ufs-coll {% if get_urgency %}ufs-open{% endif %}">
-        <button type="button" class="ufs-head">
-            <span><i class="bi bi-lightning-charge me-2"></i>Urgency</span>
+    {# Urgency (always shown on the requests page) #}
+    <div class="ufs-section ufs-coll ufs-t-orange {% if get_urgency %}ufs-open{% endif %}">
+        <button type="button" class="ufs-head" aria-expanded="{% if get_urgency %}true{% else %}false{% endif %}">
+            <span class="ufs-hico"><i class="bi bi-lightning-charge-fill"></i></span>
+            <span class="ufs-htxt"><b>Urgency</b><small data-auto-sum data-default="Any urgency">Any urgency</small></span>
             <i class="bi bi-chevron-down ufs-chev"></i>
         </button>
         <div class="ufs-body">
             <div class="ufs-checks">
-                <label class="ufs-chk"><input type="radio" name="urgency" value="" {% if not get_urgency %}checked{% endif %}><span>Any Urgency</span></label>
-                <label class="ufs-chk"><input type="radio" name="urgency" value="urgent" {% if get_urgency == 'urgent' %}checked{% endif %}><span><span class="ufs-dot red"></span>Urgent — ASAP</span></label>
-                <label class="ufs-chk"><input type="radio" name="urgency" value="high" {% if get_urgency == 'high' %}checked{% endif %}><span><span class="ufs-dot orange"></span>High — 3 days</span></label>
-                <label class="ufs-chk"><input type="radio" name="urgency" value="medium" {% if get_urgency == 'medium' %}checked{% endif %}><span><span class="ufs-dot yellow"></span>Medium — 1 week</span></label>
-                <label class="ufs-chk"><input type="radio" name="urgency" value="low" {% if get_urgency == 'low' %}checked{% endif %}><span><span class="ufs-dot green"></span>Low — Can wait</span></label>
+                <label class="ufs-chk"><input type="radio" name="urgency" value="" {% if not get_urgency %}checked{% endif %}><span>Any urgency</span></label>
+                <label class="ufs-chk"><input type="radio" name="urgency" value="urgent" {% if get_urgency == 'urgent' %}checked{% endif %}><span><span class="ufs-dot red"></span>Urgent: ASAP</span></label>
+                <label class="ufs-chk"><input type="radio" name="urgency" value="high" {% if get_urgency == 'high' %}checked{% endif %}><span><span class="ufs-dot orange"></span>High: 3 days</span></label>
+                <label class="ufs-chk"><input type="radio" name="urgency" value="medium" {% if get_urgency == 'medium' %}checked{% endif %}><span><span class="ufs-dot yellow"></span>Medium: 1 week</span></label>
+                <label class="ufs-chk"><input type="radio" name="urgency" value="low" {% if get_urgency == 'low' %}checked{% endif %}><span><span class="ufs-dot green"></span>Low: can wait</span></label>
             </div>
         </div>
     </div>
     {% endif %}
 
-    {# ── 7b. PRODUCT FEATURES (products only) ─────────────────────────── #}
-    {% if item_type == 'products' %}
-    {% with get_negotiable=request.GET.negotiable|default:'' get_delivery=request.GET.delivery_available|default:'' get_swap=request.GET.swap_accepted|default:'' get_inspection=request.GET.inspection_allowed|default:'' get_has_receipt=request.GET.has_receipt|default:'' %}
-    <div class="ufs-section ufs-coll {% if get_negotiable or get_delivery or get_swap or get_inspection or get_has_receipt %}ufs-open{% endif %}">
-        <button type="button" class="ufs-head">
-            <span><i class="bi bi-sliders me-2"></i>Product Features</span>
-            <i class="bi bi-chevron-down ufs-chev"></i>
-        </button>
-        <div class="ufs-body">
-            <div class="ufs-feat-grid">
-                <label class="ufs-feat-pill">
-                    <input type="checkbox" name="negotiable" value="true" {% if get_negotiable == 'true' %}checked{% endif %}>
-                    <div class="ufs-feat-card">
-                        <i class="bi bi-chat-dots-fill ufs-feat-icon"></i>
-                        <span class="ufs-feat-label">Negotiable</span>
-                    </div>
-                </label>
-                <label class="ufs-feat-pill">
-                    <input type="checkbox" name="delivery_available" value="true" {% if get_delivery == 'true' %}checked{% endif %}>
-                    <div class="ufs-feat-card">
-                        <i class="bi bi-truck ufs-feat-icon"></i>
-                        <span class="ufs-feat-label">Delivery</span>
-                    </div>
-                </label>
-                <label class="ufs-feat-pill">
-                    <input type="checkbox" name="swap_accepted" value="true" {% if get_swap == 'true' %}checked{% endif %}>
-                    <div class="ufs-feat-card">
-                        <i class="bi bi-arrow-left-right ufs-feat-icon"></i>
-                        <span class="ufs-feat-label">Swap OK</span>
-                    </div>
-                </label>
-                <label class="ufs-feat-pill">
-                    <input type="checkbox" name="inspection_allowed" value="true" {% if get_inspection == 'true' %}checked{% endif %}>
-                    <div class="ufs-feat-card">
-                        <i class="bi bi-eye-fill ufs-feat-icon"></i>
-                        <span class="ufs-feat-label">Inspection</span>
-                    </div>
-                </label>
-                <label class="ufs-feat-pill" style="grid-column:1/-1">
-                    <input type="checkbox" name="has_receipt" value="true" {% if get_has_receipt == 'true' %}checked{% endif %}>
-                    <div class="ufs-feat-card" style="flex-direction:row;justify-content:center;gap:.5rem;min-height:48px">
-                        <i class="bi bi-receipt-cutoff ufs-feat-icon" style="font-size:1rem"></i>
-                        <span class="ufs-feat-label" style="font-size:.72rem">Has Proof of Purchase</span>
-                    </div>
-                </label>
-            </div>
-        </div>
-    </div>
-    {% endwith %}
-    {% endif %}
-
-    {# ── 8. BUDGET / PRICE ────────────────────────────────────────────── #}
-
-    {# Products: numeric price range #}
-    {% if item_type == 'products' %}
-    <div class="ufs-section ufs-coll {% if get_min_price or get_max_price %}ufs-open{% endif %}">
-        <button type="button" class="ufs-head">
-            <span><i class="bi bi-currency-exchange me-2"></i>Price Range</span>
-            <i class="bi bi-chevron-down ufs-chev"></i>
-        </button>
-        <div class="ufs-body">
-            <div class="ufs-price-row">
-                <div class="form-floating"><input type="number" name="min_price" class="form-control" placeholder="0" min="0" step="100" value="{{ get_min_price }}"><label>Min ₦</label></div>
-                <span class="ufs-price-sep">–</span>
-                <div class="form-floating"><input type="number" name="max_price" class="form-control" placeholder="∞" min="0" step="100" value="{{ get_max_price }}"><label>Max ₦</label></div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    {# Services: numeric price range — maps to ServiceSearchForm min_price / max_price #}
+    {# ── Price (services) ──────────────────────────────────────────── #}
     {% if item_type == 'services' %}
-    <div class="ufs-section ufs-coll {% if get_min_price or get_max_price %}ufs-open{% endif %}">
-        <button type="button" class="ufs-head">
-            <span><i class="bi bi-currency-exchange me-2"></i>Price Range</span>
+    <div class="ufs-section ufs-coll ufs-t-green {% if get_min_price or get_max_price %}ufs-open{% endif %}">
+        <button type="button" class="ufs-head" aria-expanded="{% if get_min_price or get_max_price %}true{% else %}false{% endif %}">
+            <span class="ufs-hico"><i class="bi bi-cash-coin"></i></span>
+            <span class="ufs-htxt"><b>Price range</b><small data-auto-sum data-default="Any price">Any price</small></span>
             <i class="bi bi-chevron-down ufs-chev"></i>
         </button>
         <div class="ufs-body">
             <div class="ufs-price-row">
-                <div class="form-floating"><input type="number" name="min_price" class="form-control" placeholder="0" min="0" step="100" value="{{ get_min_price }}"><label>Min ₦</label></div>
+                <div class="ufs-field">
+                    <label for="ufs_min_{{ sid }}_services">Min</label>
+                    <div class="ufs-money"><span>₦</span><input type="number" name="min_price" id="ufs_min_{{ sid }}_services" class="form-control" inputmode="numeric" placeholder="0" min="0" step="100" enterkeyhint="search" value="{{ get_min_price }}"></div>
+                </div>
                 <span class="ufs-price-sep">–</span>
-                <div class="form-floating"><input type="number" name="max_price" class="form-control" placeholder="∞" min="0" step="100" value="{{ get_max_price }}"><label>Max ₦</label></div>
+                <div class="ufs-field">
+                    <label for="ufs_max_{{ sid }}_services">Max</label>
+                    <div class="ufs-money"><span>₦</span><input type="number" name="max_price" id="ufs_max_{{ sid }}_services" class="form-control" inputmode="numeric" placeholder="Any" min="0" step="100" enterkeyhint="search" value="{{ get_max_price }}"></div>
+                </div>
             </div>
         </div>
     </div>
     {% endif %}
 
-
+    {# ── Budget (requests) ─────────────────────────────────────────── #}
     {% if item_type == 'requests' %}
-    <div class="ufs-section ufs-coll js-req-budget {% if get_min_price or get_max_price or get_budget_range %}ufs-open{% endif %}"
-         style="{% if not get_request_type %}display:none;{% endif %}">
-        <button type="button" class="ufs-head">
-            <span><i class="bi bi-currency-exchange me-2"></i>Budget Range</span>
+    <div class="ufs-section ufs-coll ufs-t-green js-req-budget {% if get_min_price or get_max_price or get_budget_range %}ufs-open{% endif %}" style="{% if not get_request_type %}display:none;{% endif %}">
+        <button type="button" class="ufs-head" aria-expanded="{% if get_min_price or get_max_price or get_budget_range %}true{% else %}false{% endif %}">
+            <span class="ufs-hico"><i class="bi bi-cash-coin"></i></span>
+            <span class="ufs-htxt"><b>Budget range</b><small data-auto-sum data-default="Any budget">Any budget</small></span>
             <i class="bi bi-chevron-down ufs-chev"></i>
         </button>
         <div class="ufs-body">
             {# Product request: numeric min/max #}
             <div class="js-budget-prod" style="{% if get_request_type != 'product' %}display:none;{% endif %}">
                 <div class="ufs-price-row">
-                    <div class="form-floating"><input type="number" name="min_price" class="form-control" placeholder="0" min="0" step="100" value="{{ get_min_price }}"><label>Min ₦</label></div>
+                    <div class="ufs-field">
+                        <label for="ufs_min_{{ sid }}_requests">Min</label>
+                        <div class="ufs-money"><span>₦</span><input type="number" name="min_price" id="ufs_min_{{ sid }}_requests" class="form-control" inputmode="numeric" placeholder="0" min="0" step="100" enterkeyhint="search" value="{{ get_min_price }}"></div>
+                    </div>
                     <span class="ufs-price-sep">–</span>
-                    <div class="form-floating"><input type="number" name="max_price" class="form-control" placeholder="∞" min="0" step="100" value="{{ get_max_price }}"><label>Max ₦</label></div>
+                    <div class="ufs-field">
+                        <label for="ufs_max_{{ sid }}_requests">Max</label>
+                        <div class="ufs-money"><span>₦</span><input type="number" name="max_price" id="ufs_max_{{ sid }}_requests" class="form-control" inputmode="numeric" placeholder="Any" min="0" step="100" enterkeyhint="search" value="{{ get_max_price }}"></div>
+                    </div>
                 </div>
             </div>
-            {# Service request: named range dropdown #}
+            {# Service request: named range #}
             <div class="js-budget-svc" style="{% if get_request_type != 'service' %}display:none;{% endif %}">
-                <div class="form-floating">
-                    <select name="budget_range" class="form-select">
-                        <option value="">Any Budget</option>
+                <div class="ufs-field">
+                    <label for="ufs_budget_{{ sid }}_requests" class="visually-hidden">Budget</label>
+                    <select name="budget_range" id="ufs_budget_{{ sid }}_requests" class="form-select">
+                        <option value="">Any budget</option>
                         <option value="under_5k"   {% if get_budget_range == 'under_5k'   %}selected{% endif %}>Under ₦5,000</option>
                         <option value="5k_25k"     {% if get_budget_range == '5k_25k'     %}selected{% endif %}>₦5,000 – ₦25,000</option>
                         <option value="25k_100k"   {% if get_budget_range == '25k_100k'   %}selected{% endif %}>₦25,000 – ₦100,000</option>
@@ -397,24 +484,24 @@
                         <option value="1m_plus"    {% if get_budget_range == '1m_plus'    %}selected{% endif %}>Above ₦1M</option>
                         <option value="negotiable" {% if get_budget_range == 'negotiable' %}selected{% endif %}>Negotiable</option>
                     </select>
-                    <label>Select Budget</label>
                 </div>
             </div>
         </div>
     </div>
     {% endif %}
 
-    {# ── 9. EXPERIENCE LEVEL (services only) ─────────────────────────── #}
+    {# ── Services only: experience, pricing type, availability, delivery ── #}
     {% if item_type == 'services' %}
-    <div class="ufs-section ufs-coll {% if get_experience_level %}ufs-open{% endif %}">
-        <button type="button" class="ufs-head">
-            <span><i class="bi bi-bar-chart-steps me-2"></i>Experience Level</span>
+    <div class="ufs-section ufs-coll ufs-t-navy {% if get_experience_level %}ufs-open{% endif %}">
+        <button type="button" class="ufs-head" aria-expanded="{% if get_experience_level %}true{% else %}false{% endif %}">
+            <span class="ufs-hico"><i class="bi bi-bar-chart-steps"></i></span>
+            <span class="ufs-htxt"><b>Experience level</b><small data-auto-sum data-default="Any level">Any level</small></span>
             <i class="bi bi-chevron-down ufs-chev"></i>
         </button>
         <div class="ufs-body">
             <div class="ufs-checks">
-                <label class="ufs-chk"><input type="radio" name="experience_level" value="" {% if not get_experience_level %}checked{% endif %}><span>Any Level</span></label>
-                <label class="ufs-chk"><input type="radio" name="experience_level" value="expert" {% if get_experience_level == 'expert' %}checked{% endif %}><span><i class="bi bi-award-fill me-1 text-warning"></i>Expert (10+ yrs)</span></label>
+                <label class="ufs-chk"><input type="radio" name="experience_level" value="" {% if not get_experience_level %}checked{% endif %}><span>Any level</span></label>
+                <label class="ufs-chk"><input type="radio" name="experience_level" value="expert" {% if get_experience_level == 'expert' %}checked{% endif %}><span><i class="bi bi-award-fill"></i>Expert (10+ yrs)</span></label>
                 <label class="ufs-chk"><input type="radio" name="experience_level" value="experienced" {% if get_experience_level == 'experienced' %}checked{% endif %}><span>Experienced (5-10 yrs)</span></label>
                 <label class="ufs-chk"><input type="radio" name="experience_level" value="intermediate" {% if get_experience_level == 'intermediate' %}checked{% endif %}><span>Intermediate (2-5 yrs)</span></label>
                 <label class="ufs-chk"><input type="radio" name="experience_level" value="beginner" {% if get_experience_level == 'beginner' %}checked{% endif %}><span>Beginner (0-2 yrs)</span></label>
@@ -422,146 +509,141 @@
         </div>
     </div>
 
-    {# ── PRICING TYPE (services only) ── #}
-    <div class="ufs-section ufs-coll {% if get_pricing_type %}ufs-open{% endif %}">
-        <button type="button" class="ufs-head">
-            <span><i class="bi bi-tags me-2"></i>Pricing Type</span>
+    <div class="ufs-section ufs-coll ufs-t-green {% if get_pricing_type %}ufs-open{% endif %}">
+        <button type="button" class="ufs-head" aria-expanded="{% if get_pricing_type %}true{% else %}false{% endif %}">
+            <span class="ufs-hico"><i class="bi bi-tags-fill"></i></span>
+            <span class="ufs-htxt"><b>Pricing type</b><small data-auto-sum data-default="Any">Any</small></span>
             <i class="bi bi-chevron-down ufs-chev"></i>
         </button>
         <div class="ufs-body">
             <div class="ufs-checks">
                 <label class="ufs-chk"><input type="radio" name="pricing_type" value="" {% if not get_pricing_type %}checked{% endif %}><span>Any</span></label>
-                <label class="ufs-chk"><input type="radio" name="pricing_type" value="fixed" {% if get_pricing_type == 'fixed' %}checked{% endif %}><span><i class="bi bi-lock me-1"></i>Fixed Price</span></label>
-                <label class="ufs-chk"><input type="radio" name="pricing_type" value="hourly" {% if get_pricing_type == 'hourly' %}checked{% endif %}><span><i class="bi bi-clock me-1"></i>Hourly Rate</span></label>
-                <label class="ufs-chk"><input type="radio" name="pricing_type" value="project" {% if get_pricing_type == 'project' %}checked{% endif %}><span><i class="bi bi-kanban me-1"></i>Per Project</span></label>
-                <label class="ufs-chk"><input type="radio" name="pricing_type" value="package" {% if get_pricing_type == 'package' %}checked{% endif %}><span><i class="bi bi-box-seam me-1"></i>Package Deal</span></label>
-                <label class="ufs-chk"><input type="radio" name="pricing_type" value="negotiable" {% if get_pricing_type == 'negotiable' %}checked{% endif %}><span><i class="bi bi-chat-dots me-1"></i>Negotiable</span></label>
+                <label class="ufs-chk"><input type="radio" name="pricing_type" value="fixed" {% if get_pricing_type == 'fixed' %}checked{% endif %}><span><i class="bi bi-lock"></i>Fixed price</span></label>
+                <label class="ufs-chk"><input type="radio" name="pricing_type" value="hourly" {% if get_pricing_type == 'hourly' %}checked{% endif %}><span><i class="bi bi-clock"></i>Hourly rate</span></label>
+                <label class="ufs-chk"><input type="radio" name="pricing_type" value="project" {% if get_pricing_type == 'project' %}checked{% endif %}><span><i class="bi bi-kanban"></i>Per project</span></label>
+                <label class="ufs-chk"><input type="radio" name="pricing_type" value="package" {% if get_pricing_type == 'package' %}checked{% endif %}><span><i class="bi bi-box-seam"></i>Package deal</span></label>
+                <label class="ufs-chk"><input type="radio" name="pricing_type" value="negotiable" {% if get_pricing_type == 'negotiable' %}checked{% endif %}><span><i class="bi bi-chat-dots"></i>Negotiable</span></label>
             </div>
         </div>
     </div>
 
-    {# ── AVAILABILITY SCHEDULE (services only — maps to ServiceListing.availability) ── #}
-    <div class="ufs-section ufs-coll {% if get_availability_schedule %}ufs-open{% endif %}">
-        <button type="button" class="ufs-head">
-            <span><i class="bi bi-calendar-week me-2"></i>Availability Schedule</span>
+    <div class="ufs-section ufs-coll ufs-t-purple {% if get_availability_schedule %}ufs-open{% endif %}">
+        <button type="button" class="ufs-head" aria-expanded="{% if get_availability_schedule %}true{% else %}false{% endif %}">
+            <span class="ufs-hico"><i class="bi bi-calendar-week"></i></span>
+            <span class="ufs-htxt"><b>Availability</b><small data-auto-sum data-default="Any schedule">Any schedule</small></span>
             <i class="bi bi-chevron-down ufs-chev"></i>
         </button>
         <div class="ufs-body">
             <div class="ufs-checks">
-                <label class="ufs-chk"><input type="radio" name="availability" value="" {% if not get_availability_schedule %}checked{% endif %}><span>Any Schedule</span></label>
-                <label class="ufs-chk"><input type="radio" name="availability" value="full_time" {% if get_availability_schedule == 'full_time' %}checked{% endif %}><span><i class="bi bi-briefcase me-1"></i>Full Time</span></label>
-                <label class="ufs-chk"><input type="radio" name="availability" value="part_time" {% if get_availability_schedule == 'part_time' %}checked{% endif %}><span><i class="bi bi-hourglass-split me-1"></i>Part Time</span></label>
-                <label class="ufs-chk"><input type="radio" name="availability" value="weekends" {% if get_availability_schedule == 'weekends' %}checked{% endif %}><span><i class="bi bi-calendar2-week me-1"></i>Weekends Only</span></label>
-                <label class="ufs-chk"><input type="radio" name="availability" value="flexible" {% if get_availability_schedule == 'flexible' %}checked{% endif %}><span><i class="bi bi-arrow-left-right me-1"></i>Flexible</span></label>
-                <label class="ufs-chk"><input type="radio" name="availability" value="by_appointment" {% if get_availability_schedule == 'by_appointment' %}checked{% endif %}><span><i class="bi bi-calendar-check me-1"></i>By Appointment</span></label>
+                <label class="ufs-chk"><input type="radio" name="availability" value="" {% if not get_availability_schedule %}checked{% endif %}><span>Any schedule</span></label>
+                <label class="ufs-chk"><input type="radio" name="availability" value="full_time" {% if get_availability_schedule == 'full_time' %}checked{% endif %}><span><i class="bi bi-briefcase"></i>Full time</span></label>
+                <label class="ufs-chk"><input type="radio" name="availability" value="part_time" {% if get_availability_schedule == 'part_time' %}checked{% endif %}><span><i class="bi bi-hourglass-split"></i>Part time</span></label>
+                <label class="ufs-chk"><input type="radio" name="availability" value="weekends" {% if get_availability_schedule == 'weekends' %}checked{% endif %}><span><i class="bi bi-calendar2-week"></i>Weekends only</span></label>
+                <label class="ufs-chk"><input type="radio" name="availability" value="flexible" {% if get_availability_schedule == 'flexible' %}checked{% endif %}><span><i class="bi bi-arrow-left-right"></i>Flexible</span></label>
+                <label class="ufs-chk"><input type="radio" name="availability" value="by_appointment" {% if get_availability_schedule == 'by_appointment' %}checked{% endif %}><span><i class="bi bi-calendar-check"></i>By appointment</span></label>
+            </div>
+        </div>
+    </div>
+
+    <div class="ufs-section ufs-coll ufs-t-orange {% if get_delivery_method %}ufs-open{% endif %}">
+        <button type="button" class="ufs-head" aria-expanded="{% if get_delivery_method %}true{% else %}false{% endif %}">
+            <span class="ufs-hico"><i class="bi bi-truck"></i></span>
+            <span class="ufs-htxt"><b>Delivery method</b><small data-auto-sum data-default="Any method">Any method</small></span>
+            <i class="bi bi-chevron-down ufs-chev"></i>
+        </button>
+        <div class="ufs-body">
+            <div class="ufs-checks">
+                <label class="ufs-chk"><input type="radio" name="delivery_method" value="" {% if not get_delivery_method %}checked{% endif %}><span>Any method</span></label>
+                <label class="ufs-chk"><input type="radio" name="delivery_method" value="remote" {% if get_delivery_method == 'remote' %}checked{% endif %}><span><i class="bi bi-wifi"></i>Remote / online</span></label>
+                <label class="ufs-chk"><input type="radio" name="delivery_method" value="onsite" {% if get_delivery_method == 'onsite' %}checked{% endif %}><span><i class="bi bi-building"></i>On-site</span></label>
+                <label class="ufs-chk"><input type="radio" name="delivery_method" value="both" {% if get_delivery_method == 'both' %}checked{% endif %}><span><i class="bi bi-arrows-collapse"></i>Both (remote and on-site)</span></label>
+                <label class="ufs-chk"><input type="radio" name="delivery_method" value="client_location" {% if get_delivery_method == 'client_location' %}checked{% endif %}><span><i class="bi bi-geo-alt"></i>At client location</span></label>
+                <label class="ufs-chk"><input type="radio" name="delivery_method" value="my_location" {% if get_delivery_method == 'my_location' %}checked{% endif %}><span><i class="bi bi-house"></i>At my location</span></label>
             </div>
         </div>
     </div>
     {% endif %}
 
-    {# ── 10. DELIVERY METHOD (services only — maps to ServiceListing.delivery_method) ── #}
-    {% if item_type == 'services' %}
-    <div class="ufs-section ufs-coll {% if get_delivery_method %}ufs-open{% endif %}">
-        <button type="button" class="ufs-head">
-            <span><i class="bi bi-truck me-2"></i>Delivery Method</span>
+    {# ── Location ──────────────────────────────────────────────────── #}
+    <div class="ufs-section ufs-coll ufs-t-orange {% if get_state or get_city %}ufs-open{% endif %}">
+        <button type="button" class="ufs-head" aria-expanded="{% if get_state or get_city %}true{% else %}false{% endif %}">
+            <span class="ufs-hico"><i class="bi bi-geo-alt-fill"></i></span>
+            <span class="ufs-htxt"><b>Location</b><small data-auto-sum data-default="Anywhere in Nigeria">Anywhere in Nigeria</small></span>
             <i class="bi bi-chevron-down ufs-chev"></i>
         </button>
-        <div class="ufs-body">
-            <div class="ufs-checks">
-                <label class="ufs-chk"><input type="radio" name="delivery_method" value="" {% if not get_delivery_method %}checked{% endif %}><span>Any Method</span></label>
-                <label class="ufs-chk"><input type="radio" name="delivery_method" value="remote" {% if get_delivery_method == 'remote' %}checked{% endif %}><span><i class="bi bi-wifi me-1"></i>Remote / Online</span></label>
-                <label class="ufs-chk"><input type="radio" name="delivery_method" value="onsite" {% if get_delivery_method == 'onsite' %}checked{% endif %}><span><i class="bi bi-building me-1"></i>On-site</span></label>
-                <label class="ufs-chk"><input type="radio" name="delivery_method" value="both" {% if get_delivery_method == 'both' %}checked{% endif %}><span><i class="bi bi-arrows-collapse me-1"></i>Both (Remote & On-site)</span></label>
-                <label class="ufs-chk"><input type="radio" name="delivery_method" value="client_location" {% if get_delivery_method == 'client_location' %}checked{% endif %}><span><i class="bi bi-geo-alt me-1"></i>At Client Location</span></label>
-                <label class="ufs-chk"><input type="radio" name="delivery_method" value="my_location" {% if get_delivery_method == 'my_location' %}checked{% endif %}><span><i class="bi bi-house me-1"></i>At My Location</span></label>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    {# ── 11. LOCATION ─────────────────────────────────────────────────── #}
-    <div class="ufs-section ufs-coll {% if get_state %}ufs-open{% endif %}">
-        <button type="button" class="ufs-head">
-            <span><i class="bi bi-geo-alt me-2"></i>Location</span>
-            <i class="bi bi-chevron-down ufs-chev"></i>
-        </button>
-        <div class="ufs-body">
-            <div class="form-floating mb-2">
-                <select name="state" class="form-select sidebar-select-state" id="ufs_state_{{ item_type }}">
-                    <option value="">All States</option>
+        <div class="ufs-body ufs-stack">
+            <div class="ufs-field">
+                <label for="ufs_state_{{ sid }}_{{ item_type }}">State</label>
+                <select name="state" class="form-select sidebar-select-state" id="ufs_state_{{ sid }}_{{ item_type }}">
+                    <option value="">All states</option>
                     {% for st in states %}
                     <option value="{{ st.id }}" {% if get_state == st.id|stringformat:"s" %}selected{% endif %}>{{ st.name }}</option>
                     {% endfor %}
                 </select>
-                <label for="ufs_state_{{ item_type }}">State</label>
             </div>
-            <div class="form-floating">
-                <select name="lga" class="form-select sidebar-select-lga" id="ufs_lga_{{ item_type }}"
-                        {% if not get_state %}disabled{% endif %}>
+            <div class="ufs-field">
+                <label for="ufs_lga_{{ sid }}_{{ item_type }}">Local government (LGA)</label>
+                <select name="lga" class="form-select sidebar-select-lga" id="ufs_lga_{{ sid }}_{{ item_type }}" {% if not get_state %}disabled{% endif %}>
                     <option value="">All LGAs</option>
-                    {% if lgas %}
-                    {% for lga in lgas %}
+                    {% if lgas %}{% for lga in lgas %}
                     <option value="{{ lga.id }}" {% if get_lga == lga.id|stringformat:"s" %}selected{% endif %}>{{ lga.name }}</option>
-                    {% endfor %}
-                    {% endif %}
+                    {% endfor %}{% endif %}
                 </select>
-                <label for="ufs_lga_{{ item_type }}">LGA</label>
             </div>
         </div>
     </div>
 
-    {# ── 12. VERIFIED SELLER / BUYER ──────────────────────────────────── #}
+    {# ── Verified ──────────────────────────────────────────────────── #}
     <div class="ufs-section">
-        <label class="ufs-verified-row" for="ufs_verified_{{ item_type }}">
-            <i class="bi bi-patch-check-fill ufs-verified-icon"></i>
+        <label class="ufs-verify ufs-t-green" for="ufs_verified_{{ sid }}_{{ item_type }}">
+            <span class="ufs-hico"><i class="bi bi-patch-check-fill"></i></span>
             <span class="ufs-verified-text">
-                {% if item_type == 'products' %}
-                    <strong>Verified Sellers</strong><small>Listings from verified businesses</small>
-                {% elif item_type == 'services' %}
-                    <strong>Verified Providers</strong><small>Listings from verified businesses</small>
+                {% if item_type == 'services' %}
+                    <strong>Verified providers</strong><small>Checked by OpenSell</small>
                 {% else %}
-                    <strong>Verified Buyers</strong><small>Requests from verified accounts</small>
+                    <strong>Verified buyers</strong><small>Requests from verified accounts</small>
                 {% endif %}
             </span>
             <span class="ufs-switch">
-                {% if item_type == 'products' %}
-                <input class="ufs-sw-inp" type="checkbox" name="verified_business" value="true"
-                       id="ufs_verified_{{ item_type }}" {% if get_verified_business == 'true' %}checked{% endif %}>
-                {% else %}
                 <input class="ufs-sw-inp" type="checkbox" name="verified_only" value="true"
-                       id="ufs_verified_{{ item_type }}" {% if get_verified_only == 'true' %}checked{% endif %}>
-                {% endif %}
+                       id="ufs_verified_{{ sid }}_{{ item_type }}" {% if get_verified_only == 'true' %}checked{% endif %}>
                 <span class="ufs-sw-track"></span>
             </span>
         </label>
     </div>
 
-    {# ── 13. REQUEST STATUS (requests only) ───────────────────────────── #}
+    {# ── Request status (requests only) ────────────────────────────── #}
     {% if item_type == 'requests' %}
-    <div class="ufs-section ufs-coll {% if get_status %}ufs-open{% endif %}">
-        <button type="button" class="ufs-head">
-            <span><i class="bi bi-clock-history me-2"></i>Request Status</span>
+    <div class="ufs-section ufs-coll ufs-t-navy {% if get_status %}ufs-open{% endif %}">
+        <button type="button" class="ufs-head" aria-expanded="{% if get_status %}true{% else %}false{% endif %}">
+            <span class="ufs-hico"><i class="bi bi-clock-history"></i></span>
+            <span class="ufs-htxt"><b>Request status</b><small data-auto-sum data-default="All">All</small></span>
             <i class="bi bi-chevron-down ufs-chev"></i>
         </button>
         <div class="ufs-body">
             <div class="ufs-checks">
                 <label class="ufs-chk"><input type="radio" name="status" value="" {% if not get_status %}checked{% endif %}><span>All</span></label>
-                <label class="ufs-chk"><input type="radio" name="status" value="active" {% if get_status == 'active' %}checked{% endif %}><span><i class="bi bi-check-circle me-1 text-success"></i>Active</span></label>
-                <label class="ufs-chk"><input type="radio" name="status" value="expired" {% if get_status == 'expired' %}checked{% endif %}><span><i class="bi bi-x-circle me-1 text-danger"></i>Expired</span></label>
+                <label class="ufs-chk"><input type="radio" name="status" value="active" {% if get_status == 'active' %}checked{% endif %}><span><i class="bi bi-check-circle"></i>Active</span></label>
+                <label class="ufs-chk"><input type="radio" name="status" value="expired" {% if get_status == 'expired' %}checked{% endif %}><span><i class="bi bi-x-circle"></i>Expired</span></label>
             </div>
         </div>
     </div>
     {% endif %}
 
-    {# ── ACTIONS ──────────────────────────────────────────────────────── #}
+    {% endwith %}
+    {% endif %}
+
+    {# ── ACTIONS (sticky footer) ──────────────────────────────────────── #}
     <div class="ufs-actions">
-        <button type="submit" class="ufs-btn ufs-btn-apply">
-            <i class="bi bi-funnel-fill me-2"></i>Apply Filters
-        </button>
         <button type="button" class="ufs-btn ufs-btn-clear js-clear-sidebar-filters">
-            <i class="bi bi-arrow-counterclockwise me-2"></i>Clear All
+            <i class="bi bi-arrow-counterclockwise"></i>Reset
+        </button>
+        <button type="submit" class="ufs-btn ufs-btn-apply">
+            <i class="bi bi-funnel-fill"></i>
+            Show results
         </button>
     </div>
+
 
     </form>
 </div>
@@ -572,159 +654,490 @@
 {% endwith %}
 
 <style>
-/* ── Mobile offcanvas sheet — exactly half screen ────────────────────────── */
-@media(max-width:991px){
-  .offcanvas-bottom{
-    height: 50dvh !important;
-    max-height: 50dvh !important;
-    border-radius: 20px 20px 0 0;
-  }
+/* ── Mobile sheet: tall enough for the full filter set ───────────────────── */
+@media (max-width: 991.98px) {
+    .offcanvas.offcanvas-bottom {
+        --bs-offcanvas-height: 85vh;
+        --bs-offcanvas-height: 85dvh;
+        height: 85vh;
+        height: 85dvh;
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    }
 }
 
-/* ── Shell ───────────────────────────────────────────────────────────────── */
-.ufs-sidebar{background:var(--card-background);border-radius:14px;padding:.875rem;box-shadow:0 2px 10px var(--shadow-color);height:fit-content}
-
-/* ── Active chips ─────────────────────────────────────────────────────────── */
-.ufs-chips{display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.65rem}
-.ufs-chips:empty{display:none}
-.ufs-chip{display:inline-flex;align-items:center;gap:.3rem;background:var(--primary-color);color:#fff;font-size:.68rem;font-weight:600;padding:.2rem .5rem;border-radius:20px;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ufs-chip--green{background:#16a34a}
-.ufs-chip-x{cursor:pointer;opacity:.8;font-size:.8rem;color:inherit;background:none;border:none;padding:0;line-height:1;flex-shrink:0}
-.ufs-chip-x:hover{opacity:1}
-
-/* ── Section ─────────────────────────────────────────────────────────────── */
-.ufs-section{border-bottom:1px solid var(--border-color);padding-bottom:.8rem;margin-bottom:.8rem}
-.ufs-section:last-of-type{border-bottom:none;margin-bottom:0;padding-bottom:0}
-
-/* ── Collapsible ─────────────────────────────────────────────────────────── */
-.ufs-coll .ufs-body{display:none;margin-top:.55rem}
-.ufs-coll.ufs-open .ufs-body{display:block}
-.ufs-coll.ufs-open .ufs-chev{transform:rotate(-180deg)}
-.ufs-head{width:100%;display:flex;align-items:center;justify-content:space-between;background:none;border:none;padding:.42rem .1rem;cursor:pointer;color:var(--text-primary);font-size:.82rem;font-weight:600;text-align:left;min-height:30px}
-.ufs-head span{display:flex;align-items:center}
-.ufs-head i{color:var(--accent-color)}
-.ufs-chev{font-size:.68rem;opacity:.5;transition:transform .2s;flex-shrink:0}
-.ufs-label{font-size:.78rem;font-weight:600;color:var(--text-primary);margin:0 0 .5rem;display:flex;align-items:center}
-.ufs-label i{color:var(--accent-color)}
-
-/* ── Search ──────────────────────────────────────────────────────────────── */
-.ufs-input-wrap{position:relative}
-.ufs-input-icon{position:absolute;left:.65rem;top:50%;transform:translateY(-50%);color:var(--text-secondary);font-size:.78rem;pointer-events:none}
-.ufs-search-input{width:100%;padding:.52rem .75rem .52rem 2rem;border:1px solid var(--border-color);border-radius:10px;background:var(--background-color);color:var(--text-primary);font-size:.78rem;outline:none;transition:border-color .2s}
-.ufs-search-input:focus{border-color:var(--primary-color)}
-
-/* ── Request Type toggle tabs ─────────────────────────────────────────────── */
-.ufs-toggle-group{display:flex;gap:.3rem;flex-wrap:wrap}
-.ufs-toggle{flex:1;min-width:52px;display:flex;align-items:center;justify-content:center;padding:.42rem .4rem;border:1.5px solid var(--border-color);border-radius:8px;cursor:pointer;font-size:.72rem;font-weight:600;color:var(--text-secondary);transition:all .15s;background:var(--background-color);white-space:nowrap}
-.ufs-toggle input{display:none}
-.ufs-toggle:hover{border-color:var(--primary-color);color:var(--primary-color)}
-.ufs-toggle--on{background:var(--primary-color);border-color:var(--primary-color);color:#fff}
-
-/* ── Pill group ──────────────────────────────────────────────────────────── */
-.ufs-pills{display:flex;flex-wrap:wrap;gap:.3rem}
-.ufs-pill{padding:.28rem .6rem;border:1.5px solid var(--border-color);border-radius:20px;cursor:pointer;font-size:.7rem;font-weight:600;color:var(--text-secondary);transition:all .15s;background:var(--background-color);white-space:nowrap}
-.ufs-pill input{display:none}
-.ufs-pill:hover{border-color:var(--primary-color);color:var(--primary-color)}
-.ufs-pill--on{background:var(--primary-color);border-color:var(--primary-color);color:#fff}
-
-/* ── Check list ──────────────────────────────────────────────────────────── */
-.ufs-checks{display:flex;flex-direction:column;gap:.28rem}
-.ufs-chk{display:flex;align-items:center;gap:.45rem;cursor:pointer;padding:.3rem .45rem;border-radius:7px;font-size:.76rem;color:var(--text-primary);transition:background .12s}
-.ufs-chk:hover{background:var(--hover-bg)}
-.ufs-chk input{width:.95rem;height:.95rem;accent-color:var(--primary-color);flex-shrink:0;cursor:pointer}
-
-/* ── Product-feature pill cards ─────────────────────────────────────── */
-.ufs-feat-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
-.ufs-feat-pill{position:relative;cursor:pointer}
-.ufs-feat-pill input[type="checkbox"]{position:absolute;opacity:0;width:0;height:0;pointer-events:none}
-.ufs-feat-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.3rem;padding:.6rem .4rem;border-radius:10px;border:1.5px solid var(--border-color);background:var(--background-color);transition:all .18s;text-align:center;min-height:68px}
-.ufs-feat-icon{font-size:1.2rem;color:var(--text-secondary);transition:color .18s,transform .18s;line-height:1}
-.ufs-feat-label{font-size:.68rem;font-weight:600;color:var(--text-secondary);transition:color .18s;line-height:1.2}
-.ufs-feat-pill:hover .ufs-feat-card{border-color:var(--accent-color);background:color-mix(in srgb,var(--accent-color) 6%,transparent)}
-.ufs-feat-pill:hover .ufs-feat-icon{color:var(--accent-color)}
-.ufs-feat-pill:hover .ufs-feat-label{color:var(--accent-color)}
-.ufs-feat-pill input:checked~.ufs-feat-card{border-color:var(--accent-color);background:color-mix(in srgb,var(--accent-color) 12%,transparent);box-shadow:0 0 0 1px var(--accent-color)}
-.ufs-feat-pill input:checked~.ufs-feat-card .ufs-feat-icon{color:var(--accent-color);transform:scale(1.12)}
-.ufs-feat-pill input:checked~.ufs-feat-card .ufs-feat-label{color:var(--accent-color)}
-.ufs-feat-pill input:checked~.ufs-feat-card::after{content:"✓";position:absolute;top:.3rem;right:.4rem;font-size:.6rem;font-weight:800;color:var(--accent-color)}
-
-/* Urgency dots */
-.ufs-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}
-.ufs-dot.red{background:#ef4444}.ufs-dot.orange{background:#f97316}
-.ufs-dot.yellow{background:#eab308}.ufs-dot.green{background:#22c55e}
-
-/* ── Price row ───────────────────────────────────────────────────────────── */
-.ufs-price-row{display:flex;align-items:center;gap:.35rem}
-.ufs-price-row .form-floating{flex:1}
-.ufs-price-sep{color:var(--text-secondary);font-size:.8rem;flex-shrink:0}
-
-/* ── Verified / Availability rows ────────────────────────────────────────── */
-.ufs-verified-row{display:flex;align-items:center;gap:.6rem;cursor:pointer}
-.ufs-verified-icon{font-size:1.35rem;color:var(--primary-color);flex-shrink:0}
-.ufs-avail-icon{font-size:1.1rem;color:#22c55e;flex-shrink:0}
-.ufs-verified-text{flex:1}
-.ufs-verified-text strong{display:block;font-size:.77rem;color:var(--text-primary)}
-.ufs-verified-text small{font-size:.67rem;color:var(--text-secondary)}
-
-/* Custom switch */
-.ufs-switch{position:relative;width:34px;height:19px;flex-shrink:0}
-.ufs-sw-inp{opacity:0;width:0;height:0;position:absolute}
-.ufs-sw-track{position:absolute;inset:0;background:var(--border-color);border-radius:19px;cursor:pointer;transition:background .2s}
-.ufs-sw-track::after{content:'';position:absolute;top:2px;left:2px;width:15px;height:15px;background:#fff;border-radius:50%;transition:transform .2s}
-.ufs-sw-inp:checked~.ufs-sw-track{background:var(--primary-color)}
-.ufs-sw-inp:checked~.ufs-sw-track::after{transform:translateX(15px)}
-
-/* ── Form overrides ──────────────────────────────────────────────────────── */
-.ufs-sidebar .form-floating label{font-size:.68rem}
-.ufs-sidebar .form-select,.ufs-sidebar .form-control{font-size:.76rem;border-radius:10px;border-color:var(--border-color);min-height:52px;background-color:var(--background-color);color:var(--text-primary)}
-.ufs-sidebar .form-floating>.form-select{padding-top:1.4rem;padding-bottom:.4rem}
-.ufs-sidebar .form-floating>.form-control{padding-top:1.4rem;padding-bottom:.4rem}
-.ufs-sidebar .form-select:focus,.ufs-sidebar .form-control:focus{border-color:var(--primary-color);box-shadow:0 0 0 2px color-mix(in srgb,var(--primary-color) 15%,transparent)}
-
-/* ── Actions ─────────────────────────────────────────────────────────────── */
-.ufs-actions{display:flex;flex-direction:column;gap:.45rem;margin-top:.9rem}
-.ufs-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:.4rem;padding:.62rem;border-radius:10px;font-size:.78rem;font-weight:600;cursor:pointer;border:none;transition:all .18s}
-.ufs-btn-apply{background:var(--primary-color);color:#fff}
-.ufs-btn-apply:hover{filter:brightness(1.08);transform:translateY(-1px)}
-.ufs-btn-clear{background:transparent;color:var(--text-secondary);border:1.5px solid var(--border-color)}
-.ufs-btn-clear:hover{border-color:var(--text-primary);color:var(--text-primary)}
-
-/* ── Dark theme ──────────────────────────────────────────────────────────── */
-[data-bs-theme="dark"] .ufs-sidebar{background:var(--dark-card-background)}
-[data-bs-theme="dark"] .ufs-toggle,[data-bs-theme="dark"] .ufs-pill{background:var(--dark-background-color)}
-[data-bs-theme="dark"] .ufs-search-input{background:var(--dark-background-color)}
-[data-bs-theme="dark"] .ufs-feat-card{background:var(--dark-background-color)}
-
-/* ── Responsive ──────────────────────────────────────────────────────────── */
-@media(max-width:991px){
-  /* Inside offcanvas: fill the full sheet height and scroll properly */
-  .offcanvas-body{
-    display:flex;
-    flex-direction:column;
-    overflow:hidden;
-    padding:0 !important;
-  }
-  .offcanvas-body .ufs-sidebar{
-    border-radius:0;
-    box-shadow:none;
-    padding:1rem;
-    flex:1 1 auto;
-    height:100%;
-    min-height:0;
-    overflow-y:auto;
-    -webkit-overflow-scrolling:touch;
-  }
+/* ── Shell: hues shared with home, dashboard and profile ─────────────────── */
+.ufs-sidebar {
+    --ufs-navy: var(--primary-color);
+    --ufs-orange: var(--accent-color);
+    --ufs-green: var(--bs-success, var(--primary-color));
+    --ufs-purple: var(--bs-purple, var(--primary-color));
+    --hl: var(--primary-color);
+    --hl-edge: var(--primary-color);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    border-radius: var(--r-card);
+    background: var(--card-background);
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+    line-height: var(--lh-body);
+    height: fit-content;
 }
-@media(max-width:768px){
-  .ufs-sidebar{padding:.7rem;border-radius:10px}
-  .ufs-section{margin-bottom:.65rem;padding-bottom:.65rem}
-  .ufs-head,.ufs-chk,.ufs-label{font-size:.74rem}
-  .ufs-toggle{font-size:.69rem;padding:.38rem}
+[data-bs-theme="dark"] .ufs-sidebar { --hl: var(--accent-text); --hl-edge: var(--accent-color); }
+.ufs-t-navy { --tint: var(--ufs-navy); }
+.ufs-t-orange { --tint: var(--ufs-orange); }
+.ufs-t-green { --tint: var(--ufs-green); }
+.ufs-t-purple { --tint: var(--ufs-purple); }
+
+/* Solid icon badge: same recipe as .hm-ico / .ox-ico */
+.ufs-hico {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--radius-full);
+    background: var(--tint, var(--ufs-navy));
+    color: var(--bs-white);
+    font-size: var(--font-size-lg);
+}
+.ufs-t-orange .ufs-hico { color: var(--on-accent); }
+.ufs-head .ufs-hico i { color: inherit; }
+
+/* ── Header band (navy, like the dashboard head) ─────────────────────────── */
+.ufs-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: var(--pad-m);
+    background: var(--primary-color);
+    color: var(--bs-white);
+}
+.ufs-top-title {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    margin: 0;
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+}
+.ufs-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 var(--sp-1);
+    border-radius: var(--radius-full);
+    background: var(--accent-color);
+    color: var(--on-accent);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    line-height: 1;
+}
+.ufs-count:empty { display: none; }
+
+.ufs-form { padding: 0 var(--pad-m); }
+
+/* ── Active chips (services / requests; products show them above the grid) ─ */
+.ufs-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: var(--sp-3) var(--pad-m) 0; }
+.ufs-chips:empty { display: none; }
+.ufs-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1);
+    max-width: 10rem;
+    padding: var(--sp-1) var(--sp-2) var(--sp-1) var(--sp-3);
+    border-radius: var(--radius-full);
+    background: var(--primary-soft);
+    color: var(--link-color);
+    font-size: var(--font-size-sm);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ufs-chip--green { background: var(--success-soft); color: var(--success); }
+.ufs-chip-x {
+    flex-shrink: 0;
+    padding: 0 var(--sp-1);
+    border: 0;
+    background: none;
+    color: inherit;
+    font-size: var(--font-size-lg);
+    line-height: 1;
+    cursor: pointer;
+}
+
+/* ── Sections ────────────────────────────────────────────────────────────── */
+.ufs-section { padding: var(--sp-3) 0; }
+.ufs-section + .ufs-section { border-top: 1px solid var(--border-color); }
+.ufs-stack { display: flex; flex-direction: column; gap: var(--sp-4); }
+
+.ufs-coll .ufs-body { display: none; padding-top: var(--sp-3); }
+.ufs-coll.ufs-open .ufs-body { display: block; }
+.ufs-coll.ufs-open .ufs-body.ufs-stack { display: flex; }
+.ufs-coll.ufs-open .ufs-chev { transform: rotate(-180deg); }
+
+.ufs-head {
+    width: 100%;
+    min-height: 2.5rem;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+/* legacy head markup (services / requests): <span><i/>Title</span> */
+.ufs-head > span:not(.ufs-hico):not(.ufs-htxt) { display: flex; align-items: center; gap: var(--sp-2); flex: 1; }
+.ufs-head > span:not(.ufs-hico):not(.ufs-htxt) > i { color: var(--text-secondary); }
+.ufs-htxt { display: flex; flex-direction: column; flex: 1; min-width: 0; line-height: var(--lh-tight); }
+.ufs-htxt b { font-size: var(--font-size-base); font-weight: 600; }
+.ufs-htxt small {
+    overflow: hidden;
+    margin-top: var(--sp-1);
+    font-size: var(--font-size-sm);
+    font-weight: 400;
+    color: var(--text-secondary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ufs-htxt small.has-val { color: var(--hl); font-weight: 600; }
+.ufs-head:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; border-radius: var(--radius-sm); }
+.ufs-chev { flex: none; font-size: var(--font-size-sm); color: var(--text-secondary); transition: transform var(--transition-normal); }
+.ufs-label {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    margin: 0 0 var(--sp-3);
+    font-size: var(--font-size-base);
+    font-weight: 600;
+}
+
+/* ── Fields ──────────────────────────────────────────────────────────────── */
+.ufs-field { display: flex; flex-direction: column; gap: var(--gap-label); min-width: 0; }
+.ufs-field > label { font-size: var(--font-size-sm); font-weight: 600; }
+
+.ufs-sidebar .form-select,
+.ufs-sidebar .form-control,
+.ufs-search-input {
+    min-height: var(--h-control-lg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background-color: var(--background-color);
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+}
+.ufs-sidebar .form-select:disabled { opacity: .55; }
+.ufs-sidebar .form-select:focus,
+.ufs-sidebar .form-control:focus,
+.ufs-search-input:focus {
+    border-color: var(--accent-color);
+    box-shadow: none;
+    outline: 2px solid var(--accent-color);
+    outline-offset: 1px;
+}
+
+.ufs-input-wrap { position: relative; }
+.ufs-input-icon {
+    position: absolute;
+    left: var(--sp-3);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    pointer-events: none;
+}
+.ufs-search-input { width: 100%; padding: 0 var(--sp-3) 0 var(--sp-8); }
+
+[data-bs-theme="dark"] .ufs-sidebar .form-control,
+[data-bs-theme="dark"] .ufs-sidebar .form-select { color-scheme: dark; }
+@supports (-webkit-touch-callout: none) {
+    .ufs-sidebar .form-select,
+    .ufs-sidebar .form-control,
+    .ufs-search-input { font-size: 16px; }
+}
+
+/* ── Price ───────────────────────────────────────────────────────────────── */
+.ufs-presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.ufs-preset {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+    min-height: 2.75rem;
+    padding: var(--sp-2) var(--sp-3);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--card-background);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    line-height: var(--lh-tight);
+    text-align: left;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+[data-bs-theme="dark"] .ufs-preset small { font-size: var(--font-size-xs); font-weight: 400; color: var(--text-secondary); }
+.ufs-preset.is-on { border-color: var(--hl-edge); box-shadow: inset 0 0 0 1px var(--hl-edge); }
+.ufs-preset:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+
+.ufs-price-row { display: flex; align-items: flex-end; gap: var(--sp-2); }
+.ufs-price-row .ufs-field,
+.ufs-price-row .form-floating { flex: 1; }
+.ufs-price-sep { padding-bottom: var(--sp-3); color: var(--text-secondary); flex-shrink: 0; }
+.ufs-money { position: relative; }
+.ufs-money > span {
+    position: absolute;
+    left: var(--sp-3);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    pointer-events: none;
+}
+.ufs-money > input { padding-left: var(--sp-6); }
+
+/* ── Segmented control (condition, sort) ─────────────────────────────────── */
+.ufs-seg {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: var(--sp-1);
+    padding: var(--sp-1);
+    border-radius: var(--radius-md);
+    background: var(--hover-bg);
+}
+.ufs-seg-opt { position: relative; margin: 0; cursor: pointer; }
+.ufs-seg-opt input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.ufs-seg-opt span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-1);
+    min-height: 2.25rem;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    text-align: center;
+}
+.ufs-seg-opt input:checked + span { background: var(--primary-color); color: var(--bs-white); font-weight: 600; }
+.ufs-seg-opt input:focus-visible + span { outline: 2px solid var(--accent-color); outline-offset: 1px; }
+
+/* ── Verified card ───────────────────────────────────────────────────────── */
+.ufs-verify {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    margin: 0;
+    padding: var(--pad-s) var(--pad-m);
+    border: 1px solid var(--border-color);
+    border-radius: var(--r-card-s);
+    cursor: pointer;
+}
+[data-bs-theme="dark"] .ufs-verified-row { display: flex; align-items: center; gap: var(--sp-3); margin: 0; cursor: pointer; }
+.ufs-verified-icon { font-size: var(--font-size-3xl); color: var(--success); flex-shrink: 0; }
+.ufs-verified-text { flex: 1; min-width: 0; line-height: var(--lh-tight); }
+.ufs-verified-text strong { display: block; font-size: var(--font-size-base); font-weight: 600; }
+.ufs-verified-text small { font-size: var(--font-size-sm); color: var(--text-secondary); }
+
+.ufs-switch { position: relative; width: 2.5rem; height: 1.5rem; flex-shrink: 0; }
+.ufs-sw-inp { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
+.ufs-sw-track {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-full);
+    background: var(--border-color);
+    transition: background var(--transition-normal);
+}
+.ufs-sw-track::after {
+    content: '';
+    position: absolute;
+    top: .1875rem;
+    left: .1875rem;
+    width: 1.125rem;
+    height: 1.125rem;
+    border-radius: 50%;
+    background: var(--bs-white);
+    transition: transform var(--transition-normal);
+}
+.ufs-sw-inp:checked ~ .ufs-sw-track { background: var(--success); }
+.ufs-sw-inp:checked ~ .ufs-sw-track::after { transform: translateX(1rem); }
+.ufs-sw-inp:focus-visible ~ .ufs-sw-track { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+
+/* ── Feature cards (deal options) ────────────────────────────────────────── */
+.ufs-feat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+.ufs-feat { position: relative; margin: 0; cursor: pointer; }
+.ufs-feat input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; z-index: 1; }
+.ufs-feat-card {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-2);
+    height: 100%;
+    padding: var(--pad-s);
+    border: 1px solid var(--border-color);
+    border-radius: var(--r-card-s);
+    background: var(--card-background);
+    line-height: var(--lh-tight);
+    transition: border-color var(--transition-fast);
+}
+[data-bs-theme="dark"] .ufs-feat-card b { font-size: var(--font-size-sm); font-weight: 600; }
+.ufs-feat-card small { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.ufs-feat input:checked + .ufs-feat-card { border-color: var(--hl-edge); box-shadow: inset 0 0 0 1px var(--hl-edge); }
+.ufs-feat input:checked + .ufs-feat-card::after {
+    content: "\F26B";
+    position: absolute;
+    top: var(--sp-2);
+    right: var(--sp-2);
+    font-family: "bootstrap-icons";
+    font-size: var(--font-size-lg);
+    line-height: 1;
+    color: var(--hl);
+}
+.ufs-feat input:focus-visible + .ufs-feat-card { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+.ufs-feat-wide { grid-column: 1 / -1; }
+.ufs-feat-wide .ufs-feat-card { flex-direction: row; align-items: center; }
+.ufs-feat-wide .ufs-feat-txt { display: flex; flex-direction: column; gap: var(--sp-1); }
+
+/* ── Legacy controls (services / requests) ───────────────────────────────── */
+.ufs-toggle-group { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--sp-1); padding: var(--sp-1); border-radius: var(--radius-md); background: var(--hover-bg); }
+.ufs-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.25rem;
+    margin: 0;
+    padding: 0 var(--sp-2);
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    white-space: nowrap;
+    cursor: pointer;
+}
+.ufs-toggle input { display: none; }
+.ufs-toggle--on { background: var(--primary-color); color: var(--bs-white); font-weight: 600; }
+
+.ufs-pills { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.ufs-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--h-control-sm);
+    padding: 0 var(--sp-3);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full);
+    background: var(--background-color);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    white-space: nowrap;
+    cursor: pointer;
+}
+.ufs-pill input { display: none; }
+.ufs-pill--on { background: var(--primary-color); border-color: var(--primary-color); color: var(--bs-white); }
+
+.ufs-checks { display: flex; flex-direction: column; gap: var(--sp-1); }
+.ufs-chk { position: relative; display: block; margin: 0; cursor: pointer; }
+.ufs-chk input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.ufs-chk > span {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    min-height: 2.5rem;
+    padding: 0 var(--sp-3);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-base);
+    color: var(--text-primary);
+}
+.ufs-chk > span i { color: var(--text-secondary); }
+.ufs-chk > span::after {
+    content: "";
+    flex: none;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin-left: auto;
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+}
+.ufs-chk input:checked + span { border-color: var(--hl-edge); background: var(--hl-soft); font-weight: 600; }
+.ufs-chk input:checked + span::after { border-color: var(--hl-edge); background: var(--hl-edge); box-shadow: inset 0 0 0 3px var(--card-background); }
+.ufs-chk input:focus-visible + span { outline: 2px solid var(--accent-color); outline-offset: 1px; }
+.ufs-dot { width: var(--sp-2); height: var(--sp-2); border-radius: 50%; display: inline-block; flex-shrink: 0; margin-right: var(--sp-1); }
+.ufs-dot.red { background: var(--error); }
+.ufs-dot.orange { background: var(--accent-color); }
+.ufs-dot.yellow { background: var(--warning); }
+.ufs-dot.green { background: var(--success); }
+
+/* ── Footer actions (sticky, always reachable) ───────────────────────────── */
+.ufs-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    display: flex;
+    gap: var(--sp-2);
+    margin: 0 calc(-1 * var(--pad-m));
+    padding: var(--sp-3) var(--pad-m);
+    border-top: 1px solid var(--border-color);
+    background: var(--card-background);
+}
+.ufs-btn {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+    min-height: var(--h-control-lg);
+    padding: 0 var(--sp-4);
+    border: 2px solid transparent;
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.ufs-btn:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+.ufs-btn-apply { flex: 1; background: var(--primary-color); border-color: var(--primary-color); color: var(--bs-white); }
+.ufs-btn-clear { background: transparent; border-color: var(--border-color); color: var(--text-primary); }
+
+@media (hover: hover) {
+    .ufs-chk:hover { background: var(--hover-bg); }
+    .ufs-preset:hover,
+    .ufs-feat:hover .ufs-feat-card,
+    .ufs-pill:hover,
+    .ufs-toggle:hover { border-color: var(--hl-edge); }
+    .ufs-btn-apply:hover { background: var(--accent-color); border-color: var(--accent-color); color: var(--on-accent); }
+    .ufs-btn-clear:hover { border-color: var(--hl-edge); }
+}
+
+/* ── Inside the mobile bottom sheet ──────────────────────────────────────── */
+@media (max-width: 991.98px) {
+    .offcanvas-body { display: flex; flex-direction: column; overflow: hidden; padding: 0; }
+    .offcanvas-body .ufs-sidebar {
+        flex: 1 1 auto;
+        min-height: 0;
+        height: 100%;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        border: 0;
+        border-radius: 0;
+    }
+    .offcanvas-body .ufs-top { display: none; }
+    .offcanvas-body .ufs-form { padding-top: var(--sp-2); }
+    .offcanvas-body .ufs-actions { padding-bottom: calc(var(--sp-3) + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* Legacy selectors — kept for backward compat with any external CSS */
-.filter-sidebar{}
-.sidebar-filter-form{}
+.filter-sidebar {}
+.sidebar-filter-form {}
 </style>
 
 <script>
@@ -773,7 +1186,8 @@ function bindCollapsibles(){
         btn.dataset.ufsBound = '1';
         btn.addEventListener('click', function(){
             const section = this.closest('.ufs-coll');
-            section.classList.toggle('ufs-open');
+            const open = section.classList.toggle('ufs-open');
+            this.setAttribute('aria-expanded', open ? 'true' : 'false');
         });
     });
 }
@@ -796,8 +1210,9 @@ function initForm(form){
         brand: form.querySelector('.sidebar-select-brand'),
         state: form.querySelector('.sidebar-select-state'),
         lga:   form.querySelector('.sidebar-select-lga'),
-        clr:   form.querySelector('.js-clear-sidebar-filters'),
+        clr:   form.querySelectorAll('.js-clear-sidebar-filters'),
         q:     form.querySelector('.sidebar-input-query'),
+        city:  form.querySelector('.sidebar-input-city'),
     };
 
     let debounceTimer = null;
@@ -805,6 +1220,7 @@ function initForm(form){
     /* ── apply / submit ─────────────────────────────────────────────── */
     function apply(immediate = false){
         clearTimeout(debounceTimer);
+        if(isIn || form.hasAttribute('data-explicit-apply')) return;   /* the user confirms with "Show results" */
         if(immediate){
             go();
         } else {
@@ -1051,46 +1467,126 @@ function initForm(form){
             searchTimer = setTimeout(() => apply(true), 1500);
         });
         el.q.addEventListener('keydown', e => {
-            if(e.key === 'Enter'){ e.preventDefault(); clearTimeout(searchTimer); apply(true); }
+            if(e.key === 'Enter'){ e.preventDefault(); clearTimeout(searchTimer); go(); }
         });
     }
 
     /* Price inputs (Enter = immediate) */
     form.querySelectorAll('input[type="number"]').forEach(i => {
-        i.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); apply(true); } });
+        i.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); go(); } });
     });
 
-    /* Clear button */
-    if(el.clr){
-        el.clr.addEventListener('click', e => {
-            e.preventDefault();
-            form.querySelectorAll('input[type="radio"]').forEach(i => { if(i.value === '') i.checked = true; });
-            form.querySelectorAll('input[type="checkbox"]').forEach(i => i.checked = false);
-            form.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
-            form.querySelectorAll('input[type="text"], input[type="number"]').forEach(i => i.value = '');
-            if(el.sub)   el.sub.disabled = true;
-            if(el.brand) el.brand.disabled = true;
-            if(el.lga)   el.lga.disabled = true;
-            if(type === 'requests'){
-                setRT('');
-                form.querySelectorAll('.ufs-toggle').forEach(t => {
-                    const i = t.querySelector('input');
-                    t.classList.toggle('ufs-toggle--on', i && i.value === '');
-                });
-            }
-            apply(true);
-        });
+    /* City / town input (Enter applies; the Apply button also submits it) */
+    if(el.city){
+        el.city.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); go(); } });
     }
 
-    /* Pill visual sync on load */
-    form.querySelectorAll('.ufs-toggle').forEach(t => {
-        const i = t.querySelector('input');
-        t.classList.toggle('ufs-toggle--on', i && i.checked);
+    /* Reset buttons */
+    el.clr.forEach(btn => btn.addEventListener('click', e => {
+        e.preventDefault();
+        form.querySelectorAll('input[type="radio"]').forEach(i => { if(i.value === '') i.checked = true; });
+        form.querySelectorAll('input[type="checkbox"]').forEach(i => i.checked = false);
+        form.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+        form.querySelectorAll('input[type="text"], input[type="number"], input[name="query"]').forEach(i => i.value = '');
+        if(el.sub)   el.sub.disabled = true;
+        if(el.brand) el.brand.disabled = true;
+        if(el.lga)   el.lga.disabled = true;
+        if(type === 'requests'){
+            setRT('');
+            form.querySelectorAll('.ufs-toggle').forEach(t => {
+                const i = t.querySelector('input');
+                t.classList.toggle('ufs-toggle--on', i && i.value === '');
+            });
+        }
+        go();
+    }));
+
+    /* Price presets (products) */
+    const presets = form.querySelectorAll('.js-price-preset');
+    if(presets.length){
+        const mn = form.querySelector('input[name="min_price"]');
+        const mx = form.querySelector('input[name="max_price"]');
+        const syncPresets = () => presets.forEach(b => b.classList.toggle('is-on',
+            (b.dataset.min || '') === (mn.value || '') && (b.dataset.max || '') === (mx.value || '')));
+        presets.forEach(b => b.addEventListener('click', () => {
+            const on = b.classList.contains('is-on');
+            mn.value = on ? '' : (b.dataset.min || '');
+            mx.value = on ? '' : (b.dataset.max || '');
+            mn.dispatchEvent(new Event('input', { bubbles: true }));   /* refresh summaries */
+            syncPresets();
+            apply(true);
+        }));
+        [mn, mx].forEach(i => i.addEventListener('input', syncPresets));
+        syncPresets();
+    }
+
+    /* Section summaries (services / requests): read the chosen values straight from each section */
+    form.querySelectorAll('.ufs-coll [data-auto-sum]').forEach(small => {
+        const sec = small.closest('.ufs-coll');
+        const fmtN = n => '₦' + Number(n).toLocaleString('en-US');
+        const calc = () => {
+            const parts = [];
+            sec.querySelectorAll('select').forEach(s => { if(s.selectedIndex > 0) parts.push(s.options[s.selectedIndex].text.trim()); });
+            sec.querySelectorAll('input[type="radio"]:checked').forEach(r => {
+                if(r.value !== '') parts.push((r.closest('label').textContent || '').replace(/\s+/g, ' ').trim());
+            });
+            const lo = sec.querySelector('input[name="min_price"]'), hi = sec.querySelector('input[name="max_price"]');
+            if(lo || hi){
+                const a = lo && lo.value, z = hi && hi.value;
+                if(a && z) parts.push(fmtN(a) + ' – ' + fmtN(z)); else if(a) parts.push(fmtN(a) + '+'); else if(z) parts.push('Under ' + fmtN(z));
+            }
+            small.textContent = parts.length ? parts.join(', ') : small.dataset.default;
+            small.classList.toggle('has-val', parts.length > 0);
+        };
+        sec.addEventListener('input', calc);
+        sec.addEventListener('change', calc);
+        calc();
+        setTimeout(calc, 800);
     });
-    form.querySelectorAll('.ufs-pill').forEach(p => {
-        const i = p.querySelector('input');
-        p.classList.toggle('ufs-pill--on', i && i.checked);
-    });
+
+    /* Section summaries (products): what is currently chosen, visible while collapsed */
+    if(form.querySelector('[data-sum]')){
+        const fmt = n => '₦' + Number(n).toLocaleString('en-US');
+        const val = n => { const e = form.querySelector('[name="' + n + '"]'); return e ? e.value : ''; };
+        const txt = n => { const s = form.querySelector('select[name="' + n + '"]'); return s && s.selectedIndex > 0 ? s.options[s.selectedIndex].text : ''; };
+        const on  = n => { const e = form.querySelector('[name="' + n + '"]'); return !!(e && e.checked); };
+        const put = (k, text, active) => {
+            const t = form.querySelector('[data-sum="' + k + '"]');
+            if(!t) return;
+            t.textContent = text;
+            t.classList.toggle('has-val', !!active);
+        };
+        const sum = () => {
+            const cat = [txt('category'), txt('subcategory'), txt('brand')].filter(Boolean);
+            put('category', cat.length ? cat.join(' › ') : 'All categories', cat.length);
+            const loc = [val('city').trim(), txt('lga'), txt('state')].filter(Boolean);
+            put('location', loc.length ? loc.join(', ') : 'Anywhere in Nigeria', loc.length);
+            const lo = val('min_price'), hi = val('max_price');
+            put('price', lo && hi ? fmt(lo) + ' – ' + fmt(hi) : (lo ? fmt(lo) + '+' : (hi ? 'Under ' + fmt(hi) : 'Any price')), lo || hi);
+            const c = form.querySelector('input[name="condition"]:checked');
+            put('condition', c && c.value ? c.value.charAt(0).toUpperCase() + c.value.slice(1) : 'Any condition', c && c.value);
+            const n = ['negotiable', 'delivery_available', 'swap_accepted', 'inspection_allowed', 'has_receipt'].filter(on).length;
+            put('deals', n ? n + ' selected' : 'Any', n);
+        };
+        form.addEventListener('input', sum);
+        form.addEventListener('change', sum);
+        sum();
+        setTimeout(sum, 800);   /* after AJAX-loaded subcategories / LGAs settle */
+    }
+
+    /* Pill / toggle visual sync: on load and on every change */
+    const syncChoice = () => {
+        form.querySelectorAll('.ufs-toggle').forEach(t => {
+            const i = t.querySelector('input');
+            t.classList.toggle('ufs-toggle--on', !!(i && i.checked));
+        });
+        form.querySelectorAll('.ufs-pill').forEach(p => {
+            const i = p.querySelector('input');
+            p.classList.toggle('ufs-pill--on', !!(i && i.checked));
+        });
+    };
+    form.addEventListener('change', syncChoice);
+    syncChoice();
 
     restore();
     log('✅ init', type, isIn ? 'mobile' : 'desktop');
@@ -1111,7 +1607,18 @@ function detectType(){
 /* ══════════════════════════════════════════════════════════════════════════
    INIT  (runs once; also re-runs when the offcanvas opens to catch late DOM)
    ══════════════════════════════════════════════════════════════════════════ */
+function countActive(){
+    const groups = new Set();
+    new URLSearchParams(window.location.search).forEach((v, k) => {
+        if(!v.trim() || k === 'page' || k === 'sort') return;
+        groups.add(['min_price', 'max_price', 'price_range'].includes(k) ? 'price' : (k === 'lga' ? 'state' : k));
+    });
+    return groups.size;
+}
+
 function init(){
+    const n = countActive();
+    document.querySelectorAll('.ufs-count').forEach(c => { c.textContent = n ? String(n) : ''; });
     document.querySelectorAll('.sidebar-filter-form').forEach(form => initForm(form));
     bindCollapsibles();
     bindChips();

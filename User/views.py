@@ -22,12 +22,13 @@ from django.contrib import messages
 from django.urls import reverse_lazy
 from django.contrib.auth.forms import AuthenticationForm
 from django_ratelimit.decorators import ratelimit
-from django_ratelimit.exceptions import Ratelimited
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from .forms import SignUpForm, ProfileUpdateForm, LocationForm, BusinessVerificationForm, BusinessDocumentForm, ItemReportForm
 from .models import Profile,LGA,State,Location, BusinessVerificationDocument
+from .utils import get_client_ip
 from django.views.decorators.http import require_GET, require_POST
 from .utils import send_otp_email, send_business_verification_approved_email, send_business_verification_rejected_email, send_business_verification_submitted_email, send_welcome_email
 from django.utils import timezone
@@ -112,29 +113,27 @@ class CustomSignupView(SignupView):
 custom_signup_view = CustomSignupView.as_view()
 
 from django.utils.decorators import method_decorator
-from django_ratelimit.decorators import ratelimit
 
-'''def skip_ratelimit_if_oauth(view_func):
-    """Decorator to skip rate limiting for OAuth requests"""
-    def wrapper(request, *args, **kwargs):
-        if getattr(request, 'skip_ratelimit', False):
-            # Skip rate limiting
-            return view_func(request, *args, **kwargs)
-        # Apply rate limiting
-        return ratelimit(key='ip', rate='5/m', method='POST', block=True)(view_func)(request, *args, **kwargs)
-    return wrapper
+def _safe_next(request, url):
+    """Only follow ?next= redirects that stay on this site (prevents open redirects)."""
+    if url and url_has_allowed_host_and_scheme(
+        url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return url
+    return ''
 
-@skip_ratelimit_if_oauth'''
 
 def loginview(request):
     # Redirect if user is already authenticated
     if request.user.is_authenticated:
-        next_url = request.GET.get('next', '')
+        next_url = _safe_next(request, request.GET.get('next', ''))
         if next_url:
             return redirect(next_url)
         return redirect('home')
     
-    next_url = request.GET.get('next', '')
+    next_url = _safe_next(request, request.GET.get('next', ''))
     referral_code = request.GET.get('ref', '')
     
     if not referral_code:
@@ -149,9 +148,11 @@ def loginview(request):
             user = authenticate(request=request, username=username, password=password)
             if user is not None:
                 login(request, user)
+                if not request.POST.get('remember'):
+                    request.session.set_expiry(0)  # session ends when the browser closes
                 messages.success(request, f'You are now logged in as {username}.')
                 
-                next_url = request.POST.get('next', '')
+                next_url = _safe_next(request, request.POST.get('next', ''))
                 if next_url:
                     return redirect(next_url)
                 return redirect('home')
@@ -181,14 +182,14 @@ def register_user(request):
     referral_code = request.GET.get('ref', '').strip() or 'opensell'
     
     # Log the request
-    logger.info(f"Registration attempt from IP: {request.META.get('REMOTE_ADDR')}")
+    logger.info(f"Registration attempt from IP: {get_client_ip(request)}")
     
     if request.method == "POST":
         # Check if rate limited FIRST (before form validation)
         was_limited = getattr(request, 'limited', False)
         
         if was_limited:
-            logger.warning(f"Rate limit hit for IP: {request.META.get('REMOTE_ADDR')}")
+            logger.warning(f"Rate limit hit for IP: {get_client_ip(request)}")
             messages.error(
                 request, 
                 "⏱️ Too many registration attempts. Please wait before trying again."
@@ -336,11 +337,7 @@ def create_referral_record(user, referral_code, request):
         # Get client IP
         ip = None
         try:
-            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-            if x_forwarded_for:
-                ip = x_forwarded_for.split(',')[0].strip()
-            else:
-                ip = request.META.get('REMOTE_ADDR')
+            ip = get_client_ip(request)
         except Exception:
             pass
         

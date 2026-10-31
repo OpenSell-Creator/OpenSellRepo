@@ -3,472 +3,458 @@
 {% load compress %}
 
 {% block page_css %}
+    {# Card styles for service cards live in the shared stylesheet #}
     <link rel="stylesheet" type="text/css" href="{% static 'css/pages/services.css' %}">
     <style>
-
-.srl-page { padding-top: 0.5rem; }
-
-/* OFFCANVAS — BOTTOM SHEET */
-.srl-offcanvas {
-    border-radius: 20px 20px 0 0;
-    overflow: hidden;
-    /* height controlled by unified_filter_sidebar.html */
+/* Shared core: hues, solid icon badge, as on home, dashboard and profile */
+.pl {
+    --pl-navy: var(--primary-color);
+    --pl-orange: var(--accent-color);
+    --pl-green: var(--bs-success, var(--primary-color));
+    --pl-purple: var(--bs-purple, var(--primary-color));
+    --hl: var(--primary-color);
+    --hl-edge: var(--primary-color);
+    --hl-soft: var(--primary-soft);
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-sections);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-4));
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+    line-height: var(--lh-body);
 }
+[data-bs-theme="dark"] .pl { --hl: var(--accent-text); --hl-edge: var(--accent-color); --hl-soft: var(--accent-soft); }
+.pl a { text-decoration: none; }
+.pl p { margin: 0; }
+.pl a:focus-visible, .pl button:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+.t-navy { --tint: var(--pl-navy); } .t-orange { --tint: var(--pl-orange); }
+.t-green { --tint: var(--pl-green); } .t-purple { --tint: var(--pl-purple); }
+.pl-ico { display: grid; place-items: center; flex: none; width: 2rem; height: 2rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-lg); }
+.t-orange .pl-ico { color: var(--on-accent); }
 
-.srl-offcanvas-header {
+/* ── Header: navy, full-bleed, holds the category drill-down ─────────────── */
+.pl-head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    margin: -2rem -1rem 0;
+    padding: calc(2rem + var(--sp-4)) var(--sp-4) var(--sp-4);
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+    background: var(--primary-color);
+    color: var(--bs-white);
+}
+.pl-title { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-tight); }
+@media (min-width: 768px) { .pl-title { font-size: var(--font-size-3xl); } }
+
+/* Category cards: small, one calm colour, image first */
+.pl-cats-wrap { position: relative; margin: 0 calc(-1 * var(--sp-1)); }
+.pl-cats {
+    display: flex;
+    gap: var(--sp-2);
+    overflow-x: auto;
+    padding: var(--sp-1);
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+.pl-cats::-webkit-scrollbar { display: none; }
+.pl-cat {
+    box-sizing: border-box;
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 1.35rem 1.1rem 0.875rem;
+    gap: var(--sp-2);
+    max-width: 14rem;
+    min-height: 2.5rem;
+    padding: var(--sp-1) var(--sp-4) var(--sp-1) var(--sp-1);
+    border: 1px solid rgba(255, 255, 255, .25);
+    border-radius: var(--radius-full);
+    background: rgba(255, 255, 255, .1);
+    color: var(--bs-white);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    line-height: var(--lh-tight);
+    scroll-snap-align: start;
+    touch-action: manipulation;
+}
+.pl-cat-ico { display: grid; place-items: center; flex: none; width: 1.875rem; height: 1.875rem; border-radius: var(--radius-full); background: var(--card-background); }
+.pl-cat-ico img { width: 1.375rem; height: 1.375rem; object-fit: contain; }
+.pl-cat-ico .bi { font-size: var(--font-size-sm); color: var(--text-primary); }
+.pl-cat-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-cats .pl-cat.is-on, .pl-cats .pl-cat--more { order: -1; }
+.pl-cats-wrap[data-collapsed] .pl-cat:not(.is-on):not(.pl-cat--more) { display: none; }
+.pl-cat--more { border-style: dashed; cursor: pointer; }
+.pl-more-chev { flex: none; font-size: var(--font-size-xs); transition: transform var(--transition-normal); }
+.pl-cats-wrap:not([data-collapsed]) .pl-more-chev { transform: rotate(180deg); }
+.pl-cat.is-on { border-color: var(--card-background); background: var(--card-background); color: var(--text-primary); }
+.pl-cat.is-on .pl-cat-ico { box-shadow: 0 0 0 2px var(--accent-color); }
+.pl-cats-nav {
+    position: absolute;
+    top: 50%;
+    z-index: 3;
+    display: none;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full);
+    background: var(--card-background);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-50%);
+    cursor: pointer;
+}
+.pl-cats-nav.pl-prev { left: 0; }
+.pl-cats-nav.pl-next { right: 0; }
+.pl-cats-nav[hidden] { display: none; }
+@media (min-width: 768px) { .pl-cats-nav { display: grid; } }
+@media (hover: hover) { .pl-cat:not(.is-on):hover { background: rgba(255, 255, 255, .2); } }
+
+/* ── Quick filters: compact, one line, clear on the button itself ────────── */
+.pl-qf-row { display: flex; gap: var(--sp-2); padding: var(--sp-1); margin: calc(-1 * var(--sp-1)); overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.pl-qf-row::-webkit-scrollbar { display: none; }
+@media (min-width: 992px) { .pl-qf-row { flex-wrap: wrap; overflow: visible; } }
+.pl-dd { position: relative; flex: none; }
+.pl-qf {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.25rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--r-card-s);
+    background: var(--card-background);
+    transition: border-color var(--transition-fast);
+}
+.pl-qf.has-val { border-color: var(--hl-edge); }
+.pl-dd.is-open .pl-qf { border-color: var(--hl-edge); }
+.pl-qf-main {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    min-height: 2.125rem;
+    padding: 0 var(--sp-2) 0 var(--sp-1);
+    border: 0;
+    border-radius: inherit;
+    background: none;
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.pl-qf .pl-ico { width: 1.375rem; height: 1.375rem; font-size: var(--font-size-xs); }
+.pl-qf-t { max-width: 9rem; overflow: hidden; text-overflow: ellipsis; }
+.pl-qf.has-val .pl-qf-t { color: var(--hl); }
+.pl-chev { flex: none; font-size: var(--font-size-xs); color: var(--text-secondary); transition: transform var(--transition-normal); }
+.pl-dd.is-open .pl-chev { transform: rotate(180deg); }
+.pl-qf.has-val .pl-chev { display: none; }
+.pl-qf.has-val .pl-qf-main { padding-right: var(--sp-1); }
+.pl-qf-x { display: grid; place-items: center; flex: none; width: 1.5rem; height: 1.5rem; margin-right: var(--sp-1); padding: 0; border: 0; border-radius: 50%; background: var(--hl-soft); color: var(--hl); font-size: var(--font-size-xs); cursor: pointer; touch-action: manipulation; }
+.pl-qf-x[hidden] { display: none; }
+@media (hover: hover) { .pl-qf:not(.has-val):hover { border-color: var(--hl-edge); } }
+
+/* ── Results bar: filters (phones), search tag, reset, sort ──────────────── */
+.pl-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.pl-bar-tags { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); min-width: 0; }
+.pl-bar-tags[hidden] { display: none; }
+.pl-dd--sort { margin-left: auto; }
+@media (max-width: 991.98px) {
+    .pl-fbtn { order: 1; }
+    .pl-dd--sort { order: 2; }
+    .pl-bar-tags { order: 3; flex-basis: 100%; }
+    }
+.pl-fbtn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    min-height: 2.25rem;
+    padding: 0 var(--sp-3);
+    border: 1px solid var(--primary-color);
+    border-radius: var(--r-card-s);
+    background: var(--primary-color);
+    color: var(--bs-white);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.pl-qtag { display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 2rem; max-width: 12rem; padding: 0 var(--sp-1) 0 var(--sp-2); border-radius: var(--radius-full); background: var(--hl-soft); color: var(--hl); font-size: var(--font-size-sm); font-weight: 600; }
+.pl-qtag[hidden] { display: none; }
+.pl-qtag > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-qtag button { display: grid; place-items: center; flex: none; width: 1.5rem; height: 1.5rem; padding: 0; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
+.pl-reset { padding: var(--sp-1) var(--sp-2); color: var(--error-text); font-size: var(--font-size-sm); font-weight: 600; }
+.pl-reset[hidden] { display: none; }
+.pl-dd--sort .pl-panel { left: auto; right: 0; }
+@media (hover: hover) { .pl-reset:hover { text-decoration: underline; } .pl-qtag button:hover { background: var(--hl-soft); } }
+
+/* Panels: popover on desktop, bottom sheet on phones and tablets */
+.pl-panel {
+    position: absolute;
+    top: calc(100% + var(--sp-2));
+    left: 0;
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    width: 21rem;
+    max-width: calc(100vw - 2rem);
+    max-height: min(30rem, 70vh);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    border-radius: var(--r-card);
+    background: var(--card-background);
+    box-shadow: var(--shadow-lg);
+}
+.pl-panel[hidden] { display: none; }
+.pl-panel-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3) var(--pad-m) var(--sp-2); }
+.pl-panel-title { margin: 0; font-size: var(--font-size-lg); font-weight: 600; }
+.pl-x { display: none; place-items: center; width: 2.25rem; height: 2.25rem; padding: 0; border: 0; border-radius: var(--radius-full); background: var(--hover-bg); color: var(--text-primary); cursor: pointer; }
+.pl-panel-body { display: flex; flex-direction: column; gap: var(--sp-3); overflow-y: auto; padding: 0 var(--pad-m) var(--sp-3); }
+.pl-panel-foot { display: flex; gap: var(--sp-2); padding: var(--sp-3) var(--pad-m); border-top: 1px solid var(--border-color); }
+.pl-backdrop { position: fixed; inset: 0; z-index: 1055; background: rgba(0, 0, 0, .5); }
+.pl-backdrop[hidden] { display: none; }
+html.pl-lock { overflow: hidden; }
+@keyframes pl-up { from { transform: translateY(100%); } to { transform: none; } }
+@media (max-width: 991.98px) {
+    .pl-panel, .pl-dd--sort .pl-panel {
+        position: fixed;
+        top: auto;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 1060;
+        width: auto;
+        max-width: none;
+        max-height: 80vh;
+        max-height: 80dvh;
+        border: 0;
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+        animation: pl-up .25s ease-out;
+    }
+    .pl-x { display: grid; }
+    .pl-panel-foot { padding-bottom: calc(var(--sp-3) + env(safe-area-inset-bottom, 0px)); }
+}
+@media (min-width: 992px) { .pl-backdrop { display: none; } }
+@media (prefers-reduced-motion: reduce) { .pl-panel { animation: none; } }
+
+/* Option rows */
+.pl-group { margin: var(--sp-2) var(--sp-3) 0; font-size: var(--font-size-xs); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-secondary); }
+.pl-group:first-child { margin-top: 0; }
+.pl-opts { display: flex; flex-direction: column; gap: var(--sp-1); }
+.pl-opt[hidden] { display: none; }
+.pl-find { flex: none; }
+.pl-opt {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0 var(--sp-3);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    background: none;
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+    text-align: left;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.pl-opt > span { flex: 1; min-width: 0; }
+.pl-opt small { display: block; font-size: var(--font-size-xs); color: var(--text-secondary); }
+.pl-radio { flex: none; width: 1.125rem; height: 1.125rem; border: 2px solid var(--border-color); border-radius: 50%; }
+.pl-opt.is-on { border-color: var(--hl-edge); background: var(--hl-soft); font-weight: 600; }
+.pl-opt.is-on .pl-radio { border-color: var(--hl-edge); background: var(--hl-edge); box-shadow: inset 0 0 0 3px var(--card-background); }
+@media (hover: hover) { .pl-opt:hover { background: var(--hover-bg); } .pl-opt.is-on:hover { background: var(--hl-soft); } }
+
+.pl-f { display: flex; flex-direction: column; gap: var(--gap-label); min-width: 0; }
+.pl-f > span { font-size: var(--font-size-sm); font-weight: 600; }
+.pl .form-select, .pl .form-control {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: var(--h-control-lg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background-color: var(--background-color);
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+}
+.pl .form-select:focus, .pl .form-control:focus { outline: 2px solid var(--accent-color); outline-offset: 1px; border-color: var(--accent-color); box-shadow: none; }
+.pl .form-select:disabled { opacity: .55; }
+[data-bs-theme="dark"] .pl .form-select, [data-bs-theme="dark"] .pl .form-control { color-scheme: dark; }
+@supports (-webkit-touch-callout: none) { .pl .form-select, .pl .form-control { font-size: 16px; } }
+.pl-range { display: flex; align-items: flex-end; gap: var(--sp-2); }
+.pl-range .pl-f { flex: 1; }
+.pl-range-sep { padding-bottom: var(--sp-3); color: var(--text-secondary); }
+.pl-money { position: relative; }
+.pl-money > span { position: absolute; left: var(--sp-3); top: 50%; transform: translateY(-50%); color: var(--text-secondary); pointer-events: none; }
+.pl-money > input { padding-left: var(--sp-6); }
+
+/* Switch rows (deals panel) */
+.pl-sw { position: relative; display: flex; align-items: center; gap: var(--sp-3); min-height: 3rem; margin: 0; padding: var(--sp-1) var(--sp-2); border-radius: var(--radius-md); cursor: pointer; }
+.pl-sw-t { display: flex; flex-direction: column; flex: 1; min-width: 0; line-height: var(--lh-tight); }
+.pl-sw-t b { font-size: var(--font-size-base); font-weight: 600; }
+.pl-sw-t small { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.pl-switch { position: relative; width: 2.5rem; height: 1.5rem; flex: none; }
+.pl-switch input { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.pl-switch i { position: absolute; inset: 0; border-radius: var(--radius-full); background: var(--border-color); transition: background var(--transition-normal); }
+.pl-switch i::after { content: ""; position: absolute; top: .1875rem; left: .1875rem; width: 1.125rem; height: 1.125rem; border-radius: 50%; background: var(--bs-white); transition: transform var(--transition-normal); }
+.pl-switch input:checked + i { background: var(--bs-success); }
+.pl-switch input:checked + i::after { transform: translateX(1rem); }
+.pl-switch input:focus-visible + i { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+@media (hover: hover) { .pl-sw:hover { background: var(--hover-bg); } }
+
+/* Buttons: same pill as the dashboard */
+.pl-btn {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+    min-height: var(--h-control-lg);
+    padding: 0 var(--sp-4);
+    border: 2px solid var(--primary-color);
+    border-radius: var(--radius-full);
+    background: var(--primary-color);
+    color: var(--bs-white);
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.pl-btn--grow { flex: 1; }
+.pl-btn--ghost { border-color: var(--border-color); background: transparent; color: var(--text-primary); }
+@media (hover: hover) {
+    .pl-btn:hover { background: var(--accent-color); border-color: var(--accent-color); color: var(--on-accent); }
+    .pl-btn--ghost:hover { background: var(--hover-bg); border-color: var(--hl-edge); color: var(--text-primary); }
+}
+
+/* ── Mini bar: under the navbar once the quick filters scroll away ───────── */
+.pl-mini {
+    position: fixed;
+    top: var(--navbar-height-mobile);
+    right: 0;
+    left: 0;
+    z-index: 1029;
+    display: flex;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-3);
     border-bottom: 1px solid var(--border-color);
     background: var(--card-background);
-    background-image: linear-gradient(var(--border-color), var(--border-color));
-    background-size: 36px 3px;
-    background-repeat: no-repeat;
-    background-position: center 10px;
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-100%);
+    visibility: hidden;
+    transition: transform var(--transition-normal), visibility 0s var(--transition-normal);
 }
-
-.srl-offcanvas-title-group {
+.pl-mini.is-on { transform: none; visibility: visible; transition: transform var(--transition-normal); }
+.pl-mini button {
     display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.srl-offcanvas-title-group .offcanvas-title {
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin: 0;
-}
-
-.srl-offcanvas-badge {
-    display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 20px;
-    height: 20px;
-    background: var(--primary-color);
-    color: #fff;
-    border-radius: 10px;
-    font-size: 0.68rem;
-    font-weight: 700;
-    padding: 0 5px;
-}
-.srl-offcanvas-badge:empty { display: none; }
-
-.srl-offcanvas-actions {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-}
-
-.srl-clear-all-link {
-    font-size: 0.78rem;
+    flex: 1 1 0;
+    gap: var(--sp-2);
+    min-width: 0;
+    min-height: 2.25rem;
+    padding: 0 var(--sp-2);
+    border: 1px solid var(--border-color);
+    border-radius: var(--r-card-s);
+    background: var(--background-color);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
     font-weight: 600;
-    color: var(--danger, #dc3545);
-    text-decoration: none;
     white-space: nowrap;
+    touch-action: manipulation;
 }
-.srl-clear-all-link:hover { text-decoration: underline; }
+.pl-mini button span { overflow: hidden; text-overflow: ellipsis; }
+.pl-mini button i { flex: none; color: var(--text-secondary); }
+.pl-mini .pl-mini-pri { border-color: var(--primary-color); background: var(--primary-color); color: var(--bs-white); }
+.pl-mini .pl-mini-pri i { color: inherit; }
+@media (min-width: 992px) { .pl-mini { display: none; } }
+@media (prefers-reduced-motion: reduce) { .pl-mini { transition: none; } }
 
-/* PAGE HEADER */
-.srl-page-header {
-    background: var(--card-background);
-    border-radius: 14px;
-    padding: 0.875rem 1rem;
-    margin-bottom: 1rem;
-    box-shadow: 0 2px 8px var(--shadow-color);
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
+.pl-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 1.25rem; height: 1.25rem; padding: 0 var(--sp-1); border-radius: var(--radius-full); background: var(--accent-color); color: var(--on-accent); font-size: var(--font-size-xs); font-weight: 600; line-height: 1; }
+.pl-badge:empty { display: none; }
+
+/* ── Results column, sidebar, sheet header ───────────────────────────────── */
+.pl-results { min-width: 0; }
+.pl-sidebar-wrap {
+    position: sticky;
+    top: calc(var(--navbar-height) + var(--sp-3));
+    max-height: calc(100vh - var(--navbar-height) - var(--sp-5));
+    overflow-y: auto;
+    border-radius: var(--r-card);
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
 }
-
-.srl-title-row {
+.pl-offcanvas-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.5rem;
-}
-
-.srl-title-group { display: flex; flex-direction: column; gap: 0.1rem; }
-
-.srl-page-title {
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin: 0;
-    line-height: 1.2;
-}
-
-.srl-page-subtitle {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    margin: 0;
-}
-
-.srl-post-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 8px 14px;
-    background: var(--success, #28a745);
-    color: #fff;
-    border-radius: 10px;
-    font-size: 0.78rem;
-    font-weight: 600;
-    text-decoration: none;
-    white-space: nowrap;
-    flex-shrink: 0;
-    transition: all 0.18s ease;
-    border: none;
-}
-.srl-post-btn:hover { background: #218838; color: #fff; transform: translateY(-1px); box-shadow: 0 3px 10px rgba(40,167,69,0.3); }
-
-/* Category strip */
-.srl-category-strip {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    margin: 0 -0.25rem;
-}
-.srl-category-strip::-webkit-scrollbar { display: none; }
-
-.srl-category-track {
-    display: flex;
-    gap: 6px;
-    padding: 2px 0.25rem 4px;
-    width: max-content;
-    min-width: 100%;
-}
-
-.srl-cat-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 6px 12px;
-    background: var(--background-color);
-    border: 1.5px solid var(--border-color);
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    text-decoration: none;
-    white-space: nowrap;
-    flex-shrink: 0;
-    transition: all 0.15s ease;
-}
-.srl-cat-pill:hover { border-color: var(--primary-color); color: var(--primary-color); text-decoration: none; }
-.srl-cat-pill--active { background: var(--primary-color); border-color: var(--primary-color); color: #fff; }
-.srl-cat-pill--active:hover { color: #fff; filter: brightness(1.08); }
-
-.srl-cat-count {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 18px;
-    height: 18px;
-    background: var(--primary-color);
-    color: #fff;
-    border-radius: 9px;
-    font-size: 0.63rem;
-    font-weight: 700;
-    padding: 0 4px;
-    line-height: 1;
-}
-.srl-cat-pill--active .srl-cat-count { background: rgba(255,255,255,0.25); }
-
-/* Controls bar */
-.srl-controls-bar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-}
-.srl-controls-bar::-webkit-scrollbar { display: none; }
-
-.srl-filter-btn {
-    align-items: center;
-    gap: 6px;
-    padding: 7px 14px;
-    background: var(--primary-color);
-    color: #fff;
-    border: none;
-    border-radius: 20px;
-    font-size: 0.78rem;
-    font-weight: 600;
-    white-space: nowrap;
-    flex-shrink: 0;
-    cursor: pointer;
-    transition: all 0.18s ease;
-}
-.srl-filter-btn:hover,
-.srl-filter-btn:active { filter: brightness(1.1); }
-
-.srl-filter-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 18px;
-    height: 18px;
-    background: var(--accent-color, #ff6600);
-    color: #fff;
-    border-radius: 9px;
-    font-size: 0.63rem;
-    font-weight: 700;
-    padding: 0 4px;
-    line-height: 1;
-}
-.srl-filter-badge:empty { display: none; }
-
-.srl-quick-links {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    flex-shrink: 0;
-}
-
-.srl-quick-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 6px 11px;
-    border: 1.5px solid var(--border-color);
-    border-radius: 20px;
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    text-decoration: none;
-    white-space: nowrap;
-    flex-shrink: 0;
-    transition: all 0.15s ease;
-    background: var(--background-color);
-}
-.srl-quick-link:hover { border-color: var(--primary-color); color: var(--primary-color); text-decoration: none; }
-.srl-quick-link--active { background: var(--primary-color); border-color: var(--primary-color); color: #fff; }
-.srl-quick-link--verified { border-color: rgba(34,197,94,0.35); color: #16a34a; }
-.srl-quick-link--verified:hover { background: #16a34a; border-color: #16a34a; color: #fff; }
-.srl-quick-link--expert { border-color: rgba(251,191,36,0.4); color: #b45309; }
-.srl-quick-link--expert:hover { background: #d97706; border-color: #d97706; color: #fff; }
-
-.srl-sort-control { display: flex; align-items: center; flex-shrink: 0; }
-
-.srl-sort-select {
-    padding: 6px 28px 6px 10px;
-    border: 1.5px solid var(--border-color);
-    border-radius: 20px;
-    background: var(--background-color);
-    color: var(--text-primary);
-    font-size: 0.75rem;
-    font-weight: 500;
-    cursor: pointer;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23666' viewBox='0 0 16 16'%3E%3Cpath d='M8 10.5l-4-4h8l-4 4z'/%3E%3C/svg%3E");
+    padding: var(--sp-5) var(--pad-m) var(--sp-3);
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--card-background);
+    background-image: linear-gradient(var(--border-color), var(--border-color));
+    background-size: 2rem .25rem;
     background-repeat: no-repeat;
-    background-position: right 8px center;
-    min-height: 34px;
-    white-space: nowrap;
-    transition: border-color 0.15s;
+    background-position: center var(--sp-2);
 }
-.srl-sort-select:focus { outline: none; border-color: var(--primary-color); }
-[data-bs-theme="dark"] .srl-sort-select {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23d4d4d4' viewBox='0 0 16 16'%3E%3Cpath d='M8 10.5l-4-4h8l-4 4z'/%3E%3C/svg%3E");
-}
+.pl-offcanvas-title { display: flex; align-items: center; gap: var(--sp-2); margin: 0; font-size: var(--font-size-lg); font-weight: 600; color: var(--text-primary); }
+.pl-offcanvas-actions { display: flex; align-items: center; gap: var(--sp-4); }
+.pl-clear-all-link { color: var(--error-text); font-size: var(--font-size-sm); font-weight: 600; white-space: nowrap; }
 
-/* FAB */
-.srl-fab {
-    position: fixed;
-    bottom: calc(var(--bottom-nav-height) + 20px);
-    right: 16px;
-    z-index: 1040;
-}
+/* ── Loading / end / empty ───────────────────────────────────────────────── */
+.pl-loading, .pl-end { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); padding: var(--sp-8); text-align: center; color: var(--text-secondary); }
+.pl-loading p { font-size: var(--font-size-sm); }
+.pl-end .bi { font-size: var(--font-size-3xl); color: var(--bs-success); }
+.pl-end p { font-size: var(--font-size-lg); font-weight: 600; color: var(--text-primary); }
+.pl-end small { font-size: var(--font-size-sm); }
+.pl-empty { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); padding: var(--sp-6) var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); text-align: center; }
+.pl-empty .pl-ico { width: 3rem; height: 3rem; font-size: var(--font-size-3xl); }
+.pl-empty h2 { margin: 0; font-size: var(--font-size-xl); font-weight: 600; }
+.pl-empty p { max-width: 24rem; font-size: var(--font-size-base); color: var(--text-secondary); }
+.pl-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-2); margin-top: var(--sp-2); }
+.pl-empty-label { margin-top: var(--sp-3); font-size: var(--font-size-sm); font-weight: 600; color: var(--text-secondary); }
+.pl-empty .pl-cats { max-width: 100%; justify-content: center; flex-wrap: wrap; overflow: visible; }
+.pl-empty .pl-cat { border-color: var(--border-color); background: var(--card-background); color: var(--text-primary); }
+.pl-empty .pl-cat-ico { background: var(--hover-bg); }
 
-.srl-fab-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 11px 18px;
-    background: var(--primary-color);
-    color: #fff;
-    border: none;
-    border-radius: 24px;
-    font-size: 0.82rem;
-    font-weight: 700;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-}
-.srl-fab-btn:hover,
-.srl-fab-btn:active { filter: brightness(1.1); transform: scale(1.04); }
-
-.srl-fab-badge {
+/* ── Additions for request and service lists ─────────────────────────────── */
+.pl-head-top { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.pl-post {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    min-width: 18px;
-    height: 18px;
-    background: var(--accent-color, #ff6600);
-    color: #fff;
-    border-radius: 9px;
-    font-size: 0.63rem;
-    font-weight: 700;
-    padding: 0 4px;
-    line-height: 1;
-}
-.srl-fab-badge:empty { display: none; }
-
-@media (max-width: 360px) {
-    .srl-fab-label { display: none; }
-    .srl-fab-btn   { padding: 13px; border-radius: 50%; }
-}
-
-/* Sidebar */
-.srl-sidebar-wrap {
-    position: sticky;
-    top: 80px;
-    max-height: calc(100vh - 100px);
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: var(--border-color) transparent;
-    border-radius: 14px;
-}
-.srl-sidebar-wrap::-webkit-scrollbar { width: 4px; }
-.srl-sidebar-wrap::-webkit-scrollbar-track { background: transparent; }
-.srl-sidebar-wrap::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
-
-/* Results meta */
-.srl-results-meta { padding-bottom: 0.6rem; margin-bottom: 0.25rem; }
-
-.srl-results-count {
-    font-size: 0.78rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-.srl-results-count--empty { font-style: italic; }
-
-/* Loading / end */
-.srl-loading-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 2rem;
-    text-align: center;
-}
-
-.srl-loading-text {
-    font-size: 0.82rem;
-    color: var(--text-secondary);
-    margin: 0;
-}
-
-.srl-end-of-results {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 2rem;
-    text-align: center;
-    color: var(--text-secondary);
-}
-
-.srl-end-of-results i {
-    font-size: 1.75rem;
-    color: var(--primary-color);
-    margin-bottom: 0.5rem;
-}
-
-.srl-end-of-results p {
+    flex: none;
+    gap: var(--sp-2);
+    min-height: 2.25rem;
+    padding: 0 var(--sp-4);
+    border: 2px solid var(--bs-white);
+    border-radius: var(--radius-full);
+    background: var(--accent-color);
+    color: var(--on-accent);
+    font-size: var(--font-size-sm);
     font-weight: 600;
-    color: var(--text-primary);
-    font-size: 0.9rem;
-    margin: 0;
+    white-space: nowrap;
+    touch-action: manipulation;
 }
-
-.srl-end-of-results small { font-size: 0.75rem; }
-
-/* Empty state */
-.srl-empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    padding: 3rem 1.5rem;
-    background: var(--card-background);
-    border-radius: 14px;
-    border: 1px dashed var(--border-color);
-    gap: 0.5rem;
+@media (hover: hover) { .pl-post:hover { background: var(--bs-white); color: var(--primary-color); } }
+.pl-dot { flex: none; width: .5rem; height: .5rem; border-radius: 50%; }
+.pl-dot.red { background: var(--error); }
+.pl-dot.orange { background: var(--accent-color); }
+.pl-dot.yellow { background: var(--warning); }
+.pl-dot.green { background: var(--success); }
+.pl .pagination {
+    --bs-pagination-color: var(--link-color);
+    --bs-pagination-bg: var(--card-background);
+    --bs-pagination-border-color: var(--border-color);
+    --bs-pagination-hover-bg: var(--hover-bg);
+    --bs-pagination-hover-color: var(--link-color);
+    --bs-pagination-active-bg: var(--primary-color);
+    --bs-pagination-active-border-color: var(--primary-color);
+    --bs-pagination-disabled-bg: var(--card-background);
+    gap: var(--sp-1);
 }
-
-.srl-empty-icon {
-    font-size: 2.5rem;
-    color: var(--text-secondary);
-    opacity: 0.4;
-    margin-bottom: 0.25rem;
-}
-
-.srl-empty-title {
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin: 0;
-}
-
-.srl-empty-text {
-    font-size: 0.82rem;
-    color: var(--text-secondary);
-    margin: 0;
-    max-width: 320px;
-}
-
-.srl-empty-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: center;
-    margin-top: 0.5rem;
-}
-
-.srl-empty-btn {
-    display: inline-flex;
-    align-items: center;
-    padding: 8px 18px;
-    border-radius: 10px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-decoration: none;
-    cursor: pointer;
-    border: none;
-    transition: all 0.18s ease;
-}
-.srl-empty-btn--primary { background: var(--primary-color); color: #fff; }
-.srl-empty-btn--primary:hover { filter: brightness(1.1); color: #fff; }
-.srl-empty-btn--outline { background: transparent; color: var(--text-secondary); border: 1.5px solid var(--border-color); }
-.srl-empty-btn--outline:hover { border-color: var(--primary-color); color: var(--primary-color); }
-
-/* Responsive */
-@media (max-width: 768px) {
-    .srl-page-header { padding: 0.75rem; gap: 0.6rem; border-radius: 10px; margin-bottom: 0.75rem; }
-    .srl-page-title  { font-size: 0.95rem; }
-    .srl-cat-pill    { padding: 5px 10px; font-size: 0.72rem; }
-    .srl-controls-bar { gap: 6px; }
-    .srl-filter-btn  { padding: 6px 12px; font-size: 0.74rem; }
-    .srl-sort-select { font-size: 0.72rem; padding: 5px 26px 5px 9px; min-height: 32px; }
-    .srl-fab         { bottom: calc(var(--bottom-nav-height) + 20px); }
-}
-
-@media (max-width: 576px) {
-    .srl-page-header  { padding: 0.6rem 0.75rem; gap: 0.5rem; border-radius: 8px; }
-    .srl-page-title   { font-size: 0.9rem; }
-    .srl-post-btn span { display: none; }
-    .srl-post-btn     { padding: 8px 10px; }
-    /* srl-offcanvas height controlled by unified_filter_sidebar.html */
-    .srl-empty-state  { padding: 2.5rem 1rem; }
-    .srl-empty-title  { font-size: 0.9rem; }
-}
+.pl .pagination .page-link { min-width: 2.25rem; border-radius: var(--radius-md); text-align: center; }
+.pl .pagination .page-item:not(:first-child) .page-link { margin-left: 0; }
 </style>
 {% endblock %}
 
@@ -477,24 +463,19 @@
 {% endblock %}
 
 {% block 'Body' %}
-<div class="srl-page"
+<div class="pl" id="plRoot"
      data-lgas-url="{% url 'services:ajax_lgas' %}"
      data-list-url="{% url 'services:list' %}">
 
-    {# MOBILE OFFCANVAS — bottom sheet, always in DOM, never conditional #}
-    <div class="offcanvas offcanvas-bottom srl-offcanvas" tabindex="-1" id="mobileFilters"
-         aria-labelledby="mobileFiltersTitle">
-        <div class="offcanvas-header srl-offcanvas-header">
-            <div class="srl-offcanvas-title-group">
-                <h5 class="offcanvas-title" id="mobileFiltersTitle">
-                    <i class="bi bi-sliders me-2"></i>Filters
-                </h5>
-                <span class="srl-offcanvas-badge" id="offcanvasBadge"></span>
-            </div>
-            <div class="srl-offcanvas-actions">
-                {% if request.GET.category or request.GET.query or request.GET.state or request.GET.service_type or request.GET.experience_level or request.GET.verified_business or request.GET.pricing_type or request.GET.min_price or request.GET.max_price or request.GET.lga or request.GET.available_only or request.GET.availability or request.GET.sort %}
-                <a href="{% url 'services:list' %}" class="srl-clear-all-link">Clear all</a>
-                {% endif %}
+    {# ═════ Mobile filter sheet (all advanced filters) ═════ #}
+    <div class="offcanvas offcanvas-bottom" tabindex="-1" id="mobileFilters" aria-labelledby="mobileFiltersTitle">
+        <div class="offcanvas-header pl-offcanvas-header">
+            <h2 class="pl-offcanvas-title" id="mobileFiltersTitle">
+                <i class="bi bi-sliders2"></i>All filters
+                <span class="pl-badge" id="offcanvasBadge"></span>
+            </h2>
+            <div class="pl-offcanvas-actions">
+                <a href="{% url 'services:list' %}" class="pl-clear-all-link" id="sheetClearAll" hidden>Clear all</a>
                 <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
             </div>
         </div>
@@ -503,152 +484,259 @@
         </div>
     </div>
 
-    {# PAGE HEADER — always visible, never conditional #}
-    <div class="srl-page-header">
-
-        <div class="srl-title-row">
-            <div class="srl-title-group">
-                <h1 class="srl-page-title">Services</h1>
-                <p class="srl-page-subtitle d-none d-sm-block">Connect with skilled professionals across Nigeria</p>
-            </div>
+    {# ═════ Header: title, list button, categories ═════ #}
+    <header class="pl-head">
+        <div class="pl-head-top">
+            <h1 class="pl-title">{% if selected_category %}{% for category in categories %}{% if selected_category == category.code or selected_category == category.id|stringformat:'s' %}{{ category.name }}{% endif %}{% endfor %}{% else %}Services{% endif %}</h1>
             {% if user.is_authenticated %}
-            <a href="{% url 'services:create' %}" class="srl-post-btn">
-                <i class="bi bi-plus-lg"></i>
-                <span>List Service</span>
-            </a>
+            <a href="{% url 'services:create' %}" class="pl-post"><i class="bi bi-plus-lg" aria-hidden="true"></i><span>List Service</span></a>
             {% endif %}
         </div>
 
-        {# Category strip — always visible, horizontal scroll #}
-        <nav class="srl-category-strip" aria-label="Browse by category">
-            <div class="srl-category-track">
-                <a href="{% url 'services:list' %}"
-                   class="srl-cat-pill {% if not selected_category %}srl-cat-pill--active{% endif %}">
-                    All
+        <div class="pl-cats-wrap" id="plCatsWrap" aria-label="Browse by category" {% if selected_category %}data-collapsed{% endif %}>
+            <button type="button" class="pl-cats-nav pl-prev" id="plPrev" aria-label="Scroll categories left" hidden><i class="bi bi-chevron-left" aria-hidden="true"></i></button>
+            <nav class="pl-cats" id="plCats" aria-label="Categories">
+                <a href="{% url 'services:list' %}" class="pl-cat {% if not selected_category %}is-on{% endif %}" {% if not selected_category %}aria-current="page"{% endif %}>
+                    <span class="pl-cat-ico"><i class="bi bi-grid-fill" aria-hidden="true"></i></span>
+                    <span class="pl-cat-name">All</span>
                 </a>
                 {% for category in categories %}
-                <a href="{% url 'services:list' %}?category={{ category.code|default:category.id }}"
-                   class="srl-cat-pill {% if selected_category == category.code or selected_category == category.id|stringformat:'s' %}srl-cat-pill--active{% endif %}">
-                    {{ category.name }}
-                    {% if category.total_services %}
-                    <span class="srl-cat-count">{{ category.total_services }}</span>
-                    {% endif %}
+                <a href="{% url 'services:list' %}?category={{ category.code|default:category.id }}" class="pl-cat {% if selected_category == category.code or selected_category == category.id|stringformat:'s' %}is-on{% endif %}"{% if selected_category == category.code or selected_category == category.id|stringformat:'s' %} aria-current="page"{% endif %}>
+                    <span class="pl-cat-ico">
+                        {% if category.image %}<img src="{{ category.image.url }}" alt="" loading="lazy" width="22" height="22">{% else %}<i class="bi bi-tools" aria-hidden="true"></i>{% endif %}
+                    </span>
+                    <span class="pl-cat-name">{{ category.name }}</span>
                 </a>
                 {% endfor %}
-            </div>
-        </nav>
-
-        {# Controls bar — filter button + quick links + sort #}
-        <div class="srl-controls-bar">
-
-            {# Quick-access links — mobile only, shown when no content filters active #}
-            {% if not selected_category and not request.GET.query and not request.GET.service_type and not request.GET.experience_level and not request.GET.verified_business and not request.GET.available_only %}
-            <div class="srl-quick-links d-flex d-lg-none">
-                <a href="{% url 'services:list' %}?sort=-created_at"
-                   class="srl-quick-link {% if current_sort == '-created_at' %}srl-quick-link--active{% endif %}">
-                    <i class="bi bi-clock-history"></i>Latest
-                </a>
-                <a href="{% url 'services:list' %}?verified_business=true"
-                   class="srl-quick-link srl-quick-link--verified">
-                    <i class="bi bi-shield-check"></i>Verified
-                </a>
-                <a href="{% url 'services:list' %}?experience_level=expert"
-                   class="srl-quick-link srl-quick-link--expert">
-                    <i class="bi bi-award"></i>Expert
-                </a>
-            </div>
-            {% endif %}
-
-            <div class="srl-sort-control ms-auto">
-                <label for="sortSelect" class="visually-hidden">Sort results</label>
-                <select class="srl-sort-select" id="sortSelect" aria-label="Sort results">
-                    <option value="smart"      {% if current_sort == 'smart' or not current_sort %}selected{% endif %}>Smart Sort</option>
-                    <option value="-created_at" {% if current_sort == '-created_at' %}selected{% endif %}>Newest</option>
-                    <option value="price_low"  {% if current_sort == 'price_low'  %}selected{% endif %}>Price: Low to High</option>
-                    <option value="price_high" {% if current_sort == 'price_high' %}selected{% endif %}>Price: High to Low</option>
-                    <option value="rating"     {% if current_sort == 'rating'     %}selected{% endif %}>Highest Rated</option>
-                </select>
-            </div>
-
+                {% if selected_category %}
+                <button type="button" class="pl-cat pl-cat--more" id="plMore" aria-expanded="false" aria-controls="plCats">
+                    <span class="pl-cat-ico"><i class="bi bi-grid-3x3-gap-fill" aria-hidden="true"></i></span>
+                    <span class="pl-cat-name" id="plMoreText">All categories</span>
+                    <i class="bi bi-chevron-down pl-more-chev" aria-hidden="true"></i>
+                </button>
+                {% endif %}
+            </nav>
+            <button type="button" class="pl-cats-nav pl-next" id="plNext" aria-label="Scroll categories right" hidden><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
         </div>
-    </div>{# /srl-page-header #}
+    </header>
 
-    {# FAB — fixed, mobile-only, always visible #}
-    <div class="srl-fab d-lg-none">
-        <button type="button"
-                class="srl-fab-btn"
-                data-bs-toggle="offcanvas"
-                data-bs-target="#mobileFilters"
-                aria-label="Open filters">
-            <i class="bi bi-sliders"></i>
-            <span class="srl-fab-label">Filters</span>
-            <span class="srl-fab-badge" id="fabBadge"></span>
-        </button>
+    {# ═════ Quick filters (compact; each clears itself) ═════ #}
+    <section class="pl-qf-row" id="plQf" aria-label="Quick filters">
+        <div class="pl-dd" data-dd="type">
+            <div class="pl-qf t-purple">
+                <button type="button" class="pl-qf-main" data-open="type" aria-haspopup="dialog" aria-expanded="false" aria-controls="pl-p-type">
+                    <span class="pl-ico"><i class="bi bi-list-ul" aria-hidden="true"></i></span>
+                    <span class="pl-qf-t" data-val="type" data-label="Type">Type</span>
+                    <i class="bi bi-chevron-down pl-chev" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="pl-qf-x" data-clear="service_type" aria-label="Clear type filter" hidden><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+            </div>
+            <div class="pl-panel" id="pl-p-type" role="dialog" aria-label="Type" hidden>
+                <div class="pl-panel-head"><h2 class="pl-panel-title">Type</h2><button type="button" class="pl-x" data-close aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
+                <div class="pl-panel-body">
+                    <div class="pl-opts" role="radiogroup" aria-label="Type">
+                        <button type="button" class="pl-opt" data-set="service_type" data-value="" data-name="" role="radio"><span>All types</span><i class="pl-radio"></i></button>
+                        <button type="button" class="pl-opt" data-set="service_type" data-value="skill" data-name="Professional skill" role="radio"><span>Professional skill</span><i class="pl-radio"></i></button>
+                        <button type="button" class="pl-opt" data-set="service_type" data-value="service" data-name="Service offering" role="radio"><span>Service offering</span><i class="pl-radio"></i></button>
+                        <button type="button" class="pl-opt" data-set="service_type" data-value="consultation" data-name="Consultation" role="radio"><span>Consultation</span><i class="pl-radio"></i></button>
+                        <button type="button" class="pl-opt" data-set="service_type" data-value="maintenance" data-name="Maintenance" role="radio"><span>Maintenance</span><i class="pl-radio"></i></button>
+                        <button type="button" class="pl-opt" data-set="service_type" data-value="training" data-name="Training" role="radio"><span>Training</span><i class="pl-radio"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="pl-dd" data-dd="price">
+            <div class="pl-qf t-green">
+                <button type="button" class="pl-qf-main" data-open="price" aria-haspopup="dialog" aria-expanded="false" aria-controls="pl-p-price">
+                    <span class="pl-ico"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
+                    <span class="pl-qf-t" data-val="price" data-label="Price">Price</span>
+                    <i class="bi bi-chevron-down pl-chev" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="pl-qf-x" data-clear="min_price max_price price_range" aria-label="Clear price filter" hidden><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+            </div>
+            <div class="pl-panel" id="pl-p-price" role="dialog" aria-label="Price" hidden>
+                <div class="pl-panel-head"><h2 class="pl-panel-title">Price</h2><button type="button" class="pl-x" data-close aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
+                <div class="pl-panel-body">
+                    <div class="pl-opts" role="radiogroup" aria-label="Price range">
+                        <button type="button" class="pl-opt" data-price="" role="radio"><span>Any price</span><i class="pl-radio"></i></button>
+                        <button type="button" class="pl-opt" data-price data-max="10000" role="radio"><span>Under ₦10,000</span><i class="pl-radio"></i></button>
+                        <button type="button" class="pl-opt" data-price data-min="10000" data-max="50000" role="radio"><span>₦10,000 – ₦50,000</span><i class="pl-radio"></i></button>
+                        <button type="button" class="pl-opt" data-price data-min="50000" data-max="200000" role="radio"><span>₦50,000 – ₦200,000</span><i class="pl-radio"></i></button>
+                        <button type="button" class="pl-opt" data-price data-min="200000" role="radio"><span>₦200,000 and above</span><i class="pl-radio"></i></button>
+                    </div>
+                    <div class="pl-range">
+                        <label class="pl-f"><span>Min</span><span class="pl-money"><span>₦</span><input type="number" class="form-control" data-k="min_price" inputmode="numeric" min="0" step="100" placeholder="0" value="{{ request.GET.min_price }}" enterkeyhint="search"></span></label>
+                        <span class="pl-range-sep">–</span>
+                        <label class="pl-f"><span>Max</span><span class="pl-money"><span>₦</span><input type="number" class="form-control" data-k="max_price" inputmode="numeric" min="0" step="100" placeholder="Any" value="{{ request.GET.max_price }}" enterkeyhint="search"></span></label>
+                    </div>
+                </div>
+                <div class="pl-panel-foot">
+                    <button type="button" class="pl-btn pl-btn--ghost" data-act="clear" data-keys="min_price max_price price_range">Clear</button>
+                    <button type="button" class="pl-btn pl-btn--grow" data-act="apply-price">Apply range</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="pl-dd" data-dd="experience">
+            <div class="pl-qf t-navy">
+                <button type="button" class="pl-qf-main" data-open="experience" aria-haspopup="dialog" aria-expanded="false" aria-controls="pl-p-experience">
+                    <span class="pl-ico"><i class="bi bi-bar-chart-steps" aria-hidden="true"></i></span>
+                    <span class="pl-qf-t" data-val="experience" data-label="Experience">Experience</span>
+                    <i class="bi bi-chevron-down pl-chev" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="pl-qf-x" data-clear="experience_level" aria-label="Clear experience filter" hidden><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+            </div>
+            <div class="pl-panel" id="pl-p-experience" role="dialog" aria-label="Experience" hidden>
+                <div class="pl-panel-head"><h2 class="pl-panel-title">Experience</h2><button type="button" class="pl-x" data-close aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
+                <div class="pl-panel-body">
+                    <div class="pl-opts" role="radiogroup" aria-label="Experience">
+                        <button type="button" class="pl-opt" data-set="experience_level" data-value="" data-name="" role="radio"><span>Any level</span><i class="pl-radio"></i></button>
+                        <button type="button" class="pl-opt" data-set="experience_level" data-value="expert" data-name="Expert" role="radio"><span>Expert<small>10+ years</small></span><i class="pl-radio"></i></button>
+                        <button type="button" class="pl-opt" data-set="experience_level" data-value="experienced" data-name="Experienced" role="radio"><span>Experienced<small>5 to 10 years</small></span><i class="pl-radio"></i></button>
+                        <button type="button" class="pl-opt" data-set="experience_level" data-value="intermediate" data-name="Intermediate" role="radio"><span>Intermediate<small>2 to 5 years</small></span><i class="pl-radio"></i></button>
+                        <button type="button" class="pl-opt" data-set="experience_level" data-value="beginner" data-name="Beginner" role="radio"><span>Beginner<small>Up to 2 years</small></span><i class="pl-radio"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="pl-dd" data-dd="location">
+            <div class="pl-qf t-orange">
+                <button type="button" class="pl-qf-main" data-open="location" aria-haspopup="dialog" aria-expanded="false" aria-controls="pl-p-location">
+                    <span class="pl-ico"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i></span>
+                    <span class="pl-qf-t" data-val="location" data-label="Location">Location</span>
+                    <i class="bi bi-chevron-down pl-chev" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="pl-qf-x" data-clear="state lga" aria-label="Clear location filter" hidden><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+            </div>
+            <div class="pl-panel" id="pl-p-location" role="dialog" aria-label="Location" hidden>
+                <div class="pl-panel-head"><h2 class="pl-panel-title">Location</h2><button type="button" class="pl-x" data-close aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
+                <div class="pl-panel-body">
+                    <label class="pl-f"><span>State</span>
+                        <select class="form-select" data-k="state">
+                            <option value="">All states</option>
+                            {% for st in states %}<option value="{{ st.id }}" {% if request.GET.state == st.id|stringformat:"s" %}selected{% endif %}>{{ st.name }}</option>{% endfor %}
+                        </select></label>
+                    <label class="pl-f"><span>Local government (LGA)</span>
+                        <select class="form-select" data-k="lga" {% if not request.GET.state %}disabled{% endif %}>
+                            <option value="">All LGAs</option>
+                            {% for lga in lgas %}<option value="{{ lga.id }}" {% if request.GET.lga == lga.id|stringformat:"s" %}selected{% endif %}>{{ lga.name }}</option>{% endfor %}
+                        </select></label>
+                </div>
+                <div class="pl-panel-foot">
+                    <button type="button" class="pl-btn pl-btn--ghost" data-act="clear" data-keys="state lga">Clear</button>
+                    <button type="button" class="pl-btn pl-btn--grow" data-act="apply-location">Show results</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="pl-dd" data-dd="verified">
+            <div class="pl-qf t-green">
+                <button type="button" class="pl-qf-main" data-toggle="verified_only verified_business" aria-pressed="false">
+                    <span class="pl-ico"><i class="bi bi-patch-check-fill" aria-hidden="true"></i></span>
+                    <span class="pl-qf-t" data-val="verified" data-label="Verified">Verified</span>
+                </button>
+                <button type="button" class="pl-qf-x" data-clear="verified_only verified_business" aria-label="Clear verified filter" hidden><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+            </div>
+        </div>
+    </section>
+
+    <div class="pl-backdrop" id="plBackdrop" hidden></div>
+
+    {# Mini bar: shows under the navbar once the quick filters have scrolled away (phones, tablets) #}
+    <div class="pl-mini" id="plMini" aria-label="Quick access">
+        <button type="button" data-open="location"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i><span data-val="location" data-label="Location">Location</span></button>
+        <button type="button" data-open="sort"><i class="bi bi-arrow-down-up" aria-hidden="true"></i><span data-val="sort" data-label="Smart sort">Smart sort</span></button>
+        <button type="button" class="pl-mini-pri" data-bs-toggle="offcanvas" data-bs-target="#mobileFilters" aria-controls="mobileFilters"><i class="bi bi-sliders2" aria-hidden="true"></i>Filters <span class="pl-badge" id="plMiniBadge"></span></button>
     </div>
 
-    {# Global banners #}
     {% if global_banners %}
     {% include 'banner.html' with banners=global_banners %}
     {% endif %}
 
-    {# MAIN LAYOUT #}
+    {# Pagination data for infinite scroll (read by services.js) #}
+    <script type="application/json" id="pagination-data">
+    {
+        "current_page": {% if page_obj %}{{ page_obj.number }}{% else %}1{% endif %},
+        "has_next": {% if page_obj %}{% if page_obj.has_next %}true{% else %}false{% endif %}{% else %}false{% endif %}
+    }
+    </script>
+
+    {# ═════ Main layout ═════ #}
     <div class="row g-3 g-lg-4">
 
-        {# Desktop sidebar #}
-        <div class="col-lg-3 d-none d-lg-block">
-            <div class="srl-sidebar-wrap">
+        <aside class="col-lg-3 d-none d-lg-block" aria-label="All filters">
+            <div class="pl-sidebar-wrap">
                 {% include 'unified_filter_sidebar.html' with item_type='services' filter_action_url=request.path categories=categories states=states lgas=lgas selected_category=selected_category selected_state=selected_state selected_lga=selected_lga subcategories=subcategories brands=brands %}
             </div>
-        </div>
+        </aside>
 
-        {# Results column #}
-        <div class="col-12 col-lg-9">
+        <section class="col-12 col-lg-9 pl-results" aria-label="Service results">
 
-            <div class="srl-results-meta">
-                {% if services %}
-                <span class="srl-results-count">
-                    {{ services|length }} service{{ services|length|pluralize }}
-                    {% if request.GET.query %}for &ldquo;{{ request.GET.query }}&rdquo;{% endif %}
-                </span>
-                {% elif request.GET.query or selected_category %}
-                <span class="srl-results-count srl-results-count--empty">
-                    No services found{% if request.GET.query %} for &ldquo;{{ request.GET.query }}&rdquo;{% endif %}
-                </span>
-                {% endif %}
+            {# Results bar: filters button (phones), search tag, reset, and sorting #}
+            <div class="pl-bar">
+                <button type="button" class="pl-fbtn d-lg-none" data-bs-toggle="offcanvas" data-bs-target="#mobileFilters" aria-controls="mobileFilters">
+                    <i class="bi bi-sliders2" aria-hidden="true"></i>Filters <span class="pl-badge" id="plFilterBadge"></span>
+                </button>
+                <div class="pl-bar-tags" id="plTags" hidden>
+                    <span class="pl-qtag" id="plQuery" hidden><i class="bi bi-search" aria-hidden="true"></i><span id="plQueryText"></span><button type="button" id="plQueryX" aria-label="Clear search"><i class="bi bi-x-lg" aria-hidden="true"></i></button></span>
+                    <a href="{% url 'services:list' %}" class="pl-reset" id="plReset" hidden>Reset all</a>
+                </div>
+
+                <div class="pl-dd pl-dd--sort" data-dd="sort">
+                    <div class="pl-qf t-navy">
+                        <button type="button" class="pl-qf-main" data-open="sort" aria-haspopup="dialog" aria-expanded="false" aria-controls="pl-p-sort">
+                            <span class="pl-ico"><i class="bi bi-arrow-down-up" aria-hidden="true"></i></span>
+                            <span class="pl-qf-t" data-val="sort" data-label="Smart sort">Smart sort</span>
+                            <i class="bi bi-chevron-down pl-chev" aria-hidden="true"></i>
+                        </button>
+                    </div>
+            <div class="pl-panel" id="pl-p-sort" role="dialog" aria-label="Sort by" hidden>
+                <div class="pl-panel-head"><h2 class="pl-panel-title">Sort by</h2><button type="button" class="pl-x" data-close aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
+                <div class="pl-panel-body">
+                    <div class="pl-opts" role="radiogroup" aria-label="Sort order">
+                        <p class="pl-group">Best match</p>
+                        <button type="button" class="pl-opt" data-set="sort" data-value="smart" data-name="Smart sort" role="radio"><span>Smart sort</span><i class="pl-radio"></i></button>
+                        <p class="pl-group">Date</p>
+                        <button type="button" class="pl-opt" data-set="sort" data-value="-created_at" data-name="Newest first" role="radio"><span>Newest first</span><i class="pl-radio"></i></button>
+                        <p class="pl-group">Price</p>
+                        <button type="button" class="pl-opt" data-set="sort" data-value="price_low" data-name="Low to high" role="radio"><span>Low to high</span><i class="pl-radio"></i></button>
+                        <button type="button" class="pl-opt" data-set="sort" data-value="price_high" data-name="High to low" role="radio"><span>High to low</span><i class="pl-radio"></i></button>
+                        <p class="pl-group">Quality</p>
+                        <button type="button" class="pl-opt" data-set="sort" data-value="rating" data-name="Highest rated" role="radio"><span>Highest rated</span><i class="pl-radio"></i></button>
+                    </div>
+                </div>
+            </div>
+                </div>
             </div>
 
-            <div class="row row-cols-2 row-cols-sm-2 row-cols-md-3 row-cols-lg-3 row-cols-xl-4 g-2 g-md-3"
-                 id="services-grid">
+            {% comment %}Result count: hidden for now, to be added later.
+            {% if services %}{{ services|length }} service{{ services|length|pluralize }}{% endif %}
+            {% endcomment %}
+
+            <div class="row row-cols-2 row-cols-sm-2 row-cols-md-3 row-cols-lg-3 row-cols-xl-4 g-2 g-md-3" id="services-grid">
                 {% for service in services %}
                 <div class="col">
                     {% include 'services/service_card.html' with service=service %}
                 </div>
                 {% empty %}
                 <div class="col-12">
-                    <div class="srl-empty-state">
+                    <div class="pl-empty t-navy">
                         {% if request.GET.query or selected_category or request.GET.service_type or request.GET.experience_level %}
-                            <i class="bi bi-search srl-empty-icon"></i>
-                            <h5 class="srl-empty-title">No services match your filters</h5>
-                            <p class="srl-empty-text">Try adjusting or clearing your filters to see more results.</p>
-                            <div class="srl-empty-actions">
-                                <a href="{% url 'services:list' %}" class="srl-empty-btn srl-empty-btn--outline">
-                                    Clear all filters
-                                </a>
-                                <button type="button"
-                                        class="srl-empty-btn srl-empty-btn--primary d-lg-none"
-                                        data-bs-toggle="offcanvas"
-                                        data-bs-target="#mobileFilters">
-                                    <i class="bi bi-sliders me-1"></i>Adjust Filters
-                                </button>
+                            <span class="pl-ico"><i class="bi bi-search" aria-hidden="true"></i></span>
+                            <h2>No services match your filters</h2>
+                            <p>Try adjusting or clearing your filters to see more results.</p>
+                            <div class="pl-empty-actions">
+                                <a href="{% url 'services:list' %}" class="pl-btn pl-btn--ghost">Clear all filters</a>
+                                <button type="button" class="pl-btn d-lg-none" data-bs-toggle="offcanvas" data-bs-target="#mobileFilters"><i class="bi bi-sliders2" aria-hidden="true"></i>Adjust filters</button>
                             </div>
                         {% else %}
-                            <i class="bi bi-tools srl-empty-icon"></i>
-                            <h5 class="srl-empty-title">Browse Services</h5>
-                            <p class="srl-empty-text">Pick a category above, use the filters, or list your own service.</p>
+                            <span class="pl-ico"><i class="bi bi-tools" aria-hidden="true"></i></span>
+                            <h2>Browse services</h2>
+                            <p>Pick a category above, use the filters, or list your own service.</p>
                             {% if user.is_authenticated %}
-                            <a href="{% url 'services:create' %}" class="srl-empty-btn srl-empty-btn--primary">
-                                <i class="bi bi-plus-lg me-1"></i>List Your Service
-                            </a>
+                            <div class="pl-empty-actions"><a href="{% url 'services:create' %}" class="pl-btn"><i class="bi bi-plus-lg" aria-hidden="true"></i>List your service</a></div>
                             {% endif %}
                         {% endif %}
                     </div>
@@ -656,70 +744,300 @@
                 {% endfor %}
             </div>
 
-            {# Load more + infinite scroll indicators #}
+            {# Load more + infinite scroll indicators (hooks used by services.js) #}
             {% if page_obj.has_next %}
             <div class="text-center mt-4">
-                <button class="btn btn-outline-primary" id="loadMoreServices"
-                        data-page="{{ page_obj.next_page_number }}">
-                    <i class="bi bi-arrow-down-circle me-2"></i>Load More Services
+                <button type="button" class="pl-btn" id="loadMoreServices" data-page="{{ page_obj.next_page_number }}">
+                    <i class="bi bi-arrow-down-circle" aria-hidden="true"></i>Load more services
                 </button>
             </div>
             {% endif %}
 
-            <div class="srl-loading-container" id="loading-indicator" style="display:none;">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <p class="srl-loading-text">Loading more services…</p>
+            <div class="pl-loading" id="loading-indicator" style="display:none;">
+                <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>
+                <p>Loading more services…</p>
             </div>
 
-            <div class="srl-end-of-results" id="end-of-results" style="display:none;">
-                <i class="bi bi-check-circle-fill"></i>
+            <div class="pl-end" id="end-of-results" style="display:none;">
+                <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
                 <p>You've seen all available services</p>
                 <small>Try adjusting your filters to find more options</small>
             </div>
+        </section>
+    </div>
 
-        </div>{# /col results #}
-    </div>{# /row #}
-
-</div>{# /srl-page #}
+</div>{# /pl #}
 
 <script>
 (function () {
     'use strict';
 
-    document.addEventListener('DOMContentLoaded', function () {
+    var root = document.getElementById('plRoot');
+    var PRICE = { min_price: 1, max_price: 1, price_range: 1 };
+    var SKIP = { page: 1, sort: 1 };
 
-        /* Badge count — excludes 'page' and 'sort' */
-        var SKIP = { page: true, sort: true };
-        var params = new URLSearchParams(window.location.search);
-        var count = 0;
-        params.forEach(function (val, key) {
-            if (!SKIP[key] && val.trim()) { count++; }
+    function group(k) {
+        if (PRICE[k]) { return 'price'; }
+        if (k === 'lga') { return 'state'; }
+        if (k === 'verified_only' || k === 'verified_business') { return 'verified'; }
+        return k;
+    }
+    function params() { return new URLSearchParams(window.location.search); }
+    function go(p) {
+        p.delete('page');
+        var q = p.toString();
+        window.location.href = window.location.pathname + (q ? '?' + q : '');
+    }
+    function short(n) { n = Number(n); return n >= 1000000 ? '₦' + (n / 1000000) + 'M' : (n >= 1000 ? '₦' + (n / 1000) + 'k' : '₦' + n); }
+    function q$(s, c) { return (c || document).querySelector(s); }
+    function qa$(s, c) { return [].slice.call((c || document).querySelectorAll(s)); }
+    function sheetMode() { return window.matchMedia('(max-width: 991.98px)').matches; }
+    function countActive() {
+        var seen = {};
+        params().forEach(function (v, k) {
+            if (SKIP[k] || !v.trim()) { return; }
+            seen[group(k)] = true;
+        });
+        return Object.keys(seen).length;
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var p = params();
+        var count = countActive();
+
+        /* ── Badges, reset, search tag ──────────────────────────────────── */
+        ['plFilterBadge', 'plMiniBadge', 'offcanvasBadge'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) { el.textContent = count ? String(count) : ''; }
+        });
+        var sheetClear = document.getElementById('sheetClearAll');
+        if (sheetClear && count) { sheetClear.hidden = false; }
+        var tagsBox = document.getElementById('plTags');
+        if (tagsBox && count) { tagsBox.hidden = false; }
+        var keepSort = p.get('sort');
+        var reset = document.getElementById('plReset');
+        if (reset && count) {
+            reset.hidden = false;
+            reset.href = root.dataset.listUrl + (keepSort ? '?sort=' + encodeURIComponent(keepSort) : '');
+        }
+        if (p.get('query')) {
+            document.getElementById('plQueryText').textContent = '“' + p.get('query') + '”';
+            document.getElementById('plQuery').hidden = false;
+            document.getElementById('plQueryX').addEventListener('click', function () { var q = params(); q.delete('query'); go(q); });
+        }
+
+        /* ── Button values: what is chosen shows on the button itself ───── */
+        function stateText(name) {
+            var s = q$('.pl-panel [data-k="' + name + '"]');
+            return s && s.selectedIndex > 0 ? s.options[s.selectedIndex].text : '';
+        }
+        function setVal(name, text, active) {
+            qa$('[data-val="' + name + '"]').forEach(function (el) { el.textContent = active ? text : (el.dataset.label || text); });
+            qa$('.pl-dd[data-dd="' + name + '"] .pl-qf').forEach(function (b) { b.classList.toggle('has-val', !!active); });
+            var x = q$('.pl-dd[data-dd="' + name + '"] .pl-qf-x');
+            if (x) { x.hidden = !active; }
+        }
+        var lo = p.get('min_price'), hi = p.get('max_price');
+        var loc = [stateText('lga'), stateText('state')].filter(Boolean);
+        setVal('location', loc.join(', '), loc.length);
+        setVal('price', lo && hi ? short(lo) + ' – ' + short(hi) : (lo ? short(lo) + '+' : 'Under ' + short(hi)), lo || hi);
+        qa$('.pl-opt[data-price]').forEach(function (b) {
+            var on = (b.dataset.min || '') === (lo || '') && (b.dataset.max || '') === (hi || '');
+            b.classList.toggle('is-on', on);
+            b.setAttribute('aria-checked', on ? 'true' : 'false');
         });
 
-        if (count > 0) {
-            var str = String(count);
-            ['filterBadge', 'fabBadge', 'offcanvasBadge'].forEach(function (id) {
-                var el = document.getElementById(id);
-                if (el) { el.textContent = str; }
+        /* single-choice dropdowns: read the chosen row straight from the URL */
+        qa$('.pl-dd').forEach(function (dd) {
+            var rows = qa$('.pl-opt[data-set]', dd);
+            if (!rows.length) { return; }
+            var active = false, text = '';
+            rows.forEach(function (b) {
+                var key = b.dataset.set, cur = p.get(key), on;
+                if (key === 'sort') { on = b.dataset.value === (cur || 'smart'); }
+                else { on = b.dataset.value ? (cur !== null && (cur === b.dataset.value || cur === b.dataset.alt)) : !cur; }
+                b.classList.toggle('is-on', on);
+                b.setAttribute('aria-checked', on ? 'true' : 'false');
+                if (on) {
+                    text = b.dataset.name || text;
+                    if (b.dataset.value && !(key === 'sort' && b.dataset.value === 'smart')) { active = true; }
+                }
             });
+            setVal(dd.dataset.dd, text, active);
+        });
+
+        /* one-tap toggles (verified) */
+        qa$('[data-toggle]').forEach(function (btn) {
+            var keys = btn.dataset.toggle.split(' ');
+            var on = keys.some(function (k) { return p.get(k) === 'true'; });
+            var dd = btn.closest('.pl-dd');
+            q$('.pl-qf', dd).classList.toggle('has-val', on);
+            var x = q$('.pl-qf-x', dd);
+            if (x) { x.hidden = !on; }
+            btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+            btn.addEventListener('click', function () {
+                var q = params();
+                keys.forEach(function (k) { if (on) { q.delete(k); } else { q.set(k, 'true'); } });
+                go(q);
+            });
+        });
+
+        /* × on a button clears just that filter */
+        qa$('.pl-qf-x').forEach(function (x) {
+            x.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var q = params();
+                x.dataset.clear.split(' ').forEach(function (k) { q.delete(k); });
+                go(q);
+            });
+        });
+
+        /* ── Dropdown panels: popover on desktop, sheet on phones/tablets ── */
+        var backdrop = document.getElementById('plBackdrop');
+        var current = null, returnTo = null;
+
+        function openDD(name, trigger) {
+            closeDD(true);
+            var dd = q$('.pl-dd[data-dd="' + name + '"]');
+            if (!dd) { return; }
+            q$('.pl-panel', dd).hidden = false;
+            dd.classList.add('is-open');
+            q$('.pl-qf-main', dd).setAttribute('aria-expanded', 'true');
+            current = dd;
+            returnTo = trigger || q$('.pl-qf-main', dd);
+            if (sheetMode()) { backdrop.hidden = false; document.documentElement.classList.add('pl-lock'); }
+            else {
+                var f = q$('select:not(:disabled), input', dd) || q$('.pl-opt.is-on', dd) || q$('.pl-opt', dd);
+                if (f) { f.focus({ preventScroll: true }); }
+            }
+        }
+        function closeDD(silent) {
+            if (!current) { return; }
+            q$('.pl-panel', current).hidden = true;
+            current.classList.remove('is-open');
+            q$('.pl-qf-main', current).setAttribute('aria-expanded', 'false');
+            backdrop.hidden = true;
+            document.documentElement.classList.remove('pl-lock');
+            var back = returnTo;
+            current = null;
+            if (!silent && back && back.focus) { back.focus({ preventScroll: true }); }
+        }
+        qa$('[data-open]').forEach(function (t) {
+            t.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var name = t.dataset.open;
+                if (current && current.dataset.dd === name) { closeDD(); } else { openDD(name, t); }
+            });
+        });
+        qa$('[data-close]').forEach(function (b) { b.addEventListener('click', function () { closeDD(); }); });
+        backdrop.addEventListener('click', function () { closeDD(); });
+        document.addEventListener('click', function (e) {
+            if (current && !current.contains(e.target) && !e.target.closest('[data-open]')) { closeDD(true); }
+        });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { closeDD(); } });
+        window.matchMedia('(max-width: 991.98px)').addEventListener('change', function () { closeDD(true); });
+
+        /* ── Panel actions ──────────────────────────────────────────────── */
+        function val(name) { var e = q$('.pl-panel [data-k="' + name + '"]'); return e ? e.value : ''; }
+
+        var stateSel = q$('.pl-panel [data-k="state"]');
+        var lgaSel = q$('.pl-panel [data-k="lga"]');
+        if (stateSel && lgaSel) {
+            stateSel.addEventListener('change', function () {
+                lgaSel.innerHTML = '<option value="">All LGAs</option>';
+                lgaSel.disabled = true;
+                if (!stateSel.value) { return; }
+                fetch('/api/lgas/' + stateSel.value + '/')
+                    .then(function (r) { return r.json(); })
+                    .then(function (list) {
+                        list.forEach(function (l) { lgaSel.appendChild(new Option(l.name, l.id)); });
+                        lgaSel.disabled = !list.length;
+                    })
+                    .catch(function () {});
+            });
+            if (p.get('state') && lgaSel.options.length < 2) { stateSel.dispatchEvent(new Event('change')); }
+        }
+        qa$('.pl-panel input').forEach(function (i) {
+            i.addEventListener('keydown', function (e) {
+                var apply = q$('[data-act^="apply"]', i.closest('.pl-panel'));
+                if (e.key === 'Enter' && apply) { e.preventDefault(); apply.click(); }
+            });
+        });
+        qa$('[data-act]').forEach(function (b) {
+            b.addEventListener('click', function () {
+                var q = params(), act = b.dataset.act;
+                if (act === 'clear') { b.dataset.keys.split(' ').forEach(function (k) { q.delete(k); }); }
+                else if (act === 'apply-location') {
+                    ['state', 'lga'].forEach(function (k) { q.delete(k); });
+                    var s = val('state'), l = val('lga');
+                    if (s) { q.set('state', s); if (l) { q.set('lga', l); } }
+                } else if (act === 'apply-price') {
+                    ['min_price', 'max_price', 'price_range'].forEach(function (k) { q.delete(k); });
+                    if (val('min_price')) { q.set('min_price', val('min_price')); }
+                    if (val('max_price')) { q.set('max_price', val('max_price')); }
+                }
+                go(q);
+            });
+        });
+        qa$('.pl-opt[data-price]').forEach(function (b) {
+            b.addEventListener('click', function () {
+                var q = params();
+                ['min_price', 'max_price', 'price_range'].forEach(function (k) { q.delete(k); });
+                if (b.dataset.min) { q.set('min_price', b.dataset.min); }
+                if (b.dataset.max) { q.set('max_price', b.dataset.max); }
+                go(q);
+            });
+        });
+        qa$('.pl-opt[data-set]').forEach(function (b) {
+            b.addEventListener('click', function () {
+                var q = params(), k = b.dataset.set, v = b.dataset.value;
+                if (!v || (k === 'sort' && v === 'smart')) { q.delete(k); } else { q.set(k, v); }
+                if (b.dataset.reset) { b.dataset.reset.split(' ').forEach(function (r) { q.delete(r); }); }
+                go(q);
+            });
+        });
+
+        /* ── Category row: collapsed to the chosen category, one tap to switch ── */
+        var cats = document.getElementById('plCats');
+        var prev = document.getElementById('plPrev'), next = document.getElementById('plNext');
+        if (cats && prev && next) {
+            var active = q$('.pl-cat.is-on', cats);
+            if (active) { cats.scrollLeft = active.offsetLeft - (cats.clientWidth - active.clientWidth) / 2; }
+            var arrows = function () {
+                var over = cats.scrollWidth > cats.clientWidth + 4;
+                prev.hidden = !over || cats.scrollLeft <= 4;
+                next.hidden = !over || cats.scrollLeft + cats.clientWidth >= cats.scrollWidth - 4;
+            };
+            var wrap = document.getElementById('plCatsWrap'), more = document.getElementById('plMore');
+            if (wrap && more) {
+                more.addEventListener('click', function () {
+                    var collapsed = wrap.hasAttribute('data-collapsed');
+                    if (collapsed) { wrap.removeAttribute('data-collapsed'); } else { wrap.setAttribute('data-collapsed', ''); }
+                    more.setAttribute('aria-expanded', collapsed ? 'true' : 'false');
+                    document.getElementById('plMoreText').textContent = collapsed ? 'Show less' : 'All categories';
+                    cats.scrollLeft = 0;
+                    arrows();
+                });
+            }
+            prev.addEventListener('click', function () { cats.scrollBy({ left: -cats.clientWidth * 0.8, behavior: 'smooth' }); });
+            next.addEventListener('click', function () { cats.scrollBy({ left: cats.clientWidth * 0.8, behavior: 'smooth' }); });
+            cats.addEventListener('scroll', arrows, { passive: true });
+            window.addEventListener('resize', arrows);
+            arrows();
         }
 
-        /* Sort select */
-        var sortSelect = document.getElementById('sortSelect');
-        if (sortSelect) {
-            sortSelect.addEventListener('change', function () {
-                var url = new URL(window.location.href);
-                if (this.value === 'smart') {
-                    url.searchParams.delete('sort');
-                } else {
-                    url.searchParams.set('sort', this.value);
-                }
-                url.searchParams.delete('page');
-                window.location.href = url.toString();
-            });
+        /* ── Mini bar once the quick filters have scrolled away ─────────── */
+        var watch = document.getElementById('plQf'), mini = document.getElementById('plMini');
+        if (watch && mini && 'IntersectionObserver' in window) {
+            new IntersectionObserver(function (entries) {
+                var e = entries[0];
+                mini.classList.toggle('is-on', !e.isIntersecting && e.boundingClientRect.bottom < 80);
+            }, { rootMargin: '-70px 0px 0px 0px' }).observe(watch);
         }
+
+        /* An unmatched category code would leave the title empty: fall back */
+        var h1 = q$('.pl-title');
+        if (h1 && !h1.textContent.trim()) { h1.textContent = 'Services'; }
 
     });
 }());

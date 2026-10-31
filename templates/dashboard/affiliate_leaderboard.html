@@ -3,729 +3,307 @@
 
 {% block title %}Affiliate Leaderboard{% endblock %}
 
+{% block page_css %}
+<style>
+/* Highlight colour for hover, selection and links: navy in light mode, orange in dark mode (no blue) */
+:root, [data-bs-theme="light"] { --hl: var(--primary-color); --hl-edge: var(--primary-color); --hl-soft: var(--primary-soft); }
+[data-bs-theme="dark"] { --hl: var(--accent-text); --hl-edge: var(--accent-color); --hl-soft: var(--accent-soft); }
+/* Buttons: same pill as login, profile and the wallet pages. Hover fills with the brand orange. */
+.ox-btn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-4); border: 2px solid var(--bs-white); border-radius: var(--radius-full); background: var(--primary-color); color: var(--bs-white); font: inherit; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); text-align: center; text-decoration: none; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); cursor: pointer; touch-action: manipulation; }
+.ox-btn:disabled { opacity: .7; cursor: default; }
+.ox-btn .spinner-border { width: 1rem; height: 1rem; border-width: .15em; }
+.ox-btn-sm { min-height: 2.5rem; width: auto; padding: 0 var(--sp-4); font-size: var(--font-size-sm); }
+.ox-btn.ox-btn-neutral { border: 1px solid var(--border-color); background: var(--card-background); color: var(--text-primary); box-shadow: none; }
+.ox-btn.ox-btn-light { border-color: var(--bs-white); background: var(--bs-white); color: var(--primary-color); box-shadow: none; }
+.ox-btn.ox-btn-ghost { border-color: var(--bs-white); background: transparent; color: var(--bs-white); box-shadow: none; }
+.ox-btn:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+@media (hover: hover) {
+    .ox-btn.ox-btn:not(:disabled):hover { background: var(--accent-color); color: var(--on-accent); }
+    .ox-btn.ox-btn-neutral:not(:disabled):hover { background: var(--hover-bg); color: var(--text-primary); border-color: var(--hl-edge); }
+}
+/* Shared core */
+.ox {
+    --ox-navy: var(--primary-color);
+    --ox-orange: var(--accent-color);
+    --ox-green: var(--bs-success, var(--primary-color));
+    --ox-red: var(--bs-danger, var(--accent-color));
+    --ox-purple: var(--bs-purple, var(--primary-color));
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+    line-height: var(--lh-body);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-4));
+}
+.ox a { text-decoration: none; }
+.ox p { margin: 0; }
+.ox [hidden] { display: none !important; }
+.t-navy { --tint: var(--ox-navy); } .t-orange { --tint: var(--ox-orange); } .t-green { --tint: var(--ox-green); } .t-red { --tint: var(--ox-red); } .t-purple { --tint: var(--ox-purple); }
+.ox-ico { display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-lg); }
+.t-orange .ox-ico, .t-orange.ox-ico { color: var(--on-accent); }
+.ox-wash { position: relative; isolation: isolate; }
+.ox-wash::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .ox-wash::before { opacity: .09; }
+.ox a:focus-visible, .ox button:focus-visible, .ox summary:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+
+/* Header */
+.ox-head { margin: -2rem -1rem var(--gap-sections); padding: calc(2rem + var(--sp-4)) var(--sp-4) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); }
+.ox-head-in { display: grid; gap: var(--sp-4); max-width: var(--ox-w); margin: 0 auto; }
+.ox-head-l { display: flex; align-items: center; gap: var(--sp-2); }
+.ox-back { display: grid; place-items: center; flex: none; width: 2.75rem; height: 2.75rem; margin-left: calc(var(--sp-2) * -1); border-radius: var(--radius-full); color: var(--bs-white); font-size: var(--font-size-xl); }
+.ox-title { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-tight); }
+.ox-sub { margin: var(--sp-1) 0 0; font-size: var(--font-size-sm); color: rgba(255, 255, 255, .85); }
+.ox-bal { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--pad-l); border-radius: var(--radius-lg); background: var(--card-background); color: var(--text-primary); }
+.ox-bal-l { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.ox-total { margin: 0; font-size: var(--font-size-3xl); font-weight: 600; line-height: var(--lh-tight); }
+.ox-link { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1); min-height: 2.75rem; padding: 0 var(--sp-2); color: var(--hl); font-size: var(--font-size-sm); font-weight: 600; }
+@media (hover: hover) { .ox-link:hover { text-decoration: underline; } }
+
+/* Layout and cards (same as the profile page: icon, title, one-line subtitle) */
+.ox-main { display: flex; flex-direction: column; gap: var(--gap-sections); max-width: var(--ox-w); margin: 0 auto; }
+.ox-card { padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); }
+@media (min-width: 768px) { .ox-card { padding: var(--pad-l); } }
+.ox-sec-h { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.ox-sec-t { flex: 1 1 auto; min-width: 0; }
+.ox-h2 { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-tight); }
+.ox-card-sub { margin: var(--sp-1) 0 0; font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+.ox-pill { display: inline-flex; align-items: center; gap: var(--sp-1); padding: 0 var(--sp-2); border: 1px solid var(--tint); border-radius: var(--radius-full); font-size: var(--font-size-xs); font-weight: 600; line-height: var(--lh-body); white-space: nowrap; }
+.ox-alert { display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-md); font-size: var(--font-size-sm); line-height: var(--lh-snug); --tint: var(--ox-red); }
+.ox-alert i { margin-top: 1px; color: var(--error-text); }
+.ox-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-cards); }
+.ox-tile { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); line-height: var(--lh-tight); }
+.ox-tile .ox-ico { width: 2rem; height: 2rem; margin-bottom: var(--sp-1); color: var(--bs-white); font-size: var(--font-size-lg); }
+.ox-tile .t-orange.ox-ico { color: var(--on-accent); }
+.ox-tile b { font-size: var(--font-size-xl); font-weight: 600; overflow-wrap: anywhere; }
+.ox-tile span { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.ox-tile small { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.ox-dl { margin: 0; border: 1px solid var(--border-color); border-radius: var(--r-card-s); }
+.ox-dl div { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3); border-top: 1px solid var(--border-color); }
+.ox-dl div:first-child { border-top: 0; }
+.ox-dl dt { font-size: var(--font-size-sm); font-weight: 400; color: var(--text-secondary); }
+.ox-dl dd { margin: 0; font-size: var(--font-size-base); font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+@media (hover: hover) { a.ox-tile:hover, a.ox-row:hover { border-color: var(--hl-edge); } }
+.ox-row { display: flex; align-items: center; gap: var(--sp-3); min-height: 2.75rem; padding: var(--pad-s) var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-base); font-weight: 600; }
+.ox-row .ox-ico { width: 2rem; height: 2rem; }
+.ox-row .bi-chevron-right { margin-left: auto; color: var(--text-secondary); }
+@media (min-width: 768px) { .ox-head-in { gap: var(--sp-5); } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+/* Status pills: one tint per state. The icon and the label carry the meaning, not the colour alone. */
+.st { --tint: var(--text-secondary); }
+.st-pending { --tint: var(--ox-orange); }
+.st-under_review, .st-approved, .st-processing { --tint: var(--hl-edge); }
+.st-completed { --tint: var(--ox-green); }
+.st-rejected, .st-failed { --tint: var(--ox-red); }
+.ox { --pos: #1e7e34; }
+[data-bs-theme="dark"] .ox { --pos: #4cc16a; }
+.st-active, .st-available { --tint: var(--ox-green); }
+.af-tabs { display: flex; gap: var(--sp-1); overflow-x: auto; padding: var(--sp-1); border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); scrollbar-width: none; }
+.af-tabs::-webkit-scrollbar { display: none; }
+.af-tab { flex: none; display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 2.5rem; padding: 0 var(--sp-3); border-radius: var(--radius-full); color: var(--text-secondary); font-size: var(--font-size-sm); font-weight: 600; white-space: nowrap; }
+.af-tab[aria-current="page"] { background: var(--primary-color); color: var(--bs-white); }
+@media (hover: hover) { .af-tab:not([aria-current]):hover { background: var(--hover-bg); color: var(--text-primary); } }
+.af-list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; border: 1px solid var(--border-color); border-radius: var(--r-card-s); }
+.af-li { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; padding: var(--sp-3); border-top: 1px solid var(--border-color); }
+.af-li:first-child { border-top: 0; }
+.af-li .ox-ico { width: 2rem; height: 2rem; font-size: var(--font-size-lg); }
+.af-li-t { flex: 1 1 auto; min-width: 0; line-height: var(--lh-snug); }
+.af-li-t b { display: block; font-size: var(--font-size-base); font-weight: 600; overflow-wrap: anywhere; }
+.af-li-t span { display: block; font-size: var(--font-size-sm); color: var(--text-secondary); overflow-wrap: anywhere; }
+.af-li-r { display: flex; flex-direction: column; align-items: flex-end; gap: var(--sp-1); flex: none; text-align: right; line-height: var(--lh-snug); }
+.af-li-r b { font-size: var(--font-size-base); font-weight: 600; font-variant-numeric: tabular-nums; }
+.af-li-r small { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.af-pos { color: var(--pos); }
+.af-empty { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); padding: var(--sp-5) var(--sp-3); text-align: center; font-size: var(--font-size-base); color: var(--text-secondary); }
+.af-empty .ox-ico { width: 3rem; height: 3rem; font-size: var(--font-size-3xl); }
+.af-rank { --tint: var(--text-secondary); flex: none; min-width: 2.75rem; justify-content: center; }
+.af-rank.is-1 { --tint: var(--ox-orange); }
+.af-rank.is-2, .af-rank.is-3 { --tint: var(--hl-edge); }
+.af-li.is-me { background: var(--hl-soft); box-shadow: inset 3px 0 0 var(--hl-edge); }
+.af-av { flex: none; width: 2rem; height: 2rem; border-radius: var(--radius-full); object-fit: cover; }
+.af-av-ph { display: grid; place-items: center; background: var(--primary-color); color: var(--bs-white); font-size: var(--font-size-base); font-weight: 600; }
+.ox { --ox-w: 56rem; }
+
+.lb-bal { flex-wrap: wrap; }
+.lb-bal .ox-btn { width: auto; }
+.lb-bal-m { display: block; margin-top: var(--sp-1); font-size: var(--font-size-sm); color: var(--text-secondary); }
+
+.lb-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-fields); }
+@media (min-width: 600px) { .lb-form { grid-template-columns: repeat(2, minmax(0, 1fr)) auto; align-items: end; } }
+.lb-field { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.lb-lab { font-size: var(--font-size-sm); font-weight: 600; }
+.lb-ctl { box-sizing: border-box; width: 100%; min-height: var(--h-control-lg); padding: 0 2rem 0 var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--background-color); color: var(--text-primary); font: inherit; font-size: var(--font-size-base); }
+.lb-ctl:focus { outline: 2px solid var(--accent-color); outline-offset: 1px; border-color: var(--accent-color); box-shadow: none; background-color: var(--background-color); color: var(--text-primary); }
+[data-bs-theme="dark"] .lb-ctl { color-scheme: dark; }
+@supports (-webkit-touch-callout: none) { .lb-ctl { font-size: 16px; } }
+@media (min-width: 600px) { .lb-form .ox-btn { width: auto; min-width: 9rem; } }
+
+.lb-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-cards); }
+.lb-stats .ox-tile:nth-child(3) { grid-column: 1 / -1; }
+@media (min-width: 600px) { .lb-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } .lb-stats .ox-tile:nth-child(3) { grid-column: auto; } }
+
+.lb-me { display: flex; flex-direction: column; gap: var(--sp-3); border-color: var(--hl-edge); background: var(--hl-soft); }
+.lb-me-h { display: flex; align-items: center; gap: var(--sp-3); }
+.lb-me .ox-dl { background: var(--card-background); }
+
+@media (max-width: 420px) {
+    .af-li { flex-wrap: wrap; }
+    .af-li-t { flex: 1 1 6rem; }
+    .af-li-r { flex: 1 1 100%; flex-direction: row; align-items: baseline; justify-content: space-between; padding-top: var(--sp-2); border-top: 1px dashed var(--border-color); }
+}
+.lb-cta { --tint: var(--ox-orange); display: flex; flex-direction: column; gap: var(--sp-3); }
+.lb-cta .ox-sec-h { margin-bottom: 0; }
+.lb-cta p { font-size: var(--font-size-base); color: var(--text-secondary); }
+@media (min-width: 600px) { .lb-cta .ox-btn { width: auto; align-self: flex-start; } }
+</style>
+{% endblock %}
+
 {% block 'Body' %}
-<div class="affiliate-container">
-    <div class="container-fluid py-3">
-        <!-- Header -->
-        <div class="affiliate-header mb-3">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+<div class="ox">
+
+    <header class="ox-head">
+        <div class="ox-head-in">
+            <div class="ox-head-l">
+                <a href="{% url 'affiliate_dashboard' %}" class="ox-back" aria-label="Back to affiliate dashboard"><i class="bi bi-arrow-left" aria-hidden="true"></i></a>
                 <div>
-                    <h2 class="page-title">
-                        <i class="bi bi-trophy-fill text-warning me-2"></i>Affiliate Leaderboard
-                    </h2>
-                    <p class="page-subtitle mb-0">
-                        Top performing affiliates • {{ leaderboard_stats.total_affiliates }} active members
-                    </p>
+                    <h1 class="ox-title">Affiliate leaderboard</h1>
+                    <p class="ox-sub">Top performing affiliates · {{ leaderboard_stats.total_affiliates }} active members</p>
+                </div>
+            </div>
+            <div class="ox-bal lb-bal">
+                <div>
+                    <span class="ox-bal-l">Your rank</span>
+                    <p class="ox-total">#{{ current_user_stats.rank }}</p>
+                    <span class="lb-bal-m">Top {{ current_user_stats.percentile }}%</span>
                 </div>
                 {% if affiliate.available_balance >= affiliate.minimum_withdrawal %}
-                <a href="{% url 'affiliate_withdraw' %}" class="btn btn-success btn-action">
-                    <i class="bi bi-cash-coin me-1"></i>Request Withdrawal
-                </a>
+                <a href="{% url 'affiliate_withdraw' %}" class="ox-btn ox-btn-sm"><i class="bi bi-cash-coin" aria-hidden="true"></i>Request withdrawal</a>
                 {% endif %}
             </div>
         </div>
+    </header>
 
-        <!-- Navigation Tabs -->
-        <ul class="nav nav-pills nav-custom mb-3" role="tablist">
-            <li class="nav-item" role="presentation">
-                <a class="nav-link" href="{% url 'affiliate_dashboard' %}">
-                    <i class="bi bi-house-fill me-1"></i>Overview
-                </a>
-            </li>
-            <li class="nav-item" role="presentation">
-                <a class="nav-link" href="{% url 'affiliate_analytics' %}">
-                    <i class="bi bi-graph-up me-1"></i>Analytics
-                </a>
-            </li>
-            <li class="nav-item" role="presentation">
-                <a class="nav-link active" href="{% url 'affiliate_leaderboard' %}">
-                    <i class="bi bi-trophy-fill me-1"></i>Leaderboard
-                </a>
-            </li>
-            <li class="nav-item" role="presentation">
-                <a class="nav-link" href="{% url 'affiliate_withdraw' %}">
-                    <i class="bi bi-wallet2 me-1"></i>Withdrawals
-                </a>
-            </li>
-            <li class="nav-item" role="presentation">
-                <a class="nav-link" href="#">
-                    <i class="bi bi-book me-1"></i>Resources
-                </a>
-            </li>
-        </ul>
+    <div class="ox-main">
 
-        <!-- Filters -->
-        <div class="card-custom mb-3">
-            <div class="card-body-custom">
-                <form method="get" class="row g-2 align-items-end">
-                    <div class="col-md-4">
-                        <label class="form-label-custom">Timeframe</label>
-                        <select name="timeframe" class="form-select-custom" onchange="this.form.submit()">
-                            <option value="all_time" {% if timeframe == 'all_time' %}selected{% endif %}>All Time</option>
-                            <option value="month" {% if timeframe == 'month' %}selected{% endif %}>Last 30 Days</option>
-                            <option value="week" {% if timeframe == 'week' %}selected{% endif %}>Last 7 Days</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label-custom">Sort By</label>
-                        <select name="metric" class="form-select-custom" onchange="this.form.submit()">
-                            <option value="earnings" {% if metric == 'earnings' %}selected{% endif %}>Total Earnings</option>
-                            <option value="referrals" {% if metric == 'referrals' %}selected{% endif %}>Active Referrals</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <button type="submit" class="btn btn-primary w-100 btn-sm-custom">
-                            <i class="bi bi-arrow-clockwise me-1"></i>Refresh
-                        </button>
-                    </div>
-                </form>
+        <nav class="af-tabs" aria-label="Affiliate sections">
+            <a class="af-tab" href="{% url 'affiliate_dashboard' %}"><i class="bi bi-house-fill" aria-hidden="true"></i>Overview</a>
+            <a class="af-tab" href="{% url 'affiliate_analytics' %}"><i class="bi bi-graph-up" aria-hidden="true"></i>Analytics</a>
+            <a class="af-tab" href="{% url 'affiliate_leaderboard' %}" aria-current="page"><i class="bi bi-trophy-fill" aria-hidden="true"></i>Leaderboard</a>
+            <a class="af-tab" href="{% url 'affiliate_withdraw' %}"><i class="bi bi-wallet2" aria-hidden="true"></i>Withdrawals</a>
+            <a class="af-tab" href="#"><i class="bi bi-book" aria-hidden="true"></i>Resources</a>
+        </nav>
+
+        <section class="ox-card" aria-labelledby="flTitle">
+            <h2 class="visually-hidden" id="flTitle">Filter the leaderboard</h2>
+            <form method="get" class="lb-form" id="lbForm">
+                <div class="lb-field">
+                    <label class="lb-lab" for="lbTimeframe">Timeframe</label>
+                    <select name="timeframe" id="lbTimeframe" class="lb-ctl form-select">
+                        <option value="all_time" {% if timeframe == 'all_time' %}selected{% endif %}>All time</option>
+                        <option value="month" {% if timeframe == 'month' %}selected{% endif %}>Last 30 days</option>
+                        <option value="week" {% if timeframe == 'week' %}selected{% endif %}>Last 7 days</option>
+                    </select>
+                </div>
+                <div class="lb-field">
+                    <label class="lb-lab" for="lbMetric">Sort by</label>
+                    <select name="metric" id="lbMetric" class="lb-ctl form-select">
+                        <option value="earnings" {% if metric == 'earnings' %}selected{% endif %}>Total earnings</option>
+                        <option value="referrals" {% if metric == 'referrals' %}selected{% endif %}>Active referrals</option>
+                    </select>
+                </div>
+                <button type="submit" class="ox-btn ox-btn-neutral"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i>Refresh</button>
+            </form>
+        </section>
+
+        <div class="lb-stats">
+            <div class="ox-tile">
+                <span class="ox-ico t-green"><i class="bi bi-cash-stack" aria-hidden="true"></i></span>
+                <b>₦{{ leaderboard_stats.total_earnings|floatformat:"2g" }}</b>
+                <span>Total earnings</span>
+                <small>All affiliates combined</small>
+            </div>
+            <div class="ox-tile">
+                <span class="ox-ico t-purple"><i class="bi bi-people-fill" aria-hidden="true"></i></span>
+                <b>{{ leaderboard_stats.total_referrals }}</b>
+                <span>Total referrals</span>
+                <small>Active users referred</small>
+            </div>
+            <div class="ox-tile">
+                <span class="ox-ico t-navy"><i class="bi bi-graph-up" aria-hidden="true"></i></span>
+                <b>₦{{ leaderboard_stats.avg_earnings|floatformat:"2g" }}</b>
+                <span>Average earnings</span>
+                <small>Per affiliate</small>
             </div>
         </div>
 
-        <!-- Leaderboard Stats Overview -->
-        <div class="stats-grid mb-3">
-            <div class="stat-card">
-                <div class="stat-card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div class="stat-info">
-                            <p class="stat-label">Total Earnings</p>
-                            <h3 class="stat-value text-success">₦{{ leaderboard_stats.total_earnings|floatformat:2 }}</h3>
-                            <small class="stat-meta">All affiliates combined</small>
-                        </div>
-                        <div class="stat-icon bg-success">
-                            <i class="bi bi-cash-stack"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div class="stat-info">
-                            <p class="stat-label">Total Referrals</p>
-                            <h3 class="stat-value text-primary">{{ leaderboard_stats.total_referrals }}</h3>
-                            <small class="stat-meta">Active users referred</small>
-                        </div>
-                        <div class="stat-icon bg-primary">
-                            <i class="bi bi-people-fill"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div class="stat-info">
-                            <p class="stat-label">Average Earnings</p>
-                            <h3 class="stat-value text-info">₦{{ leaderboard_stats.avg_earnings|floatformat:2 }}</h3>
-                            <small class="stat-meta">Per affiliate</small>
-                        </div>
-                        <div class="stat-icon bg-info">
-                            <i class="bi bi-graph-up"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div class="stat-info">
-                            <p class="stat-label">Your Rank</p>
-                            <h3 class="stat-value text-warning">#{{ current_user_stats.rank }}</h3>
-                            <small class="stat-meta">Top {{ current_user_stats.percentile }}%</small>
-                        </div>
-                        <div class="stat-icon bg-warning">
-                            <i class="bi bi-award-fill"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Your Performance Card (if not in top 50) -->
         {% if not current_user_stats.in_top_50 %}
-        <div class="card-custom mb-3">
-            <div class="card-body-custom">
-                <div class="row align-items-center g-2">
-                    <div class="col-auto">
-                        <span class="badge bg-primary rank-badge-large">#{{ current_user_stats.rank }}</span>
-                    </div>
-                    <div class="col">
-                        <h5 class="performance-title">
-                            <i class="bi bi-person-badge-fill text-primary me-1"></i>Your Performance
-                        </h5>
-                        <div class="row g-2">
-                            <div class="col-md-4">
-                                <strong class="text-success perf-value">₦{{ current_user_stats.period_earnings|floatformat:2 }}</strong>
-                                <small class="text-muted d-block perf-label">Earnings ({{ timeframe|title }})</small>
-                            </div>
-                            <div class="col-md-4">
-                                <strong class="text-primary perf-value">{{ current_user_stats.active_referrals }}</strong>
-                                <small class="text-muted d-block perf-label">Active Referrals</small>
-                            </div>
-                            <div class="col-md-4">
-                                <strong class="text-info perf-value">Top {{ current_user_stats.percentile }}%</strong>
-                                <small class="text-muted d-block perf-label">Percentile</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <section class="ox-card lb-me" aria-labelledby="mePerf">
+            <div class="lb-me-h">
+                <span class="ox-pill ox-wash af-rank">#{{ current_user_stats.rank }}</span>
+                <h2 class="ox-h2" id="mePerf">Your performance</h2>
             </div>
-        </div>
+            <dl class="ox-dl">
+                <div><dt>Earnings ({{ timeframe|title }})</dt><dd class="af-pos">₦{{ current_user_stats.period_earnings|floatformat:"2g" }}</dd></div>
+                <div><dt>Active referrals</dt><dd>{{ current_user_stats.active_referrals }}</dd></div>
+                <div><dt>Percentile</dt><dd>Top {{ current_user_stats.percentile }}%</dd></div>
+            </dl>
+        </section>
         {% endif %}
 
-        <!-- Leaderboard Table -->
-        <div class="card-custom">
-            <div class="card-header-custom">
-                <h5 class="card-title-custom">
-                    <i class="bi bi-list-ol me-1"></i>
-                    Top {{ top_affiliates|length }} Affiliates
-                    {% if timeframe == 'month' %}
-                        (Last 30 Days)
-                    {% elif timeframe == 'week' %}
-                        (Last 7 Days)
+        <section class="ox-card" aria-labelledby="lbTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-orange"><i class="bi bi-trophy-fill" aria-hidden="true"></i></span>
+                <div class="ox-sec-t">
+                    <h2 class="ox-h2" id="lbTitle">Top {{ top_affiliates|length }} affiliates</h2>
+                    <p class="ox-card-sub">{% if timeframe == 'month' %}Last 30 days{% elif timeframe == 'week' %}Last 7 days{% else %}All time{% endif %}</p>
+                </div>
+            </div>
+            {% if top_affiliates %}
+            <ul class="af-list">
+                {% for top_affiliate in top_affiliates %}
+                <li class="af-li{% if top_affiliate.is_current_user %} is-me{% endif %}">
+                    <span class="ox-pill ox-wash af-rank is-{{ top_affiliate.rank }}"><i class="bi {% if top_affiliate.rank == 1 %}bi-trophy-fill{% elif top_affiliate.rank == 2 or top_affiliate.rank == 3 %}bi-award-fill{% else %}bi-hash{% endif %}" aria-hidden="true"></i>{{ top_affiliate.rank }}</span>
+                    {% if top_affiliate.user.profile.profile_picture %}
+                    <img src="{{ top_affiliate.user.profile.profile_picture.url }}" alt="" class="af-av" loading="lazy">
                     {% else %}
-                        (All Time)
+                    <span class="af-av af-av-ph" aria-hidden="true">{{ top_affiliate.user.username|slice:":1"|upper }}</span>
                     {% endif %}
-                </h5>
+                    <div class="af-li-t">
+                        <b>{% if top_affiliate.is_current_user %}You{% else %}@{% with n=top_affiliate.user.username %}{% if n|length > 2 %}{{ n|slice:":1" }}******{{ n|slice:"-1:" }}{% else %}{{ n|slice:":1" }}******{% endif %}{% endwith %}{% endif %}</b>
+                        <span>{% if top_affiliate.is_current_user %}{{ top_affiliate.referral_code }} · {% endif %}{{ top_affiliate.total_active_referrals }} referral{{ top_affiliate.total_active_referrals|pluralize }}</span>
+                    </div>
+                    <div class="af-li-r">
+                        <b class="af-pos">₦{{ top_affiliate.total_earned|floatformat:"2g" }}</b>
+                        {% if timeframe == 'month' or timeframe == 'week' %}<small>{% if timeframe == 'month' %}30 days{% else %}7 days{% endif %}: ₦{{ top_affiliate.period_earnings|default:0|floatformat:"0g" }}</small>{% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="af-empty"><span class="ox-ico t-orange"><i class="bi bi-trophy" aria-hidden="true"></i></span><p>No affiliates found</p></div>
+            {% endif %}
+        </section>
+
+        <section class="ox-card lb-cta" aria-labelledby="ctaTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-orange"><i class="bi bi-lightbulb-fill" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="ctaTitle">Want to climb the leaderboard?</h2></div>
             </div>
-            <div class="card-body-custom p-0">
-                <div class="table-responsive">
-                    <table class="table table-custom leaderboard-table mb-0">
-                        <thead>
-                            <tr>
-                                <th style="width: 80px;">Rank</th>
-                                <th>Affiliate</th>
-                                <th class="text-center">Referrals</th>
-                                <th class="text-end">Total Earned</th>
-                                <th class="text-end">
-                                    {% if timeframe == 'month' %}
-                                        Last 30 Days
-                                    {% elif timeframe == 'week' %}
-                                        Last 7 Days
-                                    {% else %}
-                                        All Time
-                                    {% endif %}
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for top_affiliate in top_affiliates %}
-                            <tr {% if top_affiliate.is_current_user %}class="current-user-row"{% endif %}>
-                                <!-- Rank Column -->
-                                <td>
-                                    <div class="rank-wrapper">
-                                        {% if top_affiliate.rank == 1 %}
-                                            <span class="rank-badge rank-1">
-                                                <i class="bi bi-trophy-fill"></i> #1
-                                            </span>
-                                        {% elif top_affiliate.rank == 2 %}
-                                            <span class="rank-badge rank-2">
-                                                <i class="bi bi-award-fill"></i> #2
-                                            </span>
-                                        {% elif top_affiliate.rank == 3 %}
-                                            <span class="rank-badge rank-3">
-                                                <i class="bi bi-award-fill"></i> #3
-                                            </span>
-                                        {% else %}
-                                            <span class="rank-badge rank-default">
-                                                #{{ top_affiliate.rank }}
-                                            </span>
-                                        {% endif %}
-                                    </div>
-                                </td>
+            <p>Share your referral code with more people and help them get started with OpenSell. The more active referrals you have, the higher you'll rank!</p>
+            <a href="{% url 'affiliate_dashboard' %}" class="ox-btn"><i class="bi bi-share-fill" aria-hidden="true"></i>View your referral code</a>
+        </section>
 
-                                <!-- Affiliate Info -->
-                                <td>
-                                    <div class="affiliate-info">
-                                        <div class="avatar-wrapper">
-                                            {% if top_affiliate.user.profile.profile_picture %}
-                                                <img src="{{ top_affiliate.user.profile.profile_picture.url }}" 
-                                                    alt="{{ top_affiliate.user.username }}"
-                                                    class="affiliate-avatar">
-                                            {% else %}
-                                                <div class="affiliate-avatar-placeholder">
-                                                    {{ top_affiliate.user.username|slice:":1"|upper }}
-                                                </div>
-                                            {% endif %}
-                                        </div>
-                                        
-                                        <div class="affiliate-details">
-                                            <strong class="affiliate-name {% if top_affiliate.is_current_user %}text-primary{% endif %}">
-                                                {% if top_affiliate.is_current_user %}
-                                                    <i class="bi bi-star-fill text-warning me-1"></i>You
-                                                {% else %}
-                                                    @{{ top_affiliate.user.username }}
-                                                {% endif %}
-                                            </strong>
-                                            <small class="affiliate-code text-muted">
-                                                <i class="bi bi-tag-fill"></i> {{ top_affiliate.referral_code }}
-                                            </small>
-                                        </div>
-                                    </div>
-                                </td>
-
-                                <!-- Active Referrals -->
-                                <td class="text-center">
-                                    <span class="badge bg-success badge-custom">
-                                        <i class="bi bi-people-fill"></i> {{ top_affiliate.total_active_referrals }}
-                                    </span>
-                                </td>
-
-                                <!-- Total Earned -->
-                                <td class="text-end">
-                                    <strong class="text-success earnings-value">
-                                        ₦{{ top_affiliate.total_earned|floatformat:2 }}
-                                    </strong>
-                                </td>
-
-                                <!-- Period Earnings -->
-                                <td class="text-end">
-                                    <strong class="text-primary earnings-value">
-                                        ₦{{ top_affiliate.period_earnings|default:0|floatformat:2 }}
-                                    </strong>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="5" class="text-center py-4">
-                                    <i class="bi bi-trophy display-6 text-muted"></i>
-                                    <p class="mt-2 text-muted empty-text">No affiliates found</p>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Call to Action -->
-        <div class="cta-card mt-3">
-            <div class="d-flex align-items-start gap-2">
-                <i class="bi bi-lightbulb-fill cta-icon text-primary"></i>
-                <div class="flex-grow-1">
-                    <h5 class="cta-heading">Want to climb the leaderboard?</h5>
-                    <p class="cta-text mb-2">
-                        Share your referral code with more people and help them get started with OpenSell. 
-                        The more active referrals you have, the higher you'll rank!
-                    </p>
-                    <a href="{% url 'affiliate_dashboard' %}" class="btn btn-primary btn-sm-custom">
-                        <i class="bi bi-share-fill me-1"></i>View Your Referral Code
-                    </a>
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 
-<style>
-.affiliate-container {
-    background-color: var(--background-color);
-    min-height: 100vh;
-    padding-top: 0.5rem;
-}
-
-/* Typography */
-.page-title {
-    font-size: var(--font-size-xl);
-    font-weight: var(--font-weight-bold);
-    color: var(--text-primary);
-    margin-bottom: 0.25rem;
-}
-
-.page-subtitle {
-    font-size: var(--font-size-xs);
-    color: var(--text-secondary);
-}
-
-/* Navigation Pills */
-.nav-custom {
-    background-color: var(--card-background);
-    padding: 0.4rem;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border-color);
-}
-
-.nav-custom .nav-link {
-    color: #6c757d !important; /* Hardcoded for light mode visibility */
-    background-color: transparent;
-    border-radius: var(--radius-sm);
-    padding: 0.5rem 0.85rem;
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-medium);
-    transition: var(--transition-normal);
-    border: 1px solid transparent;
-    text-decoration: none;
-}
-
-[data-bs-theme="dark"] .nav-custom .nav-link {
-    color: #adb5bd !important; /* Lighter for dark mode */
-}
-
-.nav-custom .nav-link:hover {
-    background-color: var(--hover-bg);
-    color: var(--text-primary) !important;
-    border-color: var(--border-color);
-}
-
-.nav-custom .nav-link.active {
-    background-color: var(--primary-color) !important;
-    color: #ffffff !important;
-    border-color: var(--primary-color);
-}
-
-.nav-custom .nav-link.active:hover {
-    color: #ffffff !important;
-}
-
-/* Cards */
-.card-custom {
-    background-color: var(--card-background);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-}
-
-.card-header-custom {
-    padding: 0.85rem 1rem;
-    border-bottom: 1px solid var(--border-color);
-    background-color: transparent;
-}
-
-.card-title-custom {
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-semibold);
-    margin-bottom: 0;
-    color: var(--text-primary);
-}
-
-.card-body-custom {
-    padding: 1rem;
-}
-
-/* Form Elements */
-.form-label-custom {
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-semibold);
-    color: var(--text-primary);
-    margin-bottom: 0.3rem;
-    display: block;
-}
-
-.form-select-custom {
-    background-color: var(--card-background);
-    border: 2px solid var(--border-color);
-    color: var(--text-primary);
-    font-size: var(--font-size-xs);
-    padding: 0.5rem 0.75rem;
-    border-radius: var(--radius-sm);
-    width: 100%;
-}
-
-.form-select-custom:focus {
-    border-color: var(--primary-color);
-    outline: none;
-}
-
-/* Stats Grid */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
-}
-
-@media (min-width: 768px) {
-    .stats-grid {
-        grid-template-columns: repeat(4, 1fr);
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var form = document.getElementById('lbForm');
+    if (form) {
+        form.querySelectorAll('select').forEach(function (s) {
+            s.addEventListener('change', function () { form.submit(); });
+        });
     }
-}
-
-.stat-card {
-    background-color: var(--card-background);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    transition: var(--transition-normal);
-}
-
-.stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.stat-card-body {
-    padding: 0.85rem;
-}
-
-.stat-label {
-    font-size: var(--font-size-xs);
-    color: var(--text-secondary);
-    margin-bottom: 0.35rem;
-    font-weight: var(--font-weight-medium);
-}
-
-.stat-value {
-    font-size: var(--font-size-lg);
-    font-weight: var(--font-weight-bold);
-    margin-bottom: 0.15rem;
-    color: var(--text-primary);
-}
-
-.stat-meta {
-    font-size: var(--font-size-xs);
-    color: var(--text-secondary);
-}
-
-.stat-icon {
-    width: 35px;
-    height: 35px;
-    border-radius: var(--radius-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: var(--font-size-lg);
-    color: white;
-}
-
-.stat-icon.bg-success { background-color: var(--success); }
-.stat-icon.bg-warning { background-color: var(--warning); }
-.stat-icon.bg-primary { background-color: var(--primary-color); }
-.stat-icon.bg-info { background-color: var(--info); }
-
-/* Performance Card */
-.rank-badge-large {
-    font-size: var(--font-size-md);
-    padding: 0.5rem 0.85rem;
-    font-weight: var(--font-weight-bold);
-}
-
-.performance-title {
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-semibold);
-    margin-bottom: 0.5rem;
-}
-
-.perf-value {
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-semibold);
-}
-
-.perf-label {
-    font-size: var(--font-size-xs);
-}
-
-/* Tables */
-.table-custom {
-    color: var(--text-primary);
-    font-size: var(--font-size-xs);
-}
-
-.table-custom thead {
-    background-color: var(--hover-bg);
-}
-
-.table-custom th {
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-semibold);
-    padding: 0.75rem 0.85rem;
-    color: var(--text-primary);
-    border-bottom: 1px solid var(--border-color);
-}
-
-.table-custom td {
-    padding: 0.75rem 0.85rem;
-    border-bottom: 1px solid var(--border-color);
-    vertical-align: middle;
-}
-
-.table-custom tbody tr:hover {
-    background-color: var(--hover-bg);
-}
-
-.current-user-row {
-    background-color: rgba(0, 51, 102, 0.08);
-    border-left: 3px solid var(--primary-color);
-}
-
-/* Rank Badges */
-.rank-wrapper {
-    display: flex;
-    align-items: center;
-}
-
-.rank-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.4rem 0.75rem;
-    border-radius: var(--radius-sm);
-    font-weight: var(--font-weight-bold);
-    font-size: var(--font-size-xs);
-    color: white;
-    gap: 0.35rem;
-}
-
-.rank-badge.rank-1 {
-    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-}
-
-.rank-badge.rank-2 {
-    background: linear-gradient(135deg, #C0C0C0 0%, #808080 100%);
-}
-
-.rank-badge.rank-3 {
-    background: linear-gradient(135deg, #CD7F32 0%, #8B4513 100%);
-}
-
-.rank-badge.rank-default {
-    background-color: var(--text-secondary);
-}
-
-/* Affiliate Info */
-.affiliate-info {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.affiliate-avatar,
-.affiliate-avatar-placeholder {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    border: 2px solid var(--border-color);
-}
-
-.affiliate-avatar {
-    object-fit: cover;
-}
-
-.affiliate-avatar-placeholder {
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: var(--font-weight-bold);
-    font-size: var(--font-size-md);
-}
-
-.affiliate-name {
-    display: block;
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-semibold);
-    margin-bottom: 0.15rem;
-}
-
-.affiliate-code {
-    display: block;
-    font-size: var(--font-size-xs);
-}
-
-/* Badge Custom */
-.badge-custom {
-    padding: 0.35rem 0.65rem;
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-medium);
-}
-
-/* Earnings Value */
-.earnings-value {
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-semibold);
-}
-
-/* CTA Card */
-.cta-card {
-    background-color: var(--hover-bg);
-    border: 1px solid var(--border-color);
-    border-left: 3px solid var(--info);
-    padding: 1rem;
-    border-radius: var(--radius-md);
-}
-
-.cta-icon {
-    font-size: var(--font-size-2xl);
-}
-
-.cta-heading {
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-semibold);
-    margin-bottom: 0.35rem;
-}
-
-.cta-text {
-    font-size: var(--font-size-xs);
-    color: var(--text-secondary);
-    line-height: 1.5;
-}
-
-/* Buttons */
-.btn-action,
-.btn-sm-custom {
-    font-size: var(--font-size-xs);
-    padding: 0.5rem 1rem;
-    font-weight: var(--font-weight-semibold);
-    border-radius: var(--radius-sm);
-}
-
-.empty-text {
-    font-size: var(--font-size-sm);
-}
-
-/* Responsive */
-@media (max-width: 991px) {
-    .leaderboard-table th:nth-child(4),
-    .leaderboard-table td:nth-child(4) {
-        display: none;
-    }
-}
-
-@media (max-width: 767px) {
-    .page-title {
-        font-size: var(--font-size-lg);
-    }
-    
-    .nav-custom {
-        overflow-x: auto;
-        white-space: nowrap;
-    }
-    
-    .nav-custom .nav-item {
-        display: inline-block;
-    }
-    
-    .leaderboard-table th:nth-child(3),
-    .leaderboard-table td:nth-child(3),
-    .leaderboard-table th:nth-child(4),
-    .leaderboard-table td:nth-child(4) {
-        display: none;
-    }
-    
-    .affiliate-avatar,
-    .affiliate-avatar-placeholder {
-        width: 32px;
-        height: 32px;
-        font-size: var(--font-size-sm);
-    }
-    
-    .rank-badge {
-        padding: 0.3rem 0.6rem;
-    }
-    
-    .stat-value {
-        font-size: var(--font-size-md);
-    }
-    
-    .stat-icon {
-        width: 30px;
-        height: 30px;
-        font-size: var(--font-size-md);
-    }
-}
-</style>
+    var current = document.querySelector('.af-tab[aria-current="page"]');
+    if (current && current.scrollIntoView) current.scrollIntoView({ block: 'nearest', inline: 'center' });
+});
+</script>
 {% endblock %}
 {% block 'Footer' %}{% endblock %}

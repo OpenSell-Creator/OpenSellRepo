@@ -1,325 +1,255 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block 'Body' %}
+{% block page_css %}
 <style>
-
-/* ════════════════════════════════════════════════════════════════
-   MANAGE LISTINGS — surgical fixes, original design preserved
-   All [FIX] comments explain exactly what changed and why.
-════════════════════════════════════════════════════════════════ */
-
-.ml-wrap { padding: 1.75rem 0 3rem; min-height: 60vh; }
-
-/* ── Page header ─────────────────────────────────────────────── */
-.ml-header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.75rem; }
-.ml-header-title h1 { font-size: 1.45rem; font-weight: 700; color: var(--text-primary); margin: 0 0 .25rem; display: flex; align-items: center; gap: .5rem; }
-/* [FIX] h1 icon was var(--primary-color)=#003366 → invisible on dark bg. Use accent. */
-.ml-header-title h1 i { color: var(--accent-color); }
-.ml-header-title p { font-size: .875rem; margin: 0; color: var(--text-secondary); }
-
-/* ── Tab navigation — ORIGINAL DESIGN PRESERVED ─────────────── */
-.ml-tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border-color); margin-bottom: 1.75rem; overflow-x: auto; scrollbar-width: none; }
-.ml-tabs::-webkit-scrollbar { display: none; }
-.ml-tab {
-  display: inline-flex; align-items: center; gap: .45rem;
-  padding: .65rem 1.25rem; border: none; font-size: .875rem; font-weight: 500;
-  color: var(--text-secondary); cursor: pointer;
-  border-bottom: 2px solid transparent; margin-bottom: -2px;
-  white-space: nowrap; transition: color .18s, background .18s;
-  font-family: inherit; background: transparent;
-  border-radius: var(--radius-sm,.375rem) var(--radius-sm,.375rem) 0 0;
+/* Manage listings: seller workspace. Shared OpenSell design (navy header band, tinted cards,
+   solid icon badges, pill buttons). Class hooks used by the script are unchanged. */
+.ml-wrap {
+    --ox-navy: var(--primary-color); --ox-orange: var(--accent-color);
+    --ox-teal: var(--bs-teal, var(--primary-color)); --ox-green: var(--bs-success, var(--primary-color)); --ox-purple: var(--bs-purple, var(--primary-color));
+    min-height: 60vh; padding-bottom: calc(var(--bottom-nav-height) + var(--sp-6));
+    color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-body);
 }
-/* [FIX] hover: was var(--primary-color) → invisible dark bg. Use text-primary (adapts). */
-.ml-tab:hover { color: var(--text-primary); }
-/* Active: original filled style — primary-color bg + white text. Works both themes. */
-.ml-tab.active { background: var(--primary-color) !important; color: #fff !important; border-bottom-color: var(--primary-color); font-weight: 700; }
-.ml-tab.active .ml-tab-badge { background: rgba(255,255,255,.25); color: #fff; }
-.ml-tab-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 1.3rem; height: 1.3rem; padding: 0 .3rem; border-radius: 999px; background: var(--border-color); font-size: .68rem; font-weight: 600; color: var(--text-secondary); transition: background .18s, color .18s; }
+.ml-wrap [hidden] { display: none !important; }
+.ml-wrap a { text-decoration: none; }
+.ml-wrap p, .ml-wrap h1, .ml-wrap h2 { margin: 0; }
+.t-navy { --tint: var(--ox-navy); } .t-orange { --tint: var(--ox-orange); } .t-teal { --tint: var(--ox-teal); } .t-green { --tint: var(--ox-green); }
+.t-purple { --tint: var(--ox-purple); } .t-red { --tint: var(--bs-danger); } .t-gray { --tint: var(--text-secondary); }
+.ox-ico { display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-base); }
 
-/* ── Panels ──────────────────────────────────────────────────── */
+/* Tint wash behind content (.14 light, .09 dark) */
+.ml-badge, .ml-tag, .ml-suspension-banner, .ml-renew, .ml-btn-boost, .ml-btn-outline { position: relative; isolation: isolate; }
+.ml-badge::before, .ml-tag::before, .ml-suspension-banner::before, .ml-renew::before, .ml-btn-boost::before, .ml-btn-outline::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint, var(--primary-color)); opacity: .12; }
+[data-bs-theme="dark"] .ml-badge::before, [data-bs-theme="dark"] .ml-tag::before, [data-bs-theme="dark"] .ml-suspension-banner::before, [data-bs-theme="dark"] .ml-renew::before, [data-bs-theme="dark"] .ml-btn-boost::before, [data-bs-theme="dark"] .ml-btn-outline::before { opacity: .09; }
+
+/* Header band */
+.ml-head { margin: -2rem -1rem 0; padding: calc(2rem + var(--sp-4)) var(--sp-5) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); }
+.ml-head-in { display: flex; flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: var(--sp-3); max-width: 71.25rem; margin: 0 auto; }
+.ml-head-title { display: flex; flex: 1 1 auto; align-items: center; gap: var(--sp-3); min-width: 0; }
+.ml-head-title > div { min-width: 0; }
+.ml-head-ico { display: grid; place-items: center; flex: none; width: 2.75rem; height: 2.75rem; border-radius: var(--radius-full); background: rgba(255, 255, 255, .14); font-size: var(--font-size-xl); }
+.ml-head h1 { font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-tight); }
+.ml-head p { margin-top: var(--sp-1); font-size: var(--font-size-sm); opacity: .85; }
+.ml-hbtn { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: var(--h-control-lg); padding: 0 var(--sp-4); border: 2px solid rgba(255, 255, 255, .9); border-radius: 22px; background: rgba(255, 255, 255, .1); color: var(--bs-white); font-size: var(--font-size-sm); font-weight: 600; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); touch-action: manipulation; }
+.ml-wrap a.ml-hbtn { color: var(--bs-white); }
+.ml-hbtn { flex: none; }
+@media (max-width: 575.98px) { .ml-hbtn { width: var(--h-control-lg); padding: 0; border-radius: var(--radius-full); } .ml-hbtn-t { display: none; } }
+@media (min-width: 768px) { .ml-head h1 { font-size: var(--font-size-3xl); } }
+
+/* Tabs: segmented control */
+.ml-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-1); margin: var(--gap-sections) 0; padding: var(--sp-1); border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--hover-bg); }
+.ml-tab { display: flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: 2.5rem; padding: 0 var(--sp-2); border: 0; border-radius: var(--radius-full); background: transparent; color: var(--text-secondary); font: inherit; font-size: var(--font-size-sm); font-weight: 600; white-space: nowrap; cursor: pointer; touch-action: manipulation; }
+.ml-tab > .bi { color: var(--tint); }
+.ml-tab.active { background: var(--card-background); color: var(--text-primary); box-shadow: 0 1px 4px rgba(0, 0, 0, .18); }
+.ml-tab-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 1.3rem; height: 1.3rem; padding: 0 var(--sp-1); border-radius: var(--radius-full); background: var(--border-color); color: var(--text-primary); font-size: var(--font-size-xs); font-weight: 600; }
+.ml-tab.active .ml-tab-badge { background: var(--tint); color: var(--bs-white); }
+@media (max-width: 479.98px) { .ml-tab > .bi { display: none; } }
+
+/* Panels, top bar, KPI card */
 .ml-panel { display: none; }
-.ml-panel.active { display: block; }
+.ml-panel.active { display: flex; flex-direction: column; gap: var(--gap-sections); }
+.ml-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.ml-top h2 { font-size: var(--font-size-lg); font-weight: 600; }
+.ml-top h2 span { font-size: var(--font-size-sm); font-weight: 400; color: var(--text-secondary); }
+.ml-btn-group { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+@media (max-width: 575.98px) { .ml-btn-group { width: 100%; } .ml-btn-group .ml-btn { flex: 1 1 0; } }
+.ml-kpis { display: grid; gap: 1px; overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--border-color); }
+.ml-kpis-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ml-kpis-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ml-kpis-5 .ml-kpi:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.ml-kpi { display: flex; align-items: center; gap: var(--sp-3); padding: var(--pad-m); background: var(--card-background); }
+.ml-kpi-v { font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-tight); }
+.ml-kpi-l { margin-top: var(--sp-1); font-size: var(--font-size-xs); color: var(--text-secondary); }
+@media (max-width: 479.98px) { .ml-kpis-3 .ml-kpi { flex-direction: column; justify-content: center; gap: var(--sp-1); padding: var(--pad-s) var(--sp-1); text-align: center; } }
+@media (min-width: 576px) { .ml-kpis-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); } .ml-kpis-5 .ml-kpi:last-child:nth-child(odd) { grid-column: auto; } }
+@media (min-width: 576px) and (max-width: 991.98px) { .ml-kpis-5 .ml-kpi { flex-direction: column; justify-content: center; gap: var(--sp-1); padding: var(--pad-s) var(--sp-1); text-align: center; } }
 
-/* ── Action bar ──────────────────────────────────────────────── */
-.ml-action-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.2rem; flex-wrap: wrap; gap: .75rem; }
-.ml-action-bar-title { font-size: 1rem; font-weight: 700; color: var(--text-primary); margin: 0; }
-.ml-action-bar-title span { font-weight: 400; font-size: .875rem; color: var(--text-secondary); }
-.ml-btn-group { display: flex; gap: .5rem; flex-wrap: wrap; }
+/* Buttons */
+.ml-btn { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1); min-height: 2.5rem; padding: 0 var(--sp-4); border: 1px solid transparent; border-radius: 22px; font: inherit; font-size: var(--font-size-sm); font-weight: 600; line-height: var(--lh-tight); white-space: nowrap; cursor: pointer; touch-action: manipulation; }
+.ml-btn-sm { min-height: 2.25rem; padding: 0 var(--sp-3); }
+.ml-btn-icon { min-width: 2.25rem; padding: 0 var(--sp-2); }
+.ml-btn-primary { border: 2px solid var(--bs-white); background: var(--accent-color); color: var(--bs-white); box-shadow: 0 4px 12px rgba(0, 0, 0, .2); }
+.ml-wrap a.ml-btn-primary { color: var(--bs-white); }
+.ml-btn-outline { --tint: var(--primary-color); border-color: var(--border-color); color: var(--text-primary); }
+.ml-btn-ghost { border-color: var(--border-color); background: var(--card-background); color: var(--text-primary); }
+.ml-btn-danger { border-color: var(--bs-danger); background: var(--card-background); color: var(--bs-danger); }
+.ml-btn-boost { --tint: var(--ox-orange); border-color: var(--accent-color); color: var(--accent-color); }
+.ml-btn-boost.boosted { background: var(--accent-color); color: var(--bs-white); }
+.ml-btn-boost.boosted::before { display: none; }
+.ml-btn:focus-visible, .ml-tab:focus-visible, .ml-pill:focus-visible, .ml-page-btn:focus-visible, .ml-wrap a:focus-visible, .ml-wrap summary:focus-visible, .ml-menu-item:focus-visible, .ml-renew:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
 
-/* ── Buttons ─────────────────────────────────────────────────── */
-.ml-btn { display: inline-flex; align-items: center; gap: .4rem; padding: .45rem 1rem; border-radius: var(--radius-lg,.5rem); font-size: .825rem; font-weight: 600; cursor: pointer; border: 1.5px solid transparent; text-decoration: none; transition: all .18s; white-space: nowrap; font-family: inherit; line-height: 1.4; }
-.ml-btn-sm { padding: .3rem .75rem; font-size: .78rem; }
-.ml-btn-icon { padding: .35rem .5rem; }
-.ml-btn-primary { background: var(--primary-color); color: #fff; border-color: var(--primary-color); }
-.ml-btn-primary:hover { filter: brightness(1.1); color: #fff; }
-/* [FIX] outline: text was var(--primary-color) → invisible dark. Changed to text-primary. */
-.ml-btn-outline { background: transparent; color: var(--text-primary); border-color: var(--primary-color); }
-.ml-btn-outline:hover { background: var(--primary-color); color: #fff; }
-.ml-btn-ghost { background: var(--card-background); color: var(--text-primary); border-color: var(--border-color); }
-.ml-btn-ghost:hover { border-color: var(--accent-color); color: var(--accent-color); }
-.ml-btn-danger { background: transparent; color: #dc2626; border-color: #dc2626; }
-.ml-btn-danger:hover { background: rgba(220,38,38,.08); }
-.ml-btn-boost { background: transparent; color: #d97706; border-color: #f59e0b; }
-.ml-btn-boost:hover { background: rgba(245,158,11,.12); }
-.ml-btn-boost.boosted { background: rgba(245,158,11,.18); color: #92400e; border-color: #f59e0b; }
+/* Toolbar: search and filter pills */
+.ml-toolbar { display: flex; flex-direction: column; gap: var(--sp-2); }
+.ml-search { position: relative; }
+.ml-search .bi { position: absolute; top: 50%; left: var(--sp-3); transform: translateY(-50%); color: var(--text-secondary); pointer-events: none; }
+.ml-search input { box-sizing: border-box; width: 100%; min-height: var(--h-control-lg); padding: 0 var(--sp-3) 0 2.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-base); }
+.ml-search input:focus { outline: 2px solid var(--accent-color); outline-offset: 1px; border-color: var(--accent-color); }
+@supports (-webkit-touch-callout: none) { .ml-search input { font-size: 16px; } }
+.ml-pills { display: flex; gap: var(--sp-2); overflow-x: auto; padding-bottom: var(--sp-1); scrollbar-width: none; }
+.ml-pills::-webkit-scrollbar { display: none; }
+.ml-pill { display: inline-flex; flex: none; align-items: center; gap: var(--sp-1); min-height: 2.25rem; padding: 0 var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--hover-bg); color: var(--text-primary); font: inherit; font-size: var(--font-size-sm); font-weight: 600; white-space: nowrap; cursor: pointer; touch-action: manipulation; }
+.ml-pill.active { border-color: var(--accent-color); background: var(--accent-color); color: var(--bs-white); }
+.ml-pill-n { font-weight: 400; opacity: .8; }
+@media (min-width: 768px) { .ml-toolbar { flex-direction: row; align-items: center; } .ml-search { flex: 0 1 18rem; } }
 
-/* ── Stats strip ─────────────────────────────────────────────── */
-.ml-stats-strip { background: var(--card-background); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1rem 1.5rem; display: flex; gap: 0; margin-bottom: 1.5rem; overflow-x: auto; }
-.ml-stat-item { flex: 1; min-width: 90px; text-align: center; padding: .5rem 1rem; border-right: 1px solid var(--border-color); }
-.ml-stat-item:last-child { border-right: none; }
-/* [FIX] was var(--primary-color) → navy invisible on dark. Use text-primary. */
-.ml-stat-value { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); line-height: 1; margin-bottom: .2rem; }
-.ml-stat-label { font-size: .73rem; color: var(--text-secondary); font-weight: 500; }
+/* Product grid and cards */
+.ml-pgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-cards); }
+@media (min-width: 768px) { .ml-pgrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 992px) { .ml-pgrid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.ml-span { grid-column: 1 / -1; }
+.ml-card { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); }
+.ml-pmedia { position: relative; }
+.ml-pimg { position: relative; display: block; aspect-ratio: 4 / 3; overflow: hidden; border-radius: var(--r-card) var(--r-card) 0 0; background: var(--hover-bg); }
+.ml-pimg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ml-pimg-ph { position: absolute; inset: 0; display: grid; place-items: center; font-size: var(--font-size-3xl); color: var(--text-secondary); opacity: .5; }
+.is-expired .ml-pimg img, .is-suspended .ml-pimg img { filter: grayscale(.85); opacity: .7; }
+.ml-pchips { position: absolute; top: var(--sp-2); right: var(--sp-2); left: var(--sp-2); display: flex; justify-content: space-between; gap: var(--sp-1); pointer-events: none; }
+.ml-chip { display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 1.5rem; padding: 0 var(--sp-2); border-radius: var(--radius-full); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-xs); font-weight: 600; box-shadow: 0 1px 4px rgba(0, 0, 0, .25); }
+.ml-chip i { color: var(--tint); }
+.ml-chip-boost { --tint: var(--ox-orange); margin-left: auto; }
+.ml-pbody { display: flex; flex: 1; flex-direction: column; gap: var(--sp-1); padding: var(--pad-s) var(--pad-m); }
+.ml-ptitle { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; min-height: 2.5em; font-size: var(--font-size-sm); font-weight: 600; line-height: var(--lh-tight); color: var(--text-primary); overflow-wrap: anywhere; }
+.ml-pprice { font-size: var(--font-size-lg); font-weight: 600; color: var(--accent-color); }
+.ml-pcat { overflow: hidden; font-size: var(--font-size-xs); text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
+.ml-pcat i { color: var(--ox-purple); }
+.ml-psub { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.ml-pstats { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-3); margin-top: var(--sp-1); }
+.ml-metric { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--font-size-xs); color: var(--text-secondary); }
+.ml-metric i.icon-views { color: var(--ox-teal); } .ml-metric i.icon-star { color: var(--ox-orange); } .ml-metric i.icon-phone { color: var(--ox-green); } .ml-metric i.icon-clock { color: var(--ox-purple); }
+.ml-metric i.icon-chat { color: var(--ox-navy); }
+[data-bs-theme="dark"] .ml-metric i.icon-chat { color: var(--text-primary); }
+.ml-exp.is-ok i { color: var(--ox-green); }
+.ml-renew { --tint: var(--ox-orange); display: flex; align-items: center; justify-content: center; gap: var(--sp-1); width: 100%; min-height: 2.25rem; margin-top: var(--sp-1); padding: 0 var(--sp-2); border: 1px solid var(--accent-color); border-radius: var(--radius-md); background: transparent; color: var(--text-primary); font: inherit; font-size: var(--font-size-xs); font-weight: 600; cursor: pointer; touch-action: manipulation; }
+.ml-renew i { color: var(--accent-color); }
+.ml-renew.is-danger { --tint: var(--bs-danger); border-color: var(--bs-danger); }
+.ml-renew.is-danger i { color: var(--bs-danger); }
+.ml-pfoot, .ml-cfoot-actions { position: relative; display: flex; align-items: center; gap: var(--sp-1); padding: var(--sp-2) var(--pad-m) var(--pad-s); }
+.ml-pfoot .ml-pedit { flex: 1; }
 
-/* ── Stats grid ──────────────────────────────────────────────── */
-.ml-stats-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(140px,1fr)); gap: .75rem; margin-bottom: 1.5rem; }
-.ml-stat-card { background: var(--card-background); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1rem; display: flex; align-items: center; gap: .75rem; transition: transform .2s, box-shadow .2s; }
-.ml-stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px var(--shadow-color,rgba(0,0,0,.1)); }
-.ml-stat-icon { width: 2.5rem; height: 2.5rem; border-radius: var(--radius-sm,.375rem); display: flex; align-items: center; justify-content: center; font-size: 1.05rem; flex-shrink: 0; }
-/* icon-primary colour overridden in dark mode below */
-.icon-primary { background: rgba(0,51,102,.12); color: var(--primary-color); }
-.icon-success { background: rgba(22,163,74,.12);  color: #16a34a; }
-.icon-warning { background: rgba(217,119,6,.12);  color: #d97706; }
-.icon-info    { background: rgba(8,145,178,.12);  color: #0891b2; }
-.icon-purple  { background: rgba(124,58,237,.12); color: #7c3aed; }
-.ml-stat-card-value { font-size: 1.3rem; font-weight: 700; color: var(--text-primary); line-height: 1; }
-.ml-stat-card-label { font-size: .72rem; color: var(--text-secondary); font-weight: 500; margin-top: .15rem; }
+/* More menu (native details, no library) */
+.ml-more { position: relative; }
+.ml-more summary { list-style: none; }
+.ml-more summary::-webkit-details-marker { display: none; }
+.ml-menu { position: absolute; right: 0; bottom: calc(100% + var(--sp-1)); z-index: 20; display: flex; flex-direction: column; min-width: 12.5rem; padding: var(--sp-1); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); box-shadow: var(--shadow-md); }
+.ml-menu-item { display: flex; align-items: center; gap: var(--sp-2); width: 100%; min-height: 2.5rem; padding: 0 var(--sp-3); border: 0; border-radius: var(--radius-md); background: none; color: var(--text-primary); font: inherit; font-size: var(--font-size-sm); font-weight: 600; text-align: left; cursor: pointer; touch-action: manipulation; }
+.ml-menu-item i { flex: none; width: 1.25rem; color: var(--text-secondary); }
+.ml-menu-item.is-danger, .ml-menu-item.is-danger i { color: var(--bs-danger); }
+.ml-menu form { margin: 0; }
 
-/* ── Product card list ───────────────────────────────────────── */
-.ml-product-list { display: flex; flex-direction: column; gap: .65rem; }
-.ml-prod-card { background: var(--card-background); border: 1px solid var(--border-color); border-radius: var(--radius-lg); display: flex; align-items: stretch; overflow: visible; position: relative; transition: box-shadow .2s, border-color .2s, transform .18s; }
-.ml-prod-card:hover { box-shadow: 0 6px 24px var(--shadow-color,rgba(0,0,0,.1)); border-color: var(--primary-color); transform: translateY(-2px); }
-.ml-prod-card::before { content:''; position: absolute; left:0; top:0; bottom:0; width:4px; border-radius: var(--radius-lg) 0 0 var(--radius-lg); pointer-events: none; }
-.ml-prod-card.is-live::before      { background: #16a34a; }
-.ml-prod-card.is-suspended::before { background: #dc2626; }
-.ml-prod-card.is-expired::before   { background: #9ca3af; }
+/* Badges and tags: tinted pill, coloured icon, normal text */
+.ml-badge, .ml-tag { display: inline-flex; align-items: center; gap: var(--sp-1); flex: none; min-height: 1.5rem; padding: 0 var(--sp-2); border-radius: var(--radius-full); color: var(--text-primary); font-size: var(--font-size-xs); font-weight: 600; white-space: nowrap; }
+.ml-tag { border-radius: var(--radius-sm); }
+.ml-badge i, .ml-tag i { color: var(--tint); }
+.badge-live, .badge-active, .tag-success { --tint: var(--ox-green); }
+.badge-suspended, .badge-cancelled, .tag-danger, .ml-suspension-banner { --tint: var(--bs-danger); }
+.badge-expired, .badge-inactive, .tag-neutral { --tint: var(--text-secondary); }
+.badge-permanent, .badge-fulfilled, .tag-info { --tint: var(--ox-teal); }
+.badge-paused, .tag-warning { --tint: var(--ox-orange); }
+.tag-primary { --tint: var(--ox-purple); }
+.ml-suspension-banner { display: flex; align-items: flex-start; gap: var(--sp-2); margin-top: var(--sp-1); padding: var(--sp-2); border-radius: var(--radius-md); font-size: var(--font-size-xs); line-height: var(--lh-snug); color: var(--text-primary); }
+.ml-suspension-banner i { margin-top: 1px; color: var(--bs-danger); }
 
-/* [FIX] Image: fixed width + 1:1 aspect-ratio + object-fit:cover = consistent sizing */
-.ml-prod-thumb-col { width: 110px; flex-shrink: 0; position: relative; border-radius: var(--radius-lg) 0 0 var(--radius-lg); overflow: hidden; background: var(--hover-bg); aspect-ratio: 1/1; align-self: stretch; min-height: 100px; }
-.ml-prod-thumb-col img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
-/* [FIX] placeholder icon: text-secondary instead of primary-color */
-.ml-prod-thumb-ph { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 2rem; color: var(--text-secondary); opacity: .4; }
+/* Service and request cards */
+.ml-clist { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-cards); }
+@media (min-width: 992px) { .ml-clist { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ml-chead { display: flex; align-items: flex-start; gap: var(--sp-3); padding: var(--pad-m) var(--pad-m) 0; }
+.ml-ctitle { flex: 1; min-width: 0; }
+.ml-ctitle > a { display: block; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-snug); color: var(--text-primary); overflow-wrap: anywhere; }
+.ml-item-badges { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin-top: var(--sp-1); }
+.ml-cbody { display: flex; flex: 1; flex-direction: column; gap: var(--sp-2); padding: var(--sp-2) var(--pad-m); }
+.ml-item-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-4); }
+.ml-meta-chip { display: inline-flex; align-items: center; gap: var(--sp-1); max-width: 12.5rem; min-width: 0; overflow: hidden; font-size: var(--font-size-sm); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.ml-meta-chip .chip-icon { flex: none; font-size: var(--font-size-sm); }
+.ml-meta-price { color: var(--accent-color); }
+.chip-icon-tag, .chip-icon-loc { color: var(--ox-purple); } .chip-icon-money { color: var(--ox-green); } .chip-icon-cal { color: var(--ox-teal); } .chip-icon-avail { color: var(--ox-orange); }
+.ml-item-desc { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: var(--font-size-sm); line-height: var(--lh-body); color: var(--text-secondary); overflow-wrap: anywhere; }
+.ml-item-stats { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-3); }
+.ml-cfoot { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-2) var(--pad-m) var(--pad-s); border-top: 1px solid var(--border-color); }
+.ml-cfoot-actions { padding: 0; flex-wrap: wrap; }
+.ml-cfoot-actions form { display: inline-flex; margin: 0; }
+.ml-spacer { margin-left: auto; }
 
-.ml-prod-detail { flex: 1; min-width: 0; padding: .8rem 1rem; display: flex; flex-direction: column; justify-content: space-between; gap: .45rem; overflow: visible; }
-.ml-prod-row1 { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; }
-.ml-prod-title-wrap { min-width: 0; flex: 1; }
-.ml-prod-name { font-size: .92rem; font-weight: 700; color: var(--text-primary); text-decoration: none; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; margin-bottom: .1rem; }
-.ml-prod-name:hover { color: var(--accent-color); }
-.ml-prod-age { font-size: .72rem; color: var(--text-secondary); display: flex; align-items: center; gap: .25rem; }
-.ml-prod-age i { color: var(--accent-color); font-size: .7rem; }
-.ml-prod-row2 { display: flex; align-items: center; gap: .5rem .85rem; flex-wrap: wrap; }
-.ml-prod-cat { display: inline-flex; align-items: center; gap: .3rem; font-size: .79rem; font-weight: 600; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* [FIX] category icon: accent colour visible both themes */
-.ml-prod-cat i { color: var(--accent-color); flex-shrink: 0; }
-/* [FIX] price: accent-color — branded + visible on both themes */
-.ml-prod-price { font-size: .92rem; font-weight: 700; color: var(--accent-color); }
-.ml-prod-row3 { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; padding-top: .45rem; border-top: 1px solid var(--border-color); overflow: visible; position: relative; }
-.ml-prod-metrics { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
-.ml-prod-metric { display: inline-flex; align-items: center; gap: .25rem; font-size: .76rem; font-weight: 500; color: var(--text-secondary); }
-.ml-prod-metric i { font-size: .78rem; }
+/* Inquiries */
+.ml-inq-card { overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); }
+.ml-inq-header { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3) var(--pad-m); border-bottom: 1px solid var(--border-color); background: var(--hover-bg); }
+.ml-inq-header h5 { display: flex; align-items: center; gap: var(--sp-2); margin: 0; font-size: var(--font-size-base); font-weight: 600; }
+.ml-inq-header h5 i { color: var(--ox-teal); }
+.ml-inq-row { display: flex; flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3) var(--pad-m); border-bottom: 1px solid var(--border-color); }
+.ml-inq-row:last-child { border-bottom: 0; }
+.ml-inq-name a { font-size: var(--font-size-sm); font-weight: 600; color: var(--text-primary); }
+.ml-inq-from { margin-top: var(--sp-1); font-size: var(--font-size-xs); color: var(--text-secondary); }
 
-/* ── Icon colours ────────────────────────────────────────────── */
-/* Product card metric icons */
-.ml-prod-metric i.mi-views         { color: #0891b2 !important; }  /* teal */
-.ml-prod-metric i.mi-boost         { color: #d97706 !important; }  /* amber */
-.ml-prod-metric i.mi-expiry-ok     { color: #16a34a !important; }  /* green */
-.ml-prod-metric i.mi-expiry-warn   { color: #d97706 !important; }  /* amber */
-.ml-prod-metric i.mi-expiry-danger { color: #dc2626 !important; }  /* red */
-
-/* Service/request metric icons */
-/* [FIX] icon-chat was var(--primary-color) → navy → invisible dark → text-primary */
-.ml-metric i.icon-views { color: #0891b2    !important; }
-.ml-metric i.icon-chat  { color: var(--text-primary) !important; }
-.ml-metric i.icon-star  { color: #d97706    !important; }
-.ml-metric i.icon-clock { color: #7c3aed    !important; }
-.ml-metric i.icon-phone { color: #16a34a    !important; }
-
-/* Meta chip icons — used on service/request cards */
-/* [FIX] all chip icons need !important to beat parent color inheritance */
-.chip-icon-tag   { color: var(--accent-color) !important; }
-.chip-icon-money { color: #16a34a !important; }
-.chip-icon-cal   { color: #0891b2 !important; }
-.chip-icon-avail { color: #d97706 !important; }
-.chip-icon-loc   { color: #7c3aed !important; }
-
-.ml-prod-actions { display: flex; align-items: center; gap: .3rem; overflow: visible; position: relative; flex-shrink: 0; }
-
-/* ── Badges ──────────────────────────────────────────────────── */
-.ml-badge { display: inline-flex; align-items: center; gap: .3rem; padding: .22rem .65rem; border-radius: 999px; font-size: .72rem; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
-.badge-live      { background: rgba(22,163,74,.12);  color: #16a34a;  border: 1px solid rgba(22,163,74,.25); }
-.badge-suspended { background: rgba(220,38,38,.1);   color: #dc2626;  border: 1px solid rgba(220,38,38,.2); }
-.badge-expired   { background: rgba(107,114,128,.1); color: #6b7280;  border: 1px solid rgba(107,114,128,.25); }
-/* badge-permanent/fulfilled use primary-color text: fine because badge has its own tinted bg */
-.badge-permanent { background: rgba(0,51,102,.1);    color: var(--primary-color); border: 1px solid rgba(0,51,102,.2); }
-.badge-active    { background: rgba(22,163,74,.12);  color: #16a34a;  border: 1px solid rgba(22,163,74,.25); }
-.badge-inactive  { background: rgba(107,114,128,.1); color: #6b7280;  border: 1px solid rgba(107,114,128,.25); }
-.badge-paused    { background: rgba(217,119,6,.12);  color: #d97706;  border: 1px solid rgba(217,119,6,.25); }
-.badge-fulfilled { background: rgba(0,51,102,.1);    color: var(--primary-color); border: 1px solid rgba(0,51,102,.2); }
-.badge-cancelled { background: rgba(220,38,38,.1);   color: #dc2626;  border: 1px solid rgba(220,38,38,.2); }
-
-/* ── Tags ────────────────────────────────────────────────────── */
-.ml-tag { display: inline-flex; align-items: center; gap: .2rem; padding: .18rem .55rem; border-radius: 4px; font-size: .7rem; font-weight: 600; }
-.tag-primary { background: rgba(0,51,102,.1);   color: var(--primary-color); }
-.tag-info    { background: rgba(8,145,178,.12);  color: #0891b2; }
-.tag-success { background: rgba(22,163,74,.12);  color: #16a34a; }
-.tag-warning { background: rgba(217,119,6,.12);  color: #d97706; }
-.tag-neutral { background: var(--hover-bg); color: var(--text-secondary); border: 1px solid var(--border-color); }
-.tag-danger  { background: rgba(220,38,38,.1);   color: #dc2626; }
-
-.ml-boost-live { display: inline-flex; align-items: center; gap: .25rem; font-size: .72rem; font-weight: 700; color: #92400e; background: rgba(245,158,11,.2); padding: .15rem .5rem; border-radius: 999px; border: 1px solid rgba(245,158,11,.35); }
-.ml-suspension-banner { background: rgba(220,38,38,.07); border: 1px solid rgba(220,38,38,.2); border-radius: var(--radius-sm,.375rem); padding: .35rem .75rem; font-size: .75rem; color: #dc2626; display: flex; align-items: center; gap: .4rem; margin-top: .25rem; }
-
-/* ── Metrics ─────────────────────────────────────────────────── */
-.ml-metric { display: inline-flex; align-items: center; gap: .3rem; font-size: .78rem; font-weight: 500; color: var(--text-secondary); }
-.ml-metric i { font-size: .82rem; }
-
-/* ── Item cards ──────────────────────────────────────────────── */
-.ml-item-card { background: var(--card-background); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1.1rem 1.2rem; margin-bottom: .85rem; box-shadow: 0 2px 8px var(--shadow-color,rgba(0,0,0,.06)); transition: box-shadow .18s, border-color .18s, transform .18s; overflow: visible; position: relative; }
-.ml-item-card:hover { box-shadow: 0 6px 24px var(--shadow-color,rgba(0,0,0,.1)); border-color: var(--primary-color); transform: translateY(-1px); }
-.ml-item-header { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; margin-bottom: .65rem; }
-.ml-item-title { min-width: 0; flex: 1; }
-.ml-item-title a { font-size: .95rem; font-weight: 700; color: var(--text-primary); text-decoration: none; line-height: 1.3; display: block; overflow-wrap: break-word; }
-.ml-item-title a:hover { color: var(--accent-color); }
-.ml-item-badges { display: flex; gap: .3rem; flex-wrap: wrap; margin-top: .35rem; }
-.ml-item-meta { display: flex; gap: .6rem 1rem; flex-wrap: wrap; margin-bottom: .6rem; align-items: center; }
-.ml-meta-chip { display: inline-flex; align-items: center; gap: .3rem; font-size: .8rem; font-weight: 600; color: var(--text-primary); min-width: 0; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ml-meta-chip .chip-icon { font-size: .8rem; flex-shrink: 0; }
-.ml-item-desc { font-size: .83rem; color: var(--text-secondary); line-height: 1.55; margin-bottom: .8rem; overflow-wrap: break-word; }
-.ml-item-footer { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; padding-top: .7rem; border-top: 1px solid var(--border-color); overflow: visible; position: relative; }
-.ml-item-stats { display: flex; gap: .9rem; flex-wrap: wrap; align-items: center; min-width: 0; }
-.ml-item-actions { display: flex; gap: .35rem; flex-wrap: wrap; align-items: center; overflow: visible; position: relative; flex-shrink: 0; }
-
-/* ── Inquiry card ────────────────────────────────────────────── */
-.ml-inq-card { background: var(--card-background); border: 1px solid var(--border-color); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 1.25rem; box-shadow: 0 2px 8px var(--shadow-color,rgba(0,0,0,.06)); }
-.ml-inq-header { display: flex; align-items: center; justify-content: space-between; padding: .85rem 1.1rem; border-bottom: 1px solid var(--border-color); background: var(--hover-bg); }
-.ml-inq-header h5 { font-size: .875rem; font-weight: 700; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: .4rem; }
-.ml-inq-header h5 i { color: var(--accent-color); }
-.ml-inq-row { display: flex; align-items: center; justify-content: space-between; padding: .7rem 1.1rem; border-bottom: 1px solid var(--border-color); gap: .75rem; flex-wrap: wrap; }
-.ml-inq-row:last-child { border-bottom: none; }
-.ml-inq-name a { font-size: .84rem; font-weight: 600; color: var(--text-primary); text-decoration: none; }
-.ml-inq-name a:hover { color: var(--accent-color); }
-.ml-inq-from { font-size: .75rem; color: var(--text-secondary); margin-top: .15rem; }
-
-/* ── Filter pills ────────────────────────────────────────────── */
-.ml-pills { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
-.ml-pill { display: inline-flex; align-items: center; gap: .35rem; padding: .38rem .85rem; border-radius: var(--radius-lg,.5rem); border: 1.5px solid var(--border-color); background: var(--card-background); font-size: .8rem; font-weight: 500; color: var(--text-secondary); cursor: pointer; transition: all .15s; font-family: inherit; }
-/* [FIX] hover text: primary-color invisible dark → use text-primary */
-.ml-pill:hover { border-color: var(--primary-color); color: var(--text-primary); }
-.ml-pill.active { background: var(--primary-color); border-color: var(--primary-color); color: #fff; }
-
-/* ── Empty state ─────────────────────────────────────────────── */
-.ml-table-wrap { background: var(--card-background); border: 1px solid var(--border-color); border-radius: var(--radius-xl,.75rem); overflow: visible; }
-.ml-empty { text-align: center; padding: 3.5rem 1.5rem; }
-.ml-empty-icon { font-size: 2.5rem; color: var(--accent-color); margin-bottom: 1rem; opacity: .55; }
-.ml-empty h5 { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin-bottom: .4rem; }
-.ml-empty p { color: var(--text-secondary); font-size: .875rem; max-width: 380px; margin: 0 auto 1.25rem; }
-
-/* ── Pagination ──────────────────────────────────────────────── */
-.ml-pagination { display: flex; justify-content: center; gap: .3rem; margin-top: 1.5rem; flex-wrap: wrap; }
-.ml-page-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 2.1rem; height: 2.1rem; border-radius: var(--radius-sm,.375rem); border: 1.5px solid var(--border-color); background: var(--card-background); font-size: .82rem; font-weight: 500; color: var(--text-secondary); text-decoration: none; transition: all .15s; padding: 0 .45rem; }
-/* [FIX] hover text: primary-color invisible dark → text-primary */
-.ml-page-btn:hover { border-color: var(--primary-color); color: var(--text-primary); }
-.ml-page-btn.active { background: var(--primary-color); border-color: var(--primary-color); color: #fff; }
-
-/* ── Modal ────────────────────────────────────────────────────── */
-.ml-modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1050; align-items: center; justify-content: center; }
+/* Empty state, pagination, modal */
+.ml-table-wrap { border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); }
+.ml-empty { padding: var(--sp-8) var(--pad-l); text-align: center; }
+.ml-empty-icon { display: grid; place-items: center; width: 4rem; height: 4rem; margin: 0 auto var(--sp-3); border-radius: var(--radius-full); background: var(--hover-bg); font-size: var(--font-size-3xl); color: var(--accent-color); }
+.ml-empty h5 { margin: 0 0 var(--sp-1); font-size: var(--font-size-lg); font-weight: 600; }
+.ml-empty p { max-width: 23.75rem; margin: 0 auto var(--sp-4); font-size: var(--font-size-sm); color: var(--text-secondary); }
+.ml-pagination { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-1); }
+.ml-page-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 2.25rem; min-height: 2.25rem; padding: 0 var(--sp-2); border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-sm); font-weight: 600; }
+.ml-page-btn.active { border-color: var(--accent-color); background: var(--accent-color); color: var(--bs-white); }
+.ml-modal-backdrop { display: none; position: fixed; inset: 0; z-index: 1050; align-items: center; justify-content: center; background: rgba(0, 0, 0, .5); }
 .ml-modal-backdrop.open { display: flex; }
-.ml-modal { background: var(--card-background); border-radius: var(--radius-lg); box-shadow: 0 24px 60px rgba(0,0,0,.22); max-width: 440px; width: 92%; overflow: hidden; border: 1px solid var(--border-color); }
-.ml-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 1.1rem 1.35rem; border-bottom: 1px solid var(--border-color); background: var(--hover-bg); }
-.ml-modal-header h5 { font-weight: 700; color: var(--text-primary); margin: 0; font-size: 1rem; display: flex; align-items: center; gap: .4rem; }
+.ml-modal { width: 92%; max-width: 27.5rem; overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); color: var(--text-primary); }
+.ml-modal-header { display: flex; align-items: center; justify-content: space-between; padding: var(--pad-m) var(--pad-l); border-bottom: 1px solid var(--border-color); background: var(--hover-bg); }
+.ml-modal-header h5 { display: flex; align-items: center; gap: var(--sp-2); margin: 0; font-size: var(--font-size-base); font-weight: 600; }
 .ml-modal-header h5 i { color: var(--accent-color); }
-.ml-modal-close { background: none; border: none; cursor: pointer; color: var(--text-secondary); font-size: 1.2rem; line-height: 1; padding: .2rem; transition: color .15s; }
-.ml-modal-close:hover { color: var(--text-primary); }
-.ml-modal-body { padding: 1.35rem; font-size: .9rem; color: var(--text-primary); line-height: 1.6; }
-.ml-modal-footer { display: flex; gap: .5rem; justify-content: flex-end; padding: 1rem 1.35rem; border-top: 1px solid var(--border-color); }
+.ml-modal-close { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border: 0; background: none; color: var(--text-secondary); font-size: var(--font-size-xl); cursor: pointer; }
+.ml-modal-body { padding: var(--pad-l); }
+.ml-modal-body p { margin: 0; }
+.ml-modal-footer { display: flex; justify-content: flex-end; gap: var(--sp-2); padding: var(--pad-m) var(--pad-l); border-top: 1px solid var(--border-color); }
 
-/* ── Responsive ──────────────────────────────────────────────── */
-@media (max-width: 767.98px) {
-  .ml-prod-thumb-col { width: 80px; min-height: 80px; }
-  .ml-prod-detail { padding: .65rem .8rem; }
-  .ml-prod-name { font-size: .86rem; }
-  .ml-stats-strip { padding: .75rem; }
-  .ml-stat-item { min-width: 80px; }
-  .ml-action-bar { flex-direction: column; align-items: flex-start; }
-  /* Actions: wrap naturally, smaller gap on narrow screens */
-  .ml-item-actions { flex-wrap: wrap; gap: .25rem; }
-  .ml-prod-actions { flex-wrap: wrap; gap: .25rem; }
-  .ml-meta-chip { max-width: 150px; }
-  .ml-prod-row3 { flex-direction: column; align-items: flex-start; gap: .5rem; }
-  .ml-prod-actions { align-self: flex-start; }
-  /* Keep button text legible but compact */
-  .ml-item-actions .ml-btn-sm { padding: .28rem .55rem; font-size: .75rem; }
-  .ml-prod-actions .ml-btn-sm  { padding: .28rem .55rem; font-size: .75rem; }
+@media (hover: hover) {
+    .ml-btn-ghost:hover, .ml-btn-outline:hover, .ml-pill:hover, .ml-page-btn:hover, .ml-card:hover { border-color: var(--primary-color); }
+    .ml-menu-item:hover { background: var(--hover-bg); }
+    .ml-ptitle:hover, .ml-ctitle > a:hover, .ml-inq-name a:hover { color: var(--accent-color); }
 }
-@media (max-width: 480px) {
-  .ml-header { flex-direction: column; }
-  .ml-prod-thumb-col { width: 66px; min-height: 66px; }
-  .ml-stats-grid { grid-template-columns: repeat(2,1fr); }
-  /* On very small screens let action rows stack below metrics */
-  .ml-item-footer { flex-direction: column; align-items: flex-start; }
-  .ml-item-actions { width: 100%; }
-  .ml-prod-row3 { flex-direction: column; align-items: flex-start; }
-  .ml-prod-actions { width: 100%; }
-}
-
-/* ── Dark mode overrides ──────────────────────────────────────── */
-[data-bs-theme="dark"] .ml-btn-ghost { background: var(--card-background); border-color: var(--border-color); color: var(--text-primary); }
-[data-bs-theme="dark"] .ml-btn-ghost:hover { border-color: var(--accent-color); color: var(--accent-color); }
-/* [FIX] outline dark: border switches to accent, text stays text-primary */
-[data-bs-theme="dark"] .ml-btn-outline { color: var(--text-primary); border-color: var(--accent-color); }
-[data-bs-theme="dark"] .ml-btn-outline:hover { background: var(--accent-color); color: #fff; border-color: var(--accent-color); }
-/* Tabs: original filled style works in dark (navy bg + white text is fine) */
-[data-bs-theme="dark"] .ml-tab.active { background: var(--primary-color) !important; color: #fff !important; }
-[data-bs-theme="dark"] .badge-inactive { color: #9ca3af; background: rgba(156,163,175,.12); border-color: rgba(156,163,175,.2); }
-[data-bs-theme="dark"] .ml-suspension-banner { background: rgba(220,38,38,.12); }
-/* [FIX] icon-primary: navy icon on dark bg is invisible → use accent */
-[data-bs-theme="dark"] .icon-primary { background: rgba(255,102,0,.12); color: var(--accent-color); }
-/* [FIX] tag-primary / fulfilled / permanent: navy text on dark bg invisible */
-[data-bs-theme="dark"] .tag-primary { background: rgba(255,255,255,.08); color: var(--text-primary); }
-[data-bs-theme="dark"] .badge-permanent,
-[data-bs-theme="dark"] .badge-fulfilled { background: rgba(255,255,255,.1); color: var(--text-primary); border-color: rgba(255,255,255,.15); }
-/* [FIX] boost live: dark amber #92400e invisible on dark bg → use brighter amber */
-[data-bs-theme="dark"] .ml-boost-live { color: #fbbf24; background: rgba(245,158,11,.15); }
-
+@media (prefers-reduced-motion: reduce) { .ml-wrap * { transition: none !important; } }
 </style>
+{% endblock %}
 
+{% block 'Body' %}
 {# ════════════════════════════════════════════════════════════════ #}
 {# PAGE BODY                                                         #}
 {# ════════════════════════════════════════════════════════════════ #}
 <div class="ml-wrap">
+
+  <header class="ml-head">
+    <div class="ml-head-in">
+      <div class="ml-head-title">
+        <span class="ml-head-ico" aria-hidden="true"><i class="bi bi-grid-3x3-gap-fill"></i></span>
+        <div>
+          <h1>My Listings</h1>
+          <p>Manage your products, services, and buyer requests</p>
+        </div>
+      </div>
+      <a href="{{ store_url }}" class="ml-hbtn" aria-label="View my store"><i class="bi bi-shop" aria-hidden="true"></i><span class="ml-hbtn-t">View My Store</span></a>
+    </div>
+  </header>
+
   <div class="container-xl">
 
-    <div class="ml-header">
-      <div class="ml-header-title">
-        <h1><i class="bi bi-grid-3x3-gap"></i> My Listings</h1>
-        <p>Manage your products, services, and buyer requests</p>
-      </div>
-      <a href="{{ store_url }}" class="ml-btn ml-btn-outline" style="align-self:flex-start;">
-        <i class="bi bi-shop"></i> View My Store
-      </a>
-    </div>
-
     <div class="ml-tabs" id="mlTabs" role="tablist" aria-label="Listing sections">
-      <button class="ml-tab {% if active_tab == 'products' %}active{% endif %}"
+      <button type="button" class="ml-tab t-orange {% if active_tab == 'products' %}active{% endif %}"
               data-panel="products-panel" role="tab"
               aria-selected="{% if active_tab == 'products' %}true{% else %}false{% endif %}"
               aria-controls="products-panel">
-        <i class="bi bi-box-seam" aria-hidden="true"></i> Products
+        <i class="bi bi-box-seam-fill" aria-hidden="true"></i> Products
         <span class="ml-tab-badge">{{ product_stats.total }}</span>
       </button>
-      <button class="ml-tab {% if active_tab == 'services' %}active{% endif %}"
+      <button type="button" class="ml-tab t-teal {% if active_tab == 'services' %}active{% endif %}"
               data-panel="services-panel" role="tab"
               aria-selected="{% if active_tab == 'services' %}true{% else %}false{% endif %}"
               aria-controls="services-panel">
-        <i class="bi bi-briefcase" aria-hidden="true"></i> Services
+        <i class="bi bi-briefcase-fill" aria-hidden="true"></i> Services
         <span class="ml-tab-badge">{{ stats.total }}</span>
       </button>
-      <button class="ml-tab {% if active_tab == 'requests' %}active{% endif %}"
+      <button type="button" class="ml-tab t-purple {% if active_tab == 'requests' %}active{% endif %}"
               data-panel="requests-panel" role="tab"
               aria-selected="{% if active_tab == 'requests' %}true{% else %}false{% endif %}"
               aria-controls="requests-panel">
-        <i class="bi bi-chat-square-text" aria-hidden="true"></i> Requests
+        <i class="bi bi-megaphone-fill" aria-hidden="true"></i> Requests
         <span class="ml-tab-badge">{{ request_stats.total }}</span>
       </button>
     </div>
@@ -328,156 +258,124 @@
     {# ══════════════════════ PRODUCTS PANEL ══════════════════════ #}
     <div class="ml-panel {% if active_tab == 'products' %}active{% endif %}" id="products-panel" role="tabpanel">
 
-      <div class="ml-action-bar">
-        <h5 class="ml-action-bar-title">
-          Product Listings <span>({{ product_stats.total }} Product{{ product_stats.total|pluralize }})</span>
-        </h5>
+      <div class="ml-top">
+        <h2>Products <span>({{ product_stats.total }} Product{{ product_stats.total|pluralize }})</span></h2>
         <div class="ml-btn-group">
-          <a href="{% url 'product_create' %}" class="ml-btn ml-btn-primary">
-            <i class="bi bi-plus-lg"></i> Add Product
-          </a>
+          <a href="{% url 'product_create' %}" class="ml-btn ml-btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add Product</a>
         </div>
       </div>
 
-      <div class="ml-stats-strip" role="region" aria-label="Product statistics">
-        <div class="ml-stat-item">
-          <div class="ml-stat-value">{{ product_stats.total }}</div>
-          <div class="ml-stat-label">Total Products</div>
-        </div>
-        <div class="ml-stat-item">
-          <div class="ml-stat-value">{{ product_stats.total_views }}</div>
-          <div class="ml-stat-label">Total Views</div>
-        </div>
-        <div class="ml-stat-item">
-          <div class="ml-stat-value">{{ product_stats.active_boosts }}</div>
-          <div class="ml-stat-label">Active Boosts</div>
-        </div>
+      <div class="ml-kpis ml-kpis-3" role="region" aria-label="Product statistics">
+        <div class="ml-kpi t-orange"><span class="ox-ico" aria-hidden="true"><i class="bi bi-box-seam-fill"></i></span><div><div class="ml-kpi-v">{{ product_stats.total }}</div><div class="ml-kpi-l">Products</div></div></div>
+        <div class="ml-kpi t-teal"><span class="ox-ico" aria-hidden="true"><i class="bi bi-eye-fill"></i></span><div><div class="ml-kpi-v">{{ product_stats.total_views }}</div><div class="ml-kpi-l">Total views</div></div></div>
+        <div class="ml-kpi t-purple"><span class="ox-ico" aria-hidden="true"><i class="bi bi-rocket-takeoff-fill"></i></span><div><div class="ml-kpi-v">{{ product_stats.active_boosts }}</div><div class="ml-kpi-l">Active boosts</div></div></div>
       </div>
 
       {% if products %}
-      <div class="ml-product-list">
-        {% for product in products %}
-        <div class="ml-prod-card {% if product.is_suspended %}is-suspended{% elif product.expiration_date and product.days_until_deletion == 0 and product.listing_type != 'permanent' %}is-expired{% else %}is-live{% endif %}">
+      <div class="ml-toolbar">
+        <div class="ml-search">
+          <i class="bi bi-search" aria-hidden="true"></i>
+          <input type="search" id="productSearch" placeholder="Search your products" aria-label="Search your products" autocomplete="off" enterkeyhint="search">
+        </div>
+        <div class="ml-pills" id="productFilters" role="group" aria-label="Filter products">
+          <button type="button" class="ml-pill active" data-filter="all">All <span class="ml-pill-n"></span></button>
+          <button type="button" class="ml-pill" data-filter="live"><i class="bi bi-check-circle-fill" aria-hidden="true"></i> Live <span class="ml-pill-n"></span></button>
+          <button type="button" class="ml-pill" data-filter="expiring"><i class="bi bi-hourglass-split" aria-hidden="true"></i> Expiring <span class="ml-pill-n"></span></button>
+          <button type="button" class="ml-pill" data-filter="expired"><i class="bi bi-calendar-x-fill" aria-hidden="true"></i> Expired <span class="ml-pill-n"></span></button>
+          <button type="button" class="ml-pill" data-filter="suspended"><i class="bi bi-slash-circle-fill" aria-hidden="true"></i> Suspended <span class="ml-pill-n"></span></button>
+        </div>
+      </div>
 
-          <div class="ml-prod-thumb-col">
-            {% with product.images.all as img_set %}
-              {% if img_set %}
-                {% with img_set.first as fallback_img %}
+      <div class="ml-pgrid" id="productList">
+        {% for product in products %}
+        {% with product.days_until_deletion as days_left %}
+        <article class="ml-card ml-pcard {% if product.is_suspended %}is-suspended{% elif product.expiration_date and days_left == 0 and product.listing_type != 'permanent' %}is-expired{% else %}is-live{% endif %}"
+                 data-title="{{ product.title|lower }}"
+                 data-status="{% if product.is_suspended %}suspended{% elif product.expiration_date and days_left == 0 and product.listing_type != 'permanent' %}expired{% elif product.listing_type != 'permanent' and product.expiration_date and days_left is not None and days_left <= 7 %}expiring{% else %}live{% endif %}">
+
+          <div class="ml-pmedia">
+            <a href="{% url 'product_detail' product.pk %}" class="ml-pimg" aria-label="View {{ product.title }}">
+              {% with product.images.all as img_set %}
+                {% if img_set %}
+                  <img src="{{ img_set.0.image.url }}" alt="" loading="lazy">
                   {% for img in img_set %}{% if img.is_primary %}<img src="{{ img.image.url }}" alt="{{ product.title }}" loading="lazy">{% endif %}{% endfor %}
-                  {% with has_primary=False %}
-                    {% for img in img_set %}{% if img.is_primary %}{% with has_primary=True %}{% endwith %}{% endif %}{% endfor %}
-                    {% if not has_primary %}<img src="{{ fallback_img.image.url }}" alt="{{ product.title }}" loading="lazy">{% endif %}
-                  {% endwith %}
-                {% endwith %}
+                {% else %}
+                  <span class="ml-pimg-ph" aria-hidden="true"><i class="bi bi-image"></i></span>
+                {% endif %}
+              {% endwith %}
+            </a>
+            <div class="ml-pchips">
+              {% if product.is_suspended %}
+                <span class="ml-chip badge-suspended"><i class="bi bi-slash-circle-fill" aria-hidden="true"></i> Suspended</span>
+              {% elif product.expiration_date and days_left == 0 and product.listing_type != 'permanent' %}
+                <span class="ml-chip badge-expired"><i class="bi bi-calendar-x-fill" aria-hidden="true"></i> Expired</span>
+              {% elif product.listing_type == 'permanent' %}
+                <span class="ml-chip badge-permanent"><i class="bi bi-infinity" aria-hidden="true"></i> Permanent</span>
               {% else %}
-                <div class="ml-prod-thumb-ph" aria-hidden="true"><i class="bi bi-image"></i></div>
+                <span class="ml-chip badge-live"><i class="bi bi-check-circle-fill" aria-hidden="true"></i> Live</span>
               {% endif %}
-            {% endwith %}
+              {% if product.boost_active %}<span class="ml-chip ml-chip-boost"><i class="bi bi-lightning-fill" aria-hidden="true"></i> Boosted</span>{% endif %}
+            </div>
           </div>
 
-          <div class="ml-prod-detail">
-
-            <div class="ml-prod-row1">
-              <div class="ml-prod-title-wrap">
-                <a href="{% url 'product_detail' product.pk %}" class="ml-prod-name" title="{{ product.title }}">
-                  {{ product.title|truncatechars:52 }}
-                </a>
-                <div class="ml-prod-age">
-                  <i class="bi bi-clock" aria-hidden="true"></i>
-                  Added {{ product.created_at|timesince }} ago{% if product.brand %} &middot; {{ product.brand.name }}{% endif %}
-                </div>
-              </div>
-              {% if product.is_suspended %}
-                <span class="ml-badge badge-suspended"><i class="bi bi-slash-circle-fill" aria-hidden="true"></i> Suspended</span>
-              {% elif product.expiration_date and product.days_until_deletion == 0 and product.listing_type != 'permanent' %}
-                <span class="ml-badge badge-expired"><i class="bi bi-calendar-x-fill" aria-hidden="true"></i> Expired</span>
-              {% elif product.listing_type == 'permanent' %}
-                <span class="ml-badge badge-permanent"><i class="bi bi-infinity" aria-hidden="true"></i> Permanent</span>
-              {% else %}
-                <span class="ml-badge badge-live"><i class="bi bi-check-circle-fill" aria-hidden="true"></i> Live</span>
-              {% endif %}
-            </div>
-
-            <div class="ml-prod-row2">
-              <span class="ml-prod-cat">
-                <i class="bi bi-tag-fill" aria-hidden="true"></i>
-                {{ product.category.name }}{% if product.subcategory %} &rsaquo; {{ product.subcategory.name }}{% endif %}
-              </span>
-              <span class="ml-prod-price">{{ product.formatted_price|default:"₦0" }}</span>
-              {% if product.boost_active %}<span class="ml-boost-live"><i class="bi bi-lightning-fill" aria-hidden="true"></i> Boosted</span>{% endif %}
+          <div class="ml-pbody">
+            <a href="{% url 'product_detail' product.pk %}" class="ml-ptitle" title="{{ product.title }}">{{ product.title|truncatechars:60 }}</a>
+            <div class="ml-pprice">{{ product.formatted_price|default:"₦0" }}</div>
+            <div class="ml-pcat"><i class="bi bi-tag-fill" aria-hidden="true"></i> {{ product.category.name }}{% if product.subcategory %} &rsaquo; {{ product.subcategory.name }}{% endif %}</div>
+            <div class="ml-psub">Added {{ product.created_at|timesince }} ago{% if product.brand %} &middot; {{ product.brand.name }}{% endif %}</div>
+            <div class="ml-pstats">
+              <span class="ml-metric"><i class="bi bi-eye icon-views" aria-hidden="true"></i> {{ product.view_count|default:"0" }} view{{ product.view_count|default:0|pluralize }}</span>
               {% if product.condition == 'new' %}<span class="ml-tag tag-success">New</span>
               {% elif product.condition == 'used' %}<span class="ml-tag tag-neutral">Used</span>{% endif %}
+              {% if product.listing_type != 'permanent' and product.expiration_date and days_left is not None and days_left > 7 %}
+                <span class="ml-metric ml-exp is-ok"><i class="bi bi-hourglass-split" aria-hidden="true"></i> {{ days_left }}d left</span>
+              {% endif %}
             </div>
-
-            <div class="ml-prod-row3">
-              <div class="ml-prod-metrics">
-                <span class="ml-prod-metric">
-                  <i class="bi bi-eye mi-views" aria-hidden="true"></i>
-                  {{ product.view_count|default:"0" }} view{{ product.view_count|default:0|pluralize }}
-                </span>
-                {% if product.listing_type != 'permanent' and product.expiration_date %}
-                  {% with product.days_until_deletion as days_left %}
-                  {% if days_left is not None %}
-                  <span class="ml-prod-metric">
-                    <i class="bi bi-hourglass-split {% if days_left <= 3 %}mi-expiry-danger{% elif days_left <= 7 %}mi-expiry-warn{% else %}mi-expiry-ok{% endif %}" aria-hidden="true"></i>
-                    {% if days_left == 0 %}Expired{% else %}{{ days_left }}d left{% endif %}
-                  </span>
-                  {% endif %}
-                  {% endwith %}
-                {% endif %}
-                {% if product.boost_active %}
-                <span class="ml-prod-metric">
-                  <i class="bi bi-rocket-takeoff-fill mi-boost" aria-hidden="true"></i> Boost live
-                </span>
-                {% endif %}
-              </div>
-
-              <div class="ml-prod-actions">
-                <a href="{% url 'product_detail' product.pk %}"
-                   class="ml-btn ml-btn-ghost ml-btn-sm ml-btn-icon" title="View listing"
-                   aria-label="View {{ product.title }}">
-                  <i class="bi bi-eye" aria-hidden="true"></i>
-                </a>
-                {% if not product.is_suspended %}
-                <a href="{% url 'product_update' product.pk %}"
-                   class="ml-btn ml-btn-outline ml-btn-sm ml-btn-icon" title="Edit listing"
-                   aria-label="Edit {{ product.title }}">
-                  <i class="bi bi-pencil" aria-hidden="true"></i>
-                </a>
-                <a href="{% url 'boost_product' product.pk %}"
-                   class="ml-btn ml-btn-boost ml-btn-sm ml-btn-icon {% if product.boost_active %}boosted{% endif %}"
-                   title="{% if product.boost_active %}Manage boost{% else %}Boost listing{% endif %}"
-                   aria-label="Boost {{ product.title }}">
-                  <i class="bi bi-rocket{% if product.boost_active %}-takeoff{% endif %}-fill" aria-hidden="true"></i>
-                </a>
-                {% endif %}
-
-                {% if product.listing_type != 'permanent' and not product.is_suspended %}
-                <button class="ml-btn ml-btn-ghost ml-btn-sm ml-btn-icon" title="Quick Update"
-                        aria-label="Quick Update {{ product.title }}"
-                        onclick="quickUpdate(event,'{% url 'product_quick_update' product.pk %}')">
-                  <i class="bi bi-lightning-fill" aria-hidden="true"></i>
-                </button>
-                {% endif %}
-                <a href="{% url 'product_delete' product.pk %}"
-                   class="ml-btn ml-btn-danger ml-btn-sm ml-btn-icon" title="Delete listing"
-                   aria-label="Delete {{ product.title }}">
-                  <i class="bi bi-trash" aria-hidden="true"></i>
-                </a>
-              </div>
-            </div>
-
+            {% if product.listing_type != 'permanent' and not product.is_suspended and product.expiration_date and days_left is not None and days_left <= 7 %}
+            <button type="button" class="ml-renew {% if days_left <= 3 %}is-danger{% endif %}"
+                    onclick="quickUpdate(event,'{% url 'product_quick_update' product.pk %}')"
+                    aria-label="Renew {{ product.title }}">
+              <i class="bi bi-hourglass-split" aria-hidden="true"></i>
+              {% if days_left == 0 %}Expired{% else %}{{ days_left }}d left{% endif %} &middot; Renew
+            </button>
+            {% endif %}
             {% if product.is_suspended %}
             <div class="ml-suspension-banner" role="alert">
               <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
-              {% if product.suspension_reason %}Suspended: {{ product.suspension_reason|truncatechars:100 }}
-              {% else %}This listing has been suspended. Contact support for details.{% endif %}
+              <span>{% if product.suspension_reason %}Suspended: {{ product.suspension_reason|truncatechars:100 }}{% else %}This listing has been suspended. Contact support for details.{% endif %}</span>
             </div>
             {% endif %}
-
           </div>
-        </div>
+
+          <div class="ml-pfoot">
+            {% if not product.is_suspended %}
+            <a href="{% url 'product_update' product.pk %}" class="ml-btn ml-btn-outline ml-btn-sm ml-pedit" aria-label="Edit {{ product.title }}"><i class="bi bi-pencil" aria-hidden="true"></i> Edit</a>
+            <a href="{% url 'boost_product' product.pk %}"
+               class="ml-btn ml-btn-boost ml-btn-sm ml-btn-icon {% if product.boost_active %}boosted{% endif %}"
+               title="{% if product.boost_active %}Manage boost{% else %}Boost listing{% endif %}"
+               aria-label="Boost {{ product.title }}">
+              <i class="bi bi-rocket{% if product.boost_active %}-takeoff{% endif %}-fill" aria-hidden="true"></i>
+            </a>
+            {% else %}
+            <a href="{% url 'product_detail' product.pk %}" class="ml-btn ml-btn-outline ml-btn-sm ml-pedit"><i class="bi bi-eye" aria-hidden="true"></i> View</a>
+            {% endif %}
+            <details class="ml-more">
+              <summary class="ml-btn ml-btn-ghost ml-btn-sm ml-btn-icon" aria-label="More actions for {{ product.title }}"><i class="bi bi-three-dots" aria-hidden="true"></i></summary>
+              <div class="ml-menu">
+                <a href="{% url 'product_detail' product.pk %}" class="ml-menu-item"><i class="bi bi-eye" aria-hidden="true"></i> View listing</a>
+                {% if product.listing_type != 'permanent' and not product.is_suspended %}
+                <button type="button" class="ml-menu-item" onclick="quickUpdate(event,'{% url 'product_quick_update' product.pk %}')"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Renew listing timer</button>
+                {% endif %}
+                <a href="{% url 'product_delete' product.pk %}" class="ml-menu-item is-danger"><i class="bi bi-trash" aria-hidden="true"></i> Delete</a>
+              </div>
+            </details>
+          </div>
+        </article>
+        {% endwith %}
         {% endfor %}
+        <div id="productsEmptyFiltered" class="ml-span" style="display:none;">
+          <div class="ml-table-wrap"><div class="ml-empty"><div class="ml-empty-icon" aria-hidden="true"><i class="bi bi-funnel"></i></div><h5>No products match</h5><p>Try a different search or filter.</p></div></div>
+        </div>
       </div>
 
       {% else %}
@@ -486,9 +384,7 @@
           <div class="ml-empty-icon" aria-hidden="true"><i class="bi bi-box2-heart"></i></div>
           <h5>No products listed yet</h5>
           <p>Create your first product listing to start selling on OpenSell.</p>
-          <a href="{% url 'product_create' %}" class="ml-btn ml-btn-primary">
-            <i class="bi bi-plus-lg" aria-hidden="true"></i> Create Your First Listing
-          </a>
+          <a href="{% url 'product_create' %}" class="ml-btn ml-btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> Create Your First Listing</a>
         </div>
       </div>
       {% endif %}
@@ -499,26 +395,26 @@
     {# ══════════════════════ SERVICES PANEL ══════════════════════ #}
     <div class="ml-panel {% if active_tab == 'services' %}active{% endif %}" id="services-panel" role="tabpanel">
 
-      <div class="ml-action-bar">
-        <h5 class="ml-action-bar-title">My Services <span>({{ stats.total }} Service{{ stats.total|pluralize }})</span></h5>
+      <div class="ml-top">
+        <h2>Services <span>({{ stats.total }} Service{{ stats.total|pluralize }})</span></h2>
         <div class="ml-btn-group">
-          <a href="{% url 'services:create' %}" class="ml-btn ml-btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add New Service</a>
-          <a href="{% url 'services:list' %}" class="ml-btn ml-btn-outline"><i class="bi bi-search" aria-hidden="true"></i> Browse Services</a>
+          <a href="{% url 'services:create' %}" class="ml-btn ml-btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add Service</a>
+          <a href="{% url 'services:list' %}" class="ml-btn ml-btn-outline"><i class="bi bi-search" aria-hidden="true"></i> Browse</a>
         </div>
       </div>
 
-      <div class="ml-stats-grid" role="region" aria-label="Service statistics">
-        <div class="ml-stat-card"><div class="ml-stat-icon icon-primary" aria-hidden="true"><i class="bi bi-briefcase"></i></div><div><div class="ml-stat-card-value">{{ stats.total }}</div><div class="ml-stat-card-label">Total Services</div></div></div>
-        <div class="ml-stat-card"><div class="ml-stat-icon icon-success" aria-hidden="true"><i class="bi bi-check-circle"></i></div><div><div class="ml-stat-card-value">{{ stats.active }}</div><div class="ml-stat-card-label">Active</div></div></div>
-        <div class="ml-stat-card"><div class="ml-stat-icon icon-info" aria-hidden="true"><i class="bi bi-chat-dots"></i></div><div><div class="ml-stat-card-value">{{ stats.inquiries }}</div><div class="ml-stat-card-label">Inquiries</div></div></div>
-        <div class="ml-stat-card"><div class="ml-stat-icon icon-purple" aria-hidden="true"><i class="bi bi-eye"></i></div><div><div class="ml-stat-card-value">{{ stats.total_views }}</div><div class="ml-stat-card-label">Total Views</div></div></div>
-        <div class="ml-stat-card"><div class="ml-stat-icon icon-warning" aria-hidden="true"><i class="bi bi-star-fill"></i></div><div><div class="ml-stat-card-value">{{ stats.avg_rating|floatformat:1 }}</div><div class="ml-stat-card-label">Avg Rating</div></div></div>
+      <div class="ml-kpis ml-kpis-5" role="region" aria-label="Service statistics">
+        <div class="ml-kpi t-navy"><span class="ox-ico" aria-hidden="true"><i class="bi bi-briefcase-fill"></i></span><div><div class="ml-kpi-v">{{ stats.total }}</div><div class="ml-kpi-l">Services</div></div></div>
+        <div class="ml-kpi t-green"><span class="ox-ico" aria-hidden="true"><i class="bi bi-check-circle-fill"></i></span><div><div class="ml-kpi-v">{{ stats.active }}</div><div class="ml-kpi-l">Active</div></div></div>
+        <div class="ml-kpi t-teal"><span class="ox-ico" aria-hidden="true"><i class="bi bi-chat-dots-fill"></i></span><div><div class="ml-kpi-v">{{ stats.inquiries }}</div><div class="ml-kpi-l">Inquiries</div></div></div>
+        <div class="ml-kpi t-purple"><span class="ox-ico" aria-hidden="true"><i class="bi bi-eye-fill"></i></span><div><div class="ml-kpi-v">{{ stats.total_views }}</div><div class="ml-kpi-l">Total views</div></div></div>
+        <div class="ml-kpi t-orange"><span class="ox-ico" aria-hidden="true"><i class="bi bi-star-fill"></i></span><div><div class="ml-kpi-v">{{ stats.avg_rating|floatformat:1 }}</div><div class="ml-kpi-l">Avg rating</div></div></div>
       </div>
 
       {% if recent_inquiries %}
       <div class="ml-inq-card" role="region" aria-label="Recent inquiries">
         <div class="ml-inq-header">
-          <h5><i class="bi bi-chat-square-text" aria-hidden="true"></i> Recent Inquiries</h5>
+          <h5><i class="bi bi-chat-square-text-fill" aria-hidden="true"></i> Recent Inquiries</h5>
           <a href="{% url 'services:my_inquiries' %}" class="ml-btn ml-btn-outline ml-btn-sm">View All</a>
         </div>
         {% for inquiry in recent_inquiries %}
@@ -533,11 +429,12 @@
       </div>
       {% endif %}
 
-      <div>
+      <div class="ml-clist">
         {% for service in services %}
-        <div class="ml-item-card">
-          <div class="ml-item-header">
-            <div class="ml-item-title">
+        <article class="ml-card ml-scard">
+          <div class="ml-chead">
+            <span class="ox-ico {% if service.is_active %}t-teal{% else %}t-gray{% endif %}" aria-hidden="true"><i class="bi bi-briefcase-fill"></i></span>
+            <div class="ml-ctitle">
               <a href="{% url 'services:detail' pk=service.id %}">{{ service.title }}</a>
               <div class="ml-item-badges">
                 <span class="ml-tag tag-primary">{{ service.get_service_type_display }}</span>
@@ -552,45 +449,50 @@
               {% else %}<i class="bi bi-pause-circle-fill" aria-hidden="true"></i> Inactive{% endif %}
             </span>
           </div>
-          <div class="ml-item-meta">
-            <span class="ml-meta-chip"><i class="bi bi-tag-fill chip-icon chip-icon-tag" aria-hidden="true"></i>{% if service.category %}{{ service.category }}{% else %}&mdash;{% endif %}</span>
-            <span class="ml-meta-chip"><i class="bi bi-cash-stack chip-icon chip-icon-money" aria-hidden="true"></i>{% if service.pricing_type == 'fixed' and service.base_price %}&#8358;{{ service.base_price|floatformat:0 }}{% elif service.pricing_type == 'hourly' and service.base_price %}&#8358;{{ service.base_price|floatformat:0 }}/hr{% elif service.pricing_type == 'negotiable' %}Negotiable{% elif service.base_price %}&#8358;{{ service.base_price|floatformat:0 }}{% else %}Contact for price{% endif %}</span>
-            <span class="ml-meta-chip"><i class="bi bi-calendar3 chip-icon chip-icon-cal" aria-hidden="true"></i>Listed {{ service.created_at|timesince }} ago</span>
-            {% if service.availability %}<span class="ml-meta-chip"><i class="bi bi-clock chip-icon chip-icon-avail" aria-hidden="true"></i>{{ service.get_availability_display }}</span>{% endif %}
-          </div>
-          {% if service.description %}<div class="ml-item-desc">{{ service.description|truncatewords:25 }}</div>{% endif %}
-          <div class="ml-item-footer">
+          <div class="ml-cbody">
+            <div class="ml-item-meta">
+              <span class="ml-meta-chip ml-meta-price"><i class="bi bi-cash-stack chip-icon chip-icon-money" aria-hidden="true"></i>{% if service.pricing_type == 'fixed' and service.base_price %}&#8358;{{ service.base_price|floatformat:0 }}{% elif service.pricing_type == 'hourly' and service.base_price %}&#8358;{{ service.base_price|floatformat:0 }}/hr{% elif service.pricing_type == 'negotiable' %}Negotiable{% elif service.base_price %}&#8358;{{ service.base_price|floatformat:0 }}{% else %}Contact for price{% endif %}</span>
+              <span class="ml-meta-chip"><i class="bi bi-tag-fill chip-icon chip-icon-tag" aria-hidden="true"></i>{% if service.category %}{{ service.category }}{% else %}&mdash;{% endif %}</span>
+              <span class="ml-meta-chip"><i class="bi bi-calendar3 chip-icon chip-icon-cal" aria-hidden="true"></i>Listed {{ service.created_at|timesince }} ago</span>
+              {% if service.availability %}<span class="ml-meta-chip"><i class="bi bi-clock chip-icon chip-icon-avail" aria-hidden="true"></i>{{ service.get_availability_display }}</span>{% endif %}
+            </div>
+            {% if service.description %}<div class="ml-item-desc">{{ service.description|truncatewords:25 }}</div>{% endif %}
             <div class="ml-item-stats">
               <span class="ml-metric"><i class="bi bi-eye icon-views" aria-hidden="true"></i>{{ service.view_count }} view{{ service.view_count|pluralize }}</span>
               <span class="ml-metric"><i class="bi bi-chat-dots icon-chat" aria-hidden="true"></i>{{ service.inquiries.all|length }} inquir{{ service.inquiries.all|length|pluralize:"y,ies" }}</span>
               {% with service.average_rating as rating %}{% if rating %}<span class="ml-metric"><i class="bi bi-star-fill icon-star" aria-hidden="true"></i>{{ rating|floatformat:1 }}</span>{% endif %}{% endwith %}
               {% if service.reviews.all|length %}<span class="ml-metric"><i class="bi bi-chat-square-text icon-chat" aria-hidden="true"></i>{{ service.reviews.all|length }} review{{ service.reviews.all|length|pluralize }}</span>{% endif %}
             </div>
-            <div class="ml-item-actions">
-              <a href="{% url 'services:detail' pk=service.id %}" class="ml-btn ml-btn-ghost ml-btn-sm"><i class="bi bi-eye" aria-hidden="true"></i> View</a>
+          </div>
+          <div class="ml-cfoot">
+            <div class="ml-cfoot-actions">
               <a href="{% url 'services:update' pk=service.id %}" class="ml-btn ml-btn-outline ml-btn-sm"><i class="bi bi-pencil" aria-hidden="true"></i> Edit</a>
               {% if service.inquiries.all|length > 0 %}
               <a href="{% url 'services:my_inquiries' %}?service={{ service.id }}" class="ml-btn ml-btn-ghost ml-btn-sm"><i class="bi bi-chat-dots" aria-hidden="true"></i> {{ service.inquiries.all|length }}</a>
               {% endif %}
               {% if service.is_active %}
-              <button class="ml-btn ml-btn-ghost ml-btn-sm" title="Deactivate service"
+              <button type="button" class="ml-btn ml-btn-ghost ml-btn-sm" title="Deactivate service"
                       onclick="confirmStatusChange('service','{{ service.id }}','inactive','Deactivate this service?')">
                 <i class="bi bi-pause-circle" aria-hidden="true"></i> Deactivate
               </button>
               {% else %}
-              <button class="ml-btn ml-btn-outline ml-btn-sm" title="Activate service"
+              <button type="button" class="ml-btn ml-btn-outline ml-btn-sm" title="Activate service"
                       onclick="confirmStatusChange('service','{{ service.id }}','active','Activate this service?')">
                 <i class="bi bi-check-circle" aria-hidden="true"></i> Activate
               </button>
               {% endif %}
-              <a href="{% url 'services:delete' pk=service.id %}" class="ml-btn ml-btn-danger ml-btn-sm ml-btn-icon" title="Delete service" aria-label="Delete {{ service.title }}">
-                <i class="bi bi-trash" aria-hidden="true"></i>
-              </a>
+              <details class="ml-more ml-spacer">
+                <summary class="ml-btn ml-btn-ghost ml-btn-sm ml-btn-icon" aria-label="More actions for {{ service.title }}"><i class="bi bi-three-dots" aria-hidden="true"></i></summary>
+                <div class="ml-menu">
+                  <a href="{% url 'services:detail' pk=service.id %}" class="ml-menu-item"><i class="bi bi-eye" aria-hidden="true"></i> View service</a>
+                  <a href="{% url 'services:delete' pk=service.id %}" class="ml-menu-item is-danger"><i class="bi bi-trash" aria-hidden="true"></i> Delete</a>
+                </div>
+              </details>
             </div>
           </div>
-        </div>
+        </article>
         {% empty %}
-        <div class="ml-table-wrap"><div class="ml-empty" role="status"><div class="ml-empty-icon" aria-hidden="true"><i class="bi bi-briefcase"></i></div><h5>No services listed yet</h5><p>Start by listing your first service to connect with clients.</p><a href="{% url 'services:create' %}" class="ml-btn ml-btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> List Your First Service</a></div></div>
+        <div class="ml-span"><div class="ml-table-wrap"><div class="ml-empty" role="status"><div class="ml-empty-icon" aria-hidden="true"><i class="bi bi-briefcase"></i></div><h5>No services listed yet</h5><p>Start by listing your first service to connect with clients.</p><a href="{% url 'services:create' %}" class="ml-btn ml-btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> List Your First Service</a></div></div></div>
         {% endfor %}
       </div>
 
@@ -608,35 +510,36 @@
     {# ══════════════════════ REQUESTS PANEL ══════════════════════ #}
     <div class="ml-panel {% if active_tab == 'requests' %}active{% endif %}" id="requests-panel" role="tabpanel">
 
-      <div class="ml-action-bar">
-        <h5 class="ml-action-bar-title">My Buyer Requests <span>({{ request_stats.total }} Request{{ request_stats.total|pluralize }})</span></h5>
+      <div class="ml-top">
+        <h2>Buyer Requests <span>({{ request_stats.total }} Request{{ request_stats.total|pluralize }})</span></h2>
         <div class="ml-btn-group">
-          <a href="{% url 'buyer_requests:create' %}" class="ml-btn ml-btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> Post New Request</a>
-          <a href="{% url 'buyer_requests:list' %}" class="ml-btn ml-btn-outline"><i class="bi bi-search" aria-hidden="true"></i> Browse Requests</a>
+          <a href="{% url 'buyer_requests:create' %}" class="ml-btn ml-btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> Post Request</a>
+          <a href="{% url 'buyer_requests:list' %}" class="ml-btn ml-btn-outline"><i class="bi bi-search" aria-hidden="true"></i> Browse</a>
         </div>
       </div>
 
-      <div class="ml-stats-grid" role="region" aria-label="Request statistics">
-        <div class="ml-stat-card"><div class="ml-stat-icon icon-primary" aria-hidden="true"><i class="bi bi-chat-square-text"></i></div><div><div class="ml-stat-card-value">{{ request_stats.total }}</div><div class="ml-stat-card-label">Total Requests</div></div></div>
-        <div class="ml-stat-card"><div class="ml-stat-icon icon-success" aria-hidden="true"><i class="bi bi-check-circle"></i></div><div><div class="ml-stat-card-value">{{ request_stats.active }}</div><div class="ml-stat-card-label">Active</div></div></div>
-        <div class="ml-stat-card"><div class="ml-stat-icon icon-warning" aria-hidden="true"><i class="bi bi-trophy"></i></div><div><div class="ml-stat-card-value">{{ request_stats.fulfilled }}</div><div class="ml-stat-card-label">Fulfilled</div></div></div>
-        <div class="ml-stat-card"><div class="ml-stat-icon icon-info" aria-hidden="true"><i class="bi bi-chat-dots"></i></div><div><div class="ml-stat-card-value">{{ request_stats.total_responses }}</div><div class="ml-stat-card-label">Responses</div></div></div>
-        <div class="ml-stat-card"><div class="ml-stat-icon icon-purple" aria-hidden="true"><i class="bi bi-eye"></i></div><div><div class="ml-stat-card-value">{{ request_stats.total_views }}</div><div class="ml-stat-card-label">Total Views</div></div></div>
+      <div class="ml-kpis ml-kpis-5" role="region" aria-label="Request statistics">
+        <div class="ml-kpi t-navy"><span class="ox-ico" aria-hidden="true"><i class="bi bi-megaphone-fill"></i></span><div><div class="ml-kpi-v">{{ request_stats.total }}</div><div class="ml-kpi-l">Requests</div></div></div>
+        <div class="ml-kpi t-green"><span class="ox-ico" aria-hidden="true"><i class="bi bi-check-circle-fill"></i></span><div><div class="ml-kpi-v">{{ request_stats.active }}</div><div class="ml-kpi-l">Active</div></div></div>
+        <div class="ml-kpi t-orange"><span class="ox-ico" aria-hidden="true"><i class="bi bi-trophy-fill"></i></span><div><div class="ml-kpi-v">{{ request_stats.fulfilled }}</div><div class="ml-kpi-l">Fulfilled</div></div></div>
+        <div class="ml-kpi t-teal"><span class="ox-ico" aria-hidden="true"><i class="bi bi-chat-dots-fill"></i></span><div><div class="ml-kpi-v">{{ request_stats.total_responses }}</div><div class="ml-kpi-l">Responses</div></div></div>
+        <div class="ml-kpi t-purple"><span class="ox-ico" aria-hidden="true"><i class="bi bi-eye-fill"></i></span><div><div class="ml-kpi-v">{{ request_stats.total_views }}</div><div class="ml-kpi-l">Total views</div></div></div>
       </div>
 
       <div class="ml-pills" id="requestFilters" role="group" aria-label="Filter requests">
-        <button class="ml-pill active" data-filter="all"><i class="bi bi-list-ul" aria-hidden="true"></i> All</button>
-        <button class="ml-pill" data-filter="active"><i class="bi bi-check-circle" aria-hidden="true"></i> Active</button>
-        <button class="ml-pill" data-filter="paused"><i class="bi bi-pause-circle" aria-hidden="true"></i> Paused</button>
-        <button class="ml-pill" data-filter="fulfilled"><i class="bi bi-trophy" aria-hidden="true"></i> Fulfilled</button>
-        <button class="ml-pill" data-filter="expired"><i class="bi bi-calendar-x" aria-hidden="true"></i> Expired</button>
+        <button type="button" class="ml-pill active" data-filter="all"><i class="bi bi-list-ul" aria-hidden="true"></i> All</button>
+        <button type="button" class="ml-pill" data-filter="active"><i class="bi bi-check-circle" aria-hidden="true"></i> Active</button>
+        <button type="button" class="ml-pill" data-filter="paused"><i class="bi bi-pause-circle" aria-hidden="true"></i> Paused</button>
+        <button type="button" class="ml-pill" data-filter="fulfilled"><i class="bi bi-trophy" aria-hidden="true"></i> Fulfilled</button>
+        <button type="button" class="ml-pill" data-filter="expired"><i class="bi bi-calendar-x" aria-hidden="true"></i> Expired</button>
       </div>
 
-      <div id="requestsList">
+      <div id="requestsList" class="ml-clist">
         {% for req in buyer_requests %}
-        <div class="ml-item-card" data-status="{{ req.status }}">
-          <div class="ml-item-header">
-            <div class="ml-item-title">
+        <article class="ml-card ml-item-card" data-status="{{ req.status }}">
+          <div class="ml-chead">
+            <span class="ox-ico {% if req.status == 'active' %}t-green{% elif req.status == 'paused' %}t-orange{% elif req.status == 'fulfilled' %}t-teal{% elif req.status == 'cancelled' %}t-red{% else %}t-gray{% endif %}" aria-hidden="true"><i class="bi bi-megaphone-fill"></i></span>
+            <div class="ml-ctitle">
               <a href="{% url 'buyer_requests:detail' pk=req.id %}">{{ req.title }}</a>
               <div class="ml-item-badges">
                 <span class="ml-tag tag-{{ req.urgency_color|default:'neutral' }}">{{ req.get_urgency_display }}</span>
@@ -654,64 +557,60 @@
               {{ req.get_status_display }}
             </span>
           </div>
-          <div class="ml-item-meta">
-            <span class="ml-meta-chip"><i class="bi bi-tag-fill chip-icon chip-icon-tag" aria-hidden="true"></i>{% if req.category %}{{ req.category.name }}{% if req.subcategory %} &rsaquo; {{ req.subcategory.name }}{% endif %}{% elif req.service_category %}{{ req.get_service_category_display }}{% else %}General{% endif %}</span>
-            {% if req.budget_display %}<span class="ml-meta-chip"><i class="bi bi-cash-stack chip-icon chip-icon-money" aria-hidden="true"></i>{{ req.budget_display }}</span>{% endif %}
-            <span class="ml-meta-chip"><i class="bi bi-calendar3 chip-icon chip-icon-cal" aria-hidden="true"></i>Posted {{ req.created_at|timesince }} ago</span>
-            {% if req.needed_by %}<span class="ml-meta-chip"><i class="bi bi-calendar-check chip-icon chip-icon-avail" aria-hidden="true"></i>Needed by {{ req.needed_by|date:"M d, Y" }}</span>{% endif %}
-          </div>
-          {% if req.description %}<div class="ml-item-desc">{{ req.description|truncatewords:30 }}</div>{% endif %}
-          <div class="ml-item-footer">
+          <div class="ml-cbody">
+            <div class="ml-item-meta">
+              {% if req.budget_display %}<span class="ml-meta-chip ml-meta-price"><i class="bi bi-cash-stack chip-icon chip-icon-money" aria-hidden="true"></i>{{ req.budget_display }}</span>{% endif %}
+              <span class="ml-meta-chip"><i class="bi bi-tag-fill chip-icon chip-icon-tag" aria-hidden="true"></i>{% if req.category %}{{ req.category.name }}{% if req.subcategory %} &rsaquo; {{ req.subcategory.name }}{% endif %}{% elif req.service_category %}{{ req.get_service_category_display }}{% else %}General{% endif %}</span>
+              <span class="ml-meta-chip"><i class="bi bi-calendar3 chip-icon chip-icon-cal" aria-hidden="true"></i>Posted {{ req.created_at|timesince }} ago</span>
+              {% if req.needed_by %}<span class="ml-meta-chip"><i class="bi bi-calendar-check chip-icon chip-icon-avail" aria-hidden="true"></i>Needed by {{ req.needed_by|date:"M d, Y" }}</span>{% endif %}
+            </div>
+            {% if req.description %}<div class="ml-item-desc">{{ req.description|truncatewords:30 }}</div>{% endif %}
             <div class="ml-item-stats">
               <span class="ml-metric"><i class="bi bi-eye icon-views" aria-hidden="true"></i>{{ req.view_count|default:0 }} view{{ req.view_count|default:0|pluralize }}</span>
               <span class="ml-metric"><i class="bi bi-chat-dots icon-chat" aria-hidden="true"></i>{{ req.response_count|default:0 }} response{{ req.response_count|default:0|pluralize }}</span>
               {% if req.contact_count %}<span class="ml-metric"><i class="bi bi-telephone icon-phone" aria-hidden="true"></i>{{ req.contact_count }} contact{{ req.contact_count|pluralize }}</span>{% endif %}
               {% if req.status == 'active' and req.days_remaining is not None %}<span class="ml-metric"><i class="bi bi-clock icon-clock" aria-hidden="true"></i>{{ req.days_remaining }} day{{ req.days_remaining|pluralize }} left</span>{% endif %}
             </div>
-            <div class="ml-item-actions">
-              <a href="{% url 'buyer_requests:detail' pk=req.id %}" class="ml-btn ml-btn-ghost ml-btn-sm"><i class="bi bi-eye" aria-hidden="true"></i> View</a>
+          </div>
+          <div class="ml-cfoot">
+            <div class="ml-cfoot-actions">
               {% if req.status == 'active' %}
               <a href="{% url 'buyer_requests:update' pk=req.id %}" class="ml-btn ml-btn-outline ml-btn-sm"><i class="bi bi-pencil" aria-hidden="true"></i> Edit</a>
               {% if req.can_be_bumped %}
-              <form method="post" action="{% url 'buyer_requests:bump_request' req.id %}" style="display:inline;">{% csrf_token %}
+              <form method="post" action="{% url 'buyer_requests:bump_request' req.id %}">{% csrf_token %}
                 <button type="submit" class="ml-btn ml-btn-ghost ml-btn-sm"><i class="bi bi-arrow-up-circle" aria-hidden="true"></i> Bump</button>
               </form>
               {% endif %}
-              {% endif %}
-              {% if req.status != 'active' and req.status != 'expired' %}
-              <button class="ml-btn ml-btn-outline ml-btn-sm"
+              <button type="button" class="ml-btn ml-btn-ghost ml-btn-sm"
+                      onclick="confirmStatusChange('request','{{ req.id }}','paused','Pause this request?')">
+                <i class="bi bi-pause-circle" aria-hidden="true"></i> Pause
+              </button>
+              {% elif req.status != 'expired' %}
+              <button type="button" class="ml-btn ml-btn-outline ml-btn-sm"
                       onclick="confirmStatusChange('request','{{ req.id }}','active','Mark this request as active?')">
                 <i class="bi bi-check-circle" aria-hidden="true"></i> Activate
               </button>
               {% endif %}
-              {% if req.status == 'active' %}
-              <button class="ml-btn ml-btn-ghost ml-btn-sm"
-                      onclick="confirmStatusChange('request','{{ req.id }}','paused','Pause this request?')">
-                <i class="bi bi-pause-circle" aria-hidden="true"></i> Pause
-              </button>
-              {% endif %}
-              {% if req.status != 'fulfilled' and req.status != 'expired' %}
-              <button class="ml-btn ml-btn-ghost ml-btn-sm"
-                      onclick="confirmStatusChange('request','{{ req.id }}','fulfilled','Mark this request as fulfilled?')">
-                <i class="bi bi-trophy" aria-hidden="true"></i> Fulfil
-              </button>
-              {% endif %}
-              {% if req.status != 'cancelled' and req.status != 'expired' %}
-              <button class="ml-btn ml-btn-danger ml-btn-sm"
-                      onclick="confirmStatusChange('request','{{ req.id }}','cancelled','Cancel this request?')">
-                <i class="bi bi-x-circle" aria-hidden="true"></i> Cancel
-              </button>
-              {% endif %}
-              <a href="{% url 'buyer_requests:delete' pk=req.id %}" class="ml-btn ml-btn-danger ml-btn-sm ml-btn-icon" title="Delete request" aria-label="Delete {{ req.title }}">
-                <i class="bi bi-trash" aria-hidden="true"></i>
-              </a>
+              <details class="ml-more ml-spacer">
+                <summary class="ml-btn ml-btn-ghost ml-btn-sm ml-btn-icon" aria-label="More actions for {{ req.title }}"><i class="bi bi-three-dots" aria-hidden="true"></i></summary>
+                <div class="ml-menu">
+                  <a href="{% url 'buyer_requests:detail' pk=req.id %}" class="ml-menu-item"><i class="bi bi-eye" aria-hidden="true"></i> View request</a>
+                  {% if req.status != 'fulfilled' and req.status != 'expired' %}
+                  <button type="button" class="ml-menu-item" onclick="confirmStatusChange('request','{{ req.id }}','fulfilled','Mark this request as fulfilled?')"><i class="bi bi-trophy" aria-hidden="true"></i> Mark as fulfilled</button>
+                  {% endif %}
+                  {% if req.status != 'cancelled' and req.status != 'expired' %}
+                  <button type="button" class="ml-menu-item is-danger" onclick="confirmStatusChange('request','{{ req.id }}','cancelled','Cancel this request?')"><i class="bi bi-x-circle" aria-hidden="true"></i> Cancel request</button>
+                  {% endif %}
+                  <a href="{% url 'buyer_requests:delete' pk=req.id %}" class="ml-menu-item is-danger"><i class="bi bi-trash" aria-hidden="true"></i> Delete</a>
+                </div>
+              </details>
             </div>
           </div>
-        </div>
+        </article>
         {% empty %}
-        <div class="ml-table-wrap"><div class="ml-empty" role="status"><div class="ml-empty-icon" aria-hidden="true"><i class="bi bi-chat-square-text"></i></div><h5>No requests posted yet</h5><p>Start by posting your first buyer request to connect with sellers.</p><a href="{% url 'buyer_requests:create' %}" class="ml-btn ml-btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> Post Your First Request</a></div></div>
+        <div class="ml-span"><div class="ml-table-wrap"><div class="ml-empty" role="status"><div class="ml-empty-icon" aria-hidden="true"><i class="bi bi-megaphone"></i></div><h5>No requests posted yet</h5><p>Start by posting your first buyer request to connect with sellers.</p><a href="{% url 'buyer_requests:create' %}" class="ml-btn ml-btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> Post Your First Request</a></div></div></div>
         {% endfor %}
-        <div id="requestsEmptyFiltered" style="display:none;">
+        <div id="requestsEmptyFiltered" class="ml-span" style="display:none;">
           <div class="ml-table-wrap"><div class="ml-empty"><div class="ml-empty-icon" aria-hidden="true"><i class="bi bi-funnel"></i></div><h5>No requests match this filter</h5><p>Try a different status filter above.</p></div></div>
         </div>
       </div>
@@ -912,6 +811,62 @@ function getCookie(name) {
     .find(function(s) { return s.startsWith(name + '='); });
   return c ? decodeURIComponent(c.split('=')[1]) : '';
 }
+</script>
+
+<script>
+/* ─── Product search and status filter (client side, all products are on the page) ─── */
+(function () {
+  var list = document.getElementById('productList');
+  if (!list) return;
+  var cards = [].slice.call(list.querySelectorAll('.ml-pcard'));
+  var pills = [].slice.call(document.querySelectorAll('#productFilters .ml-pill'));
+  var input = document.getElementById('productSearch');
+  var empty = document.getElementById('productsEmptyFiltered');
+  var status = 'all';
+
+  pills.forEach(function (p) {
+    var f = p.dataset.filter;
+    var n = f === 'all' ? cards.length : cards.filter(function (c) { return c.dataset.status === f; }).length;
+    var badge = p.querySelector('.ml-pill-n');
+    if (badge) badge.textContent = '(' + n + ')';
+    if (f !== 'all' && n === 0) p.hidden = true;
+  });
+
+  function apply() {
+    var term = (input && input.value || '').trim().toLowerCase();
+    var shown = 0;
+    cards.forEach(function (c) {
+      var ok = (status === 'all' || c.dataset.status === status) && (!term || (c.dataset.title || '').indexOf(term) > -1);
+      c.style.display = ok ? '' : 'none';
+      if (ok) shown++;
+    });
+    if (empty) empty.style.display = shown === 0 ? 'block' : 'none';
+  }
+
+  pills.forEach(function (p) {
+    p.addEventListener('click', function () {
+      pills.forEach(function (x) { x.classList.remove('active'); });
+      p.classList.add('active');
+      status = p.dataset.filter;
+      apply();
+    });
+  });
+  if (input) input.addEventListener('input', apply);
+})();
+
+/* ─── "More" menus: close on outside click, Esc, or choosing an item ─── */
+(function () {
+  function closeAll(except) {
+    document.querySelectorAll('.ml-more[open]').forEach(function (d) { if (d !== except) d.removeAttribute('open'); });
+  }
+  document.addEventListener('click', function (e) {
+    var item = e.target.closest ? e.target.closest('.ml-menu-item') : null;
+    if (item) { var d = item.closest('.ml-more'); if (d) d.removeAttribute('open'); return; }
+    var open = e.target.closest ? e.target.closest('.ml-more') : null;
+    closeAll(open);
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAll(null); });
+})();
 </script>
 
 {% endblock %}

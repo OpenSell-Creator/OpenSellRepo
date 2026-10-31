@@ -1,28 +1,105 @@
 {% extends 'base.html' %}
 
+{% block title %}Delete review{% endblock %}
+
+{% block page_css %}
+<style>
+/* Delete confirmation: shared OpenSell design (navy header band, token-based card, pill buttons). */
+.dl {
+    display: flex; flex-direction: column; align-items: center; gap: var(--gap-sections);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-6));
+    color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-body);
+}
+.dl a { text-decoration: none; }
+.dl p, .dl h1 { margin: 0; }
+
+.dl-head { align-self: stretch; display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); margin: -2rem -1rem 0; padding: calc(2rem + var(--sp-4)) var(--sp-5) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); text-align: center; }
+.dl-head-ico { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin-bottom: var(--sp-1); border-radius: var(--radius-full); background: rgba(255, 255, 255, .14); font-size: var(--font-size-xl); }
+.dl-head h1 { font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-snug); }
+.dl-head p { font-size: var(--font-size-sm); line-height: var(--lh-snug); opacity: .85; }
+@media (min-width: 768px) { .dl-head h1 { font-size: var(--font-size-3xl); } .dl-head p { font-size: var(--font-size-base); } }
+
+.dl-card { position: relative; z-index: 1; display: flex; flex-direction: column; gap: var(--gap-sections); box-sizing: border-box; width: 100%; max-width: 30rem; padding: var(--pad-l); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); box-shadow: var(--shadow-md); }
+
+/* Quoted content */
+.dl-quote { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--pad-s); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--background-color); }
+.dl-stars { display: flex; align-items: center; gap: 2px; color: var(--accent-color); font-size: var(--font-size-sm); }
+.dl-stars .dl-num { margin-left: var(--sp-2); font-weight: 600; color: var(--text-primary); }
+.dl-text { padding-left: var(--sp-3); border-left: 3px solid var(--accent-color); font-size: var(--font-size-sm); line-height: var(--lh-body); color: var(--text-secondary); overflow-wrap: anywhere; white-space: pre-line; }
+
+.dl-warn { position: relative; isolation: isolate; display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-md); font-size: var(--font-size-sm); line-height: var(--lh-snug); }
+.dl-warn::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--bs-danger); opacity: .14; }
+[data-bs-theme="dark"] .dl-warn::before { opacity: .09; }
+.dl-warn i { margin-top: 1px; color: var(--bs-danger); }
+
+.dl-form { display: flex; flex-direction: column; gap: var(--sp-2); margin: 0; }
+@media (min-width: 480px) { .dl-form { flex-direction: row; } .dl-form > * { flex: 1 1 0; } }
+.dl-btn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-4); border: 1px solid transparent; border-radius: 22px; font: inherit; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); text-align: center; cursor: pointer; touch-action: manipulation; }
+.dl a.dl-btn-ghost { border-color: var(--border-color); background: var(--card-background); color: var(--text-primary); }
+.dl-btn-danger { border: 2px solid var(--bs-white); background: var(--bs-danger); color: var(--bs-white); box-shadow: 0 4px 12px rgba(0, 0, 0, .2); }
+.dl-btn-danger:disabled { opacity: .7; cursor: default; }
+.dl-btn .spinner-border { width: 1rem; height: 1rem; border-width: .15em; }
+
+.dl a:focus-visible, .dl button:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; border-radius: var(--radius-sm); }
+@media (hover: hover) { .dl a.dl-btn-ghost:hover { background: var(--hover-bg); border-color: var(--primary-color); } }
+</style>
+{% endblock %}
+
 {% block 'Body' %}
-<div class="container">
-    <div class="row mt-4">
-        <div class="col-md-8 offset-md-2">
-            <div class="card">
-                <div class="card-body">
-                    <h3 class="card-title text-danger">Delete Review</h3>
-                    <p>Are you sure you want to delete this review?</p>
-                    
-                    <div class="alert alert-warning">
-                        <strong>Rating:</strong> {{ review.rating }} / 5<br>
-                        <strong>Comment:</strong> {{ review.comment }}
-                    </div>
-                    
-                    <form method="post">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-danger">Confirm Delete</button>
-                        <a href="{% url 'product_detail' pk=product.id %}" class="btn btn-secondary">Cancel</a>
-                    </form>
-                </div>
+<div class="dl">
+
+    <header class="dl-head">
+        <span class="dl-head-ico" aria-hidden="true"><i class="bi bi-trash3-fill"></i></span>
+        <h1>Delete review</h1>
+        <p>Are you sure you want to delete this review?</p>
+    </header>
+
+    <div class="dl-card">
+
+        <div class="dl-quote">
+            <div class="dl-stars" role="img" aria-label="{{ review.rating }} out of 5 stars">
+                {% for i in "12345" %}
+                    {% if forloop.counter <= review.rating %}<i class="bi bi-star-fill" aria-hidden="true"></i>{% else %}<i class="bi bi-star" aria-hidden="true"></i>{% endif %}
+                {% endfor %}
+                <span class="dl-num">{{ review.rating }} / 5</span>
             </div>
+            {% if review.comment %}<p class="dl-text">{{ review.comment }}</p>{% endif %}
         </div>
+
+        <div class="dl-warn" role="alert">
+            <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+            <span><strong>This action cannot be undone.</strong> The review will be permanently removed.</span>
+        </div>
+
+        <form method="post" class="dl-form" id="dlForm">
+            {% csrf_token %}
+            <a href="{% url 'product_detail' pk=product.id %}" class="dl-btn dl-btn-ghost"><i class="bi bi-arrow-left" aria-hidden="true"></i>Cancel</a>
+            <button type="submit" class="dl-btn dl-btn-danger" id="dlDelete"><i class="bi bi-trash3-fill" aria-hidden="true"></i>Delete review</button>
+        </form>
+
     </div>
 </div>
+
+<script>
+    /* Guard against double-submitting the delete. */
+    (function () {
+        var form = document.getElementById('dlForm');
+        var btn = document.getElementById('dlDelete');
+        if (!form || !btn) return;
+        var label = btn.innerHTML;
+        form.addEventListener('submit', function () {
+            // Delay so the browser has already collected the form data
+            setTimeout(function () {
+                btn.disabled = true;
+                btn.setAttribute('aria-busy', 'true');
+                btn.innerHTML = '<span class="spinner-border" aria-hidden="true"></span><span>Deleting…</span>';
+            }, 0);
+        });
+        // Coming back with the Back button restores the page from cache
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted) { btn.disabled = false; btn.removeAttribute('aria-busy'); btn.innerHTML = label; }
+        });
+    })();
+</script>
 {% endblock %}
-{% block 'Footer'%}{% endblock %}
+{% block 'Footer' %}{% endblock %}

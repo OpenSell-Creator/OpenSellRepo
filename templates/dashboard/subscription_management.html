@@ -1,873 +1,302 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}Subscription{% endblock %}
+
 {% block page_css %}
-
 <style>
-    /* Base Container */
-    .dashboard-container {
-        background-color: var(--background-color);
-        min-height: 100vh;
-    }
-
-    /* Header */
-    .dashboard-header {
-        background-color: var(--primary-color);
-        margin: -2rem -1rem 2rem -1rem;
-        border-radius: 0 0 var(--radius-xl) var(--radius-xl);
-        position: relative;
-        overflow: hidden;
-    }
-
-    .dashboard-title {
-        color: white;
-        font-weight: 700;
-        font-size: 2rem;
-        display: flex;
-        align-items: center;
-    }
-
-    .dashboard-subtitle {
-        color: rgba(255, 255, 255, 0.85);
-        font-size: 1rem;
-        margin-bottom: 0;
-    }
-
-    .balance-display-container {
-        position: relative;
-        z-index: 2;
-    }
-
-    .balance-display {
-        background-color: var(--background-color);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: var(--radius-lg);
-        padding: 1.25rem;
-        text-align: center;
-    }
-
-    .balance-label {
-        color: var(--primary-text);
-        font-size: 0.85rem;
-        display: block;
-        margin-bottom: 0.5rem;
-    }
-
-    .balance-amount {
-        color: var(--primary-text);
-        font-size: 2rem;
-        font-weight: 700;
-        margin-bottom: 0;
-    }
-
-    .header-actions {
-        display: flex;
-        gap: 0.5rem;
-        justify-content: center;
-    }
-
-    .btn-deposit {
-        background-color: var(--accent-color);
-        color: white;
-        border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: var(--radius-md);
-        font-weight: 500;
-        transition: all 0.3s ease;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-    }
-
-    .btn-deposit:hover {
-        background-color: var(--accent-hover);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        color: white;
-    }
-
-    .btn-back {
-        background-color: transparent;
-        color: white;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        padding: 0.75rem 1.5rem;
-        border-radius: var(--radius-md);
-        font-weight: 500;
-        transition: all 0.3s ease;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-    }
-
-    .btn-back:hover {
-        background-color: rgba(255, 255, 255, 0.1);
-        border-color: rgba(255, 255, 255, 0.5);
-        color: white;
-    }
-
-    /* Dashboard Cards */
-    .dashboard-card {
-        background-color: var(--card-background);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-lg);
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-        transition: all 0.3s ease;
-    }
-
-    .card-header {
-        background-color: transparent;
-        border-bottom: 1px solid var(--border-color);
-        padding: 1.25rem;
-    }
-
-    .card-title {
-        color: var(--text-primary);
-        font-weight: 600;
-        margin-bottom: 0;
-        font-size: 1.1rem;
-        display: flex;
-        align-items: center;
-    }
-
-    .card-body {
-        padding: 1.5rem;
-    }
-
-    /* Pro Status Card */
-    .pro-status-card {
-        background: linear-gradient(135deg, var(--accent-color) 0%, var(--primary-color) 100%);
-        border: none;
-    }
-
-    .status-icon-large {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2.5rem;
-        margin: 0 auto;
-    }
-
-    .status-icon-large.pro {
-        background-color: rgba(255, 255, 255, 0.2);
-        color: white;
-        border: 3px solid rgba(255, 255, 255, 0.3);
-    }
-
-    .subscription-details-box {
-        background-color: rgba(255, 255, 255, 0.1);
-        border-radius: var(--radius-md);
-        padding: 1.5rem;
-        margin-top: 2rem;
-    }
-
-    .detail-item-white {
-        text-align: center;
-        padding: 1rem;
-        background-color: rgba(255, 255, 255, 0.1);
-        border-radius: var(--radius-md);
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .detail-item-white i {
-        font-size: 1.5rem;
-        color: white;
-    }
-
-    .detail-label {
-        color: rgba(255, 255, 255, 0.8);
-        font-size: 0.75rem;
-        font-weight: 500;
-    }
-
-    .detail-value {
-        color: white;
-        font-size: 1.1rem;
-        font-weight: 700;
-    }
-
-    /* Plan Cards */
-    .plan-card {
-        transition: all 0.3s ease;
-        position: relative;
-    }
-
-    .plan-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    }
-
-    .plan-card.recommended {
-        border: 2px solid var(--accent-color);
-    }
-
-    .recommended-badge {
-        position: absolute;
-        top: -12px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: var(--accent-color);
-        color: white;
-        padding: 0.375rem 1.25rem;
-        border-radius: var(--radius-full);
-        font-size: 0.75rem;
-        font-weight: 700;
-        letter-spacing: 0.5px;
-        display: flex;
-        align-items: center;
-        z-index: 1;
-    }
-
-    .plan-title {
-        color: var(--text-primary);
-        font-weight: 600;
-        font-size: 1.25rem;
-    }
-
-    .price-display {
-        margin: 1rem 0;
-    }
-
-    .price-amount {
-        color: var(--accent-color);
-        font-weight: 700;
-        font-size: 2rem;
-    }
-
-    .price-period {
-        color: var(--text-muted);
-        font-size: 0.9rem;
-        margin-top: 0.25rem;
-    }
-
-    .savings-badge {
-        display: inline-block;
-        background-color: rgba(46, 204, 113, 0.1);
-        color: #2ecc71;
-        padding: 0.375rem 1rem;
-        border-radius: var(--radius-full);
-        font-size: 0.85rem;
-        font-weight: 600;
-        margin-top: 0.5rem;
-    }
-
-    /* Plan Features */
-    .plan-features {
-        border-top: 1px solid var(--border-color);
-        border-bottom: 1px solid var(--border-color);
-        padding: 1rem 0;
-    }
-
-    .feature-item {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.375rem 0;
-        color: var(--text-primary);
-        font-size: 0.85rem;
-    }
-
-    .feature-item i {
-        color: var(--accent-color);
-        font-size: 0.95rem;
-        flex-shrink: 0;
-    }
-
-    /* Benefits Section */
-    .benefit-item {
-        text-align: center;
-        padding: 1.5rem 1rem;
-        background-color: var(--hover-bg);
-        border-radius: var(--radius-md);
-        border: 1px solid var(--border-color);
-        transition: all 0.3s ease;
-        height: 100%;
-    }
-
-    .benefit-item:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        border-color: var(--primary-color);
-    }
-
-    .benefit-icon {
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.75rem;
-        margin: 0 auto 1rem;
-    }
-
-    .benefit-icon.unlimited {
-        background-color: rgba(52, 152, 219, 0.1);
-        color: #3498db;
-    }
-
-    .benefit-icon.discount {
-        background-color: rgba(46, 204, 113, 0.1);
-        color: #2ecc71;
-    }
-
-    .benefit-icon.featured {
-        background-color: rgba(241, 196, 15, 0.1);
-        color: #f1c40f;
-    }
-
-    .benefit-icon.support {
-        background-color: rgba(155, 89, 182, 0.1);
-        color: #9b59b6;
-    }
-
-    .benefit-icon.analytics {
-        background-color: rgba(231, 76, 60, 0.1);
-        color: #e74c3c;
-    }
-
-    .benefit-icon.badge {
-        background-color: rgba(52, 152, 219, 0.1);
-        color: #3498db;
-    }
-
-    .benefit-title {
-        color: var(--text-primary);
-        font-weight: 600;
-        font-size: 0.9rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .benefit-description {
-        color: var(--text-muted);
-        font-size: 0.8rem;
-        margin-bottom: 0;
-    }
-
-    /* Responsive Design */
-    @media (max-width: 768px) {
-        .dashboard-header {
-            margin: -1rem -0.5rem 1.5rem -0.5rem;
-        }
-
-        .dashboard-title {
-            font-size: 1.25rem;
-        }
-
-        .dashboard-subtitle {
-            font-size: 0.8rem;
-        }
-
-        .btn-back {
-            padding: 0.5rem;
-            font-size: 1.25rem;
-        }
-
-        .btn-back i {
-            margin: 0 !important;
-        }
-
-        .balance-amount {
-            font-size: 1.75rem;
-        }
-
-        .balance-display {
-            padding: 1rem;
-        }
-
-        .header-actions {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 0.5rem;
-            width: 100%;
-        }
-
-        .btn-deposit {
-            width: 100%;
-            text-align: center;
-            padding: 0.625rem 1rem;
-        }
-
-        .status-icon-large {
-            width: 60px;
-            height: 60px;
-            font-size: 2rem;
-        }
-
-        .detail-item-white {
-            padding: 0.75rem;
-        }
-
-        .detail-item-white i {
-            font-size: 1.25rem;
-        }
-
-        .detail-label {
-            font-size: 0.7rem;
-        }
-
-        .detail-value {
-            font-size: 0.95rem;
-        }
-
-        .price-amount {
-            font-size: 1.75rem;
-        }
-
-        .plan-title {
-            font-size: 1.1rem;
-        }
-
-        .benefit-icon {
-            width: 50px;
-            height: 50px;
-            font-size: 1.5rem;
-        }
-
-        .benefit-title {
-            font-size: 0.85rem;
-        }
-
-        .benefit-description {
-            font-size: 0.75rem;
-        }
-    }
-
-    @media (max-width: 576px) {
-        .dashboard-title {
-            font-size: 1.1rem;
-        }
-
-        .balance-amount {
-            font-size: 1.5rem;
-        }
-
-        .balance-label {
-            font-size: 0.75rem;
-        }
-
-        .recommended-badge {
-            font-size: 0.65rem;
-            padding: 0.25rem 0.875rem;
-        }
-
-        .card-body {
-            padding: 1rem;
-        }
-
-        .subscription-details-box {
-            padding: 1rem;
-        }
-
-        .price-amount {
-            font-size: 1.5rem;
-        }
-    }
+/* Highlight colour for hover, selection and links: navy in light mode, orange in dark mode (no blue) */
+:root, [data-bs-theme="light"] { --hl: var(--primary-color); --hl-edge: var(--primary-color); --hl-soft: var(--primary-soft); }
+[data-bs-theme="dark"] { --hl: var(--accent-text); --hl-edge: var(--accent-color); --hl-soft: var(--accent-soft); }
+/* Buttons: same pill as login, profile and the wallet pages. Hover fills with the brand orange. */
+.ox-btn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-4); border: 2px solid var(--bs-white); border-radius: var(--radius-full); background: var(--primary-color); color: var(--bs-white); font: inherit; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); text-align: center; text-decoration: none; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); cursor: pointer; touch-action: manipulation; }
+.ox-btn:disabled { opacity: .7; cursor: default; }
+.ox-btn .spinner-border { width: 1rem; height: 1rem; border-width: .15em; }
+.ox-btn-sm { min-height: 2.5rem; width: auto; padding: 0 var(--sp-4); font-size: var(--font-size-sm); }
+.ox-btn.ox-btn-neutral { border: 1px solid var(--border-color); background: var(--card-background); color: var(--text-primary); box-shadow: none; }
+.ox-btn.ox-btn-light { border-color: var(--bs-white); background: var(--bs-white); color: var(--primary-color); box-shadow: none; }
+.ox-btn.ox-btn-ghost { border-color: var(--bs-white); background: transparent; color: var(--bs-white); box-shadow: none; }
+.ox-btn:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+@media (hover: hover) {
+    .ox-btn.ox-btn:not(:disabled):hover { background: var(--accent-color); color: var(--on-accent); }
+    .ox-btn.ox-btn-neutral:not(:disabled):hover { background: var(--hover-bg); color: var(--text-primary); border-color: var(--hl-edge); }
+}
+/* Shared core */
+.ox {
+    --ox-navy: var(--primary-color);
+    --ox-orange: var(--accent-color);
+    --ox-green: var(--bs-success, var(--primary-color));
+    --ox-red: var(--bs-danger, var(--accent-color));
+    --ox-purple: var(--bs-purple, var(--primary-color));
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+    line-height: var(--lh-body);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-4));
+}
+.ox a { text-decoration: none; }
+.ox p { margin: 0; }
+.ox [hidden] { display: none !important; }
+.t-navy { --tint: var(--ox-navy); } .t-orange { --tint: var(--ox-orange); } .t-green { --tint: var(--ox-green); } .t-red { --tint: var(--ox-red); } .t-purple { --tint: var(--ox-purple); }
+.ox-ico { display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-lg); }
+.t-orange .ox-ico, .t-orange.ox-ico { color: var(--on-accent); }
+.ox-wash { position: relative; isolation: isolate; }
+.ox-wash::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .ox-wash::before { opacity: .09; }
+.ox a:focus-visible, .ox button:focus-visible, .ox summary:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+
+/* Header */
+.ox-head { margin: -2rem -1rem var(--gap-sections); padding: calc(2rem + var(--sp-4)) var(--sp-4) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); }
+.ox-head-in { display: grid; gap: var(--sp-4); max-width: var(--ox-w); margin: 0 auto; }
+.ox-head-l { display: flex; align-items: center; gap: var(--sp-2); }
+.ox-back { display: grid; place-items: center; flex: none; width: 2.75rem; height: 2.75rem; margin-left: calc(var(--sp-2) * -1); border-radius: var(--radius-full); color: var(--bs-white); font-size: var(--font-size-xl); }
+.ox-title { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-tight); }
+.ox-sub { margin: var(--sp-1) 0 0; font-size: var(--font-size-sm); color: rgba(255, 255, 255, .85); }
+.ox-bal { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--pad-l); border-radius: var(--radius-lg); background: var(--card-background); color: var(--text-primary); }
+.ox-bal-l { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.ox-total { margin: 0; font-size: var(--font-size-3xl); font-weight: 600; line-height: var(--lh-tight); }
+.ox-link { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1); min-height: 2.75rem; padding: 0 var(--sp-2); color: var(--hl); font-size: var(--font-size-sm); font-weight: 600; }
+@media (hover: hover) { .ox-link:hover { text-decoration: underline; } }
+
+/* Layout and cards (same as the profile page: icon, title, one-line subtitle) */
+.ox-main { display: flex; flex-direction: column; gap: var(--gap-sections); max-width: var(--ox-w); margin: 0 auto; }
+.ox-card { padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); }
+@media (min-width: 768px) { .ox-card { padding: var(--pad-l); } }
+.ox-sec-h { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.ox-sec-t { flex: 1 1 auto; min-width: 0; }
+.ox-h2 { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-tight); }
+.ox-card-sub { margin: var(--sp-1) 0 0; font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+.ox-pill { display: inline-flex; align-items: center; gap: var(--sp-1); padding: 0 var(--sp-2); border: 1px solid var(--tint); border-radius: var(--radius-full); font-size: var(--font-size-xs); font-weight: 600; line-height: var(--lh-body); white-space: nowrap; }
+.ox-alert { display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-md); font-size: var(--font-size-sm); line-height: var(--lh-snug); --tint: var(--ox-red); }
+.ox-alert i { margin-top: 1px; color: var(--error-text); }
+.ox-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-cards); }
+.ox-tile { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); line-height: var(--lh-tight); }
+.ox-tile .ox-ico { width: 2rem; height: 2rem; margin-bottom: var(--sp-1); }
+.ox-tile b { font-size: var(--font-size-xl); font-weight: 600; overflow-wrap: anywhere; }
+.ox-tile span { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.ox-tile small { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.ox-dl { margin: 0; border: 1px solid var(--border-color); border-radius: var(--r-card-s); }
+.ox-dl div { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3); border-top: 1px solid var(--border-color); }
+.ox-dl div:first-child { border-top: 0; }
+.ox-dl dt { font-size: var(--font-size-sm); font-weight: 400; color: var(--text-secondary); }
+.ox-dl dd { margin: 0; font-size: var(--font-size-base); font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+@media (hover: hover) { a.ox-tile:hover, a.ox-row:hover { border-color: var(--hl-edge); } }
+.ox-row { display: flex; align-items: center; gap: var(--sp-3); min-height: 2.75rem; padding: var(--pad-s) var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-base); font-weight: 600; }
+.ox-row .ox-ico { width: 2rem; height: 2rem; }
+.ox-row .bi-chevron-right { margin-left: auto; color: var(--text-secondary); }
+@media (min-width: 768px) { .ox-head-in { gap: var(--sp-5); } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+.ox { --ox-w: 48rem; }
+
+/* Pro panel: solid navy */
+.sm-pro { padding: var(--pad-l); border-radius: var(--r-card); background: var(--primary-color); color: var(--bs-white); }
+.sm-pro-h { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.sm-pro-h .ox-ico { width: 3rem; height: 3rem; background: var(--accent-color); color: var(--on-accent); font-size: var(--font-size-xl); }
+.sm-pro h2 { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-tight); }
+.sm-pro-h p { margin: var(--sp-1) 0 0; font-size: var(--font-size-sm); color: rgba(255, 255, 255, .85); }
+.sm-dets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-cards); margin: 0 0 var(--sp-3); }
+@media (min-width: 768px) { .sm-dets { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.sm-det { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--pad-m); border: 1px solid rgba(255, 255, 255, .3); border-radius: var(--r-card-s); background: rgba(255, 255, 255, .12); line-height: var(--lh-tight); }
+.sm-det span { font-size: var(--font-size-xs); color: rgba(255, 255, 255, .85); }
+.sm-det b { font-size: var(--font-size-lg); font-weight: 600; }
+.sm-pro form { margin: 0; }
+.sm-pro .ox-btn { width: 100%; }
+@media (min-width: 768px) { .sm-pro .ox-btn { width: auto; padding: 0 var(--sp-6); } }
+
+/* Plans */
+.sm-plans { display: grid; grid-template-columns: 1fr; gap: var(--gap-sections); }
+@media (min-width: 640px) { .sm-plans { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.sm-plan { display: flex; flex-direction: column; gap: var(--sp-3); }
+.sm-plan.is-best { border: 2px solid var(--hl-edge); }
+.sm-plan-h { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.sm-price { margin: 0; font-size: var(--font-size-3xl); font-weight: 600; line-height: var(--lh-tight); }
+.sm-per { margin: var(--sp-1) 0 0; font-size: var(--font-size-sm); color: var(--text-secondary); }
+.sm-feats { display: grid; gap: var(--sp-1); margin: 0; padding: var(--sp-3) 0; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); list-style: none; font-size: var(--font-size-sm); }
+.sm-feats li { display: flex; align-items: center; gap: var(--sp-2); }
+.sm-feats i { flex: none; color: var(--ox-green); }
+.sm-plan form { margin: 0; }
+.sm-need { display: flex; flex-direction: column; align-items: center; font-size: var(--font-size-sm); color: var(--text-secondary); text-align: center; }
+.sm-ben { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-cards); }
+@media (min-width: 640px) { .sm-ben { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.sm-ben .ox-tile span:last-child { font-size: var(--font-size-xs); }
+.sm-ben .ox-tile b { font-size: var(--font-size-base); }
+.sm-help { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.sm-help-t { flex: 1 1 14rem; font-size: var(--font-size-sm); color: var(--text-secondary); }
+.sm-help-t b { display: block; font-size: var(--font-size-base); color: var(--text-primary); }
 </style>
-
 {% endblock %}
 
 {% block 'Body'%}
-<div class="dashboard-container">
-    <!-- Dashboard Header -->
-    <div class="dashboard-header">
-        <div class="container">
-            <div class="row align-items-center py-4 py-md-5">
-                <div class="col-12 col-md-6">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <div>
-                            <h1 class="dashboard-title mb-2">
-                                <i class="bi bi-star-fill me-2"></i>Subscription Management
-                            </h1>
-                            <p class="dashboard-subtitle mb-0">Upgrade to Pro and unlock premium features</p>
-                        </div>
-                        <a href="{% url 'dashboard_home' %}" class="btn btn-back d-md-none">
-                            <i class="bi bi-arrow-left"></i>
-                        </a>
-                    </div>
-                </div>
-                <div class="col-12 col-md-6 text-md-end mt-3 mt-md-0">
-                    <div class="balance-display-container">
-                        <div class="balance-display">
-                            <span class="balance-label">Account Balance</span>
-                            <h2 class="balance-amount">₦{{ account.balance|floatformat:0 }}</h2>
-                        </div>
-                        <div class="header-actions mt-3">
-                            <a href="{% url 'deposit_with_monnify' %}" class="btn btn-deposit">
-                                <i class="bi bi-plus-circle me-2"></i>Add Funds
-                            </a>
-                            <a href="{% url 'dashboard_home' %}" class="btn btn-back d-none d-md-inline-flex">
-                                <i class="bi bi-arrow-left me-2"></i>Back
-                            </a>
-                        </div>
-                    </div>
+<div class="ox">
+
+    <header class="ox-head">
+        <div class="ox-head-in">
+            <div class="ox-head-l">
+                <a href="{% url 'dashboard_home' %}" class="ox-back" aria-label="Back to dashboard"><i class="bi bi-arrow-left" aria-hidden="true"></i></a>
+                <div>
+                    <h1 class="ox-title">Subscription</h1>
+                    <p class="ox-sub">Upgrade to Pro and unlock premium features</p>
                 </div>
             </div>
+            <div class="ox-bal">
+                <div>
+                    <span class="ox-bal-l">Account balance</span>
+                    <p class="ox-total">₦{{ account.balance|floatformat:"0g" }}</p>
+                </div>
+                <a href="{% url 'deposit_with_monnify' %}" class="ox-link"><i class="bi bi-plus-circle" aria-hidden="true"></i>Add funds</a>
+            </div>
         </div>
-    </div>
+    </header>
 
-    <!-- Subscription Content -->
-    <div class="container mt-4">
+    <div class="ox-main">
+
         {% if account.is_pro %}
-            <!-- Current Pro User -->
-            <div class="row mb-4">
-                <div class="col-12">
-                    <div class="dashboard-card pro-status-card">
-                        <div class="card-body text-center py-4">
-                            <div class="status-icon-large pro mb-3">
-                                <i class="bi bi-star-fill"></i>
-                            </div>
-                            <h3 class="text-white mb-2">You're a Pro Member!</h3>
-                            <p class="text-white-50 mb-3">
-                                {% if account.subscription_info.type == 'two_month' %}
-                                    Two Month Plan • Expires {{ account.subscription_end_date|date:"M d, Y" }}
-                                {% else %}
-                                    Monthly Plan • Expires {{ account.subscription_end_date|date:"M d, Y" }}
-                                {% endif %}
-                            </p>
-                            
-                            <div class="subscription-details-box">
-                                <div class="row g-3">
-                                    <div class="col-6 col-md-3">
-                                        <div class="detail-item-white">
-                                            <i class="bi bi-calendar-check"></i>
-                                            <span class="detail-label">Days Remaining</span>
-                                            <span class="detail-value">{{ days_remaining }}</span>
-                                        </div>
-                                    </div>
-                                    <div class="col-6 col-md-3">
-                                        <div class="detail-item-white">
-                                            <i class="bi bi-arrow-repeat"></i>
-                                            <span class="detail-label">Auto-Renewal</span>
-                                            <span class="detail-value">
-                                                {% if account.auto_renew %}On{% else %}Off{% endif %}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div class="col-6 col-md-3">
-                                        <div class="detail-item-white">
-                                            <i class="bi bi-calendar-event"></i>
-                                            <span class="detail-label">Next Billing</span>
-                                            <span class="detail-value">
-                                                {% if account.auto_renew %}
-                                                    {{ account.subscription_end_date|date:"M d" }}
-                                                {% else %}
-                                                    N/A
-                                                {% endif %}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div class="col-6 col-md-3">
-                                        <div class="detail-item-white">
-                                            <i class="bi bi-tag"></i>
-                                            <span class="detail-label">Plan Type</span>
-                                            <span class="detail-value">
-                                                {% if account.subscription_info.type == 'two_month' %}
-                                                    2 Months
-                                                {% else %}
-                                                    Monthly
-                                                {% endif %}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="mt-4 d-flex gap-2 justify-content-center flex-wrap">
-                                {% if account.auto_renew %}
-                                    <form method="post" class="d-inline">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="action" value="cancel_auto_renew">
-                                        <button type="submit" class="btn btn-outline-light">
-                                            <i class="bi bi-x-circle me-2"></i>Cancel Auto-Renewal
-                                        </button>
-                                    </form>
-                                {% else %}
-                                    <form method="post" class="d-inline">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="action" value="enable_auto_renew">
-                                        <button type="submit" class="btn btn-light">
-                                            <i class="bi bi-check-circle me-2"></i>Enable Auto-Renewal
-                                        </button>
-                                    </form>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
+        <section class="sm-pro" aria-labelledby="proTitle">
+            <div class="sm-pro-h">
+                <span class="ox-ico"><i class="bi bi-star-fill" aria-hidden="true"></i></span>
+                <div>
+                    <h2 id="proTitle">You're a Pro member</h2>
+                    <p>{% if account.subscription_info.type == 'two_month' %}Two month plan{% else %}Monthly plan{% endif %} &middot; Expires {{ account.subscription_end_date|date:"M d, Y" }}</p>
                 </div>
             </div>
-        {% else %}
-            <!-- Free User - Show upgrade options -->
-            <div class="row g-4 mb-4">
-                <!-- Monthly Plan -->
-                <div class="col-md-6">
-                    <div class="dashboard-card plan-card h-100">
-                        <div class="card-body p-3">
-                            <div class="plan-header text-center mb-3">
-                                <h5 class="plan-title mb-2">Monthly Plan</h5>
-                                <div class="price-display my-2">
-                                    <h2 class="price-amount mb-0">₦{{ pro_tier.monthly_price|floatformat:0 }}</h2>
-                                    <p class="price-period mb-0">per month</p>
-                                </div>
-                            </div>
-                            
-                            <div class="plan-features mb-3">
-                                <div class="feature-item">
-                                    <i class="bi bi-check-circle-fill"></i>
-                                    <span>Billed monthly</span>
-                                </div>
-                                <div class="feature-item">
-                                    <i class="bi bi-check-circle-fill"></i>
-                                    <span>Cancel anytime</span>
-                                </div>
-                                <div class="feature-item">
-                                    <i class="bi bi-check-circle-fill"></i>
-                                    <span>All Pro features</span>
-                                </div>
-                            </div>
-                            
-                            <form method="post">
-                                {% csrf_token %}
-                                <input type="hidden" name="action" value="subscribe">
-                                <input type="hidden" name="tier_type" value="pro">
-                                <input type="hidden" name="subscription_type" value="monthly">
-                                <button type="submit" class="btn btn-primary w-100 btn-sm"
-                                        {% if account.balance < pro_tier.monthly_price %}disabled{% endif %}>
-                                    {% if account.balance < pro_tier.monthly_price %}
-                                        <i class="bi bi-exclamation-circle me-2"></i>Insufficient Balance
-                                    {% else %}
-                                        <i class="bi bi-rocket-takeoff me-2"></i>Subscribe Now
-                                    {% endif %}
-                                </button>
-                            </form>
-                            
-                            {% if account.balance < pro_tier.monthly_price %}
-                                <div class="text-center mt-2">
-                                    <small class="text-muted d-block">Need ₦{{ pro_tier.monthly_price|floatformat:0 }}</small>
-                                    <a href="{% url 'deposit_with_monnify' %}" class="btn btn-link btn-sm p-0 mt-1">
-                                        <i class="bi bi-wallet2 me-1"></i>Add Funds
-                                    </a>
-                                </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Two Month Plan -->
-                <div class="col-md-6">
-                    <div class="dashboard-card plan-card recommended h-100">
-                        <div class="recommended-badge">
-                            <i class="bi bi-star-fill me-1"></i>BEST VALUE
-                        </div>
-                        <div class="card-body p-3">
-                            <div class="plan-header text-center mb-3">
-                                <h5 class="plan-title mb-2">Two Month Plan</h5>
-                                <div class="price-display my-2">
-                                    <h2 class="price-amount mb-0">₦{{ pro_tier.two_month_price|floatformat:0 }}</h2>
-                                    <p class="price-period mb-1">for 2 months</p>
-                                    {% if two_month_savings > 0 %}
-                                    <span class="savings-badge">
-                                        <i class="bi bi-piggy-bank me-1"></i>Save ₦{{ two_month_savings|floatformat:0 }}
-                                    </span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            
-                            <div class="plan-features mb-3">
-                                <div class="feature-item">
-                                    <i class="bi bi-check-circle-fill"></i>
-                                    <span>Pay once for 2 months</span>
-                                </div>
-                                <div class="feature-item">
-                                    <i class="bi bi-check-circle-fill"></i>
-                                    <span>Better value</span>
-                                </div>
-                                <div class="feature-item">
-                                    <i class="bi bi-check-circle-fill"></i>
-                                    <span>All Pro features</span>
-                                </div>
-                            </div>
-                            
-                            <form method="post">
-                                {% csrf_token %}
-                                <input type="hidden" name="action" value="subscribe">
-                                <input type="hidden" name="tier_type" value="pro">
-                                <input type="hidden" name="subscription_type" value="two_month">
-                                <button type="submit" class="btn btn-primary w-100 btn-sm"
-                                        {% if account.balance < pro_tier.two_month_price %}disabled{% endif %}>
-                                    {% if account.balance < pro_tier.two_month_price %}
-                                        <i class="bi bi-exclamation-circle me-2"></i>Insufficient Balance
-                                    {% else %}
-                                        <i class="bi bi-rocket-takeoff me-2"></i>Subscribe Now
-                                    {% endif %}
-                                </button>
-                            </form>
-                            
-                            {% if account.balance < pro_tier.two_month_price %}
-                                <div class="text-center mt-2">
-                                    <small class="text-muted d-block">Need ₦{{ pro_tier.two_month_price|floatformat:0 }}</small>
-                                    <a href="{% url 'deposit_with_monnify' %}" class="btn btn-link btn-sm p-0 mt-1">
-                                        <i class="bi bi-wallet2 me-1"></i>Add Funds
-                                    </a>
-                                </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        {% endif %}
-        
-        <!-- Rest of template remains the same... -->
-        <!-- Benefits Section -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="dashboard-card">
-                    <div class="card-header">
-                        <h5 class="card-title">
-                            <i class="bi bi-gift me-2"></i>Pro Membership Benefits
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row g-3">
-                            <div class="col-6 col-md-4 col-lg-2">
-                                <div class="benefit-item">
-                                    <div class="benefit-icon unlimited">
-                                        <i class="bi bi-infinity"></i>
-                                    </div>
-                                    <h6 class="benefit-title">Unlimited Listings</h6>
-                                    <p class="benefit-description">Post as many products as you want</p>
-                                </div>
-                            </div>
-                            <div class="col-6 col-md-4 col-lg-2">
-                                <div class="benefit-item">
-                                    <div class="benefit-icon discount">
-                                        <i class="bi bi-percent"></i>
-                                    </div>
-                                    <h6 class="benefit-title">30% Discount</h6>
-                                    <p class="benefit-description">Save on all boost purchases</p>
-                                </div>
-                            </div>
-                            <div class="col-6 col-md-4 col-lg-2">
-                                <div class="benefit-item">
-                                    <div class="benefit-icon featured">
-                                        <i class="bi bi-star"></i>
-                                    </div>
-                                    <h6 class="benefit-title">Featured Spot</h6>
-                                    <p class="benefit-description">Get priority placement</p>
-                                </div>
-                            </div>
-                            <div class="col-6 col-md-4 col-lg-2">
-                                <div class="benefit-item">
-                                    <div class="benefit-icon support">
-                                        <i class="bi bi-headset"></i>
-                                    </div>
-                                    <h6 class="benefit-title">Priority Support</h6>
-                                    <p class="benefit-description">Get help faster</p>
-                                </div>
-                            </div>
-                            <div class="col-6 col-md-4 col-lg-2">
-                                <div class="benefit-item">
-                                    <div class="benefit-icon analytics">
-                                        <i class="bi bi-graph-up"></i>
-                                    </div>
-                                    <h6 class="benefit-title">Analytics</h6>
-                                    <p class="benefit-description">Track your performance</p>
-                                </div>
-                            </div>
-                            <div class="col-6 col-md-4 col-lg-2">
-                                <div class="benefit-item">
-                                    <div class="benefit-icon badge">
-                                        <i class="bi bi-patch-check-fill"></i>
-                                    </div>
-                                    <h6 class="benefit-title">Verified Badge</h6>
-                                    <p class="benefit-description">Stand out from others</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Current Balance Info -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="dashboard-card">
-                    <div class="card-body">
-                        <div class="row align-items-center">
-                            <div class="col-12 col-md-8">
-                                <h6 class="mb-2">
-                                    <i class="bi bi-info-circle me-2"></i>Need Help?
-                                </h6>
-                                <p class="text-muted mb-0">
-                                    Have questions about Pro membership? <a href="#" class="text-primary">Contact Support</a>
-                                </p>
-                            </div>
-                            <div class="col-12 col-md-4 text-md-end mt-3 mt-md-0">
-                                <a href="{% url 'transaction_history' %}" class="btn btn-outline-primary">
-                                    <i class="bi bi-clock-history me-2"></i>View History
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="sm-dets">
+                <div class="sm-det"><span>Days remaining</span><b>{{ days_remaining }}</b></div>
+                <div class="sm-det"><span>Auto-renewal</span><b>{% if account.auto_renew %}On{% else %}Off{% endif %}</b></div>
+                <div class="sm-det"><span>Next billing</span><b>{% if account.auto_renew %}{{ account.subscription_end_date|date:"M d" }}{% else %}N/A{% endif %}</b></div>
+                <div class="sm-det"><span>Plan type</span><b>{% if account.subscription_info.type == 'two_month' %}2 months{% else %}Monthly{% endif %}</b></div>
             </div>
+
+            {% if account.auto_renew %}
+            <form method="post" data-guard>
+                {% csrf_token %}
+                <input type="hidden" name="action" value="cancel_auto_renew">
+                <button type="submit" class="ox-btn ox-btn-ghost"><i class="bi bi-x-circle" aria-hidden="true"></i>Cancel auto-renewal</button>
+            </form>
+            {% else %}
+            <form method="post" data-guard>
+                {% csrf_token %}
+                <input type="hidden" name="action" value="enable_auto_renew">
+                <button type="submit" class="ox-btn ox-btn-light"><i class="bi bi-check-circle" aria-hidden="true"></i>Enable auto-renewal</button>
+            </form>
+            {% endif %}
+        </section>
+        {% else %}
+        <div class="sm-plans">
+
+            <section class="ox-card sm-plan" aria-labelledby="plMonthly">
+                <div class="sm-plan-h">
+                    <h2 class="ox-h2" id="plMonthly">Monthly plan</h2>
+                </div>
+                <div>
+                    <p class="sm-price">₦{{ pro_tier.monthly_price|floatformat:"0g" }}</p>
+                    <p class="sm-per">per month</p>
+                </div>
+                <ul class="sm-feats">
+                    <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Billed monthly</li>
+                    <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Cancel anytime</li>
+                    <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i>All Pro features</li>
+                </ul>
+                <form method="post" data-guard>
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="subscribe">
+                    <input type="hidden" name="tier_type" value="pro">
+                    <input type="hidden" name="subscription_type" value="monthly">
+                    <button type="submit" class="ox-btn" {% if account.balance < pro_tier.monthly_price %}disabled{% endif %}>
+                        {% if account.balance < pro_tier.monthly_price %}<i class="bi bi-exclamation-circle" aria-hidden="true"></i>Insufficient balance{% else %}<i class="bi bi-rocket-takeoff" aria-hidden="true"></i>Subscribe now{% endif %}
+                    </button>
+                </form>
+                {% if account.balance < pro_tier.monthly_price %}
+                <div class="sm-need">
+                    <span>Need ₦{{ pro_tier.monthly_price|floatformat:"0g" }}</span>
+                    <a href="{% url 'deposit_with_monnify' %}" class="ox-link"><i class="bi bi-wallet2" aria-hidden="true"></i>Add funds</a>
+                </div>
+                {% endif %}
+            </section>
+
+            <section class="ox-card sm-plan is-best" aria-labelledby="plTwo">
+                <div class="sm-plan-h">
+                    <h2 class="ox-h2" id="plTwo">Two month plan</h2>
+                    <span class="ox-pill ox-wash t-orange"><i class="bi bi-star-fill" aria-hidden="true"></i>Best value</span>
+                </div>
+                <div>
+                    <p class="sm-price">₦{{ pro_tier.two_month_price|floatformat:"0g" }}</p>
+                    <p class="sm-per">for 2 months</p>
+                    {% if two_month_savings > 0 %}<p class="sm-save"><span class="ox-pill ox-wash t-green"><i class="bi bi-piggy-bank" aria-hidden="true"></i>Save ₦{{ two_month_savings|floatformat:"0g" }}</span></p>{% endif %}
+                </div>
+                <ul class="sm-feats">
+                    <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Pay once for 2 months</li>
+                    <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Better value</li>
+                    <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i>All Pro features</li>
+                </ul>
+                <form method="post" data-guard>
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="subscribe">
+                    <input type="hidden" name="tier_type" value="pro">
+                    <input type="hidden" name="subscription_type" value="two_month">
+                    <button type="submit" class="ox-btn" {% if account.balance < pro_tier.two_month_price %}disabled{% endif %}>
+                        {% if account.balance < pro_tier.two_month_price %}<i class="bi bi-exclamation-circle" aria-hidden="true"></i>Insufficient balance{% else %}<i class="bi bi-rocket-takeoff" aria-hidden="true"></i>Subscribe now{% endif %}
+                    </button>
+                </form>
+                {% if account.balance < pro_tier.two_month_price %}
+                <div class="sm-need">
+                    <span>Need ₦{{ pro_tier.two_month_price|floatformat:"0g" }}</span>
+                    <a href="{% url 'deposit_with_monnify' %}" class="ox-link"><i class="bi bi-wallet2" aria-hidden="true"></i>Add funds</a>
+                </div>
+                {% endif %}
+            </section>
+
         </div>
+        {% endif %}
+
+        <section class="ox-card" aria-labelledby="benTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-orange"><i class="bi bi-gift" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="benTitle">Pro membership benefits</h2></div>
+            </div>
+            <div class="sm-ben">
+                <div class="ox-tile"><span class="ox-ico t-navy"><i class="bi bi-infinity" aria-hidden="true"></i></span><b>Unlimited listings</b><span>Post as many products as you want</span></div>
+                <div class="ox-tile"><span class="ox-ico t-green"><i class="bi bi-percent" aria-hidden="true"></i></span><b>30% discount</b><span>Save on all boost purchases</span></div>
+                <div class="ox-tile"><span class="ox-ico t-orange"><i class="bi bi-star" aria-hidden="true"></i></span><b>Featured spot</b><span>Get priority placement</span></div>
+                <div class="ox-tile"><span class="ox-ico t-purple"><i class="bi bi-headset" aria-hidden="true"></i></span><b>Priority support</b><span>Get help faster</span></div>
+                <div class="ox-tile"><span class="ox-ico t-red"><i class="bi bi-graph-up" aria-hidden="true"></i></span><b>Analytics</b><span>Track your performance</span></div>
+                <div class="ox-tile"><span class="ox-ico t-navy"><i class="bi bi-patch-check-fill" aria-hidden="true"></i></span><b>Verified badge</b><span>Stand out from others</span></div>
+            </div>
+        </section>
+
+        <section class="ox-card" aria-label="Help">
+            <div class="sm-help">
+                <div class="sm-help-t"><b>Need help?</b>Have questions about Pro membership? <a href="#" class="ox-link">Contact support</a></div>
+                <a href="{% url 'transaction_history' %}" class="ox-btn ox-btn-neutral ox-btn-sm"><i class="bi bi-clock-history" aria-hidden="true"></i>View history</a>
+            </div>
+        </section>
+
     </div>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Same JavaScript from your original file
-    const subscribeButtons = document.querySelectorAll('button[type="submit"]');
-    
-    subscribeButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            if (!this.disabled) {
-                const icon = this.querySelector('i');
-                if (icon) {
-                    const originalClass = icon.className;
-                    icon.className = 'bi bi-arrow-repeat spinner-border spinner-border-sm me-2';
-                    
-                    setTimeout(() => {
-                        icon.className = originalClass;
-                    }, 2000);
-                }
-            }
+(function () {
+    'use strict';
+    /* Double-submit guard on every action form, restored if the Back button brings the page back */
+    var saved = [];
+    document.querySelectorAll('form[data-guard]').forEach(function (form) {
+        var btn = form.querySelector('button[type="submit"]');
+        if (!btn) return;
+        saved.push([btn, btn.innerHTML]);
+        form.addEventListener('submit', function () {
+            if (btn.disabled) return;
+            // Delay so the browser has already collected the form data
+            setTimeout(function () {
+                btn.disabled = true;
+                btn.setAttribute('aria-busy', 'true');
+                btn.innerHTML = '<span class="spinner-border" aria-hidden="true"></span><span>Please wait…</span>';
+            }, 0);
         });
     });
-
-    const observerOptions = {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
-    };
-
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.style.opacity = '0';
-                entry.target.style.transform = 'translateY(20px)';
-                
-                setTimeout(() => {
-                    entry.target.style.transition = 'all 0.5s ease';
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
-                }, 100);
-                
-                observer.unobserve(entry.target);
-            }
-        });
-    }, observerOptions);
-
-    document.querySelectorAll('.benefit-item').forEach(item => {
-        observer.observe(item);
+    window.addEventListener('pageshow', function (e) {
+        if (!e.persisted) return;
+        saved.forEach(function (s) { s[0].disabled = false; s[0].removeAttribute('aria-busy'); s[0].innerHTML = s[1]; });
     });
-});
+})();
 </script>
 {% endblock %}
 {% block 'Footer' %}{% endblock %}

@@ -1,5 +1,5 @@
 // sw.js - FIXED VERSION with Better Error Handling
-const CACHE_NAME = 'opensell-v1.0.2';
+const CACHE_NAME = 'opensell-v2.0.2';
 const OFFLINE_URL = '/offline/';
 
 const STATIC_CACHE_URLS = [
@@ -18,10 +18,14 @@ self.addEventListener('install', event => {
         caches.open(CACHE_NAME)
             .then(cache => {
                 console.log('Service Worker: Caching essential files');
-                return cache.addAll(STATIC_CACHE_URLS).catch(err => {
-                    console.error('Failed to cache some URLs:', err);
-                });
+                return Promise.all([
+                    cache.add(new Request(OFFLINE_URL, { cache: 'reload' })),
+                    cache.addAll(STATIC_CACHE_URLS.filter(u => u !== OFFLINE_URL)).catch(err => {
+                        console.error('Failed to cache some URLs:', err);
+                    })
+                ]);
             })
+    
             .then(() => self.skipWaiting())
     );
 });

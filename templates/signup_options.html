@@ -2,200 +2,172 @@
 {% load static %}
 {% load socialaccount %}
 
+{% block title %}Create your account{% endblock %}
+
+{% block page_css %}
+<style>
+/* Auth pages, shared design core (same look as home, profile menu and store pages).
+   Identical in login, signup_options and signup: change it in all three together. */
+.ax {
+    --ox-navy: var(--primary-color);
+    --ox-orange: var(--accent-color);
+    --ox-teal: var(--bs-teal, var(--primary-color));
+    --ox-green: var(--bs-success, var(--primary-color));
+    --ox-purple: var(--bs-purple, var(--primary-color));
+    display: flex; flex-direction: column; align-items: center; gap: var(--gap-sections);
+    padding-bottom: var(--sp-6);
+    color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-body);
+}
+.ax [hidden] { display: none !important; }
+.ax a { text-decoration: none; }
+.ax p { margin: 0; }
+.t-navy { --tint: var(--ox-navy); } .t-orange { --tint: var(--ox-orange); } .t-teal { --tint: var(--ox-teal); }
+.t-green { --tint: var(--ox-green); } .t-purple { --tint: var(--ox-purple); }
+.ox-ico { display: grid; place-items: center; flex: none; width: 2rem; height: 2rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-base); }
+.ox-tint { position: relative; isolation: isolate; }
+.ox-tint::before, .auth-alert::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .ox-tint::before, [data-bs-theme="dark"] .auth-alert::before { opacity: .09; }
+
+/* Navy header band: full-bleed, tucks under the navbar; the form card sits below it */
+.ax-head { align-self: stretch; display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); margin: -2rem -1rem 0; padding: calc(2rem + var(--sp-4)) var(--sp-5) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); text-align: center; }
+.auth-logo { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin-bottom: var(--sp-1); border-radius: var(--radius-full); background: var(--bs-white); }
+.auth-logo img { width: 1.75rem; height: 1.75rem; object-fit: contain; }
+.auth-title { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-snug); }
+.auth-sub { font-size: var(--font-size-sm); line-height: var(--lh-snug); opacity: .85; }
+@media (min-width: 768px) { .auth-title { font-size: var(--font-size-3xl); } .auth-sub { font-size: var(--font-size-base); } }
+
+/* Card */
+.auth-card { position: relative; z-index: 1; display: flex; flex-direction: column; gap: var(--gap-sections); width: 100%; max-width: 25rem; margin: 0; padding: var(--pad-l); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); box-shadow: var(--shadow-md); }
+.auth-form { display: flex; flex-direction: column; gap: var(--gap-fields); }
+
+/* Fields (42px controls) */
+.auth-field { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.auth-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+@media (max-width: 399.98px) { .auth-pair { grid-template-columns: 1fr; } }
+.auth-label { font-size: var(--font-size-sm); font-weight: 600; }
+.auth-label-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); }
+.auth-opt { font-weight: 400; color: var(--text-secondary); }
+.auth-hint { display: flex; align-items: flex-start; gap: var(--sp-1); font-size: var(--font-size-xs); line-height: var(--lh-snug); color: var(--text-secondary); }
+.auth-hint--ok { color: var(--bs-success); }
+.auth-hint--bad { color: var(--bs-danger); font-weight: 600; }
+.ax .form-control { box-sizing: border-box; width: 100%; min-height: var(--h-control-lg); padding: 0 var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--background-color); color: var(--text-primary); font-size: var(--font-size-base); }
+.ax .form-control:focus { outline: 2px solid var(--accent-color); outline-offset: 1px; border-color: var(--accent-color); box-shadow: none; background-color: var(--background-color); color: var(--text-primary); }
+/* Browser autofill: keep the field dark in dark mode (browsers paint it white with dark text) */
+[data-bs-theme="dark"] .ax .form-control { color-scheme: dark; }
+.ax .form-control:-webkit-autofill, .ax .form-control:-webkit-autofill:hover, .ax .form-control:-webkit-autofill:focus { -webkit-text-fill-color: var(--text-primary); caret-color: var(--text-primary); -webkit-box-shadow: 0 0 0 1000px var(--background-color) inset; box-shadow: 0 0 0 1000px var(--background-color) inset; transition: background-color 9999s ease-out 0s; }
+.ax .form-control:autofill { -webkit-text-fill-color: var(--text-primary); caret-color: var(--text-primary); box-shadow: 0 0 0 1000px var(--background-color) inset; }
+.ax .invalid-feedback { display: none; margin: 0; font-size: var(--font-size-xs); font-weight: 600; color: var(--bs-danger); }
+.auth-field.has-error .invalid-feedback { display: block; }
+.auth-field.has-error .form-control { border-color: var(--bs-danger); }
+@supports (-webkit-touch-callout: none) { .ax .form-control { font-size: 16px; } }
+.auth-pw { position: relative; }
+.auth-pw .form-control { padding-right: 2.75rem; }
+.auth-pw-toggle { position: absolute; top: 0; right: 0; bottom: 0; display: grid; place-items: center; width: 2.75rem; padding: 0; border: 0; background: none; color: var(--text-secondary); cursor: pointer; touch-action: manipulation; }
+.auth-check { display: flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; font-size: var(--font-size-sm); cursor: pointer; }
+.auth-check input { flex: none; width: 1.125rem; height: 1.125rem; margin: 0; accent-color: var(--primary-color); }
+.auth-more summary { display: flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; font-size: var(--font-size-sm); font-weight: 600; list-style: none; cursor: pointer; touch-action: manipulation; }
+.auth-more summary::-webkit-details-marker { display: none; }
+.auth-more summary .auth-opt { margin-left: auto; }
+.auth-more summary .bi { transition: transform .2s ease; }
+.auth-more[open] summary .bi { transform: rotate(90deg); }
+.auth-more-body { display: flex; flex-direction: column; gap: var(--gap-fields); padding-top: var(--sp-1); }
+
+/* Messages */
+.auth-alert { position: relative; isolation: isolate; display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-md); font-size: var(--font-size-sm); line-height: var(--lh-snug); --tint: var(--bs-danger); }
+.auth-alert i { margin-top: 1px; color: var(--bs-danger); }
+.auth-alert--success { --tint: var(--bs-success); }
+.auth-alert--success i { color: var(--bs-success); }
+
+/* Buttons: the same pill as the other pages, navy on auth pages */
+.ax-btn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-4); border: 2px solid var(--bs-white); border-radius: 22px; background: var(--primary-color); color: var(--bs-white); font: inherit; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); text-align: center; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); cursor: pointer; touch-action: manipulation; }
+.ax a.ax-btn:not(.ax-btn-neutral) { color: var(--bs-white); }
+.ax-btn:disabled { opacity: .7; cursor: default; }
+.ax-btn .spinner-border { width: 1rem; height: 1rem; border-width: .15em; }
+.ax-btn svg { flex: none; width: 1.25rem; height: 1.25rem; }
+.ax-btn-neutral, .ax a.ax-btn-neutral { border: 1px solid var(--border-color); background: var(--card-background); color: var(--text-primary); box-shadow: none; }
+.auth-last { margin-left: auto; padding: 0 var(--sp-2); border-radius: var(--radius-full); background: var(--hover-bg); font-size: var(--font-size-xs); font-weight: 600; }
+
+/* Divider, footer, perks */
+.auth-divider { display: flex; align-items: center; gap: var(--sp-3); font-size: var(--font-size-sm); color: var(--text-secondary); }
+.auth-divider::before, .auth-divider::after { content: ""; flex: 1; height: 1px; background: var(--border-color); }
+.auth-foot { font-size: var(--font-size-sm); line-height: var(--lh-snug); text-align: center; color: var(--text-secondary); }
+.auth-foot--quiet { margin-top: calc(-1 * var(--sp-1)); }
+.auth-link { font-weight: 600; }
+.auth-foot .auth-link { display: inline-block; margin: calc(-1 * var(--sp-1)); padding: var(--sp-1); }
+.auth-foot--quiet .auth-link { font-weight: 400; text-decoration: underline; }
+.auth-option { display: flex; flex-direction: column; gap: var(--sp-1); }
+.auth-option .auth-hint { justify-content: center; text-align: center; }
+.ax-perks { display: flex; flex-direction: column; gap: var(--sp-1); margin: 0; padding: var(--sp-1) 0 0; list-style: none; }
+.ax-perk { display: flex; align-items: flex-start; gap: var(--sp-2); font-size: var(--font-size-xs); line-height: var(--lh-snug); color: var(--text-secondary); }
+.ax-perk i { flex: none; margin-top: 1px; color: var(--ox-green); }
+
+.ax a:focus-visible, .ax button:focus-visible, .ax summary:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; border-radius: var(--radius-sm); }
+@media (hover: hover) { .ax-btn-neutral:hover { background: var(--hover-bg); } .auth-link:hover { text-decoration: underline; } }
+@media (prefers-reduced-motion: reduce) { .auth-more summary .bi { transition: none; } }
+</style>
+{% endblock %}
+
 {% block 'Body' %}
-<div class="container">
-    <div class="row justify-content-center align-items-center min-vh-100">
-        <div class="col-md-8 col-lg-6 col-xl-5">
-            <div class="card">
-                <div class="card-body p-4 p-lg-5">
-                    
-                    <!-- Logo Section -->
-                    <div class="text-center mb-4">
-                        <div class="logo-container">
-                            <img src="{% static 'images/logoicon.png' %}" alt="OpenSell Logo" class="logo-img">
-                        </div>
-                        <h2 class="mt-3 mb-0">Get Started</h2>
-                        <p class="text-muted">Choose your preferred signup method</p>
-                        {% if referral_code %}
-                        <div class="alert alert-success py-2 small">
-                            <i class="bi bi-check-circle-fill"></i> Referral code applied!
-                        </div>
-                        {% endif %}
-                    </div>
-                    
-                    <div class="d-flex flex-column gap-3 mt-4">
-                        <a href="{% provider_login_url 'google' %}?ref={{ referral_code }}" class="btn btn-google">
-                            <div class="google-icon-wrapper">
-                                <svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
-                                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-                                    <path fill="none" d="M0 0h48v48H0z"/>
-                                </svg>
-                            </div>
-                            <span class="btn-text">Continue with Google</span>
-                        </a>
-                        
-                        <div class="position-relative text-center my-3">
-                            <hr class="border-secondary">
-                            <span class="px-3 bg-card-background position-absolute top-50 start-50 translate-middle">or</span>
-                        </div>
-                        
-                        <a href="{% url 'register' %}{% if referral_code %}?ref={{ referral_code }}{% endif %}"  class="btn btn-primary">
-                            <div class="email-icon-wrapper">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-envelope" viewBox="0 0 16 16">
-                                    <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4Zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2Zm13 2.383-4.708 2.825L15 11.105V5.383Zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741ZM1 11.105l4.708-2.897L1 5.383v5.722Z"/>
-                                </svg>
-                            </div>
-                            <span class="btn-email">Sign Up with Email</span>
-                        </a>
-                    </div>
-                    
-                    <p class="text-center mt-4 mb-0">Already have an account? 
-                        <a href="{% url 'login' %}{% if referral_code %}?ref={{ referral_code }}{% endif %}" class="text-decoration-none">Sign in</a>
-                    </p>
-                </div>
+<div class="ox ax">
+
+    <div class="auth-head ax-head">
+            <div class="auth-logo">
+                <img src="{% static 'images/logoicon.png' %}" alt="OpenSell" width="28" height="28">
+            </div>
+            <h1 class="auth-title">Join OpenSell. It's free</h1>
+            <p class="auth-sub">Choose how you'd like to sign up</p>
+        </div>
+
+    <div class="auth-card">
+
+        <div class="auth-form">
+            <div class="auth-option">
+            <a href="{% provider_login_url 'google' %}{% if referral_code %}?ref={{ referral_code|urlencode }}{% endif %}"
+           class="ax-btn ax-btn-neutral">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            </svg>
+            <span>Continue with Google</span>
+        </a>
+            <p class="auth-hint">One tap. No password to remember.</p>
+            </div>
+
+            <div class="auth-divider" role="separator"><span>or</span></div>
+
+            <div class="auth-option">
+            <a href="{% url 'register' %}{% if referral_code %}?ref={{ referral_code|urlencode }}{% endif %}" class="ax-btn">
+                <i class="bi bi-person" aria-hidden="true"></i>
+                <span>Sign up with username</span>
+            </a>
+            <p class="auth-hint">Just a username and password.</p>
             </div>
         </div>
+
+        <ul class="ax-perks" aria-label="What you get">
+            <li class="ax-perk"><i class="bi bi-check-lg" aria-hidden="true"></i><span>List products and services for free</span></li>
+            <li class="ax-perk"><i class="bi bi-check-lg" aria-hidden="true"></i><span>Zero commission on your sales</span></li>
+            <li class="ax-perk"><i class="bi bi-check-lg" aria-hidden="true"></i><span>Post a request and let sellers come to you</span></li>
+        </ul>
+
+        <p class="auth-foot">By continuing you agree to our
+            <a href="{% url 'terms' %}" class="auth-link text-primary">Terms</a> and
+            <a href="{% url 'privacy' %}" class="auth-link text-primary">Privacy Policy</a>.</p>
+       
+
+        <p class="auth-foot">
+            Already have an account?
+            <a href="{% url 'login' %}{% if referral_code %}?ref={{ referral_code|urlencode }}{% endif %}" class="auth-link text-primary">Sign in</a>
+        </p>
+        <p class="auth-foot auth-foot--quiet">
+            Just looking?
+            <a href="{% url 'product_list' %}" class="auth-link text-primary">Browse listings first</a>
+        </p>
+
     </div>
 </div>
 
-<style>
-    /* Logo styling */
-    .logo-container {
-        width: 80px;
-        height: 80px;
-        margin: 0 auto;
-        background-color: white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        border: 2px solid var(--border-color);
-    }
-
-    .logo-img {
-        width: 50px;
-        height: 50px;
-        object-fit: contain;
-    }
-
-    /* Button base styles */
-    .btn-google,
-    .btn-primary {
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.875rem 1.5rem;
-        border: none;
-        border-radius: var(--radius-xl);
-        font-weight: 600;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        overflow: hidden;
-        gap: 0.75rem;
-        text-decoration: none;
-    }
-
-    /* Google Button */
-    .btn-google {
-        background-color: white;
-        color: #3c4043;
-        box-shadow: 0 2px 6px var(--shadow-color);
-        border: 1px solid #dadce0;
-    }
-
-    .btn-google:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px var(--shadow-color);
-        background-color: #f8f9fa;
-        text-decoration: none;
-        color: #3c4043;
-    }
-
-    /* Google icon styling */
-    .google-icon-wrapper {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .google-icon {
-        width: 20px;
-        height: 20px;
-    }
-
-    /* Email icon styling */
-    .email-icon-wrapper {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    /* Or divider */
-    .position-relative .bg-card-background {
-        background-color: var(--card-bg);
-        padding: 0 16px;
-    }
-
-    /* Dark theme adjustments */
-    [data-bs-theme="dark"] .logo-container {
-        background-color: white;
-        border-color: var(--border-color);
-    }
-
-    [data-bs-theme="dark"] .btn-google {
-        background-color: #2d2d2d;
-        border-color: #444;
-        color: #e8eaed;
-    }
-
-    [data-bs-theme="dark"] .btn-google:hover {
-        background-color: #383838;
-        color: #e8eaed;
-    }
-
-    /* Animation */
-    @keyframes buttonEntry {
-        from {
-            opacity: 0;
-            transform: translateY(10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    .btn-google,
-    .btn-primary {
-        animation: buttonEntry 0.6s ease-out;
-    }
-
-    /* Responsive Adjustments */
-    @media (max-width: 576px) {
-        .card-body {
-            padding: 1.5rem;
-        }
-        
-        .btn-google,
-        .btn-primary {
-            padding: 0.75rem 1rem;
-            font-size: 0.9rem;
-        }
-
-        .logo-container {
-            width: 60px;
-            height: 60px;
-        }
-
-        .logo-img {
-            width: 35px;
-            height: 35px;
-        }
-    }
-</style>
 {% endblock %}
 {% block 'Footer'%}{% endblock %}

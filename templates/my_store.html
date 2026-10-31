@@ -1,547 +1,455 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load compress %}
 
 {% block page_css %}
-    <link rel="stylesheet" type="text/css" href="{% static 'css/pages/my_store.css' %}">
+<style>
+/* Richness kit subset (assets/home-kit.css): vars, hues, icon badge, hero pill buttons */
+.ox {
+    --ox-navy: var(--primary-color);
+    --ox-orange: var(--accent-color);
+    --ox-teal: var(--bs-teal, var(--primary-color));
+    --ox-green: var(--bs-success, var(--primary-color));
+    --ox-purple: var(--bs-purple, var(--primary-color));
+    --ox-red: var(--bs-danger, var(--accent-color));
+    display: flex; flex-direction: column; gap: var(--gap-sections);
+    color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-body);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-4));
+}
+.ox a { text-decoration: none; }
+.ox p { margin: 0; }
+.t-navy { --tint: var(--ox-navy); } .t-orange { --tint: var(--ox-orange); } .t-teal { --tint: var(--ox-teal); }
+.t-green { --tint: var(--ox-green); } .t-purple { --tint: var(--ox-purple); } .t-red { --tint: var(--ox-red); }
+.ox-ico { display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-xl); }
+.ox-tint { border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); }
+.ox-h2 { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-snug); }
+.ox-h2 .bi { margin-right: var(--sp-2); color: var(--tint); }
+.ox-fine { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.ox-tag { display: inline-block; padding: 0 var(--sp-2); border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); font-size: var(--font-size-xs); font-weight: 600; }
+@media (min-width: 768px) { .ox-h2 { font-size: var(--font-size-xl); } }
+
+/* Header: navy, full-bleed, tucks under the navbar like the home hero */
+.ox-head { position: relative; display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); margin: -2rem -1rem 0; padding: calc(2rem + var(--sp-4)) var(--sp-5) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); text-align: center; }
+.ox-photo { width: 5.5rem; height: 5.5rem; border: 3px solid rgba(255, 255, 255, .9); border-radius: var(--radius-full); background: rgba(255, 255, 255, .12); color: var(--bs-white); object-fit: cover; }
+.ox-name { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-tight); overflow-wrap: anywhere; }
+.ox-bio { max-width: 32rem; font-size: var(--font-size-sm); line-height: var(--lh-snug); opacity: .9; overflow-wrap: anywhere; }
+.ox-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-1) var(--sp-2); }
+.ox-chip { display: inline-flex; align-items: center; gap: var(--sp-1); padding: 0 var(--sp-2); border: 1px solid rgba(255, 255, 255, .3); border-radius: var(--radius-full); background: rgba(255, 255, 255, .12); font-size: var(--font-size-xs); font-weight: 600; line-height: var(--lh-body); }
+.ox-chip-addr { max-width: 100%; align-items: flex-start; border-radius: var(--radius-xl); text-align: left; overflow-wrap: anywhere; }
+.ox-chip-addr .bi { flex: none; margin-top: .2em; }
+.ox-edit-ico { position: absolute; top: calc(2rem + var(--sp-3)); right: var(--sp-4); display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border: 1px solid rgba(255, 255, 255, .5); border-radius: var(--radius-full); background: rgba(255, 255, 255, .12); color: var(--bs-white); touch-action: manipulation; }
+.ox-hbtns { display: flex; justify-content: center; gap: var(--sp-2); width: 100%; margin-top: var(--sp-2); }
+.ox-hbtns > * { flex: 1 1 0; max-width: 11rem; min-width: 0; }
+.ox-hbtn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-3); border: 2px solid var(--bs-white); border-radius: 22px; font: inherit; font-size: var(--font-size-sm); font-weight: 600; letter-spacing: .3px; line-height: var(--lh-tight); text-align: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); transition: transform .2s ease, box-shadow .2s ease; touch-action: manipulation; }
+.ox-hbtn-pri { background: var(--accent-color); color: var(--bs-white); }
+.ox-hbtn-sec { background: rgba(255, 255, 255, .1); color: var(--bs-white); border-color: rgba(255, 255, 255, .9); box-shadow: none; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.ox .ox-hbtn-wide { flex: none; width: auto; max-width: none; padding: 0 var(--sp-6); }
+@media (hover: hover) { .ox a.ox-hbtn-pri:hover, .ox a.ox-edit-ico:hover { color: var(--bs-white); } .ox-hbtn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 0, 0, .25); } .ox-hbtn-sec:hover { background: rgba(255, 255, 255, .2); border-color: var(--bs-white); } }
+
+/* Share menu */
+.ox-share { position: relative; }
+.ox-menu { position: absolute; top: calc(100% + var(--sp-2)); right: 0; z-index: 1050; display: flex; flex-direction: column; min-width: 12rem; padding: var(--sp-1); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); color: var(--text-primary); box-shadow: var(--shadow-md); text-align: left; }
+.ox-menu[hidden] { display: none; }
+.ox-mi { display: flex; align-items: center; gap: var(--sp-3); min-height: 2.75rem; padding: 0 var(--sp-3); border: 0; border-radius: var(--radius-md); background: none; color: inherit; font: inherit; font-size: var(--font-size-base); text-align: left; cursor: pointer; touch-action: manipulation; }
+.ox-mi .bi { width: 1.25rem; text-align: center; color: var(--text-secondary); }
+@media (hover: hover) { .ox-mi:hover { background: var(--hover-bg); } }
+
+/* Store link (owner) */
+.ox-link { display: flex; align-items: center; gap: var(--sp-3); padding: var(--pad-s) var(--pad-m); border-radius: var(--r-card-s); }
+.ox-link-txt { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; line-height: var(--lh-tight); }
+.ox-link-txt b { font-size: var(--font-size-sm); font-weight: 600; }
+.ox-link-txt span { overflow: hidden; font-size: var(--font-size-xs); color: var(--text-secondary); text-overflow: ellipsis; white-space: nowrap; }
+.ox-copy { flex: none; min-height: var(--h-control); padding: 0 var(--sp-4); border: 0; border-radius: var(--radius-full); background: var(--primary-color); color: var(--bs-white); font: inherit; font-size: var(--font-size-sm); font-weight: 600; cursor: pointer; touch-action: manipulation; }
+
+/* Verification card (owner) and business card (visitors) */
+.ox-verify, .ox-biz { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--pad-l); }
+.ox-verify-top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); }
+.ox-verify-txt { flex: 1 1 12rem; min-width: 0; }
+.ox-verify .ox-ico { width: 2.75rem; height: 2.75rem; font-size: var(--font-size-3xl); }
+.ox-verify h2 { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-snug); }
+.ox-perks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2) var(--sp-4); margin: 0; padding: 0; list-style: none; }
+@media (min-width: 576px) { .ox-perks { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.ox-perks li { display: flex; align-items: center; gap: var(--sp-1); font-size: var(--font-size-xs); font-weight: 600; line-height: var(--lh-tight); color: var(--text-secondary); }
+.ox-perks .bi { flex: none; color: var(--tint); }
+.ox-verify .ox-hbtn { flex: none; width: auto; min-height: var(--h-control); padding: 0 var(--sp-4); white-space: nowrap; }
+@media (max-width: 575.98px) { .ox-verify .ox-hbtn { flex: 1 0 100%; } }
+.ox-biz-top { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.ox-biz h2 { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-snug); overflow-wrap: anywhere; }
+.ox-contacts { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.ox-contact { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: var(--h-control); padding: 0 var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-sm); font-weight: 600; }
+.ox-contact .bi { color: var(--tint); }
+
+/* Owner information (collapsible, table-style rows) */
+.ox-det { border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); }
+.ox-det summary { display: flex; align-items: center; gap: var(--sp-3); min-height: 3.25rem; padding: var(--pad-s) var(--pad-m); border-radius: inherit; font-weight: 600; cursor: pointer; list-style: none; touch-action: manipulation; }
+.ox-det summary::-webkit-details-marker { display: none; }
+.ox-det[open] summary { border-bottom: 1px solid var(--border-color); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.ox-det-t { flex: 1 1 auto; min-width: 0; }
+.ox-det summary::after { content: "\F285"; font-family: "bootstrap-icons"; font-weight: 400; color: var(--text-secondary); transition: transform .2s ease; }
+.ox-det[open] summary::after { transform: rotate(90deg); }
+.ox-kv { margin: 0; padding: 0 var(--pad-m); }
+.ox-kv > div { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); align-items: baseline; gap: var(--sp-1) var(--sp-3); padding: var(--sp-2) 0; }
+.ox-kv > div + div { border-top: 1px solid var(--border-color); }
+.ox-kv dt { font-size: var(--font-size-xs); font-weight: 400; color: var(--text-secondary); }
+.ox-kv dd { min-width: 0; margin: 0; font-size: var(--font-size-base); font-weight: 600; overflow-wrap: anywhere; }
+.ox-dd { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--sp-3); }
+.ox-val { flex: 1 1 8rem; min-width: 0; }
+.ox-vis { display: flex; flex: none; align-items: center; gap: var(--sp-2); font-size: var(--font-size-sm); font-weight: 400; color: var(--text-secondary); }
+.ox-vis form { margin: 0; }
+.ox-linkbtn { min-height: 2.75rem; padding: 0 var(--sp-2); border: 0; background: none; color: var(--text-primary); font: inherit; font-size: var(--font-size-sm); font-weight: 600; text-decoration: underline; cursor: pointer; touch-action: manipulation; }
+.ox-mini { min-height: var(--h-control); padding: 0 var(--sp-3); border: 1px solid var(--primary-color); border-radius: var(--radius-full); background: none; color: var(--text-primary); font: inherit; font-size: var(--font-size-sm); font-weight: 600; cursor: pointer; touch-action: manipulation; }
+@media (min-width: 768px) { .ox-kv > div { grid-template-columns: 11rem minmax(0, 1fr); } }
+
+/* Listings */
+.ox-head2 { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-2); }
+.ox-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-cards); }
+.ox-grid > * { min-width: 0; }
+@media (min-width: 768px) { .ox-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 992px) { .ox-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.ox-span { grid-column: 1 / -1; }
+.ox-empty { display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); padding: var(--sp-6) var(--pad-l); text-align: center; }
+.ox-empty .ox-ico { width: 3rem; height: 3rem; font-size: var(--font-size-3xl); }
+.ox-empty h3 { margin: 0; font-size: var(--font-size-lg); font-weight: 600; }
+.ox-empty .ox-hbtn { width: auto; padding: 0 var(--sp-6); }
+
+.ox-toast { position: fixed; left: 50%; bottom: calc(var(--bottom-nav-height) + var(--sp-6)); z-index: 1060; display: flex; align-items: center; gap: var(--sp-2); max-width: calc(100% - 2rem); padding: var(--sp-2) var(--sp-4); border-radius: var(--radius-full); background: var(--primary-color); color: var(--bs-white); font-size: var(--font-size-sm); font-weight: 600; box-shadow: var(--shadow-md); transform: translateX(-50%); }
+.ox-spin { display: inline-block; animation: ox-spin 1s linear infinite; }
+@keyframes ox-spin { to { transform: rotate(360deg); } }
+.ox a:focus-visible, .ox button:focus-visible, .ox summary:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .ox-hbtn, .ox-det summary::after { transition: none; } .ox-spin { animation: none; } }
+</style>
 {% endblock %}
 
 {% block page_js %}
-    <script type="text/javascript" src="{% static 'js/pages/my_store.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var $ = function (s, r) { return (r || document).querySelector(s); };
+    var urlEl = $('#store-shareable-url');
+    var storeUrl = (urlEl && urlEl.value) || window.location.href;
+    var storeName = (($('.ox-name') || {}).textContent || 'This store').trim();
+    var storeBio = (($('.ox-bio') || {}).textContent || 'Check out this store on OpenSell!').trim();
+
+    var toastTimer;
+    function toast(msg) {
+        var old = $('.ox-toast');
+        if (old) old.remove();
+        clearTimeout(toastTimer);
+        var t = document.createElement('div');
+        t.className = 'ox-toast';
+        t.setAttribute('role', 'status');
+        var i = document.createElement('i'); i.className = 'bi bi-check-circle-fill'; i.setAttribute('aria-hidden', 'true');
+        var s = document.createElement('span'); s.textContent = msg;
+        t.appendChild(i); t.appendChild(s);
+        document.body.appendChild(t);
+        toastTimer = setTimeout(function () { t.remove(); }, 2500);
+    }
+
+    function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+        return new Promise(function (resolve, reject) {
+            var ta = document.createElement('textarea');
+            ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy') ? resolve() : reject(); } catch (e) { reject(e); }
+            document.body.removeChild(ta);
+        });
+    }
+    function copyLink() {
+        copyText(storeUrl).then(function () { toast('Link copied'); }, function () { toast('Could not copy the link'); });
+    }
+
+    // Share menu
+    var btn = $('#oxShareBtn'), menu = $('#oxShareMenu');
+    if (btn && menu) {
+        var nativeItem = $('[data-action="native"]', menu);
+        if (nativeItem && !navigator.share) nativeItem.remove();
+        function setMenu(open) { menu.hidden = !open; btn.setAttribute('aria-expanded', open ? 'true' : 'false'); }
+        btn.addEventListener('click', function (e) { e.stopPropagation(); setMenu(menu.hidden); });
+        document.addEventListener('click', function (e) { if (!e.target.closest('.ox-share')) setMenu(false); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { setMenu(false); btn.focus(); } });
+        menu.addEventListener('click', function (e) {
+            var item = e.target.closest('.ox-mi');
+            if (!item) return;
+            var a = item.getAttribute('data-action'), text = 'Check out ' + storeName + '!';
+            if (a === 'copy') copyLink();
+            else if (a === 'whatsapp') window.open('https://wa.me/?text=' + encodeURIComponent(text + '\n\n' + storeUrl), '_blank', 'noopener,noreferrer');
+            else if (a === 'facebook') window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(storeUrl), '_blank', 'width=600,height=400,noopener,noreferrer');
+            else if (a === 'twitter') window.open('https://twitter.com/intent/tweet?url=' + encodeURIComponent(storeUrl) + '&text=' + encodeURIComponent(text), '_blank', 'width=600,height=400,noopener,noreferrer');
+            else if (a === 'email') window.location.href = 'mailto:?subject=' + encodeURIComponent('Check out ' + storeName) + '&body=' + encodeURIComponent('Hi!\n\nI wanted to share this store with you:\n\n' + storeName + '\n' + storeBio + '\n\nVisit: ' + storeUrl);
+            else if (a === 'native' && navigator.share) navigator.share({ title: storeName, text: text, url: storeUrl }).catch(function () {});
+            setMenu(false);
+        });
+    }
+
+    // Owner: copy store link
+    var copyBtn = $('#oxCopyLink');
+    if (copyBtn) copyBtn.addEventListener('click', copyLink);
+
+    // Owner: address visibility (works without the email form being on the page)
+    function csrf() {
+        var f = $('#ox-csrf input[name="csrfmiddlewaretoken"]') || $('[name="csrfmiddlewaretoken"]');
+        if (f) return f.value;
+        var m = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
+        return m ? decodeURIComponent(m[1]) : '';
+    }
+    [].forEach.call(document.querySelectorAll('[data-visibility]'), function (b) {
+        b.addEventListener('click', function () {
+            b.disabled = true;
+            fetch('/toggle-location-visibility/' + b.getAttribute('data-visibility') + '/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() }
+            }).then(function (r) { return r.json(); }).then(function (d) {
+                if (d.success) { window.location.reload(); } else { b.disabled = false; toast('Could not update visibility'); }
+            }).catch(function () { b.disabled = false; toast('Could not update visibility'); });
+        });
+    });
+
+    // Owner: email verification form
+    [].forEach.call(document.querySelectorAll('.ox-verify-form'), function (f) {
+        f.addEventListener('submit', function () {
+            var b = f.querySelector('button[type="submit"]');
+            if (!b) return;
+            var label = b.innerHTML;
+            b.disabled = true;
+            b.innerHTML = '<i class="bi bi-arrow-clockwise ox-spin" aria-hidden="true"></i> Sending...';
+            setTimeout(function () { b.disabled = false; b.innerHTML = label; }, 4000);
+        });
+    });
+});
+</script>
 {% endblock %}
 
 {% block 'Body' %}
-<div class="store-container">
-    <div class="floating-share-container">
-        <button class="floating-share-btn" id="shareBtn" title="Share Store">
-            <i class="bi bi-share-fill"></i>
-        </button>
-    </div>
-
+<div class="ox">
     <input type="hidden" id="store-shareable-url" value="{{ store_url }}">
+    {% if request.user == store_owner %}<div id="ox-csrf" hidden>{% csrf_token %}</div>{% endif %}
 
-    <div class="store-header">
-        <div class="container">
-            <div class="row align-items-center py-4 py-md-5">
-                <div class="col-12 text-center">
-                    {% if store_owner.profile.photo %}
-                        <img src="{{ store_owner.profile.photo.url }}" 
-                            alt="Profile Photo" 
-                            class="store-profile-photo">
-                    {% else %}
-                        <svg xmlns="http://www.w3.org/2000/svg" width="150" height="150" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="store-profile-photo">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
-                    {% endif %}
-                    <h1 class="profile-username mt-3">{{ store_owner.username }}'s Store</h1>
-                    {% if store_owner.profile.bio %}
-                        <p class="store-bio mb-3">{{ store_owner.profile.bio }}</p>
-                    {% endif %}
-        
-                    {% if request.user == store_owner %}
-                        <div class="profile-actions mt-4">
-                            <a href="{% url 'product_create' %}" class="btn btn-add-product">
-                                <span class="btn-icon">
-                                    <i class="bi bi-plus-lg"></i>
-                                    <i class="bi bi-box-seam"></i>
-                                </span>
-                                <span class="btn-text">Add Product</span>
-                            </a>
-                            <a href="{% url 'profile_update' %}" class="btn btn-edit-profile">
-                                <span class="btn-icon">
-                                    <i class="bi bi-pencil-fill"></i>
-                                    <i class="bi bi-person-gear"></i>
-                                </span>
-                                <span class="btn-text">Edit Profile</span>
-                            </a>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
+    <header class="ox-head">
+        {% if request.user == store_owner %}
+            <a href="{% url 'profile_update' %}" class="ox-edit-ico" aria-label="Edit profile"><i class="bi bi-pencil-fill" aria-hidden="true"></i></a>
+        {% endif %}
 
-    <div class="container">
-        <!-- Enhanced Store Verification Status Section (Visible to All Visitors) -->
-    {% if request.user != store_owner %}
-    <div class="store-verification-status-section mb-4">
-        <div class="card verification-overview-card">
-            <div class="card-header py-3">
-                <h5 class="mb-0 fw-bold d-flex align-items-center">
-                    <i class="bi bi-shield-check me-2" style="color: var(--accent-color)"></i>
-                    Store Verification Status
-                </h5>
-            </div>
-            
-            <!-- Verification Status Grid -->
-            <div class="verification-status-grid p-3">
-                <div class="row g-3">
-                    <!-- Business Verification Status -->
-                    <div class="col-12 col-md-6">
-                        <div class="store-status-chip {% if store_owner.profile.is_verified_business %}verified{% elif store_owner.profile.has_pending_verification %}pending{% else %}unverified{% endif %}">
-                            <div class="status-icon-container">
-                                {% if store_owner.profile.is_verified_business %}
-                                    <i class="bi bi-patch-check-fill"></i>
-                                {% elif store_owner.profile.has_pending_verification %}
-                                    <i class="bi bi-clock-history"></i>
-                                {% else %}
-                                    <i class="bi bi-shield-exclamation"></i>
-                                {% endif %}
-                            </div>
-                            <div class="status-text-container">
-                                <div class="status-category">Business Verification</div>
-                                <div class="status-state">
-                                    {% if store_owner.profile.is_verified_business %}
-                                        Verified
-                                        {% if store_owner.profile.business_verified_at %}
-                                            <small class="verified-date">{{ store_owner.profile.business_verified_at|date:"M d, Y" }}</small>
-                                        {% endif %}
-                                    {% elif store_owner.profile.has_pending_verification %}
-                                        Under Review
-                                    {% else %}
-                                        Not Verified
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        {% if store_owner.profile.photo %}
+            <img src="{{ store_owner.profile.photo.url }}" alt="Profile photo" class="ox-photo" width="88" height="88">
+        {% else %}
+            <svg class="ox-photo" xmlns="http://www.w3.org/2000/svg" viewBox="-6 -6 36 36" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+        {% endif %}
+        <h1 class="ox-name">{{ store_owner.username }}'s Store</h1>
+        {% if store_owner.profile.bio %}<p class="ox-bio">{{ store_owner.profile.bio }}</p>{% endif %}
 
-                    <!-- Account Status -->
-                    <div class="col-12 col-md-6">
-                        <div class="store-status-chip {% if store_owner.is_active %}verified{% else %}unverified{% endif %}">
-                            <div class="status-icon-container">
-                                {% if store_owner.is_active %}
-                                    <i class="bi bi-person-check-fill"></i>
-                                {% else %}
-                                    <i class="bi bi-person-x-fill"></i>
-                                {% endif %}
-                            </div>
-                            <div class="status-text-container">
-                                <div class="status-category">Account Status</div>
-                                <div class="status-state">
-                                    {% if store_owner.is_active %}
-                                        Active
-                                        <small class="member-since">Since {{ store_owner.date_joined|date:"M Y" }}</small>
-                                    {% else %}
-                                        Inactive
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Business Information Summary (for verified businesses) -->
+        <div class="ox-chips">
             {% if store_owner.profile.is_verified_business %}
-                <div class="business-summary-section">
-                    <div class="business-info-banner">
-                        <div class="business-banner-content">
-                            <div class="business-identity">
-                                <h6 class="business-name">{{ store_owner.profile.business_name }}</h6>
-                                <div class="business-category">{{ store_owner.profile.get_business_type_display|default:"Verified Business" }}</div>
-                            </div>
-                            <div class="verified-business-badge">
-                                <i class="bi bi-patch-check-fill"></i>
-                                <span>Verified Business</span>
-                            </div>
-                        </div>
-                        
-                        {% if store_owner.profile.business_description %}
-                            <div class="business-description-preview">
-                                <p>{{ store_owner.profile.business_description|truncatechars:120 }}</p>
-                            </div>
-                        {% endif %}
-
-                        <!-- Business Contact Info (if available and visible) -->
-                        <div class="business-contact-preview">
-                            <div class="contact-items-row">
-                                {% if store_owner.profile.business_phone %}
-                                    <div class="contact-preview-item">
-                                        <i class="bi bi-telephone-fill"></i>
-                                        <span>{{ store_owner.profile.business_phone }}</span>
-                                    </div>
-                                {% endif %}
-                                {% if store_owner.profile.business_website %}
-                                    <div class="contact-preview-item">
-                                        <i class="bi bi-globe"></i>
-                                        <a href="{{ store_owner.profile.business_website }}" target="_blank" class="business-website-link">
-                                            Visit Website <i class="bi bi-box-arrow-up-right"></i>
-                                        </a>
-                                    </div>
-                                {% endif %}
-                                
-                                <!-- Business Address (if visible) -->
-                                {% if store_owner.profile.business_address_visible and store_owner.profile.location %}
-                                    <div class="contact-preview-item business-address-preview">
-                                        <i class="bi bi-geo-alt-fill"></i>
-                                        <div class="address-summary">
-                                            {% if store_owner.profile.location.city %}
-                                                {{ store_owner.profile.location.city }}{% if store_owner.profile.location.state %}, {{ store_owner.profile.location.state.name }}{% endif %}
-                                            {% elif store_owner.profile.location.lga %}
-                                                {{ store_owner.profile.location.lga.name }}{% if store_owner.profile.location.state %}, {{ store_owner.profile.location.state.name }}{% endif %}
-                                            {% elif store_owner.profile.location.state %}
-                                                {{ store_owner.profile.location.state.name }}
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <span class="ox-chip"><i class="bi bi-patch-check-fill" aria-hidden="true"></i>Verified Business</span>
+            {% elif store_owner.profile.has_pending_verification %}
+                <span class="ox-chip"><i class="bi bi-clock-history" aria-hidden="true"></i>Verification pending</span>
+            {% else %}
+                <span class="ox-chip"><i class="bi bi-shield-exclamation" aria-hidden="true"></i>Not verified</span>
+            {% endif %}
+            {% if store_owner.is_active %}
+                <span class="ox-chip"><i class="bi bi-person-check-fill" aria-hidden="true"></i>Member since {{ store_owner.date_joined|date:"M Y" }}</span>
+            {% else %}
+                <span class="ox-chip"><i class="bi bi-person-x-fill" aria-hidden="true"></i>Inactive</span>
+            {% endif %}
+            {% if store_owner.profile.is_verified_business and store_owner.profile.business_address_visible and store_owner.profile.location %}
+                <span class="ox-chip ox-chip-addr"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i><span>{{ store_owner.profile.location }}</span></span>
             {% endif %}
         </div>
-    </div>
+
+        <div class="ox-hbtns">
+            {% if request.user == store_owner %}
+                <a href="{% url 'product_create' %}" class="ox-hbtn ox-hbtn-pri"><i class="bi bi-plus-lg" aria-hidden="true"></i>Add product</a>
+            {% elif store_owner.profile.is_verified_business and store_owner.profile.business_phone %}
+                <a href="tel:{{ store_owner.profile.business_phone|cut:' ' }}" class="ox-hbtn ox-hbtn-pri"><i class="bi bi-telephone-fill" aria-hidden="true"></i>Call store</a>
+            {% endif %}
+            <div class="ox-share">
+                <button type="button" class="ox-hbtn ox-hbtn-sec" id="oxShareBtn" aria-haspopup="true" aria-expanded="false" aria-controls="oxShareMenu"><i class="bi bi-share-fill" aria-hidden="true"></i>Share store</button>
+                <div class="ox-menu" id="oxShareMenu" role="menu" hidden>
+                    <button type="button" class="ox-mi" role="menuitem" data-action="whatsapp"><i class="bi bi-whatsapp" aria-hidden="true"></i>WhatsApp</button>
+                    <button type="button" class="ox-mi" role="menuitem" data-action="copy"><i class="bi bi-link-45deg" aria-hidden="true"></i>Copy link</button>
+                    <button type="button" class="ox-mi" role="menuitem" data-action="facebook"><i class="bi bi-facebook" aria-hidden="true"></i>Facebook</button>
+                    <button type="button" class="ox-mi" role="menuitem" data-action="twitter"><i class="bi bi-twitter-x" aria-hidden="true"></i>X (Twitter)</button>
+                    <button type="button" class="ox-mi" role="menuitem" data-action="email"><i class="bi bi-envelope-fill" aria-hidden="true"></i>Email</button>
+                    <button type="button" class="ox-mi" role="menuitem" data-action="native"><i class="bi bi-box-arrow-up" aria-hidden="true"></i>More options</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    {% if request.user == store_owner %}
+        <div class="ox-tint ox-link t-purple">
+            <span class="ox-ico"><i class="bi bi-link-45deg" aria-hidden="true"></i></span>
+            <span class="ox-link-txt"><b>Your store link</b><span>{{ store_url }}</span></span>
+            <button type="button" class="ox-copy" id="oxCopyLink">Copy</button>
+        </div>
+
+        {% if store_owner.profile.is_verified_business %}
+        <section class="ox-tint ox-verify t-green" aria-labelledby="ox-v-title">
+            <div class="ox-verify-top">
+                <span class="ox-ico"><i class="bi bi-patch-check-fill" aria-hidden="true"></i></span>
+                <div class="ox-verify-txt">
+                    <h2 id="ox-v-title">Your business is verified</h2>
+                    <p class="ox-fine">Verified on {{ store_owner.profile.business_verified_at|date:"F d, Y" }}{% if store_owner.profile.business_name %} · {{ store_owner.profile.business_name }}{% endif %}</p>
+                </div>
+            </div>
+            <ul class="ox-perks">
+                <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Verified badge</li>
+                <li><i class="bi bi-infinity" aria-hidden="true"></i>Permanent listings</li>
+                <li><i class="bi bi-eye-fill" aria-hidden="true"></i>Enhanced visibility</li>
+                <li><i class="bi bi-headset" aria-hidden="true"></i>Priority support</li>
+            </ul>
+        </section>
+        {% elif store_owner.profile.has_pending_verification %}
+        <section class="ox-tint ox-verify t-teal" aria-labelledby="ox-v-title">
+            <div class="ox-verify-top">
+                <span class="ox-ico"><i class="bi bi-clock-history" aria-hidden="true"></i></span>
+                <div class="ox-verify-txt">
+                    <h2 id="ox-v-title">Your verification is under review</h2>
+                    <p class="ox-fine">We'll review your application within 2-3 business days.</p>
+                </div>
+                <a href="{% url 'business_verification_status' %}" class="ox-hbtn ox-hbtn-pri"><i class="bi bi-search" aria-hidden="true"></i>Check status</a>
+            </div>
+        </section>
+        {% else %}
+        <section class="ox-tint ox-verify t-orange" aria-labelledby="ox-v-title">
+            <div class="ox-verify-top">
+                <span class="ox-ico"><i class="bi bi-shield-exclamation" aria-hidden="true"></i></span>
+                <div class="ox-verify-txt">
+                    <h2 id="ox-v-title">Verify your business</h2>
+                    <p class="ox-fine">Get verified to unlock premium features and build customer trust.</p>
+                </div>
+                <a href="{% url 'business_verification_form' %}" class="ox-hbtn ox-hbtn-pri"><i class="bi bi-shield-check" aria-hidden="true"></i>Start verification</a>
+            </div>
+            <ul class="ox-perks">
+                <li><i class="bi bi-patch-check" aria-hidden="true"></i>Verified badge</li>
+                <li><i class="bi bi-infinity" aria-hidden="true"></i>Permanent listings</li>
+                <li><i class="bi bi-graph-up" aria-hidden="true"></i>Higher rankings</li>
+                <li><i class="bi bi-shield-check" aria-hidden="true"></i>Customer trust</li>
+            </ul>
+        </section>
+        {% endif %}
+
+        {% if store_owner.profile.is_verified_business %}
+        <details class="ox-det t-navy">
+            <summary><span class="ox-ico"><i class="bi bi-building-fill" aria-hidden="true"></i></span><span class="ox-det-t">Business information</span></summary>
+            <dl class="ox-kv">
+                <div><dt>Business name</dt><dd>{{ store_owner.profile.business_name|default:"Not provided" }}</dd></div>
+                <div><dt>Type</dt><dd>{{ store_owner.profile.get_business_type_display|default:"Not specified" }}</dd></div>
+                <div><dt>Email</dt><dd>{{ store_owner.profile.business_email|default:"Not provided" }}</dd></div>
+                <div><dt>Phone</dt><dd>{{ store_owner.profile.business_phone|default:"Not provided" }}</dd></div>
+                {% if store_owner.profile.business_website %}
+                <div><dt>Website</dt><dd><a href="{{ store_owner.profile.business_website }}" target="_blank" rel="noopener noreferrer" class="text-primary">Visit website <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a></dd></div>
+                {% endif %}
+                {% if store_owner.profile.business_registration_number %}
+                <div><dt>Registration no.</dt><dd>{{ store_owner.profile.business_registration_number }}</dd></div>
+                {% endif %}
+                {% if store_owner.profile.location %}
+                <div>
+                    <dt>Address</dt>
+                    <dd class="ox-dd">
+                        <span class="ox-val">{{ store_owner.profile.location }}</span>
+                        <span class="ox-vis">
+                            <i class="bi bi-{% if store_owner.profile.business_address_visible %}eye{% else %}eye-slash{% endif %}" aria-hidden="true"></i>
+                            {% if store_owner.profile.business_address_visible %}Public{% else %}Private{% endif %}
+                            <button type="button" class="ox-linkbtn" data-visibility="business">Change</button>
+                        </span>
+                    </dd>
+                </div>
+                {% endif %}
+            </dl>
+        </details>
+        {% endif %}
+
+        <details class="ox-det t-teal">
+            <summary>
+                <span class="ox-ico"><i class="bi bi-person-lines-fill" aria-hidden="true"></i></span><span class="ox-det-t">My information</span>
+                {% if not request.user.profile.email_verified %}<span class="ox-tag">Email not verified</span>{% endif %}
+            </summary>
+            <dl class="ox-kv">
+                <div><dt>Full name</dt><dd>{{ store_owner.get_full_name|default:"Not provided" }}</dd></div>
+                <div><dt>Phone</dt><dd>{{ store_owner.profile.phone_number|default:"Not provided" }}</dd></div>
+                <div>
+                    <dt>Email</dt>
+                    <dd class="ox-dd">
+                        <span class="ox-val">{{ store_owner.email }}</span>
+                        <span class="ox-vis">
+                            {% if request.user.profile.email_verified %}
+                                <i class="bi bi-patch-check-fill" aria-hidden="true"></i>Verified
+                            {% else %}
+                                <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>Not verified
+                                <form class="ox-verify-form" method="post" action="{% url 'send_verification_otp' %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="ox-mini">Verify now</button>
+                                </form>
+                            {% endif %}
+                        </span>
+                    </dd>
+                </div>
+                <div>
+                    <dt>Location</dt>
+                    {% if store_owner.profile.location %}
+                        <dd class="ox-dd">
+                            <span class="ox-val">{{ store_owner.profile.location }}</span>
+                            <span class="ox-vis">
+                                <i class="bi bi-{% if store_owner.profile.personal_address_visible %}eye{% else %}eye-slash{% endif %}" aria-hidden="true"></i>
+                                {% if store_owner.profile.personal_address_visible %}Public{% else %}Private{% endif %}
+                                <button type="button" class="ox-linkbtn" data-visibility="personal">Change</button>
+                            </span>
+                        </dd>
+                    {% else %}
+                        <dd>Not provided</dd>
+                    {% endif %}
+                </div>
+            </dl>
+        </details>
+
+    {% elif store_owner.profile.is_verified_business %}
+        <section class="ox-tint ox-biz t-green" aria-labelledby="ox-b-title">
+            <div class="ox-biz-top">
+                <div>
+                    <h2 id="ox-b-title">{{ store_owner.profile.business_name }}</h2>
+                    <p class="ox-fine">{{ store_owner.profile.get_business_type_display|default:"Verified Business" }}</p>
+                </div>
+                <span class="ox-ico"><i class="bi bi-patch-check-fill" aria-hidden="true"></i></span>
+            </div>
+            {% if store_owner.profile.business_description %}
+                <p class="ox-fine">{{ store_owner.profile.business_description|truncatechars:120 }}</p>
+            {% endif %}
+            {% if store_owner.profile.business_phone or store_owner.profile.business_website %}
+            <div class="ox-contacts">
+                {% if store_owner.profile.business_phone %}
+                    <a href="tel:{{ store_owner.profile.business_phone|cut:' ' }}" class="ox-contact"><i class="bi bi-telephone-fill" aria-hidden="true"></i>{{ store_owner.profile.business_phone }}</a>
+                {% endif %}
+                {% if store_owner.profile.business_website %}
+                    <a href="{{ store_owner.profile.business_website }}" target="_blank" rel="noopener noreferrer" class="ox-contact"><i class="bi bi-globe" aria-hidden="true"></i>Visit website</a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </section>
     {% endif %}
 
-        <!-- CORRECTED SECTION: Replace from "Business Information Section" onwards with this -->
-
-        {% if request.user == store_owner %}
-        <!-- Business Verification Section (Owner Only) -->
-        <div class="business-verification-section mb-4">
-            <!-- Verified Business Status -->
-            {% if store_owner.profile.is_verified_business %}
-            <div class="business-verification-card">
-                <div class="status-body">
-                    <div class="status-alert status-verified">
-                        <div class="status-icon-large">
-                            <i class="bi bi-patch-check-fill"></i>
-                        </div>
-                        <div class="status-content">
-                            <h4>Congratulations! Your business is verified</h4>
-                            <p>Verified on {{ store_owner.profile.business_verified_at|date:"F d, Y" }}</p>
-                            <div class="status-badge verified">
-                                <i class="bi bi-check-circle-fill"></i>
-                                <span>Verified Business</span>
-                            </div>
-                            {% if store_owner.profile.business_name %}
-                                <h5 class="business-name mt-2">{{ store_owner.profile.business_name }}</h5>
-                            {% endif %}
-                        </div>
-                        <div class="status-benefits">
-                            <h6 class="benefits-title">✨ Active Benefits</h6>
-                            <div class="verification-benefits-grid">
-                                <div class="benefit-item">
-                                    <i class="bi bi-check-circle-fill text-success"></i>
-                                    <span>Verified Badge</span>
-                                </div>
-                                <div class="benefit-item">
-                                    <i class="bi bi-infinity text-success"></i>
-                                    <span>Permanent Listings</span>
-                                </div>
-                                <div class="benefit-item">
-                                    <i class="bi bi-eye-fill text-success"></i>
-                                    <span>Enhanced Visibility</span>
-                                </div>
-                                <div class="benefit-item">
-                                    <i class="bi bi-headset text-success"></i>
-                                    <span>Priority Support</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pending Verification Status -->
-            {% elif store_owner.profile.has_pending_verification %}
-            <div class="business-verification-card">
-                <div class="status-body">
-                    <div class="status-alert status-pending">
-                        <div class="status-icon-large">
-                            <i class="bi bi-clock-history"></i>
-                        </div>
-                        <div class="status-content">
-                            <h4>Your verification is under review</h4>
-                            <p>We'll review your application within 2-3 business days</p>
-                            <div class="status-badge pending">
-                                <i class="bi bi-hourglass-split"></i>
-                                <span>Under Review</span>
-                            </div>
-                        </div>
-                        <div class="status-actions">
-                            <a href="{% url 'business_verification_status' %}" class="btn btn-outline-warning btn-sm">
-                                <i class="bi bi-search me-1"></i>
-                                Check Status
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Unverified Status -->
-            {% else %}
-            <div class="business-verification-card">
-                <div class="status-body">
-                    <div class="status-alert status-unverified">
-                        <div class="status-icon-large">
-                            <i class="bi bi-shield-exclamation"></i>
-                        </div>
-                        <div class="status-content">
-                            <h4>Verify Your Business</h4>
-                            <p>Get verified to unlock premium features and build customer trust.</p>
-                            <div class="status-badge unverified">
-                                <i class="bi bi-shield-exclamation"></i>
-                                <span>Unverified</span>
-                            </div>
-                        </div>
-                        <div class="status-cta">
-                            <h6 class="benefits-title">🚀 Unlock Benefits</h6>
-                            <div class="verification-benefits-grid">
-                                <div class="benefit-item">
-                                    <i class="bi bi-patch-check"></i>
-                                    <span>Verified Badge</span>
-                                </div>
-                                <div class="benefit-item">
-                                    <i class="bi bi-infinity"></i>
-                                    <span>Permanent Listings</span>
-                                </div>
-                                <div class="benefit-item">
-                                    <i class="bi bi-graph-up"></i>
-                                    <span>Higher Rankings</span>
-                                </div>
-                                <div class="benefit-item">
-                                    <i class="bi bi-shield-check"></i>
-                                    <span>Customer Trust</span>
-                                </div>
-                            </div>
-                            <a href="{% url 'business_verification_form' %}" class="btn btn-verify-now mt-3">
-                                <i class="bi bi-shield-check me-1"></i>
-                                Start Verification
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
+    <section aria-labelledby="ox-list-title">
+        <div class="ox-head2">
+            <h2 class="ox-h2 t-orange" id="ox-list-title"><i class="bi bi-grid-fill" aria-hidden="true"></i>Active listings</h2>
+            <span class="ox-tag">{{ total_products }} product{{ total_products|pluralize }}</span>
         </div>
-        
-        {% if store_owner.profile.is_verified_business %}
-        <div class="row mb-3">
-            <div class="col-12">
-                <div class="card store-info-card compact-info-card">
-                    <div class="card-body">
-                        <h5 class="compact-title mb-3">
-                            <i class="bi bi-building-fill me-2"></i>
-                            Business Information
-                        </h5>
-
-                        <div class="compact-info-grid">
-                            <div class="compact-info-item">
-                                <span class="compact-label">
-                                    <i class="bi bi-shop"></i>
-                                    Business Name
-                                </span>
-                                <span class="compact-value">{{ store_owner.profile.business_name|default:"Not provided" }}</span>
-                            </div>
-
-                            <div class="compact-info-item">
-                                <span class="compact-label">
-                                    <i class="bi bi-tag"></i>
-                                    Type
-                                </span>
-                                <span class="compact-value">{{ store_owner.profile.get_business_type_display|default:"Not specified" }}</span>
-                            </div>
-
-                            <div class="compact-info-item">
-                                <span class="compact-label">
-                                    <i class="bi bi-envelope"></i>
-                                    Email
-                                </span>
-                                <span class="compact-value email-contact">{{ store_owner.profile.business_email|default:"Not provided" }}</span>
-                            </div>
-
-                            <div class="compact-info-item">
-                                <span class="compact-label">
-                                    <i class="bi bi-telephone"></i>
-                                    Phone
-                                </span>
-                                <span class="compact-value phone-contact">{{ store_owner.profile.business_phone|default:"Not provided" }}</span>
-                            </div>
-
-                            {% if store_owner.profile.business_website %}
-                            <div class="compact-info-item">
-                                <span class="compact-label">
-                                    <i class="bi bi-globe"></i>
-                                    Website
-                                </span>
-                                <a href="{{ store_owner.profile.business_website }}" target="_blank" class="compact-value external-link-compact">
-                                    Visit <i class="bi bi-box-arrow-up-right ms-1"></i>
-                                </a>
-                            </div>
-                            {% endif %}
-
-                            {% if store_owner.profile.business_registration_number %}
-                            <div class="compact-info-item">
-                                <span class="compact-label">
-                                    <i class="bi bi-file-earmark-text"></i>
-                                    Reg. No
-                                </span>
-                                <span class="compact-value">{{ store_owner.profile.business_registration_number }}</span>
-                            </div>
-                            {% endif %}
-
-                            {% if store_owner.profile.location %}
-                            <div class="compact-info-item full-width">
-                                <span class="compact-label">
-                                    <i class="bi bi-geo-alt"></i>
-                                    Business Address
-                                </span>
-                                <div>
-                                    <span class="compact-value location-compact">
-                                        {% if store_owner.profile.location.address %}{{ store_owner.profile.location.address }}{% endif %}
-                                        {% if store_owner.profile.location.address_2 %}, {{ store_owner.profile.location.address_2 }}{% endif %}
-                                        {% if store_owner.profile.location.city %}, {{ store_owner.profile.location.city }}{% endif %}
-                                        {% if store_owner.profile.location.lga %}, {{ store_owner.profile.location.lga.name }}{% endif %}
-                                        {% if store_owner.profile.location.state %}, {{ store_owner.profile.location.state.name }}{% endif %}
-                                    </span>
-                                    <div class="location-visibility-toggle">
-                                        <i class="bi bi-{% if store_owner.profile.business_address_visible %}eye{% else %}eye-slash{% endif %}"></i>
-                                        <span>Visibility: {% if store_owner.profile.business_address_visible %}Public{% else %}Private{% endif %}</span>
-                                        <button type="button" class="visibility-toggle-btn" onclick="toggleLocationVisibility('business')">
-                                            Change
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
+        <div class="ox-grid">
+            {% for product in products %}
+                <div>{% include 'product_card.html' with product=product show_save=True %}</div>
+            {% empty %}
+                <div class="ox-tint ox-empty ox-span t-purple">
+                    <span class="ox-ico"><i class="bi bi-box2-heart" aria-hidden="true"></i></span>
+                    <h3>No products yet</h3>
+                    <p class="ox-fine">This store has no active listings at the moment.</p>
+                    {% if request.user == store_owner %}
+                        <a href="{% url 'product_create' %}" class="ox-hbtn ox-hbtn-pri"><i class="bi bi-plus-lg" aria-hidden="true"></i>Create your first listing</a>
+                    {% endif %}
                 </div>
-            </div>
+            {% endfor %}
         </div>
-        {% endif %}
-
-        <!-- My Information Section (Owner Only) -->
-        <div class="row mb-3">
-            <div class="col-12">
-                <div class="card store-info-card compact-info-card">
-                    <div class="card-body">
-                        <h5 class="compact-title mb-3">
-                            <i class="bi bi-person-lines-fill me-2"></i>
-                            My Information
-                        </h5>
-
-                        <div class="compact-info-grid">
-                            <div class="compact-info-item">
-                                <span class="compact-label">
-                                    <i class="bi bi-person"></i>
-                                    Full Name
-                                </span>
-                                <span class="compact-value">{{ store_owner.get_full_name|default:"Not provided" }}</span>
-                            </div>
-
-                            <div class="compact-info-item">
-                                <span class="compact-label">
-                                    <i class="bi bi-phone"></i>
-                                    Phone
-                                </span>
-                                <span class="compact-value">{{ store_owner.profile.phone_number|default:"Not provided" }}</span>
-                            </div>
-
-                            <div class="compact-info-item full-width">
-                                <span class="compact-label">
-                                    <i class="bi bi-envelope-at"></i>
-                                    Email Address
-                                </span>
-                                <div class="compact-email-wrapper">
-                                    <span class="compact-value email-contact">{{ store_owner.email }}</span>
-                                    {% if request.user.profile.email_verified %}
-                                        <span class="verification-badge-compact verified" title="Email Verified">
-                                            <i class="bi bi-patch-check-fill"></i>
-                                            Verified
-                                        </span>
-                                    {% else %}
-                                        <span class="verification-badge-compact unverified" title="Email Not Verified">
-                                            <i class="bi bi-exclamation-triangle-fill"></i>
-                                            Unverified
-                                        </span>
-                                        <form class="verify-form-compact" method="post" action="{% url 'send_verification_otp' %}" style="display: inline;">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn-verify-compact">
-                                                Verify Now
-                                            </button>
-                                        </form>
-                                    {% endif %}
-                                </div>
-                            </div>
-
-                            {% if store_owner.profile.location %}
-                            <div class="compact-info-item full-width">
-                                <span class="compact-label">
-                                    <i class="bi bi-map"></i>
-                                    Personal Location
-                                </span>
-                                <div>
-                                    <span class="compact-value location-compact">
-                                        {% if store_owner.profile.location.address %}{{ store_owner.profile.location.address }}{% endif %}
-                                        {% if store_owner.profile.location.address_2 %}, {{ store_owner.profile.location.address_2 }}{% endif %}
-                                        {% if store_owner.profile.location.city %}, {{ store_owner.profile.location.city }}{% endif %}
-                                        {% if store_owner.profile.location.lga %}, {{ store_owner.profile.location.lga.name }}{% endif %}
-                                        {% if store_owner.profile.location.state %}, {{ store_owner.profile.location.state.name }}{% endif %}
-                                    </span>
-                                    <div class="location-visibility-toggle">
-                                        <i class="bi bi-{% if store_owner.profile.personal_address_visible %}eye{% else %}eye-slash{% endif %}"></i>
-                                        <span>Visibility: {% if store_owner.profile.personal_address_visible %}Public{% else %}Private{% endif %}</span>
-                                        <button type="button" class="visibility-toggle-btn" onclick="toggleLocationVisibility('personal')">
-                                            Change
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            {% else %}
-                            <div class="compact-info-item full-width">
-                                <span class="compact-label">
-                                    <i class="bi bi-map"></i>
-                                    Personal Location
-                                </span>
-                                <span class="compact-value">Not provided</span>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- Products Section -->
-        <div class="row">
-            <div class="col-12">
-                <div class="products-section">
-                    <h3 class="h5 mb-3">Active Listings(
-                        {{ total_products }} Product{{ total_products|pluralize }}
-                    Listed)</h3>
-                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
-                        {% for product in products %}
-                            <div class="col-6 col-md-4 col-lg-3">
-                                {% include 'product_card.html' with product=product show_save=True %}
-                            </div>
-                        {% empty %}
-                            <div class="col-12">
-                                <div class="empty-products-card">
-                                    <div class="empty-products-icon">
-                                        <i class="bi bi-box2-heart"></i>
-                                    </div>
-                                    <h5>No products available yet</h5>
-                                    <p class="text-muted">This store has no active listings at the moment</p>
-                                    {% if request.user == store_owner %}
-                                        <a href="{% url 'product_create' %}" class="btn btn-add-first-product">
-                                            <i class="bi bi-plus-lg me-2"></i>
-                                            Create Your First Listing
-                                        </a>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    </section>
 </div>
-
 {% endblock %}
-{% block 'Footer'%}{% endblock %}
+
+{% block 'Footer' %}{% endblock %}

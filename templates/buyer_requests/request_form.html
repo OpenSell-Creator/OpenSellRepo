@@ -1,336 +1,162 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}{{ title }}{% endblock %}
+
 {% block page_css %}
 <link rel="stylesheet" type="text/css" href="{% static 'css/pages/buyer_requests.css' %}">
 <style>
-    /* ══════════════════════════════════════
-       Wizard Header & Steps
-    ══════════════════════════════════════ */
-    .wizard-header {
-        padding: 1.25rem 1.5rem 0;
-        background: var(--card-background);
-        border-bottom: 1px solid var(--border-color);
-    }
-    .wizard-steps {
-        display: flex;
-        align-items: flex-start;
-        overflow-x: auto;
-        scrollbar-width: none;
-        padding-bottom: 0;
-        gap: 0;
-    }
-    .wizard-steps::-webkit-scrollbar { display: none; }
+/* Same design core as profile_update, login and signup (shared .ox wrapper, hue tints, 42px controls,
+   autofill fix, navy pill buttons). Buyer request form only: the .rq-* rules at the end. */
+.ox {
+    --ox-navy: var(--primary-color);
+    --ox-orange: var(--accent-color);
+    --ox-teal: var(--bs-teal, var(--primary-color));
+    --ox-green: var(--bs-success, var(--primary-color));
+    --ox-purple: var(--bs-purple, var(--primary-color));
+    display: flex; flex-direction: column; gap: var(--gap-sections);
+    color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-body);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-4));
+}
+.ox [hidden] { display: none !important; }
+.ox a { text-decoration: none; }
+.ox p { margin: 0; }
+.t-navy { --tint: var(--ox-navy); } .t-orange { --tint: var(--ox-orange); } .t-teal { --tint: var(--ox-teal); }
+.t-green { --tint: var(--ox-green); } .t-purple { --tint: var(--ox-purple); }
+.ox-ico { display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-lg); }
+.ox-tint, .auth-alert { position: relative; isolation: isolate; }
+.ox-tint::before, .auth-alert::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .ox-tint::before, [data-bs-theme="dark"] .auth-alert::before { opacity: .09; }
+.ox-card { border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); }
 
-    .wizard-step {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.3rem;
-        flex: 1;
-        min-width: 60px;
-        padding-bottom: 0.75rem;
-        border-bottom: 3px solid transparent;
-        cursor: pointer;
-        position: relative;
-        color: var(--text-secondary);
-        font-size: 0.75rem;
-        font-weight: 500;
-        user-select: none;
-        transition: border-color 0.25s, color 0.25s;
-        text-align: center;
-    }
-    /* connector line between steps */
-    .wizard-step + .wizard-step::before {
-        content: '';
-        position: absolute;
-        left: calc(-50% + 0px);
-        top: 18px;
-        width: 100%;
-        height: 2px;
-        background: var(--border-color);
-        z-index: 0;
-        transition: background 0.3s;
-    }
-    .wizard-step.completed + .wizard-step::before { background: var(--accent-color, #0d6efd); }
+/* Header: navy band, full-bleed, tucks under the navbar */
+.ox-head { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); margin: -2rem -1rem 0; padding: calc(2rem + var(--sp-4)) var(--sp-5) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); text-align: center; }
+.ox-title { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-snug); }
+.ox-lead { max-width: 32rem; font-size: var(--font-size-sm); line-height: var(--lh-snug); opacity: .85; }
+@media (min-width: 768px) { .ox-title { font-size: var(--font-size-3xl); } .ox-lead { font-size: var(--font-size-base); } }
 
-    .step-icon {
-        width: 36px; height: 36px;
-        border-radius: 50%;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1rem;
-        border: 2px solid var(--border-color);
-        background: var(--card-background);
-        z-index: 1;
-        transition: all 0.25s;
-        flex-shrink: 0;
-    }
-    .wizard-step.active  { color: var(--accent-color, #0d6efd); border-bottom-color: var(--accent-color, #0d6efd); }
-    .wizard-step.active .step-icon  { border-color: var(--accent-color, #0d6efd); background: var(--accent-color, #0d6efd); color: #fff; }
-    .wizard-step.completed           { color: #198754; }
-    .wizard-step.completed .step-icon { border-color: #198754; background: #198754; color: #fff; }
-    .wizard-step.has-error           { color: #dc3545; }
-    .wizard-step.has-error .step-icon { border-color: #dc3545; background: #dc3545; color: #fff; }
-    .step-label { font-size: 0.68rem; line-height: 1.2; }
+/* Form primitives (42px controls, same as the auth pages) */
+.auth-field { display: flex; flex-direction: column; gap: var(--gap-label); min-width: 0; }
+.auth-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+@media (max-width: 359.98px) { .auth-pair { grid-template-columns: 1fr; } }
+.auth-label { font-size: var(--font-size-sm); font-weight: 600; }
+.auth-opt { font-weight: 400; color: var(--text-secondary); }
+.auth-hint { display: flex; align-items: flex-start; gap: var(--sp-1); font-size: var(--font-size-xs); line-height: var(--lh-snug); color: var(--text-secondary); }
+.auth-hint--ok { color: var(--bs-success); }
+.auth-hint--bad { color: var(--bs-danger); font-weight: 600; }
+.ox .has-error .auth-hint { display: none; }
+.ox .form-control, .ox .form-select { box-sizing: border-box; width: 100%; min-height: var(--h-control-lg); padding: 0 var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--background-color); color: var(--text-primary); font-size: var(--font-size-base); line-height: var(--lh-tight); }
+.ox .form-select { padding-right: 2.25rem; }
+.ox textarea.form-control { min-height: 9.5rem; padding: var(--sp-2) var(--sp-3); line-height: var(--lh-body); resize: vertical; }
+.ox .form-control:focus, .ox .form-select:focus { outline: 2px solid var(--accent-color); outline-offset: 1px; border-color: var(--accent-color); box-shadow: none; background-color: var(--background-color); color: var(--text-primary); }
+.ox .form-control:disabled, .ox .form-select:disabled { opacity: .7; }
+/* Browser autofill: keep the field dark in dark mode (browsers paint it white with dark text) */
+[data-bs-theme="dark"] .ox .form-control, [data-bs-theme="dark"] .ox .form-select { color-scheme: dark; }
+.ox .form-control:-webkit-autofill, .ox .form-control:-webkit-autofill:hover, .ox .form-control:-webkit-autofill:focus, .ox .form-select:-webkit-autofill, .ox .form-select:-webkit-autofill:hover, .ox .form-select:-webkit-autofill:focus { -webkit-text-fill-color: var(--text-primary); caret-color: var(--text-primary); -webkit-box-shadow: 0 0 0 1000px var(--background-color) inset; box-shadow: 0 0 0 1000px var(--background-color) inset; transition: background-color 9999s ease-out 0s; }
+.ox .form-control:autofill, .ox .form-select:autofill { -webkit-text-fill-color: var(--text-primary); caret-color: var(--text-primary); box-shadow: 0 0 0 1000px var(--background-color) inset; }
+.ox .invalid-feedback { display: none; margin: 0; font-size: var(--font-size-xs); font-weight: 600; color: var(--bs-danger); }
+.ox .has-error .invalid-feedback { display: block; }
+.ox .has-error .form-control, .ox .has-error .form-select { border-color: var(--bs-danger); }
+.ox .has-error .form-control { background-image: none; }
+@supports (-webkit-touch-callout: none) { .ox .form-control, .ox .form-select { font-size: 16px; } }
+.auth-check { display: flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; margin: 0; font-size: var(--font-size-sm); cursor: pointer; }
+.auth-check .form-check-input { flex: none; width: 1.125rem; height: 1.125rem; margin: 0; cursor: pointer; accent-color: var(--primary-color); }
+.auth-check .form-check-input:checked { background-color: var(--primary-color); border-color: var(--primary-color); }
+[data-bs-theme="dark"] .auth-check .form-check-input:checked { border-color: var(--text-secondary); }
+.ox .form-select option { background-color: var(--background-color); color: var(--text-primary); }
+.auth-more > summary { display: flex; align-items: center; gap: var(--sp-2); min-height: 2.75rem; font-size: var(--font-size-sm); font-weight: 600; list-style: none; cursor: pointer; touch-action: manipulation; }
+.auth-more > summary::-webkit-details-marker { display: none; }
+.auth-more > summary .auth-opt { margin-left: auto; }
+.auth-more > summary .bi { transition: transform .2s ease; }
+.auth-more[open] > summary .bi { transform: rotate(90deg); }
+.auth-more-body { display: flex; flex-direction: column; gap: var(--gap-fields); padding-top: var(--sp-1); }
 
-    /* ══════════════════════════════════════
-       Tab panes
-    ══════════════════════════════════════ */
-    .tab-pane-wizard { display: none; animation: fadeInTab 0.22s ease; }
-    .tab-pane-wizard.active { display: block; }
-    @keyframes fadeInTab {
-        from { opacity: 0; transform: translateY(5px); }
-        to   { opacity: 1; transform: translateY(0); }
-    }
+/* Messages */
+.auth-alert { display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-md); font-size: var(--font-size-sm); line-height: var(--lh-snug); --tint: var(--bs-danger); }
+.auth-alert i { margin-top: 1px; color: var(--bs-danger); }
+.auth-alert--success { --tint: var(--bs-success); }
+.auth-alert--success i { color: var(--bs-success); }
 
-    /* ══════════════════════════════════════
-       Wizard Nav — FIXED: no full-width stretch
-    ══════════════════════════════════════ */
-    .wizard-nav {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-        padding-top: 1.1rem;
-        border-top: 1px solid var(--border-color);
-        margin-top: 1.5rem;
-    }
-    /* Buttons: auto width, not full-width */
-    .wizard-nav .btn {
-        flex: 0 0 auto;         /* don't grow or shrink */
-        width: auto;            /* never full-width */
-        min-width: 90px;
-        max-width: 160px;
-        padding: 0.55rem 1.1rem;
-        font-size: 0.875rem;
-        font-weight: 600;
-        border-radius: var(--radius-md, 0.5rem);
-        white-space: nowrap;
-    }
-    .wizard-nav .btn-submit {
-        min-width: 110px;
-        max-width: 200px;
-    }
-    .step-counter {
-        font-size: 0.78rem;
-        color: var(--text-secondary);
-        text-align: center;
-        flex: 1;
-        white-space: nowrap;
-    }
-    /* Mobile: keep buttons compact, let counter shrink */
-    @media (max-width: 400px) {
-        .wizard-nav .btn { min-width: 76px; padding: 0.5rem 0.75rem; font-size: 0.8rem; }
-        .step-counter { font-size: 0.7rem; }
-        .wizard-step .step-label { display: none; }
-        .wizard-step { min-width: 44px; }
-        .step-icon { width: 30px; height: 30px; font-size: 0.85rem; }
-    }
+/* Buttons: the same navy pill as the auth pages and the profile Save button */
+.ox-btn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-4); border: 2px solid var(--bs-white); border-radius: 22px; background: var(--primary-color); color: var(--bs-white); font: inherit; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); text-align: center; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.ox-btn:disabled { opacity: .7; cursor: default; }
+.ox-btn .spinner-border { width: 1rem; height: 1rem; border-width: .15em; }
+.ox-btn-neutral { border: 1px solid var(--border-color); background: var(--card-background); color: var(--text-primary); box-shadow: none; }
 
-    /* ══════════════════════════════════════
-       Background upload status
-    ══════════════════════════════════════ */
-    .bg-upload-status {
-        display: flex; align-items: center; gap: 0.6rem;
-        padding: 0.5rem 0.8rem; border-radius: var(--radius-md);
-        font-size: 0.78rem; margin-top: 0.5rem;
-    }
-    .bg-upload-status.uploading { background:#e7f3ff; color:#0d6efd; border:1px solid #b8d4ff; }
-    .bg-upload-status.done      { background:#d1f2e4; color:#198754; border:1px solid #a3dcc0; }
-    .bg-upload-status.error     { background:#fff3cd; color:#856404; border:1px solid #ffe08a; }
-    .bg-upload-bar-wrap { height:3px; background:rgba(0,0,0,0.1); border-radius:2px; margin-top:3px; overflow:hidden; }
-    .bg-upload-bar-fill { height:100%; width:0%; background:#0d6efd; border-radius:2px; transition:width 0.3s ease; }
+/* Links */
+.auth-link { font-weight: 600; }
 
-    /* ══════════════════════════════════════
-       Keep all original styles below
-    ══════════════════════════════════════ */
-    /* ════════════════════════════════════════════════════════════════
-       SHARED HYBRID FIELD SYSTEM
-       • text / email / tel / number inputs  →  floating label
-       • <select>                            →  floating label (always floated)
-       • textarea / date                     →  standard label-above
-       • Image / upload zones                →  UNTOUCHED
-    ════════════════════════════════════════════════════════════════ */
+.ox a:focus-visible, .ox button:focus-visible, .ox summary:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; border-radius: var(--radius-sm); }
+@media (hover: hover) {
+    .ox-btn-neutral:hover { background: var(--hover-bg); }
+    .auth-link:hover { text-decoration: underline; }
+    .rq-thumb-x:hover { background: var(--hover-bg); }
+}
+@media (prefers-reduced-motion: reduce) { .auth-more > summary .bi { transition: none; } }
 
-    /* 1. Base controls */
-    .form-control, .form-select {
-        border-width: 2px;
-        border-style: solid;
-        border-color: var(--border-color);
-        border-radius: var(--radius-md, 0.45rem);
-        font-size: 0.9375rem;
-        color: var(--text-primary);
-        background-color: var(--card-background);
-        transition: border-color 0.25s ease, box-shadow 0.25s ease;
-    }
-    .form-control:focus, .form-select:focus {
-        border-color: var(--accent-color);
-        box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.18);
-        outline: none;
-        background-color: var(--card-background);
-    }
-    .form-control.is-invalid, .form-select.is-invalid { border-color: #dc3545 !important; box-shadow: none !important; }
-    .form-control.is-valid,   .form-select.is-valid   { border-color: #198754 !important; box-shadow: none !important; }
-    [data-bs-theme="dark"] .form-control, [data-bs-theme="dark"] .form-select {
-        background-color: var(--dark-card-background, #1e2330);
-        border-color: var(--dark-border-color, #3a3f52);
-        color: var(--dark-text-primary, #e9ecef);
-    }
-    [data-bs-theme="dark"] .form-control:focus,
-    [data-bs-theme="dark"] .form-select:focus { background-color: var(--dark-card-background, #1e2330); }
+/* ---- Buyer request form only ---- */
+.rq-body { display: flex; flex-direction: column; gap: var(--gap-sections); width: 100%; max-width: 40rem; margin: 0 auto; }
 
-    /* 2. Standard label */
-    .form-label {
-        display: block;
-        font-size: 0.8125rem;
-        font-weight: 600;
-        color: var(--text-secondary);
-        margin-bottom: 0.4rem;
-        letter-spacing: 0.01em;
-    }
-    .form-label .req { color: #dc3545; margin-left: 2px; font-size: 0.75rem; font-weight: 700; }
-    .form-label .opt {
-        display: inline-block;
-        font-size: 0.68rem; font-weight: 500;
-        color: var(--text-secondary); background: var(--border-color);
-        border-radius: 4px; padding: 1px 6px; margin-left: 5px;
-    }
-    [data-bs-theme="dark"] .form-label { color: var(--dark-text-secondary, #9ca3af); }
-    [data-bs-theme="dark"] .form-label .opt { background: var(--dark-border-color, #3a3f52); }
+/* Steps: four named stages */
+.rq-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
+.rq-step { display: flex; flex-direction: column; gap: var(--sp-1); width: 100%; min-height: 2.75rem; padding: 0; border: 0; background: none; font: inherit; font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); text-align: left; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.rq-step:disabled { cursor: default; }
+.rq-step-bar { display: block; height: var(--sp-1); border-radius: var(--radius-full); background: var(--border-color); }
+.rq-step-label { display: flex; align-items: center; gap: var(--sp-1); min-width: 0; }
+.rq-step-label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rq-step-label i { flex: none; }
+.rq-step.is-done .rq-step-bar, .rq-step.is-active .rq-step-bar { background: var(--bs-success); }
+.rq-step.is-done { color: var(--text-primary); }
+.rq-step.is-done .rq-step-label i { color: var(--bs-success); }
+.rq-step.is-active { font-weight: 600; color: var(--text-primary); }
+.rq-step.is-bad { color: var(--bs-danger); }
+.rq-step.is-bad .rq-step-bar { background: var(--bs-danger); }
 
-    /* 3. Floating labels */
-    .form-floating { position: relative; }
-    .form-floating > .form-control,
-    .form-floating > .form-select {
-        height: calc(3.5rem + 4px);
-        padding: 1.2rem 0.875rem 0.4rem;
-        line-height: 1.25;
-    }
-    .form-floating > textarea.form-control {
-        height: auto; min-height: 7rem;
-        padding-top: 1.75rem; resize: vertical; line-height: 1.55;
-    }
-    .form-floating > label {
-        position: absolute; top: 0; left: 0;
-        height: 100%; padding: 1rem 0.875rem;
-        pointer-events: none; border: 1px solid transparent;
-        transform-origin: 0 0;
-        transition: transform 0.15s ease, color 0.15s ease, opacity 0.15s ease;
-        font-size: 0.9375rem; font-weight: 400;
-        color: var(--text-secondary);
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
-    }
-    /* Text inputs: float when focused or filled */
-    .form-floating > .form-control:focus ~ label,
-    .form-floating > .form-control:not(:placeholder-shown) ~ label {
-        transform: scale(0.78) translateY(-0.6rem) translateX(0.08rem);
-        color: var(--accent-color); opacity: 1; font-weight: 600;
-    }
-    /* Selects: always floated */
-    .form-floating > .form-select { padding-top: 1.625rem; padding-bottom: 0.5rem; }
-    .form-floating > .form-select ~ label {
-        transform: scale(0.78) translateY(-0.6rem) translateX(0.08rem);
-        color: var(--accent-color); opacity: 1; font-weight: 600;
-    }
-    .form-floating > label .req { color: #dc3545; margin-left: 2px; font-size: inherit; }
-    .form-floating > label .opt {
-        display: inline-block; font-size: 0.7rem; font-weight: 400;
-        color: var(--text-secondary); background: var(--border-color);
-        border-radius: 3px; padding: 1px 4px; margin-left: 3px;
-    }
-    [data-bs-theme="dark"] .form-floating > label { color: var(--dark-text-secondary, #9ca3af); }
-    [data-bs-theme="dark"] .form-floating > .form-control:focus ~ label,
-    [data-bs-theme="dark"] .form-floating > .form-control:not(:placeholder-shown) ~ label,
-    [data-bs-theme="dark"] .form-floating > .form-select ~ label { color: var(--accent-color); }
+/* Card and panes */
+.rq-card { display: flex; flex-direction: column; gap: var(--gap-sections); padding: var(--pad-m); scroll-margin-top: calc(var(--navbar-height-mobile) + var(--sp-2)); }
+@media (min-width: 768px) { .rq-card { padding: var(--pad-l); scroll-margin-top: calc(var(--navbar-height) + var(--sp-2)); } }
+.rq-pane { display: flex; flex-direction: column; gap: var(--gap-sections); }
+.rq-cardhead { display: flex; align-items: center; gap: var(--sp-3); }
+.rq-cardhead:focus { outline: none; }
+.rq-count { font-size: var(--font-size-xs); line-height: var(--lh-snug); color: var(--text-secondary); }
+.rq-h { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-snug); }
+.rq-sub { font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+.rq-fields { display: flex; flex-direction: column; gap: var(--gap-fields); }
+/* A sub-section inside a step: set apart by a rule, not by a second card */
+.rq-group { display: flex; flex-direction: column; gap: var(--gap-fields); padding-top: var(--gap-sections); border-top: 1px solid var(--border-color); }
+.rq-h2 { margin: 0; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-snug); }
+.rq-checks { display: flex; flex-direction: column; }
 
-    /* 4. Textarea */
-    textarea.form-control { min-height: 6.5rem; resize: vertical; padding: 0.75rem 0.875rem; line-height: 1.55; }
-    .form-floating textarea.form-control { padding-top: 1.75rem; }
+/* Step navigation: Back is quiet, Continue fills the row */
+.rq-nav { display: flex; gap: var(--sp-2); }
+.rq-nav .ox-btn { flex: 1 1 auto; width: auto; }
+.rq-nav .rq-back { flex: 0 0 auto; padding: 0 var(--sp-4); }
 
-    /* 5. Placeholder */
-    .form-control::placeholder { color: var(--text-secondary); opacity: 0.6; font-size: 0.875rem; font-style: italic; }
-    [data-bs-theme="dark"] .form-control::placeholder { opacity: 0.38; }
+/* Images: same dashed drop zone as the profile photo */
+.rq-photo { overflow: hidden; border: 2px dashed var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); }
+.rq-photo:focus-within, .rq-photo.drag { border-color: var(--accent-color); }
+.rq-drop { position: relative; display: flex; align-items: center; gap: var(--sp-3); padding: var(--pad-m); cursor: pointer; }
+.rq-drop > i { flex: none; font-size: var(--font-size-3xl); color: var(--accent-color); }
+.rq-drop-text { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; line-height: var(--lh-tight); }
+.rq-drop strong { font-size: var(--font-size-base); font-weight: 600; }
+.rq-drop small { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.rq-drop input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; padding: 0; opacity: 0; cursor: pointer; }
+.rq-thumbs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); margin: 0; padding: var(--sp-3); list-style: none; border-top: 1px solid var(--border-color); }
+@media (min-width: 768px) { .rq-thumbs { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.rq-thumb { position: relative; display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; font-size: var(--font-size-xs); color: var(--text-secondary); }
+.rq-thumb img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--hover-bg); }
+.rq-thumb-tag { position: absolute; top: var(--sp-1); left: var(--sp-1); padding: 0 var(--sp-2); border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); font-size: var(--font-size-xs); font-weight: 600; color: var(--text-primary); }
+.rq-thumb-x { position: absolute; top: var(--sp-1); right: var(--sp-1); display: grid; place-items: center; min-width: var(--h-control-sm); min-height: var(--h-control-sm); padding: 0; border: 1px solid var(--border-color); border-radius: var(--radius-full); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-base); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.rq-current { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
+.rq-current li { position: relative; min-width: 0; }
 
-    /* 6. Date input */
-    input[type="date"].form-control { height: calc(2.75rem + 4px); padding: 0.55rem 0.875rem; cursor: pointer; }
-
-    /* 7. Helper text */
-    .form-text { display: block; font-size: 0.75rem; line-height: 1.45; margin-top: 0.3rem; color: var(--text-secondary) !important; padding-left: 0.1rem; }
-    [data-bs-theme="dark"] .form-text { color: var(--dark-text-secondary, #9ca3af) !important; }
-
-    /* 8. Error messages */
-    .field-error-msg { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; color: #dc3545; margin-top: 0.3rem; animation: errorSlide 0.2s ease; }
-    @keyframes errorSlide { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* 9. Form checks */
-    .form-check-input { border-width: 2px; border-color: var(--border-color); cursor: pointer; }
-    .form-check-input:checked { background-color: var(--accent-color, var(--primary-color)); border-color: var(--accent-color, var(--primary-color)); }
-    .form-check-label { font-size: 0.875rem; color: var(--text-primary); cursor: pointer; }
-    [data-bs-theme="dark"] .form-check-label { color: var(--dark-text-primary, #e9ecef); }
-
-    /* 10. Section cards & titles */
-    .section-card { background: var(--card-background); border: 1px solid var(--border-color); border-radius: var(--radius-md, 0.5rem); padding: 1.5rem; transition: border-color 0.25s ease; }
-    .section-card:hover { border-color: var(--accent-color); }
-    .section-title { color: var(--text-primary); font-weight: 700; font-size: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.6rem; letter-spacing: 0.01em; }
-    .section-title i { color: var(--accent-color); }
-    [data-bs-theme="dark"] .section-card { background: var(--dark-card-background, #1e2330); border-color: var(--dark-border-color, #3a3f52); }
-    [data-bs-theme="dark"] .section-card:hover { border-color: var(--accent-color); }
-    [data-bs-theme="dark"] .section-title { color: var(--dark-text-primary, #e9ecef); border-color: var(--dark-border-color, #3a3f52); }
-
-    .upload-zone { border:2px dashed var(--border-color); border-radius:var(--radius-md); padding:1.1rem; background:var(--card-background); transition:border-color 0.25s,background 0.25s; cursor:pointer; }
-    .upload-zone:hover,.upload-zone.drag-over { border-color:var(--accent-color); background:rgba(184,115,51,0.04); }
-    .upload-zone label { display:flex; flex-direction:column; align-items:center; gap:0.35rem; cursor:pointer; text-align:center; }
-    .upload-icon { font-size:1.8rem; color:var(--accent-color); opacity:0.8; }
-    .upload-title { font-size:0.85rem; font-weight:600; color:var(--text-primary); }
-    .upload-hint  { font-size:0.75rem; color:var(--text-secondary); }
-    .upload-meta  { display:flex; flex-wrap:wrap; justify-content:center; gap:0.35rem; margin-top:0.4rem; }
-    .upload-badge { font-size:0.68rem; padding:2px 7px; border-radius:20px; background:rgba(184,115,51,0.1); color:var(--accent-color); border:1px solid rgba(184,115,51,0.25); font-weight:500; }
-    .upload-zone input[type="file"] { display:none; }
-
-    .image-preview-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(88px,1fr)); gap:9px; margin-top:0.65rem; }
-    .preview-card { position:relative; border-radius:6px; overflow:hidden; border:2px solid var(--border-color); background:#f8f9fa; }
-    .preview-card.primary { border-color:var(--primary-color,#0d6efd); }
-    .preview-card img { width:100%; height:78px; object-fit:cover; display:block; }
-    .preview-card .preview-info { padding:3px 5px; font-size:0.63rem; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; background:var(--card-background); }
-    .preview-card .primary-badge { position:absolute; top:3px; right:3px; font-size:0.58rem; padding:1px 5px; background:var(--primary-color,#0d6efd); color:#fff; border-radius:3px; }
-    .preview-card .compress-badge { position:absolute; top:3px; left:3px; font-size:0.6rem; padding:1px 5px; background:#198754; color:#fff; border-radius:3px; }
-
-    .upload-stats { display:flex; align-items:center; justify-content:space-between; padding:0.35rem 0.7rem; border-radius:var(--radius-md); background:rgba(0,0,0,0.03); margin-top:0.45rem; font-size:0.77rem; color:var(--text-secondary); }
-    .upload-stats .stat-item { display:flex; align-items:center; gap:4px; }
-
-    .compress-status { display:flex; align-items:center; gap:0.5rem; padding:0.45rem 0.7rem; border-radius:var(--radius-md); font-size:0.78rem; margin-top:0.45rem; }
-    .compress-status.running { background:#e7f3ff; color:#0d6efd; border:1px solid #b8d4ff; }
-    .compress-status.done    { background:#d1f2e4; color:#198754; border:1px solid #a3dcc0; }
-    .compress-status.warn    { background:#fff3cd; color:#856404; border:1px solid #ffe08a; }
-
-    .loading-overlay { position:fixed; inset:0; background:rgba(255,255,255,0.95); backdrop-filter:blur(3px); z-index:1050; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity 0.3s ease; }
-    .loading-overlay.show { opacity:1; pointer-events:all; }
-    .loading-content { text-align:center; padding:2rem; background:white; border-radius:14px; box-shadow:0 12px 40px rgba(0,0,0,0.12); width:min(90vw,420px); border:1px solid rgba(0,0,0,0.08); }
-    [data-bs-theme="dark"] .loading-overlay { background:rgba(33,37,41,0.95); }
-    [data-bs-theme="dark"] .loading-content { background:#2d3748; color:#fff; border-color:rgba(255,255,255,0.1); }
-
-    .form-error-banner { background:#fff5f5; border:1px solid #f5c6cb; border-radius:var(--radius-md); padding:0.875rem 1rem; font-size:0.85rem; color:#721c24; display:none; }
-    .form-error-banner.visible { display:flex; align-items:flex-start; gap:0.5rem; }
-    .form-error-banner ul { margin:0; padding-left:1.1rem; }
-    [data-bs-theme="dark"] .form-error-banner { background:#3d1a1e; border-color:#7a2d37; color:#f8d7da; }
-
-    .btn-primary { background:linear-gradient(135deg,var(--primary-color) 0%,var(--secondary-color) 100%); border:none; font-weight:600; border-radius:var(--radius-md); transition:all 0.3s ease; }
-    .btn-primary:hover { transform:translateY(-2px); box-shadow:0 4px 14px rgba(13,110,253,0.3); }
-
-    [data-bs-theme="dark"] .section-card { background:var(--dark-card-background); border-color:var(--dark-border-color); }
-    [data-bs-theme="dark"] .upload-zone  { background:var(--dark-card-background); }
-    [data-bs-theme="dark"] .upload-stats { background:rgba(255,255,255,0.05); }
-    [data-bs-theme="dark"] .preview-card { background:#3d4451; }
-
-    @media(max-width:768px) { .section-card{padding:1rem;} .card-body{padding:1rem!important;} }
-
-    @media (max-width: 480px) {
-        .section-card { padding: 1rem; }
-        .form-floating > .form-control,
-        .form-floating > .form-select { height: calc(3.25rem + 4px); }
-        .form-label { font-size: 0.78rem; }
-        .form-text  { font-size: 0.72rem; }
-    }
+/* Busy overlay: only while images upload with the request (same as the profile page) */
+.rq-overlay { position: fixed; inset: 0; z-index: 1060; display: grid; place-items: center; padding: var(--sp-4); background: rgba(0, 0, 0, .55); }
+.rq-box { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); width: 100%; max-width: 20rem; padding: var(--pad-l); border-radius: var(--r-card); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-sm); text-align: center; }
+.rq-box strong { font-size: var(--font-size-base); }
+.rq-bar { width: 100%; height: .5rem; overflow: hidden; border-radius: var(--radius-full); background: var(--border-color); }
+.rq-bar div { width: 0; height: 100%; border-radius: inherit; background: var(--bs-success); transition: width .3s ease; }
+@media (prefers-reduced-motion: reduce) { .rq-bar div { transition: none; } }
 </style>
 {% endblock %}
 
@@ -339,813 +165,908 @@
 {% endblock %}
 
 {% block 'Body' %}
-<!-- Loading Overlay -->
-<div id="loadingOverlay" class="loading-overlay">
-    <div class="loading-content">
-        <div class="spinner-border text-primary mb-3" role="status"><span class="visually-hidden">Loading…</span></div>
-        <div id="uploadProgressText" class="fw-bold mb-2">Processing your request…</div>
-        <div id="uploadProgressBar" class="progress mb-2" style="height:8px;">
-            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width:0%"></div>
-        </div>
-        <div id="uploadStatusText" class="text-muted small">Please wait, we're submitting your request details</div>
-    </div>
-</div>
+<div class="ox">
 
-<div class="container py-3">
-    <div class="row justify-content-center">
-        <div class="col-lg-9">
-            <div class="card">
+    <header class="ox-head">
+        <h1 class="ox-title">{{ title }}</h1>
+        <p class="ox-lead">Tell sellers exactly what you're looking for. Fields marked optional can be left blank.</p>
+    </header>
 
-                <!-- ══ Wizard Header ══ -->
-                <div class="wizard-header">
-                    <h3 class="mb-1">{{ title }}</h3>
-                    <p class="text-muted mb-3 small">Tell sellers exactly what you're looking for</p>
+    <div class="rq-body">
 
-                    <div class="wizard-steps" id="wizardSteps">
-                        <div class="wizard-step active" data-step="0">
-                            <div class="step-icon"><i class="bi bi-info-circle"></i></div>
-                            <span class="step-label">Request<br>Info</span>
-                        </div>
-                        <div class="wizard-step" data-step="1">
-                            <div class="step-icon"><i class="bi bi-currency-exchange"></i></div>
-                            <span class="step-label">Budget &amp;<br>Details</span>
-                        </div>
-                        <div class="wizard-step" data-step="2">
-                            <div class="step-icon"><i class="bi bi-card-text"></i></div>
-                            <span class="step-label">Description<br>&amp; Contact</span>
-                        </div>
-                        <div class="wizard-step" data-step="3">
-                            <div class="step-icon"><i class="bi bi-image"></i></div>
-                            <span class="step-label">Reference<br>Images</span>
-                        </div>
+    <nav aria-label="Request steps">
+        <ol class="rq-steps" id="rqSteps">
+            <li><button type="button" class="rq-step" data-step="0"><span class="rq-step-bar"></span><span class="rq-step-label"><i class="bi" hidden aria-hidden="true"></i><span>Request</span></span></button></li>
+            <li><button type="button" class="rq-step" data-step="1"><span class="rq-step-bar"></span><span class="rq-step-label"><i class="bi" hidden aria-hidden="true"></i><span>Budget</span></span></button></li>
+            <li><button type="button" class="rq-step" data-step="2"><span class="rq-step-bar"></span><span class="rq-step-label"><i class="bi" hidden aria-hidden="true"></i><span>Details</span></span></button></li>
+            <li><button type="button" class="rq-step" data-step="3"><span class="rq-step-bar"></span><span class="rq-step-label"><i class="bi" hidden aria-hidden="true"></i><span>Images</span></span></button></li>
+        </ol>
+    </nav>
+
+    {# No Django messages here: base.html already renders them #}
+    {# The form posts with fetch (the view answers JSON), so the page itself never reloads on success #}
+    <form method="post" action="" enctype="multipart/form-data" id="requestForm" novalidate
+          data-final="{{ save_button|default:'Post request' }}">
+        {% csrf_token %}
+
+        <div class="ox-card rq-card" id="rqCard">
+
+            {% if form.errors %}
+            <div class="auth-alert" role="alert">
+                <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+                <span>{% if form.non_field_errors %}{{ form.non_field_errors.0 }}{% else %}Some fields need attention. We opened the first one.{% endif %}</span>
+            </div>
+            {% endif %}
+
+            <div class="auth-alert" id="submitAlert" role="alert" hidden>
+                <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+                <span id="submitAlertText"></span>
+            </div>
+
+            {# ================= Step 1: Request ================= #}
+            <section class="rq-pane" data-pane="0" aria-labelledby="h-request">
+                <div class="rq-cardhead t-navy" tabindex="-1">
+                    <span class="ox-ico"><i class="bi bi-search" aria-hidden="true"></i></span>
+                    <div>
+                        <p class="rq-count">Step 1 of 4</p>
+                        <h2 class="rq-h" id="h-request">What are you looking for?</h2>
+                        <p class="rq-sub">A clear title helps sellers see if they can help.</p>
                     </div>
                 </div>
 
-                <div class="card-body p-4">
+                <div class="rq-fields">
+                    <div class="auth-field{% if form.title.errors %} has-error{% endif %}">
+                        <label for="id_title" class="auth-label">Title</label>
+                        {{ form.title }}
+                        <p class="auth-hint" id="hint-title">Example: iPhone 13 Pro Max 256GB or Logo Designer.</p>
+                        <div class="invalid-feedback" id="err-title">{{ form.title.errors.0 }}</div>
+                    </div>
 
-                    <!-- Server errors -->
-                    {% if form.errors %}
-                    <div class="form-error-banner visible mb-4">
-                        <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
-                        <div>
-                            <strong>Please fix the following errors:</strong>
-                            <ul class="mt-1 mb-0">
-                                {% for field in form %}{% for e in field.errors %}<li>{{ field.label }}: {{ e }}</li>{% endfor %}{% endfor %}
-                                {% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}
-                            </ul>
+                    <div class="auth-field{% if form.request_type.errors %} has-error{% endif %}">
+                        <label for="id_request_type" class="auth-label">Request type</label>
+                        {{ form.request_type }}
+                        <p class="auth-hint" id="hint-request_type">Choose "Product" for physical items, "Service" for professional help, or "Both".</p>
+                        <div class="invalid-feedback" id="err-request_type">{{ form.request_type.errors.0 }}</div>
+                    </div>
+
+                    {# Product requests #}
+                    <div class="rq-fields" id="product-fields-group">
+                        <div class="auth-field{% if form.category.errors %} has-error{% endif %}" id="category-field">
+                            <label for="id_category" class="auth-label">Product category</label>
+                            {{ form.category }}
+                            <div class="invalid-feedback" id="err-category">{{ form.category.errors.0 }}</div>
                         </div>
+
+                        <div class="auth-field{% if form.subcategory.errors %} has-error{% endif %}" id="subcategory-field">
+                            <label for="id_subcategory" class="auth-label">Subcategory <span class="auth-opt">(optional)</span></label>
+                            {{ form.subcategory }}
+                            <p class="auth-hint" id="hint-subcategory">Choose a category first and the subcategories load here.</p>
+                            <div class="invalid-feedback" id="err-subcategory">{{ form.subcategory.errors.0 }}</div>
+                        </div>
+
+                        <div class="auth-field{% if form.brand.errors %} has-error{% endif %}" id="brand-field">
+                            <label for="id_brand" class="auth-label">Brand <span class="auth-opt">(optional)</span></label>
+                            {{ form.brand }}
+                            <div class="invalid-feedback" id="err-brand">{{ form.brand.errors.0 }}</div>
+                        </div>
+
+                        <div class="auth-field{% if form.preferred_condition.errors %} has-error{% endif %}" id="condition-field">
+                            <label for="id_preferred_condition" class="auth-label">Preferred condition <span class="auth-opt">(optional)</span></label>
+                            {{ form.preferred_condition }}
+                            <div class="invalid-feedback" id="err-preferred_condition">{{ form.preferred_condition.errors.0 }}</div>
+                        </div>
+                    </div>
+
+                    {# Service requests #}
+                    <div class="rq-fields" id="service-fields-group">
+                        <div class="auth-field{% if form.service_category.errors %} has-error{% endif %}" id="service-category-field">
+                            <label for="id_service_category" class="auth-label">Service category</label>
+                            {{ form.service_category }}
+                            <div class="invalid-feedback" id="err-service_category">{{ form.service_category.errors.0 }}</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {# ================= Step 2: Budget ================= #}
+            <section class="rq-pane" data-pane="1" aria-labelledby="h-budget">
+                <div class="rq-cardhead t-green" tabindex="-1">
+                    <span class="ox-ico"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
+                    <div>
+                        <p class="rq-count">Step 2 of 4</p>
+                        <h2 class="rq-h" id="h-budget">Budget and timing</h2>
+                        <p class="rq-sub">Tell sellers what you can spend and when you need it.</p>
+                    </div>
+                </div>
+
+                <div class="rq-fields">
+                    <div class="auth-field{% if form.budget_range.errors %} has-error{% endif %}">
+                        <label for="id_budget_range" class="auth-label">Budget range</label>
+                        {{ form.budget_range }}
+                        <div class="invalid-feedback" id="err-budget_range">{{ form.budget_range.errors.0 }}</div>
+                    </div>
+
+                    <div class="rq-fields" id="customBudgetFields"{% if form.budget_range.value != 'custom' %} hidden{% endif %}>
+                        <div class="auth-pair">
+                            <div class="auth-field{% if form.formatted_budget_min.errors %} has-error{% endif %}">
+                                <label for="id_formatted_budget_min" class="auth-label">Minimum (₦)</label>
+                                {{ form.formatted_budget_min }}
+                                <div class="invalid-feedback" id="err-formatted_budget_min">{{ form.formatted_budget_min.errors.0 }}</div>
+                            </div>
+                            <div class="auth-field{% if form.formatted_budget_max.errors %} has-error{% endif %}">
+                                <label for="id_formatted_budget_max" class="auth-label">Maximum (₦)</label>
+                                {{ form.formatted_budget_max }}
+                                <div class="invalid-feedback" id="err-formatted_budget_max">{{ form.formatted_budget_max.errors.0 }}</div>
+                            </div>
+                        </div>
+                        <p class="auth-hint" id="hint-budget">Amounts in naira. The maximum must be more than the minimum.</p>
+                    </div>
+
+                    <div class="auth-field{% if form.urgency.errors %} has-error{% endif %}">
+                        <label for="id_urgency" class="auth-label">Urgency level</label>
+                        {{ form.urgency }}
+                        <div class="invalid-feedback" id="err-urgency">{{ form.urgency.errors.0 }}</div>
+                    </div>
+
+                    <div class="auth-field{% if form.needed_by.errors %} has-error{% endif %}">
+                        <label for="id_needed_by" class="auth-label">Needed by <span class="auth-opt">(optional)</span></label>
+                        {{ form.needed_by }}
+                        <p class="auth-hint" id="hint-needed_by">Leave blank if you are flexible on timing.</p>
+                        <div class="invalid-feedback" id="err-needed_by">{{ form.needed_by.errors.0 }}</div>
+                    </div>
+
+                    {# Product requests #}
+                    <div class="auth-field{% if form.quantity_needed.errors %} has-error{% endif %}" id="quantity-field">
+                        <label for="id_quantity_needed" class="auth-label">Quantity needed</label>
+                        {{ form.quantity_needed }}
+                        <p class="auth-hint" id="hint-quantity_needed">At least 1 unit.</p>
+                        <div class="invalid-feedback" id="err-quantity_needed">{{ form.quantity_needed.errors.0 }}</div>
+                    </div>
+
+                    {# Service requests #}
+                    <div class="auth-field{% if form.project_duration.errors %} has-error{% endif %}" id="project-duration-field">
+                        <label for="id_project_duration" class="auth-label">Project duration <span class="auth-opt">(optional)</span></label>
+                        {{ form.project_duration }}
+                        <p class="auth-hint" id="hint-project_duration">Example: 2 weeks or 1 month.</p>
+                        <div class="invalid-feedback" id="err-project_duration">{{ form.project_duration.errors.0 }}</div>
+                    </div>
+
+                    <div class="auth-field{% if form.skill_level_required.errors %} has-error{% endif %}" id="skill-level-field">
+                        <label for="id_skill_level_required" class="auth-label">Skill level required <span class="auth-opt">(optional)</span></label>
+                        {{ form.skill_level_required }}
+                        <div class="invalid-feedback" id="err-skill_level_required">{{ form.skill_level_required.errors.0 }}</div>
+                    </div>
+
+                    <div class="auth-field{% if form.delivery_preference.errors %} has-error{% endif %}" id="delivery-preference-field">
+                        <label for="id_delivery_preference" class="auth-label">Delivery preference <span class="auth-opt">(optional)</span></label>
+                        {{ form.delivery_preference }}
+                        <div class="invalid-feedback" id="err-delivery_preference">{{ form.delivery_preference.errors.0 }}</div>
+                    </div>
+                </div>
+            </section>
+
+            {# ================= Step 3: Details ================= #}
+            <section class="rq-pane" data-pane="2" aria-labelledby="h-details">
+                <div class="rq-cardhead t-purple" tabindex="-1">
+                    <span class="ox-ico"><i class="bi bi-card-text" aria-hidden="true"></i></span>
+                    <div>
+                        <p class="rq-count">Step 3 of 4</p>
+                        <h2 class="rq-h" id="h-details">Describe it</h2>
+                        <p class="rq-sub">Include specifications, features, preferred condition and any special requirements.</p>
+                    </div>
+                </div>
+
+                <div class="rq-fields">
+                    <div class="auth-field{% if form.description.errors %} has-error{% endif %}">
+                        <label for="id_description" class="auth-label">Detailed description</label>
+                        {{ form.description }}
+                        <div class="invalid-feedback" id="err-description">{{ form.description.errors.0 }}</div>
+                    </div>
+
+                    <div class="rq-group">
+                        <h3 class="rq-h2">Location and contact</h3>
+
+                        <div class="rq-checks">
+                            <label class="auth-check">
+                                {{ form.accept_nationwide }}
+                                <span>Accept responses from anywhere in Nigeria</span>
+                            </label>
+                            <label class="auth-check">
+                                {{ form.show_phone }}
+                                <span>Show my phone number to responders</span>
+                            </label>
+                        </div>
+
+                        <div class="auth-field{% if form.contact_instructions.errors %} has-error{% endif %}">
+                            <label for="id_contact_instructions" class="auth-label">Contact instructions <span class="auth-opt">(optional)</span></label>
+                            {{ form.contact_instructions }}
+                            <div class="invalid-feedback" id="err-contact_instructions">{{ form.contact_instructions.errors.0 }}</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {# ================= Step 4: Images ================= #}
+            <section class="rq-pane" data-pane="3" aria-labelledby="h-images">
+                <div class="rq-cardhead t-orange" tabindex="-1">
+                    <span class="ox-ico"><i class="bi bi-camera-fill" aria-hidden="true"></i></span>
+                    <div>
+                        <p class="rq-count">Step 4 of 4</p>
+                        <h2 class="rq-h" id="h-images">Add reference images</h2>
+                        <p class="rq-sub">Optional. Pictures help sellers understand exactly what you need.</p>
+                    </div>
+                </div>
+
+                <div class="rq-fields">
+                    {% if form.instance.pk and form.instance.images.all %}
+                    <div class="auth-field">
+                        <span class="auth-label">Current images</span>
+                        <ul class="rq-current">
+                            {% for img in form.instance.images.all %}
+                            <li class="rq-thumb">
+                                <img src="{{ img.image.url }}" alt="Current image {{ forloop.counter }}" width="96" height="96">
+                                {% if img.is_primary %}<span class="rq-thumb-tag">Main</span>{% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        <p class="auth-hint">Choose new images to replace these, or leave this empty to keep them.</p>
                     </div>
                     {% endif %}
 
-                    <!-- Client errors -->
-                    <div class="form-error-banner mb-4" id="clientErrorBanner">
-                        <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
-                        <div><strong>Please fix the following errors:</strong><ul id="clientErrorList" class="mt-1 mb-0"></ul></div>
+                    <div class="auth-field{% if form.images.errors %} has-error{% endif %}">
+                        <label for="id_images" class="auth-label">Images <span class="auth-opt">(optional)</span></label>
+                        <div class="rq-photo" id="imageBox">
+                            <div class="rq-drop ox-tint t-orange">
+                                <i class="bi bi-camera" aria-hidden="true"></i>
+                                <div class="rq-drop-text">
+                                    <strong>Choose images</strong>
+                                    <small>JPG or PNG, up to 5 images, 5 MB each. We resize them for you.</small>
+                                </div>
+                                {{ form.images }}
+                            </div>
+                            <ul class="rq-thumbs" id="imageThumbs" hidden></ul>
+                        </div>
+                        <p class="auth-hint" id="imageNote" aria-live="polite">The first image is the main one.</p>
+                        <div class="invalid-feedback" id="err-images">{{ form.images.errors.0 }}</div>
                     </div>
-
-                    <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate id="requestForm">
-                        {% csrf_token %}
-
-                        <!-- ══ TAB 1: Request Basics ══ -->
-                        <div class="tab-pane-wizard active" id="tab-0">
-                            <div class="section-card">
-                                <h4 class="section-title mb-4"><i class="bi bi-info-circle-fill me-2"></i>Basic Request Setup</h4>
-
-                                <div class="mb-3">
-                                    <div class="form-floating">
-                                        {{ form.title }}
-                                        <label for="id_title">What are you looking for? <span class="req">*</span></label>
-                                    </div>
-                                    {% for e in form.title.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text">Max 255 characters. E.g. "iPhone 13 Pro Max 256GB" or "Logo Designer"</div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <div class="form-floating">
-                                        {{ form.request_type }}
-                                        <label for="id_request_type">Request Type <span class="req">*</span></label>
-                                    </div>
-                                    {% for e in form.request_type.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text">Select "Product" for physical items, "Service" for professional help, or "Both".</div>
-                                </div>
-
-                                <!-- Product fields group -->
-                                <div id="product-fields-group">
-                                    <div class="mb-3" id="category-field">
-                                        <div class="form-floating">
-                                            {{ form.category }}
-                                            <label for="id_category">Product Category <span class="req">*</span></label>
-                                        </div>
-                                        {% for e in form.category.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    </div>
-                                    <div class="mb-3" id="subcategory-field">
-                                        <div class="form-floating">
-                                            {{ form.subcategory }}
-                                            <label for="id_subcategory">Subcategory <span class="opt">Optional</span></label>
-                                        </div>
-                                        {% for e in form.subcategory.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                        <div class="form-text">Select a category first to load subcategories.</div>
-                                    </div>
-                                    <div class="mb-3" id="brand-field">
-                                        <div class="form-floating">
-                                            {{ form.brand }}
-                                            <label for="id_brand">Brand <span class="opt">Optional</span></label>
-                                        </div>
-                                        {% for e in form.brand.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    </div>
-                                    <div class="mb-0" id="condition-field">
-                                        <div class="form-floating">
-                                            {{ form.preferred_condition }}
-                                            <label for="id_preferred_condition">Preferred Condition <span class="opt">Optional</span></label>
-                                        </div>
-                                        {% for e in form.preferred_condition.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    </div>
-                                </div>
-
-                                <!-- Service fields group -->
-                                <div id="service-fields-group">
-                                    <div class="mb-0" id="service-category-field">
-                                        <div class="form-floating">
-                                            {{ form.service_category }}
-                                            <label for="id_service_category">Service Category <span class="req">*</span></label>
-                                        </div>
-                                        {% for e in form.service_category.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- ══ TAB 2: Budget & Requirements ══ -->
-                        <div class="tab-pane-wizard" id="tab-1">
-                            <div class="section-card">
-                                <h4 class="section-title mb-4"><i class="bi bi-currency-exchange me-2"></i>Budget &amp; Requirements</h4>
-
-                                <div class="mb-3">
-                                    <div class="form-floating">
-                                        {{ form.budget_range }}
-                                        <label for="id_budget_range">Budget Range <span class="req">*</span></label>
-                                    </div>
-                                    {% for e in form.budget_range.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                </div>
-
-                                <div id="customBudgetFields" style="{% if form.budget_range.value == 'custom' %}display:block;{% else %}display:none;{% endif %}">
-                                    <div class="row g-3 mb-3">
-                                        <div class="col-6">
-                                            <div class="form-floating">
-                                                {{ form.formatted_budget_min }}
-                                                <label for="id_formatted_budget_min">Min Budget (₦) <span class="req">*</span></label>
-                                            </div>
-                                            {% for e in form.formatted_budget_min.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                        </div>
-                                        <div class="col-6">
-                                            <div class="form-floating">
-                                                {{ form.formatted_budget_max }}
-                                                <label for="id_formatted_budget_max">Max Budget (₦) <span class="req">*</span></label>
-                                            </div>
-                                            {% for e in form.formatted_budget_max.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                        </div>
-                                    </div>
-                                    <div class="form-text mb-2">Enter amounts in Naira (₦). Max must be greater than min.</div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <div class="form-floating">
-                                        {{ form.urgency }}
-                                        <label for="id_urgency">Urgency Level <span class="req">*</span></label>
-                                    </div>
-                                    {% for e in form.urgency.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label" for="id_needed_by">Needed By <span class="opt">Optional</span></label>
-                                    {{ form.needed_by }}
-                                    {% for e in form.needed_by.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text">Leave blank if flexible on timing.</div>
-                                </div>
-
-                                <!-- Product: quantity -->
-                                <div class="mb-3" id="quantity-field">
-                                    <div class="form-floating">
-                                        {{ form.quantity_needed }}
-                                        <label for="id_quantity_needed">Quantity Needed <span class="req">*</span></label>
-                                    </div>
-                                    {% for e in form.quantity_needed.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text">Minimum: 1 unit.</div>
-                                </div>
-
-                                <!-- Service specifics -->
-                                <div class="mb-3" id="project-duration-field">
-                                    <div class="form-floating">
-                                        {{ form.project_duration }}
-                                        <label for="id_project_duration">Project Duration <span class="opt">Optional</span></label>
-                                    </div>
-                                    {% for e in form.project_duration.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text">E.g. "2 weeks", "1 month"</div>
-                                </div>
-
-                                <div class="mb-3" id="skill-level-field">
-                                    <div class="form-floating">
-                                        {{ form.skill_level_required }}
-                                        <label for="id_skill_level_required">Skill Level Required <span class="opt">Optional</span></label>
-                                    </div>
-                                    {% for e in form.skill_level_required.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                </div>
-
-                                <div class="mb-0" id="delivery-preference-field">
-                                    <div class="form-floating">
-                                        {{ form.delivery_preference }}
-                                        <label for="id_delivery_preference">Delivery Preference <span class="opt">Optional</span></label>
-                                    </div>
-                                    {% for e in form.delivery_preference.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- ══ TAB 3: Description & Contact ══ -->
-                        <div class="tab-pane-wizard" id="tab-2">
-                            <!-- Description -->
-                            <div class="section-card mb-4">
-                                <h4 class="section-title mb-4"><i class="bi bi-card-text me-2"></i>Request Description</h4>
-                                <div class="mb-0">
-                                    <label class="form-label" for="id_description">Detailed Description <span class="req">*</span></label>
-                                    {{ form.description }}
-                                    {% for e in form.description.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                    <div class="form-text"><i class="bi bi-lightbulb me-1"></i>Include specifications, features, preferred condition, and any special requirements.</div>
-                                </div>
-                            </div>
-
-                            <!-- Location & Contact -->
-                            <div class="section-card">
-                                <h4 class="section-title mb-4"><i class="bi bi-geo-alt me-2"></i>Location &amp; Contact</h4>
-
-                                <div class="form-check form-switch mb-2">
-                                    {{ form.accept_nationwide }}
-                                    <label class="form-check-label small" for="id_accept_nationwide">Accept responses from anywhere in Nigeria</label>
-                                </div>
-
-                                <div class="form-check form-switch mb-3">
-                                    {{ form.show_phone }}
-                                    <label class="form-check-label small" for="id_show_phone">Show my phone number to responders</label>
-                                </div>
-
-                                <div class="mb-0">
-                                    <label class="form-label" for="id_contact_instructions">Contact Instructions <span class="opt">Optional</span></label>
-                                    {{ form.contact_instructions }}
-                                    {% for e in form.contact_instructions.errors %}<div class="field-error-msg"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- ══ TAB 4: Images ══ -->
-                        <div class="tab-pane-wizard" id="tab-3">
-                            <div class="section-card">
-                                <h4 class="section-title mb-3"><i class="bi bi-image me-2"></i>Reference Images</h4>
-
-                                {% if form.instance.pk and form.instance.images.all %}
-                                <div class="mb-3">
-                                    <p class="form-text fw-semibold mb-2">Current Images:</p>
-                                    <div class="row g-2">
-                                        {% for img in form.instance.images.all %}
-                                        <div class="col-3">
-                                            <div class="position-relative">
-                                                <img src="{{ img.image.url }}" class="img-thumbnail w-100" style="height:68px;object-fit:cover;" alt="">
-                                                {% if img.is_primary %}<span class="badge bg-primary position-absolute top-0 end-0" style="font-size:0.58rem;">Primary</span>{% endif %}
-                                            </div>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                    <p class="form-text mt-2">Upload new images to replace, or leave empty to keep current.</p>
-                                </div>
-                                {% endif %}
-
-                                <div class="upload-zone" id="imageDropZone">
-                                    <label for="id_images">
-                                        <i class="bi bi-cloud-arrow-up upload-icon"></i>
-                                        <span class="upload-title">Click to select or drag &amp; drop</span>
-                                        <span class="upload-hint">Help sellers understand exactly what you need</span>
-                                        <div class="upload-meta">
-                                            <span class="upload-badge"><i class="bi bi-filetype-jpg me-1"></i>JPG</span>
-                                            <span class="upload-badge"><i class="bi bi-filetype-png me-1"></i>PNG</span>
-                                            <span class="upload-badge">Max 5 images</span>
-                                            <span class="upload-badge">5 MB each · 25 MB total</span>
-                                        </div>
-                                    </label>
-                                    {{ form.images }}
-                                </div>
-
-                                <div id="imageCompressStatus" class="compress-status running d-none" aria-hidden="true" style="display:none!important;">
-                                    <div class="spinner-border spinner-border-sm flex-shrink-0"></div>
-                                    <span>Optimizing images…</span>
-                                </div>
-
-                                <!-- Background upload status -->
-                                <div id="bgUploadStatus" class="bg-upload-status d-none" aria-hidden="true" style="display:none!important;">
-                                    <div class="spinner-border spinner-border-sm flex-shrink-0" id="bgUploadSpinner"></div>
-                                    <div class="flex-grow-1">
-                                        <span id="bgUploadText">Uploading images in the background…</span>
-                                        <div class="bg-upload-bar-wrap"><div class="bg-upload-bar-fill" id="bgUploadFill"></div></div>
-                                    </div>
-                                </div>
-
-                                <div class="image-preview-grid" id="imagePreviewContainer"></div>
-
-                                <div id="imageUploadStats" class="upload-stats d-none">
-                                    <div class="stat-item"><i class="bi bi-images"></i><span id="numFiles">0</span>/5 files</div>
-                                    <div class="stat-item"><i class="bi bi-hdd"></i><span id="totalSize">0 KB</span></div>
-                                    <div class="stat-item text-success d-none" id="imgSavedStat"><i class="bi bi-arrow-down-circle"></i><span id="imgSavedPct">0%</span> saved</div>
-                                </div>
-                                {% for e in form.images.errors %}<div class="field-error-msg mt-1"><i class="bi bi-x-circle-fill"></i>{{ e }}</div>{% endfor %}
-                            </div>
-                        </div>
-
-                        <!-- ══ Wizard Nav ══ -->
-                        <div class="wizard-nav">
-                            <button type="button" class="btn btn-outline-secondary" id="prevBtn" style="display:none;">
-                                <i class="bi bi-arrow-left me-1"></i>Back
-                            </button>
-                            <span class="step-counter" id="stepCounter">Step 1 of 4</span>
-                            <button type="button" class="btn btn-primary btn-submit" id="nextBtn">
-                                Next <i class="bi bi-arrow-right ms-1"></i>
-                            </button>
-                        </div>
-
-                    </form>
                 </div>
+            </section>
+
+            <div class="rq-nav">
+                <button type="button" class="ox-btn ox-btn-neutral rq-back" id="prevBtn" hidden>Back</button>
+                <button type="submit" class="ox-btn" id="nextBtn">Continue</button>
             </div>
         </div>
+    </form>
+
     </div>
+
+    {# Shown only while images upload with the request, so a slow connection never looks frozen #}
+    <div class="rq-overlay" id="rqOverlay" role="status" aria-live="polite" hidden>
+        <div class="rq-box">
+            <span class="spinner-border" aria-hidden="true"></span>
+            <strong id="uploadProgressText">Uploading your images…</strong>
+            <span id="uploadStatusText">Keep this page open. This can take a moment on a slow connection.</span>
+            <div class="rq-bar" role="progressbar" aria-label="Upload progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="uploadProgressBar"><div></div></div>
+        </div>
+    </div>
+
 </div>
 
 
-
 <script>
-/* ═══════════════════════════════════════════
-   FastImageCompressor
-═══════════════════════════════════════════ */
-class FastImageCompressor {
-    constructor(){this.maxUploadSize=1024*1024;this.quality=0.85;this.maxDimension=1920;}
-    async compress(file){if(file.size<=this.maxUploadSize)return file;try{return await this._do(file);}catch(e){return file;}}
-    _do(file){return new Promise((res,rej)=>{const reader=new FileReader();reader.onload=e=>{const img=new Image();img.onload=()=>{let w=img.width,h=img.height;if(w>this.maxDimension||h>this.maxDimension){const r=Math.min(this.maxDimension/w,this.maxDimension/h);w=Math.round(w*r);h=Math.round(h*r);}const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.fillStyle='#FFF';ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);canvas.toBlob(blob=>{res(new File([blob],file.name.replace(/\.\w+$/,'.jpg'),{type:'image/jpeg'}));},'image/jpeg',this.quality);};img.onerror=()=>rej(new Error('load'));img.src=e.target.result;};reader.onerror=()=>rej(new Error('read'));reader.readAsDataURL(file);});}
-    static fmtSize(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB';}
-}
+    /* Buyer request form: four steps, inline validation per step, dependent selects, budget format,
+       image resize with per-image remove, background upload. The request is sent with fetch/XHR
+       because the view answers with JSON (success, message, redirect_url, error). */
+    (function () {
+        'use strict';
 
-document.addEventListener('DOMContentLoaded', function () {
+        var $ = function (id) { return document.getElementById(id); };
+        var form = $('requestForm');
+        var card = $('rqCard');
+        var panes = [].slice.call(form.querySelectorAll('.rq-pane'));
+        var stepBtns = [].slice.call(document.querySelectorAll('.rq-step'));
+        var prevBtn = $('prevBtn'), nextBtn = $('nextBtn');
+        var overlay = $('rqOverlay'), barBox = $('uploadProgressBar'), barFill = barBox.firstElementChild;
+        var LAST = panes.length - 1;
+        var finalLabel = form.getAttribute('data-final');
+        var calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var cur = 0, reached = 0, busy = false;
+        var bad = {}, passed = {};
 
-    /* ── Element refs ── */
-    const form              = document.getElementById('requestForm');
-    const categorySelect    = document.getElementById('id_category');
-    const subcategorySelect = document.getElementById('id_subcategory');
-    const brandSelect       = document.getElementById('id_brand');
-    const budgetRangeSelect = document.getElementById('id_budget_range');
-    const customBudgetFields= document.getElementById('customBudgetFields');
-    const requestTypeSelect = document.getElementById('id_request_type');
-    const productFieldsGroup= document.getElementById('product-fields-group');
-    const serviceFieldsGroup= document.getElementById('service-fields-group');
-    const quantityField     = document.getElementById('quantity-field');
-    const projectDurField   = document.getElementById('project-duration-field');
-    const skillLevelField   = document.getElementById('skill-level-field');
-    const delivPrefField    = document.getElementById('delivery-preference-field');
-    const imageField        = document.querySelector('input[name="images"]');
-    const imagePreview      = document.getElementById('imagePreviewContainer');
-    const imageStatsBar     = document.getElementById('imageUploadStats');
-    const imgCompressStatus = document.getElementById('imageCompressStatus');
-    const loadingOverlay    = document.getElementById('loadingOverlay');
-    const progressBar       = document.querySelector('#uploadProgressBar .progress-bar');
-    const progressText      = document.getElementById('uploadProgressText');
-    const statusText        = document.getElementById('uploadStatusText');
-    const clientErrorBanner = document.getElementById('clientErrorBanner');
-    const clientErrorList   = document.getElementById('clientErrorList');
-    const imageDropZone     = document.getElementById('imageDropZone');
-    const budgetMinInput    = document.getElementById('id_formatted_budget_min');
-    const budgetMaxInput    = document.getElementById('id_formatted_budget_max');
-    const bgUploadStatus    = document.getElementById('bgUploadStatus');
-    const bgUploadText      = document.getElementById('bgUploadText');
-    const bgUploadSpinner   = document.getElementById('bgUploadSpinner');
-    const bgUploadFill      = document.getElementById('bgUploadFill');
-
-    /* ── System Alert (matches base.html alert-system-container) ── */
-    function showSystemAlert(type, msg) {
-        const iconMap = { success: 'bi-check-circle-fill', error: 'bi-exclamation-circle-fill', warning: 'bi-exclamation-triangle-fill' };
-        const icon = iconMap[type] || 'bi-info-circle-fill';
-        let container = document.getElementById('alertSystemContainer');
-        if (!container) {
-            container = document.createElement('div');
-            container.className = 'alert-system-container';
-            container.id = 'alertSystemContainer';
-            document.body.prepend(container);
+        function el(name) { return form.elements[name] || null; }
+        function val(name) { var e = el(name); return e && e.value ? e.value.trim() : ''; }
+        function digits(v) { return parseInt(String(v || '').replace(/\D/g, ''), 10) || 0; }
+        function csrf() { return form.querySelector('[name=csrfmiddlewaretoken]').value; }
+        function fmt(b) {
+            if (b < 1024) return b + ' B';
+            if (b < 1048576) return (b / 1024).toFixed(0) + ' KB';
+            return (b / 1048576).toFixed(1) + ' MB';
         }
-        const el = document.createElement('div');
-        el.className = `system-alert alert-${type}`;
-        el.setAttribute('role', 'alert');
-        el.setAttribute('data-auto-dismiss', '3500');
-        el.innerHTML = `<div class="alert-content"><div class="alert-icon"><i class="bi ${icon}"></i></div><div class="alert-message">${msg}</div></div><button type="button" class="alert-close-btn" aria-label="Close"><i class="bi bi-x"></i></button>`;
-        container.appendChild(el);
-        el.querySelector('.alert-close-btn').addEventListener('click', () => el.remove());
-        setTimeout(() => el.remove(), 3500);
-    }
-    function showErrorToast(m)   { showSystemAlert('error',   m); }
-    function showSuccessToast(m) { showSystemAlert('success', m); }
-    function showOverlay(){loadingOverlay.classList.add('show');}
-    function hideOverlay(){loadingOverlay.classList.remove('show');}
+        function shortName(n) { return n.length > 24 ? n.slice(0, 23) + '…' : n; }
 
-    /* ══════════════════════════════
-       TAB WIZARD
-    ══════════════════════════════ */
-    const TOTAL_STEPS  = 4;
-    let currentStep    = 0;
-    let stepValidity   = [false, false, false, true]; // images always optional
+        /* Same toast markup as base.html's alert system, built with textContent so a server message cannot inject HTML */
+        function toast(type, msg) {
+            var icon = { success: 'bi-check-circle-fill', error: 'bi-exclamation-circle-fill' }[type] || 'bi-info-circle-fill';
+            var box = $('alertSystemContainer');
+            if (!box) {
+                box = document.createElement('div');
+                box.className = 'alert-system-container';
+                box.id = 'alertSystemContainer';
+                document.body.prepend(box);
+            }
+            var a = document.createElement('div');
+            a.className = 'system-alert alert-' + type;
+            a.setAttribute('role', 'alert');
+            a.innerHTML = '<div class="alert-content"><div class="alert-icon"><i class="bi ' + icon + '"></i></div><div class="alert-message"></div></div><button type="button" class="alert-close-btn" aria-label="Close"><i class="bi bi-x"></i></button>';
+            a.querySelector('.alert-message').textContent = msg;
+            box.appendChild(a);
+            a.querySelector('.alert-close-btn').addEventListener('click', function () { a.remove(); });
+            setTimeout(function () { a.remove(); }, 3500);
+        }
 
-    const prevBtn     = document.getElementById('prevBtn');
-    const nextBtn     = document.getElementById('nextBtn');
-    const stepCounter = document.getElementById('stepCounter');
-    const stepEls     = document.querySelectorAll('.wizard-step');
-    const tabPanes    = document.querySelectorAll('.tab-pane-wizard');
+        /* Attributes the Django widgets may not carry */
+        [].forEach.call(form.querySelectorAll('input:not([type=hidden]):not([type=file]):not([type=checkbox]), select, textarea'), function (c) {
+            if (!c.hasAttribute('autocomplete')) c.setAttribute('autocomplete', 'off');
+            if (c.tagName === 'INPUT' && !c.hasAttribute('enterkeyhint')) c.setAttribute('enterkeyhint', 'next');
+        });
+        ['formatted_budget_min', 'formatted_budget_max'].forEach(function (n) {
+            var c = el(n);
+            if (c && !c.hasAttribute('inputmode')) c.setAttribute('inputmode', 'numeric');
+        });
 
-    // If server returned errors, jump to first broken tab
-    {% if form.errors %}
-    (function(){
-        const fieldTabMap = {
-            'id_title':0,'id_request_type':0,'id_category':0,'id_subcategory':0,'id_brand':0,'id_preferred_condition':0,'id_service_category':0,
-            'id_budget_range':1,'id_formatted_budget_min':1,'id_formatted_budget_max':1,'id_urgency':1,'id_needed_by':1,'id_quantity_needed':1,
-            'id_project_duration':1,'id_skill_level_required':1,'id_delivery_preference':1,
-            'id_description':2,'id_contact_instructions':2,
-            'id_images':3,
+        /* ---------- Validation ---------- */
+        var RULES = {
+            title: function (c) { return c.value.trim() ? '' : 'Enter what you are looking for.'; },
+            request_type: function (c) { return c.value ? '' : 'Choose a request type.'; },
+            category: function (c) { return c.value ? '' : 'Choose a product category.'; },
+            service_category: function (c) { return c.value ? '' : 'Choose a service category.'; },
+            budget_range: function (c) { return c.value ? '' : 'Choose a budget range.'; },
+            formatted_budget_min: function (c) { return digits(c.value) >= 1 ? '' : 'Enter your minimum budget.'; },
+            formatted_budget_max: function (c) {
+                var mx = digits(c.value), mn = digits(val('formatted_budget_min'));
+                if (mx < 1) return 'Enter your maximum budget.';
+                return mn >= 1 && mx <= mn ? 'The maximum must be more than the minimum.' : '';
+            },
+            urgency: function (c) { return c.value ? '' : 'Choose an urgency level.'; },
+            quantity_needed: function (c) { return parseInt(c.value, 10) >= 1 ? '' : 'Enter at least 1.'; },
+            description: function (c) { return c.value.trim() ? '' : 'Describe what you need.'; }
         };
-        for(const[id,tab] of Object.entries(fieldTabMap)){
-            if(document.getElementById(id)?.classList.contains('is-invalid')){currentStep=tab;break;}
+
+        function control(f) {
+            return f.querySelector('input:not([type=hidden]):not([type=file]):not([type=checkbox]), select, textarea');
+        }
+
+        // A field inside a hidden group is skipped; a hidden step is not (steps hide each other)
+        function isHidden(c) {
+            var h = c.closest('[hidden]');
+            while (h && h.classList.contains('rq-pane')) h = h.parentElement ? h.parentElement.closest('[hidden]') : null;
+            return !!h;
+        }
+
+        function check(c) {
+            if (!c || c.disabled || isHidden(c) || !RULES[c.name]) return '';
+            return RULES[c.name](c);
+        }
+
+        // The hint stays attached; the error id joins it only while an error shows
+        function flag(f, msg) {
+            var c = control(f), fb = f.querySelector('.invalid-feedback'), hint = f.querySelector('.auth-hint');
+            f.classList.toggle('has-error', !!msg);
+            if (!c) return;
+            c.setAttribute('aria-invalid', msg ? 'true' : 'false');
+            if (msg && fb) fb.textContent = msg;
+            var ids = [];
+            if (hint && hint.id) ids.push(hint.id);
+            if (msg && fb) ids.push(fb.id);
+            if (ids.length) c.setAttribute('aria-describedby', ids.join(' '));
+            else c.removeAttribute('aria-describedby');
+        }
+
+        var allFields = [].slice.call(form.querySelectorAll('.auth-field'));
+        var fields = allFields.filter(function (f) {
+            var c = control(f);
+            return c && RULES[c.name];
+        });
+
+        // Server errors: describe them to assistive tech from the first paint
+        allFields.forEach(function (f) {
+            var c = control(f), fb = f.querySelector('.invalid-feedback');
+            if (!c) return;
+            var hint = f.querySelector('.auth-hint'), ids = [];
+            if (hint && hint.id) ids.push(hint.id);
+            if (f.classList.contains('has-error') && fb) { ids.push(fb.id); c.setAttribute('aria-invalid', 'true'); }
+            if (ids.length) c.setAttribute('aria-describedby', ids.join(' '));
+        });
+
+        fields.forEach(function (f) {
+            var c = control(f);
+            c.addEventListener('blur', function () { if (c.value) flag(f, check(c)); });
+            function clear() { if (f.classList.contains('has-error') && !check(c)) flag(f, ''); }
+            c.addEventListener('input', clear);
+            c.addEventListener('change', clear);
+        });
+
+        // Changing the minimum can fix a "maximum must be more" error on the other field
+        (function () {
+            var mn = el('formatted_budget_min'), mx = el('formatted_budget_max');
+            if (!mn || !mx) return;
+            var mxField = mx.closest('.auth-field');
+            mn.addEventListener('input', function () {
+                if (mxField.classList.contains('has-error') && !check(mx)) flag(mxField, '');
+            });
+        })();
+
+        function stepFields(n) {
+            return fields.filter(function (f) { return panes[n].contains(f); });
+        }
+
+        function validateStep(n) {
+            var first = null;
+            stepFields(n).forEach(function (f) {
+                var c = control(f), msg = check(c);
+                if (msg || f.classList.contains('has-error')) flag(f, msg);
+                if (msg && !first) first = c;
+            });
+            bad[n] = !!first;
+            passed[n] = !first;
+            return first;
+        }
+
+        function focusEl(c) {
+            var d = c.closest('details');
+            if (d) d.open = true;
+            c.focus();
+        }
+
+        /* ---------- Steps ---------- */
+        function paint() {
+            stepBtns.forEach(function (b, i) {
+                var active = i === cur, done = !active && passed[i], err = !active && bad[i];
+                b.classList.toggle('is-active', active);
+                b.classList.toggle('is-done', !!done);
+                b.classList.toggle('is-bad', !!err);
+                b.disabled = i > reached;
+                if (active) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
+                var ic = b.querySelector('i');
+                ic.hidden = !(done || err);
+                ic.className = 'bi ' + (err ? 'bi-exclamation-circle-fill' : 'bi-check-circle-fill');
+            });
+            prevBtn.hidden = cur === 0;
+            if (!busy) nextBtn.textContent = cur === LAST ? finalLabel : 'Continue';
+        }
+
+        function goTo(n, moveFocus) {
+            cur = n;
+            if (n > reached) reached = n;
+            panes.forEach(function (p, i) { p.hidden = i !== n; });
+            paint();
+            if (moveFocus) {
+                card.scrollIntoView({ block: 'start', behavior: calm ? 'auto' : 'smooth' });
+                panes[n].querySelector('.rq-cardhead').focus({ preventScroll: true });
+            }
+        }
+
+        function next() {
+            var first = validateStep(cur);
+            paint();
+            if (first) { focusEl(first); return; }
+            goTo(cur + 1, true);
+        }
+
+        stepBtns.forEach(function (b, i) {
+            b.addEventListener('click', function () { if (i <= reached && i !== cur) goTo(i, true); });
+        });
+        prevBtn.addEventListener('click', function () { if (cur > 0) goTo(cur - 1, true); });
+
+        /* ---------- Request type and budget toggles ---------- */
+        var typeSel = el('request_type'), budgetSel = el('budget_range');
+
+        function syncType() {
+            var t = (typeSel && typeSel.value) || 'product';
+            var prod = t === 'product' || t === 'both';
+            var svc = t === 'service' || t === 'both';
+            $('product-fields-group').hidden = !prod;
+            $('quantity-field').hidden = !prod;
+            $('service-fields-group').hidden = !svc;
+            ['project-duration-field', 'skill-level-field', 'delivery-preference-field'].forEach(function (id) { $(id).hidden = !svc; });
+        }
+        function syncBudget() {
+            $('customBudgetFields').hidden = !(budgetSel && budgetSel.value === 'custom');
+        }
+        if (typeSel) typeSel.addEventListener('change', syncType);
+        if (budgetSel) budgetSel.addEventListener('change', syncBudget);
+        syncType();
+        syncBudget();
+
+        /* ---------- Category, subcategory, brand ---------- */
+        var catSel = el('category'), subSel = el('subcategory'), brandSel = el('brand');
+        var seq = {};
+
+        function fillOpts(sel, list, placeholder, selected) {
+            sel.textContent = '';
+            var o = document.createElement('option');
+            o.value = '';
+            o.textContent = placeholder;
+            sel.appendChild(o);
+            list.forEach(function (it) {
+                var op = document.createElement('option');
+                op.value = it.id;
+                op.textContent = it.name;
+                if (selected && String(it.id) === String(selected)) op.selected = true;
+                sel.appendChild(op);
+            });
+        }
+
+        // Ignore a late reply for an older choice, keep the saved value when a fetch fails, focus the next select
+        function loadOptions(sel, url, placeholder, selected, focusAfter) {
+            var mine = (seq[sel.id] || 0) + 1;
+            seq[sel.id] = mine;
+            var before = sel.innerHTML;
+            fillOpts(sel, [], 'Loading…', '');
+            sel.disabled = true;
+            return fetch(url, { credentials: 'same-origin' })
+                .then(function (r) { if (!r.ok) throw new Error('bad response'); return r.json(); })
+                .then(function (list) { if (mine === seq[sel.id]) fillOpts(sel, list, placeholder, selected); })
+                .catch(function () {
+                    if (mine !== seq[sel.id]) return;
+                    if (selected) sel.innerHTML = before;
+                    else fillOpts(sel, [], 'Could not load. Choose again.', '');
+                })
+                .then(function () {
+                    if (mine !== seq[sel.id]) return;
+                    sel.disabled = false;
+                    if (focusAfter && !sel.value) sel.focus();
+                });
+        }
+
+        if (catSel && subSel && brandSel) {
+            catSel.addEventListener('change', function () {
+                seq[subSel.id] = (seq[subSel.id] || 0) + 1;
+                seq[brandSel.id] = (seq[brandSel.id] || 0) + 1;
+                subSel.disabled = brandSel.disabled = false;
+                fillOpts(subSel, [], 'Select a subcategory', '');
+                fillOpts(brandSel, [], 'Select a brand', '');
+                if (catSel.value) loadOptions(subSel, '/ajax/load-subcategories/?category=' + encodeURIComponent(catSel.value), 'Select a subcategory', null, true);
+            });
+            subSel.addEventListener('change', function () {
+                seq[brandSel.id] = (seq[brandSel.id] || 0) + 1;
+                brandSel.disabled = false;
+                fillOpts(brandSel, [], 'Select a brand', '');
+                if (subSel.value) loadOptions(brandSel, '/ajax/load-brands/?subcategory=' + encodeURIComponent(subSel.value), 'Select a brand', null, false);
+            });
+        }
+
+        /* ---------- Budget format ---------- */
+        function fmtMoney(v) {
+            v = v.replace(/\D/g, '');
+            return v ? '₦ ' + parseInt(v, 10).toLocaleString('en-NG') : '';
+        }
+        ['formatted_budget_min', 'formatted_budget_max'].forEach(function (n) {
+            var inp = el(n);
+            if (!inp) return;
+            inp.addEventListener('input', function () {
+                var pos = inp.selectionStart || 0;
+                var count = inp.value.slice(0, pos).replace(/\D/g, '').length;
+                inp.value = fmtMoney(inp.value);
+                var k = 0, i = 0;
+                while (i < inp.value.length && k < count) { if (/\d/.test(inp.value.charAt(i))) k++; i++; }
+                try { inp.setSelectionRange(i, i); } catch (err) {}
+            });
+            inp.addEventListener('blur', function () { inp.value = fmtMoney(inp.value); });
+        });
+
+        /* ---------- Images ---------- */
+        var TYPES = ['image/jpeg', 'image/jpg', 'image/png'];
+
+        var Compressor = {
+            MAX_BYTES: 1024 * 1024, MAX_DIM: 1920, QUALITY: 0.85,
+            compress: function (file) {
+                var self = this;
+                if (file.size <= self.MAX_BYTES) return Promise.resolve({ file: file, saved: false });
+                return new Promise(function (resolve) {
+                    var url = URL.createObjectURL(file), img = new Image();
+                    img.onload = function () {
+                        var w = img.width, h = img.height;
+                        if (w > self.MAX_DIM || h > self.MAX_DIM) {
+                            var r = Math.min(self.MAX_DIM / w, self.MAX_DIM / h);
+                            w = Math.round(w * r); h = Math.round(h * r);
+                        }
+                        var c = document.createElement('canvas');
+                        c.width = w; c.height = h;
+                        var ctx = c.getContext('2d');
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(0, 0, w, h);
+                        ctx.drawImage(img, 0, 0, w, h);
+                        URL.revokeObjectURL(url);
+                        c.toBlob(function (b) {
+                            // Keep the original when the result is not smaller
+                            if (!b || b.size >= file.size) return resolve({ file: file, saved: false });
+                            resolve({ file: new File([b], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }), saved: true });
+                        }, 'image/jpeg', self.QUALITY);
+                    };
+                    img.onerror = function () { URL.revokeObjectURL(url); resolve({ file: file, saved: false }); };
+                    img.src = url;
+                });
+            }
+        };
+
+        function Picker(o) {
+            var self = this, files = [], urls = [], working = false;
+            self.files = function () { return files; };
+            self.working = function () { return working; };
+
+            function say(kind, text) {
+                o.note.className = 'auth-hint' + (kind ? ' auth-hint--' + kind : '');
+                o.note.textContent = text;
+            }
+            function sync() {
+                try {
+                    var dt = new DataTransfer();
+                    files.forEach(function (f) { dt.items.add(f); });
+                    o.input.files = dt.files;
+                    return true;
+                } catch (err) { return false; }
+            }
+            function describe() {
+                if (!files.length) { say('', o.idle); return; }
+                var total = 0, orig = 0;
+                files.forEach(function (f) { total += f.size; orig += f._orig || f.size; });
+                var pct = orig ? Math.round((orig - total) / orig * 100) : 0;
+                say('', files.length + ' of ' + o.max + ' ready, ' + fmt(total) + (pct > 5 ? '. Resized to save ' + pct + '%.' : '.'));
+            }
+            function draw() {
+                urls.forEach(function (u) { URL.revokeObjectURL(u); });
+                urls = [];
+                o.thumbs.textContent = '';
+                files.forEach(function (f, i) {
+                    var u = URL.createObjectURL(f);
+                    urls.push(u);
+                    var li = document.createElement('li');
+                    li.className = 'rq-thumb';
+                    var img = new Image();
+                    img.src = u; img.alt = 'Image ' + (i + 1); img.width = 96; img.height = 96;
+                    li.appendChild(img);
+                    if (i === 0) {
+                        var tag = document.createElement('span');
+                        tag.className = 'rq-thumb-tag';
+                        tag.textContent = 'Main';
+                        li.appendChild(tag);
+                    }
+                    var x = document.createElement('button');
+                    x.type = 'button';
+                    x.className = 'rq-thumb-x';
+                    x.setAttribute('aria-label', 'Remove image ' + (i + 1));
+                    x.innerHTML = '<i class="bi bi-x-lg" aria-hidden="true"></i>';
+                    x.addEventListener('click', function () { remove(i); });
+                    li.appendChild(x);
+                    var s = document.createElement('span');
+                    s.textContent = fmt(f.size);
+                    li.appendChild(s);
+                    o.thumbs.appendChild(li);
+                });
+                o.thumbs.hidden = !files.length;
+            }
+            function remove(i) {
+                files.splice(i, 1);
+                sync(); draw(); describe();
+                o.onChange();
+            }
+
+            async function add(list, fromDrop) {
+                if (working) return;
+                var before = files.slice(), problem = '', ok = [];
+                Array.prototype.slice.call(list).forEach(function (f) {
+                    var dup = files.some(function (g) { return g.name === f.name && (g._orig || g.size) === f.size; });
+                    if (TYPES.indexOf(f.type) === -1) problem = 'Use JPG or PNG. Skipped ' + shortName(f.name) + '.';
+                    else if (f.size > o.perFile) problem = shortName(f.name) + ' is over ' + fmt(o.perFile) + '.';
+                    else if (!dup) ok.push(f);
+                });
+                var room = o.max - files.length;
+                if (ok.length > room) { problem = 'You can add up to ' + o.max + '.'; ok = ok.slice(0, room); }
+                if (!ok.length) {
+                    sync();
+                    if (problem) say('bad', problem); else describe();
+                    return;
+                }
+                working = true;
+                say('', 'Resizing…');
+                var out = [];
+                for (var k = 0; k < ok.length; k++) {
+                    var r = await Compressor.compress(ok[k]);
+                    r.file._orig = ok[k].size;
+                    out.push(r.file);
+                }
+                files = files.concat(out);
+                var sum = files.reduce(function (s, f) { return s + f.size; }, 0);
+                if (o.total && sum > o.total) {
+                    files = before;
+                    problem = 'Images are over ' + fmt(o.total) + ' in total.';
+                }
+                if (!sync()) {
+                    if (fromDrop) {
+                        files = before;
+                        say('bad', 'Could not attach those. Use the Choose button instead.');
+                        working = false;
+                        return;
+                    }
+                    files = Array.prototype.slice.call(o.input.files); // the input already holds the originals
+                }
+                draw();
+                describe();
+                if (problem) say('bad', problem);
+                working = false;
+                o.onChange();
+            }
+
+            o.input.addEventListener('change', function () { add(o.input.files, false); });
+            o.box.addEventListener('dragover', function (e) { e.preventDefault(); o.box.classList.add('drag'); });
+            o.box.addEventListener('dragleave', function () { o.box.classList.remove('drag'); });
+            o.box.addEventListener('drop', function (e) {
+                e.preventDefault();
+                o.box.classList.remove('drag');
+                if (e.dataTransfer.files.length) add(e.dataTransfer.files, true);
+            });
+        }
+
+        /* Background upload: images start uploading as soon as they are chosen */
+        var bg = { xhr: null, token: null };
+        function startBg(list) {
+            if (bg.xhr) { bg.xhr.abort(); bg.xhr = null; }
+            bg.token = null;
+            if (!list.length) return;
+            var fd = new FormData();
+            list.forEach(function (f) { fd.append('images', f); });
+            fd.append('csrfmiddlewaretoken', csrf());
+            var x = new XMLHttpRequest();
+            bg.xhr = x;
+            x.addEventListener('load', function () {
+                if (bg.xhr !== x) return;
+                bg.xhr = null;
+                try {
+                    var d = JSON.parse(x.responseText);
+                    if (x.status >= 200 && x.status < 300 && d.token) bg.token = d.token;
+                } catch (err) { /* no token: the request uploads the images itself */ }
+            });
+            x.addEventListener('error', function () { if (bg.xhr === x) bg.xhr = null; });
+            x.open('POST', '/ajax/upload-images-temp/');
+            x.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            x.send(fd);
+        }
+
+        var imgInput = el('images');
+        var images = imgInput ? new Picker({
+            input: imgInput, box: $('imageBox'), thumbs: $('imageThumbs'), note: $('imageNote'),
+            max: 5, perFile: 5 * 1024 * 1024, total: 25 * 1024 * 1024,
+            idle: 'The first image is the main one.',
+            onChange: function () { startBg(images.files()); }
+        }) : null;
+
+        /* ---------- Submit ---------- */
+        function setBar(pct) {
+            barFill.style.width = pct + '%';
+            barBox.setAttribute('aria-valuenow', String(pct));
+        }
+        function setBusy(text) {
+            busy = true;
+            nextBtn.disabled = true;
+            nextBtn.setAttribute('aria-busy', 'true');
+            nextBtn.innerHTML = '<span class="spinner-border" aria-hidden="true"></span><span>' + text + '</span>';
+        }
+        function idle() {
+            busy = false;
+            overlay.hidden = true;
+            setBar(0);
+            nextBtn.disabled = false;
+            nextBtn.removeAttribute('aria-busy');
+            paint();
+        }
+        function alertSubmit(msg) {
+            $('submitAlertText').textContent = msg;
+            $('submitAlert').hidden = false;
+        }
+        function fail(msg) {
+            idle();
+            alertSubmit(msg);
+            toast('error', msg);
+        }
+
+        function send() {
+            var hasFiles = !!(images && images.files().length);
+            var fd = new FormData(form);
+            if (bg.token && hasFiles) {
+                fd.delete('images');
+                fd.append('bg_upload_token', bg.token);
+                hasFiles = false; // already on the server
+            }
+            if (hasFiles) {
+                setBar(0);
+                overlay.hidden = false;
+            }
+            var x = new XMLHttpRequest();
+            x.open('POST', form.getAttribute('action') || window.location.href);
+            x.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            x.upload.addEventListener('progress', function (e) {
+                if (hasFiles && e.lengthComputable) setBar(Math.round(e.loaded / e.total * 100));
+            });
+            x.addEventListener('load', function () {
+                var d = null;
+                try { d = JSON.parse(x.responseText); } catch (err) {}
+                if (!d) { fail('Unexpected server response. Please try again.'); return; }
+                if (d.success || (x.status >= 200 && x.status < 300)) {
+                    setBar(100);
+                    var msg = d.message || 'Your request has been posted.';
+                    toast('success', msg);
+                    nextBtn.innerHTML = '<span class="spinner-border" aria-hidden="true"></span><span>Posted</span>';
+                    setTimeout(function () { window.location.href = d.redirect_url || '{% url "manage_listings" %}'; }, 800);
+                } else {
+                    fail(d.error || d.message || 'Could not post your request. Please try again.');
+                }
+            });
+            x.addEventListener('error', function () { fail('Network error. Check your connection and try again.'); });
+            x.send(fd);
+        }
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (busy) return;
+
+            // Enter in a field moves to the next step; only the last step sends
+            if (cur < LAST) { next(); return; }
+
+            if (images && images.working()) {
+                $('imageNote').className = 'auth-hint auth-hint--bad';
+                $('imageNote').textContent = 'Still resizing your images. Try again in a second.';
+                return;
+            }
+
+            var firstStep = -1, firstEl = null;
+            for (var i = 0; i < LAST; i++) {
+                var c = validateStep(i);
+                if (c && firstStep < 0) { firstStep = i; firstEl = c; }
+            }
+            if (firstStep >= 0) {
+                goTo(firstStep, false);
+                focusEl(firstEl);
+                return;
+            }
+
+            $('submitAlert').hidden = true;
+            setBusy('Posting…');
+            if (bg.xhr) {
+                // Wait up to 10 seconds for images that are still uploading, then send
+                var waited = 0;
+                var poll = setInterval(function () {
+                    waited += 200;
+                    if (!bg.xhr || waited >= 10000) { clearInterval(poll); send(); }
+                }, 200);
+                return;
+            }
+            send();
+        });
+
+        // Coming back with the Back button restores the page from cache
+        window.addEventListener('pageshow', function (e) {
+            if (!e.persisted) return;
+            idle();
+            if (images && images.files().length) startBg(images.files());
+        });
+
+        /* ---------- Start ---------- */
+        // After a server error, open the step that holds the first problem and land on it
+        var serverErr = form.querySelector('.has-error');
+        var startStep = 0;
+        if (serverErr) {
+            var pane = serverErr.closest('.rq-pane');
+            startStep = pane ? panes.indexOf(pane) : 0;
+            reached = LAST;
+        }
+        goTo(startStep, false);
+        if (serverErr) {
+            var sc = control(serverErr);
+            if (sc) focusEl(sc);
         }
     })();
-    {% endif %}
-
-    function goToStep(n) {
-        tabPanes.forEach((p,i) => p.classList.toggle('active', i===n));
-        stepEls.forEach((s,i) => {
-            s.classList.remove('active','completed','has-error');
-            if(i < n) s.classList.add(stepValidity[i]===false ? 'has-error' : 'completed');
-            if(i === n) s.classList.add('active');
-        });
-        prevBtn.style.display = n===0 ? 'none' : '';
-        if(n === TOTAL_STEPS-1){
-            nextBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>{{ save_button }}';
-            nextBtn.classList.add('btn-success');
-            nextBtn.classList.remove('btn-primary');
-        } else {
-            nextBtn.innerHTML = 'Next <i class="bi bi-arrow-right ms-1"></i>';
-            nextBtn.classList.remove('btn-success');
-            nextBtn.classList.add('btn-primary');
-        }
-        stepCounter.textContent = `Step ${n+1} of ${TOTAL_STEPS}`;
-        currentStep = n;
-        document.querySelector('.wizard-header')?.scrollIntoView({behavior:'smooth',block:'nearest'});
-    }
-
-    // Clicking a completed step jumps back to it
-    stepEls.forEach((s,i) => {
-        s.addEventListener('click', () => { if(i < currentStep || stepValidity[i]!==false) goToStep(i); });
-    });
-
-    /* ── Per-step validation ── */
-    function validateStep(n) {
-        const errors = [];
-        const mark = (id, ok, msg) => {
-            const el = document.getElementById(id);
-            if(!el) return;
-            el.classList.toggle('is-invalid',!ok);
-            el.classList.toggle('is-valid', ok && (el.value||'').trim().length>0);
-            if(!ok) errors.push(msg);
-        };
-
-        if(n===0){
-            mark('id_title',       !!document.getElementById('id_title')?.value.trim(), 'Request title is required.');
-            mark('id_request_type',!!requestTypeSelect?.value,                           'Request type is required.');
-            const rt = requestTypeSelect?.value||'';
-            if(rt==='product'||rt==='both'){
-                if(!categorySelect?.value){errors.push('Product category is required.');categorySelect?.classList.add('is-invalid');}
-                else categorySelect?.classList.remove('is-invalid');
-            }
-            if(rt==='service'||rt==='both'){
-                const sc=document.getElementById('id_service_category');
-                if(!sc?.value){errors.push('Service category is required.');sc?.classList.add('is-invalid');}
-                else sc?.classList.remove('is-invalid');
-            }
-        }
-
-        if(n===1){
-            mark('id_budget_range',!!budgetRangeSelect?.value,'Budget range is required.');
-            mark('id_urgency',     !!document.getElementById('id_urgency')?.value,'Urgency level is required.');
-            if(budgetRangeSelect?.value==='custom'){
-                const mn=budgetMinInput?.value.replace(/[^\d]/g,'');
-                const mx=budgetMaxInput?.value.replace(/[^\d]/g,'');
-                if(!mn||parseInt(mn,10)<1){errors.push('Minimum budget is required for custom range.');budgetMinInput?.classList.add('is-invalid');}
-                else budgetMinInput?.classList.remove('is-invalid');
-                if(!mx||parseInt(mx,10)<1){errors.push('Maximum budget is required for custom range.');budgetMaxInput?.classList.add('is-invalid');}
-                else budgetMaxInput?.classList.remove('is-invalid');
-                if(mn&&mx&&parseInt(mn,10)>=parseInt(mx,10)){errors.push('Maximum must be greater than minimum.');budgetMaxInput?.classList.add('is-invalid');}
-            }
-        }
-
-        if(n===2){
-            mark('id_description',!!document.getElementById('id_description')?.value.trim(),'Detailed description is required.');
-        }
-
-        // Tab 3 (images): always passes
-        return errors;
-    }
-
-    prevBtn.addEventListener('click', () => { if(currentStep>0) goToStep(currentStep-1); });
-
-    nextBtn.addEventListener('click', () => {
-        const errors = validateStep(currentStep);
-        if(errors.length){
-            clientErrorList.innerHTML = errors.map(e=>`<li>${e}</li>`).join('');
-            clientErrorBanner.classList.add('visible');
-            stepValidity[currentStep] = false;
-            goToStep(currentStep);
-            showErrorToast('Please fix the highlighted errors.');
-            return;
-        }
-        clientErrorBanner.classList.remove('visible');
-        stepValidity[currentStep] = true;
-        if(currentStep===TOTAL_STEPS-1) submitForm();
-        else goToStep(currentStep+1);
-    });
-
-    goToStep(currentStep);
-
-    /* ══════════════════════════════
-       Request type toggle
-    ══════════════════════════════ */
-    function syncRequestType(){
-        const t=requestTypeSelect?.value||'product';
-        const showProduct=t==='product'||t==='both';
-        const showService=t==='service'||t==='both';
-        if(productFieldsGroup) productFieldsGroup.style.display=showProduct?'block':'none';
-        if(serviceFieldsGroup) serviceFieldsGroup.style.display=showService?'block':'none';
-        if(quantityField)      quantityField.style.display=showProduct?'block':'none';
-        if(projectDurField)    projectDurField.style.display=showService?'block':'none';
-        if(skillLevelField)    skillLevelField.style.display=showService?'block':'none';
-        if(delivPrefField)     delivPrefField.style.display=showService?'block':'none';
-    }
-    if(requestTypeSelect){syncRequestType();requestTypeSelect.addEventListener('change',syncRequestType);}
-
-    /* ── Budget toggle ── */
-    function syncBudgetFields(){
-        if(!customBudgetFields)return;
-        customBudgetFields.style.display=budgetRangeSelect?.value==='custom'?'block':'none';
-    }
-    if(budgetRangeSelect){syncBudgetFields();budgetRangeSelect.addEventListener('change',syncBudgetFields);}
-
-    /* ── Budget formatters ── */
-    [budgetMinInput,budgetMaxInput].forEach(inp=>{
-        if(!inp)return;
-        const fmt=v=>{v=v.replace(/[^\d]/g,'');return v?'₦ '+parseInt(v,10).toLocaleString('en-NG'):''};
-        inp.addEventListener('input',e=>e.target.value=fmt(e.target.value));
-        inp.addEventListener('blur', e=>e.target.value=fmt(e.target.value));
-    });
-
-    /* ── Category → Subcategory AJAX ── */
-    if(categorySelect){
-        categorySelect.addEventListener('change',function(){
-            const id=this.value;
-            if(subcategorySelect)subcategorySelect.innerHTML='<option value="">Select Subcategory</option>';
-            if(brandSelect)brandSelect.innerHTML='<option value="">Select Brand (Optional)</option>';
-            if(!id)return;
-            fetch(`/ajax/load-subcategories/?category=${id}`)
-                .then(r=>r.json())
-                .then(data=>data.forEach(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=s.name;subcategorySelect?.appendChild(o);}))
-                .catch(()=>showErrorToast('Error loading subcategories.'));
-        });
-    }
-    if(subcategorySelect){
-        subcategorySelect.addEventListener('change',function(){
-            const id=this.value;
-            if(brandSelect)brandSelect.innerHTML='<option value="">Select Brand (Optional)</option>';
-            if(!id)return;
-            fetch(`/ajax/load-brands/?subcategory=${id}`)
-                .then(r=>r.json())
-                .then(data=>data.forEach(b=>{const o=document.createElement('option');o.value=b.id;o.textContent=b.name;brandSelect?.appendChild(o);}))
-                .catch(()=>showErrorToast('Error loading brands.'));
-        });
-    }
-
-    /* ══════════════════════════════
-       Image compressor + preview
-    ══════════════════════════════ */
-    const compressor=new FastImageCompressor();
-    let isProcessingImages=false;
-    const IMG_MAX_FILES=5,IMG_MAX_EACH=5*1024*1024,IMG_MAX_TOTAL=25*1024*1024;
-    const IMG_TYPES=['image/jpeg','image/jpg','image/png'];
-
-    if(imageDropZone){
-        imageDropZone.addEventListener('dragover', e=>{e.preventDefault();imageDropZone.classList.add('drag-over');});
-        imageDropZone.addEventListener('dragleave',()=>imageDropZone.classList.remove('drag-over'));
-        imageDropZone.addEventListener('drop',e=>{
-            e.preventDefault();imageDropZone.classList.remove('drag-over');
-            if(imageField&&e.dataTransfer.files.length){const dt=new DataTransfer();Array.from(e.dataTransfer.files).slice(0,IMG_MAX_FILES).forEach(f=>dt.items.add(f));imageField.files=dt.files;imageField.dispatchEvent(new Event('change'));}
-        });
-    }
-
-    if(imageField){
-        imageField.addEventListener('change',async function(){
-            if(isProcessingImages)return;
-            const raw=Array.from(this.files);
-            if(!raw.length){clearPreviews();return;}
-            if(raw.length>IMG_MAX_FILES){showErrorToast(`Maximum ${IMG_MAX_FILES} images allowed.`);this.value='';clearPreviews();return;}
-            for(const f of raw){
-                if(!IMG_TYPES.includes(f.type)){showErrorToast(`"${f.name}" is not supported. Use JPG or PNG.`);this.value='';clearPreviews();return;}
-                if(f.size>IMG_MAX_EACH){showErrorToast(`"${f.name}" exceeds the 5 MB limit.`);this.value='';clearPreviews();return;}
-            }
-            const rawTotal=raw.reduce((s,f)=>s+f.size,0);
-            if(rawTotal>IMG_MAX_TOTAL){showErrorToast('Total image size exceeds 25 MB.');this.value='';clearPreviews();return;}
-
-            isProcessingImages=true;
-            clearPreviews();
-            // silent — // silent remove
-            // silent innerHTML
-
-            try{
-                const compressed=await Promise.all(raw.map(f=>compressor.compress(f)));
-                const dt=new DataTransfer();compressed.forEach(f=>dt.items.add(f));this.files=dt.files;
-                const compTotal=compressed.reduce((s,f)=>s+f.size,0);
-                const pct=((rawTotal-compTotal)/rawTotal*100);
-                // silent done
-                // silent innerHTML
-                setTimeout(()=>imgCompressStatus.classList.add('d-none'),5000);
-
-                imageStatsBar.classList.remove('d-none');
-                document.getElementById('numFiles').textContent=compressed.length;
-                document.getElementById('totalSize').textContent=FastImageCompressor.fmtSize(compTotal);
-                const savedStat=document.getElementById('imgSavedStat');
-                if(pct>5){savedStat?.classList.remove('d-none');const sp=document.getElementById('imgSavedPct');if(sp)sp.textContent=pct.toFixed(0)+'%';}
-
-                compressed.forEach((f,i)=>buildPreview(f,i,raw[i],pct>5));
-
-                // Start background upload after compression
-                startBackgroundUpload(compressed);
-            }catch(err){
-                // silent warn
-                // silent innerHTML
-                setTimeout(()=>imgCompressStatus.classList.add('d-none'),3500);
-                raw.forEach((f,i)=>buildPreview(f,i,f,false));
-                imageStatsBar.classList.remove('d-none');
-                document.getElementById('numFiles').textContent=raw.length;
-                document.getElementById('totalSize').textContent=FastImageCompressor.fmtSize(rawTotal);
-                startBackgroundUpload(raw);
-            }finally{isProcessingImages=false;}
-        });
-    }
-
-    function clearPreviews(){
-        imagePreview.innerHTML='';
-        imageStatsBar.classList.add('d-none');
-        imgCompressStatus.classList.add('d-none');
-        bgUploadStatus.classList.add('d-none');
-        bgUploadToken=null;
-    }
-
-    function buildPreview(file,index,original,wasCompressed){
-        const reader=new FileReader();
-        reader.onload=e=>{
-            const card=document.createElement('div');card.className='preview-card'+(index===0?' primary':'');
-            const img=document.createElement('img');img.src=e.target.result;img.title=file.name;card.appendChild(img);
-            if(index===0){const b=document.createElement('span');b.className='primary-badge';b.textContent='Primary';card.appendChild(b);}
-            if(wasCompressed&&file.size<original.size){const b=document.createElement('span');b.className='compress-badge';b.textContent='✓';card.appendChild(b);}
-            const info=document.createElement('div');info.className='preview-info';info.title=file.name;
-            info.textContent=`${file.name.length>13?file.name.slice(0,12)+'…':file.name} · ${FastImageCompressor.fmtSize(file.size)}`;
-            card.appendChild(info);imagePreview.appendChild(card);
-        };
-        reader.readAsDataURL(file);
-    }
-
-    /* ══════════════════════════════
-       Background Image Upload
-    ══════════════════════════════ */
-    let bgUploadToken=null;
-    let bgUploadXHR=null;
-    let bgUploadDone=false;
-
-    function startBackgroundUpload(files){
-        if(bgUploadXHR){bgUploadXHR.abort();bgUploadXHR=null;}
-        bgUploadToken=null;bgUploadDone=false;
-
-        bgUploadStatus.className='bg-upload-status uploading';
-        bgUploadStatus.classList.remove('d-none');
-        bgUploadSpinner.style.display='';
-        bgUploadFill.style.width='0%';
-        bgUploadText.textContent=`Uploading ${files.length} image${files.length!==1?'s':''} in the background…`;
-
-        const fd=new FormData();
-        files.forEach(f=>fd.append('images',f));
-        fd.append('csrfmiddlewaretoken',document.querySelector('[name=csrfmiddlewaretoken]').value);
-
-        const xhr=new XMLHttpRequest();bgUploadXHR=xhr;
-
-        xhr.upload.addEventListener('progress',e=>{
-            if(e.lengthComputable)bgUploadFill.style.width=Math.round(e.loaded/e.total*100)+'%';
-        });
-        xhr.addEventListener('load',()=>{
-            bgUploadXHR=null;bgUploadDone=true;
-            try{
-                const data=JSON.parse(xhr.responseText);
-                if(xhr.status>=200&&xhr.status<300&&data.token){
-                    bgUploadToken=data.token;
-                    bgUploadFill.style.width='100%';
-                    bgUploadStatus.className='bg-upload-status done';
-                    bgUploadSpinner.style.display='none';
-                    bgUploadText.textContent=`${files.length} image${files.length!==1?'s':''} uploaded — submit will be instant!`;
-                    // Silent: images pre-uploaded (no announcement)
-                }else{bgUploadStatus.classList.add('d-none');}
-            }catch(_){bgUploadStatus.classList.add('d-none');}
-        });
-        xhr.addEventListener('error',()=>{bgUploadXHR=null;bgUploadStatus.classList.add('d-none');});
-        xhr.addEventListener('abort',()=>{bgUploadXHR=null;bgUploadStatus.classList.add('d-none');});
-        xhr.open('POST','/ajax/upload-images-temp/');
-        xhr.setRequestHeader('X-Requested-With','XMLHttpRequest');
-        xhr.send(fd);
-    }
-
-    /* ══════════════════════════════
-       Form Submission
-    ══════════════════════════════ */
-    let isSubmitting=false;
-
-    function submitForm(){
-        if(isSubmitting)return;
-
-        // Re-validate all tabs before submitting
-        const allErrors=[];
-        for(let i=0;i<TOTAL_STEPS-1;i++){
-            const e=validateStep(i);
-            if(e.length){stepValidity[i]=false;allErrors.push(...e);}else stepValidity[i]=true;
-        }
-        if(allErrors.length){
-            clientErrorList.innerHTML=allErrors.map(e=>`<li>${e}</li>`).join('');
-            clientErrorBanner.classList.add('visible');
-            for(let i=0;i<TOTAL_STEPS;i++){if(stepValidity[i]===false){goToStep(i);break;}}
-            showErrorToast('Please fix the highlighted errors before submitting.');
-            return;
-        }
-        clientErrorBanner.classList.remove('visible');
-
-        isSubmitting=true;
-        nextBtn.disabled=true;
-        showOverlay();
-
-        const hasImages=imageField?.files.length>0;
-        const totalBytes=hasImages?Array.from(imageField.files).reduce((s,f)=>s+f.size,0):0;
-        const formData=new FormData(form);
-
-        if(bgUploadToken){
-            formData.delete('images');
-            formData.append('bg_upload_token',bgUploadToken);
-        }
-
-        const doSubmit=()=>{
-            let progress=0;
-            const duration=hasImages&&!bgUploadToken?Math.max(2000,totalBytes/(500*1024)*1000):1200;
-            progressBar.style.width='0%';
-            progressText.textContent=bgUploadToken?'Finalizing your request…':(hasImages?'Uploading images…':'Processing your request…');
-            statusText.textContent=bgUploadToken?'Images already uploaded — finishing up…':(hasImages?`Uploading ${imageField.files.length} image${imageField.files.length!==1?'s':''}…`:'Creating buyer request…');
-            const interval=setInterval(()=>{
-                progress=Math.min(progress+2,95);
-                progressBar.style.width=progress+'%';
-                if(progress>=90){clearInterval(interval);progressText.textContent='Finalizing…';submitFormData(formData);}
-            },duration/50);
-        };
-
-        if(bgUploadXHR&&!bgUploadDone){
-            statusText.textContent='Waiting for background upload…';
-            let waited=0;
-            const poll=setInterval(()=>{
-                waited+=200;
-                if(bgUploadDone||waited>=10000){clearInterval(poll);doSubmit();}
-            },200);
-        }else{doSubmit();}
-    }
-
-    function submitFormData(formData){
-        const url=form.getAttribute('action')||window.location.href;
-        fetch(url,{method:'POST',body:formData,headers:{'X-Requested-With':'XMLHttpRequest'}})
-        .then(r=>r.text().then(text=>{let data;try{data=JSON.parse(text);}catch(_){throw new Error('Unexpected server response.');}return{ok:r.ok,data};}))
-        .then(result=>{
-            progressBar.style.width='100%';
-            if(result.data.success||result.ok){
-                progressBar.classList.replace('bg-primary','bg-success');
-                progressText.textContent='Success!';
-                statusText.textContent=result.data.message||'Request posted!';
-                showSuccessToast(result.data.message||'Your request has been posted successfully!');
-                setTimeout(()=>{window.location.href=result.data.redirect_url||'{% url "manage_listings" %}';},1000);
-            }else{throw new Error(result.data.error||'Failed to post request.');}
-        })
-        .catch(err=>{
-            progressBar.classList.add('bg-danger');
-            progressText.textContent='Error';
-            statusText.textContent=err.message;
-            showErrorToast(err.message||'Failed to post request. Please try again.');
-            setTimeout(()=>{hideOverlay();isSubmitting=false;nextBtn.disabled=false;progressBar.classList.remove('bg-danger');progressBar.style.width='0%';},3000);
-        });
-    }
-});
 </script>
 {% endblock %}
-{% block 'Footer' %}{% endblock %} 
+{% block 'Footer' %}{% endblock %}
