@@ -20,20 +20,21 @@ class PWAManager {
     }
 
     async init() {
-        // Don't initialize if running in PWA mode
-        if (window.matchMedia('(display-mode: standalone)').matches ||
-            window.navigator.standalone === true) {
-            this.isInstalled = true;
-            return;
-        }
+        const standalone = window.matchMedia('(display-mode: standalone)').matches ||
+                        window.navigator.standalone === true;
+        this.isInstalled = standalone;
 
         await this.registerServiceWorker();
-        this.setupInstallPrompt();
-        this.checkInstallStatus();
         this.setupUIUpdates();
-        this.setupInstallInstructionsIntegration();
 
-        // Push notifications — only for authenticated users
+        if (standalone) {
+            this.hideInstallButton();
+        } else {
+            this.setupInstallPrompt();
+            this.checkInstallStatus();
+            this.setupInstallInstructionsIntegration();
+        }
+
         if (document.body.dataset.userAuthenticated === 'true') {
             this.initPushNotifications();
         }
@@ -331,19 +332,53 @@ class PWAManager {
         });
     }
 
+    _setPushStatus(text) {
+    const el = document.getElementById('pushStatus');
+    if (el) el.textContent = text;
+}
+
+    async _refreshPushUI(registration) {
+        const enableBtn  = document.getElementById('enablePushBtn');
+        const disableBtn = document.getElementById('disablePushBtn');
+        const sub  = await registration.pushManager.getSubscription();
+        const perm = Notification.permission;
+        const enabled = !!sub && perm === 'granted';
+
+        if (perm === 'denied') {
+            this._setPushStatus('Blocked in your browser settings. Allow notifications for opensell.ng to enable.');
+        } else if (enabled) {
+            this._setPushStatus('Push is on for this device');
+        } else {
+            this._setPushStatus('Push is off on this device');
+        }
+        if (enableBtn)  enableBtn.hidden  = enabled || perm === 'denied';
+        if (disableBtn) disableBtn.hidden = !enabled;
+    }
+
     async initPushNotifications() {
-        if (!('PushManager' in window) || !('Notification' in window)) return;
+        if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+            this._setPushStatus('Not supported here. On iPhone, add OpenSell to your Home Screen and open it from there.');
+            const b = document.getElementById('enablePushBtn');
+            if (b) b.hidden = true;
+            return;
+        }
 
         try {
-            // SW is already registered by registerServiceWorker() — just get the registration
             const registration = await navigator.serviceWorker.ready;
 
+            // Re-sync on every load (covers rotated subscriptions)
             if (Notification.permission === 'granted') {
-                // Already allowed — sync existing subscription with server
                 await this._syncPushSubscription(registration);
             }
+            await this._refreshPushUI(registration);
 
-            // Wire up enable/disable buttons that may exist on the preferences page
+            navigator.serviceWorker.addEventListener('message', async e => {
+                if (e.data && e.data.type === 'PUSH_SUBSCRIPTION_CHANGED' && Notification.permission === 'granted') {
+                    await this._syncPushSubscription(registration);
+                    this._refreshPushUI(registration);
+                }
+            });
+
             const enableBtn  = document.getElementById('enablePushBtn');
             const disableBtn = document.getElementById('disablePushBtn');
 
@@ -352,30 +387,25 @@ class PWAManager {
                     const result = await Notification.requestPermission();
                     if (result === 'granted') {
                         const ok = await this._syncPushSubscription(registration);
-                        if (ok) {
-                            enableBtn.textContent = 'Push notifications enabled ✓';
-                            enableBtn.disabled = true;
-                            if (disableBtn) disableBtn.disabled = false;
-                            this.showToast('Push notifications enabled!', 'success');
-                        }
+                        this.showToast(ok ? 'Push notifications enabled!' : 'Could not enable push. Please try again.',
+                                    ok ? 'success' : 'warning');
                     } else {
-                        this.showToast('Permission denied — push notifications blocked.', 'warning');
+                        this.showToast('Permission denied. Push notifications are blocked.', 'warning');
                     }
+                    this._refreshPushUI(registration);
                 });
             }
 
             if (disableBtn) {
                 disableBtn.addEventListener('click', async () => {
                     await this._unsubscribePush(registration);
-                    disableBtn.textContent = 'Push notifications disabled';
-                    disableBtn.disabled = true;
-                    if (enableBtn) enableBtn.disabled = false;
-                    this.showToast('Push notifications disabled.', 'info');
+                    this.showToast('Push notifications disabled on this device.', 'info');
+                    this._refreshPushUI(registration);
                 });
             }
-
         } catch (err) {
             console.warn('[PWAManager] Push init failed:', err);
+            this._setPushStatus('Could not set up push on this device.');
         }
     }
 
@@ -425,9 +455,5 @@ class PWAManager {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Don't initialize PWA manager if running in PWA mode
-    if (!window.matchMedia('(display-mode: standalone)').matches &&
-        !window.navigator.standalone) {
-        window.pwaManager = new PWAManager();
-    }
+    window.pwaManager = new PWAManager();
 });

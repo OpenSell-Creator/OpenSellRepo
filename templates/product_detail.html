@@ -539,7 +539,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <span class="btn-text">{% if product.is_saved %}Saved{% else %}Save{% endif %}</span>
                     </button>
                 {% else %}
-                    <a href="{% url 'account_login' %}" class="ox-act ox-act-save ox-tint t-red btn-action-secondary"><i class="far fa-heart"></i><span>Save</span></a>
+                    <a href="{% url 'login' %}" class="ox-act ox-act-save ox-tint t-red btn-action-secondary"><i class="far fa-heart"></i><span>Save</span></a>
                 {% endif %}
             </div>
 
@@ -659,7 +659,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <li class="ox-cell t-navy"><span class="ox-ico ox-ico-s"><i class="bi bi-calendar-event-fill" aria-hidden="true"></i></span><span><small>Member since</small><b>{{ product.seller.user.date_joined|date:"M Y" }}</b></span></li>
                     <li class="ox-cell t-orange"><span class="ox-ico ox-ico-s"><i class="bi bi-box-seam-fill" aria-hidden="true"></i></span><span><small>Total listed</small><b>{{ seller_product_stats.total_ever_listed }}</b></span></li>
                     <li class="ox-cell t-green"><span class="ox-ico ox-ico-s"><i class="bi bi-check-circle-fill" aria-hidden="true"></i></span><span><small>Active</small><b>{{ seller_product_stats.active_products }}</b></span></li>
-                    {% if product.seller_is_verified_business and product.seller.business_phone %}<li class="ox-cell t-teal"><span class="ox-ico ox-ico-s"><i class="bi bi-telephone-fill" aria-hidden="true"></i></span><span><small>Business phone</small><b>{{ product.seller.business_phone }}</b></span></li>{% endif %}
+                    {% if product.seller_is_verified_business and product.seller.business_phone %}{% if user.is_authenticated %}<li class="ox-cell t-teal"><span class="ox-ico ox-ico-s"><i class="bi bi-telephone-fill" aria-hidden="true"></i></span><span><small>Business phone</small><b>{{ product.seller.business_phone }}</b></span></li>{% else %}<li class="ox-cell t-teal"><span class="ox-ico ox-ico-s"><i class="bi bi-lock-fill" aria-hidden="true"></i></span><span><small>Business phone</small><b><a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="ox-link" rel="nofollow">Log in to view</a></b></span></li>{% endif %}{% endif %}
                     {% if product.seller_is_verified_business and product.seller.business_website %}<li class="ox-cell t-purple ox-span2"><span class="ox-ico ox-ico-s"><i class="bi bi-globe" aria-hidden="true"></i></span><span><small>Website</small><b><a href="{{ product.seller.business_website }}" target="_blank" rel="noopener noreferrer" class="ox-link">Visit website <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a></b></span></li>{% endif %}
                     {% if product.seller_is_verified_business and product.seller.business_address_visible and product.seller.location %}<li class="ox-cell t-purple ox-span2"><span class="ox-ico ox-ico-s"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i></span><span><small>Address</small><b>{% if product.seller.location.city %}{{ product.seller.location.city }}, {% endif %}{% if product.seller.location.state %}{{ product.seller.location.state.name }}{% endif %}</b></span></li>{% endif %}
                 </ul>
@@ -707,9 +707,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     {% if user != product.seller.user %}
     <div class="ox-bar" role="group" aria-label="Contact the seller">
-        <p class="ox-bar-title"><i class="bi bi-headset" aria-hidden="true"></i>Contact the seller</p>
+        <p class="ox-bar-title">{% if user.is_authenticated %}<i class="bi bi-headset" aria-hidden="true"></i>Contact the seller{% else %}<i class="bi bi-lock-fill" aria-hidden="true"></i>Log in to contact the seller{% endif %}</p>
         <div class="ox-bar-btns">
             {% if product.seller.phone_number %}
+            {% if user.is_authenticated %}
             <button type="button" class="ox-cbtn ox-c-wa" id="oxWhatsapp"
                     data-seller-name="{{ product.seller.user.username }}"
                     data-seller-phone="{{ product.seller.phone_number }}"
@@ -717,6 +718,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     data-product-price="{{ formatted_price }}"
                     data-product-url="{{ request.build_absolute_uri }}"><i class="bi bi-whatsapp" aria-hidden="true"></i><span>WhatsApp</span></button>
             <a href="tel:{{ product.seller.phone_number }}" class="ox-cbtn ox-c-call"><i class="bi bi-telephone-fill" aria-hidden="true"></i><span>Call</span></a>
+            {% else %}
+            <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="ox-cbtn ox-c-wa" rel="nofollow"><i class="bi bi-whatsapp" aria-hidden="true"></i><span>WhatsApp</span></a>
+            <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="ox-cbtn ox-c-call" rel="nofollow"><i class="bi bi-telephone-fill" aria-hidden="true"></i><span>Call</span></a>
+            {% endif %}
             {% endif %}
             <a href="{% url 'send_message' product.id %}" class="ox-cbtn ox-c-msg"><i class="bi bi-chat-dots-fill" aria-hidden="true"></i><span>Message</span></a>
         </div>

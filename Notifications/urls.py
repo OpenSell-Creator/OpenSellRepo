@@ -19,13 +19,10 @@ urlpatterns = [
     path('stats/', views.notification_stats, name='stats'),
     
     
-    path('push/subscribe/',   views.subscribe_push,   name='subscribe_push'),
-    path('push/unsubscribe/', views.unsubscribe_push,  name='unsubscribe_push'),
-    path('push/vapid-key/', views.vapid_public_key,  name='vapid_public_key'),
-    # Push notification endpoints (optional)
-    path('subscribe-push/', views.subscribe_push, name='subscribe_push'),
-    path('unsubscribe-push/', views.unsubscribe_push, name='unsubscribe_push'),
-    
+    path('notifications/push/subscribe/',   views.subscribe_push,   name='subscribe_push'),
+    path('notifications/push/unsubscribe/', views.unsubscribe_push, name='unsubscribe_push'),
+    path('notifications/push/vapid-key/',   views.vapid_public_key, name='vapid_public_key'),
+
     # Admin endpoints (optional)
     path('bulk-send/', views.send_bulk_notification, name='bulk_send'),
 ]

@@ -9,6 +9,7 @@ from datetime import timedelta
 from Home.models import Product_Listing, Review, ReviewReply
 from User.models import ItemReport, SavedItem
 from .models import NotificationPreference
+from django.db import transaction
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,16 @@ def create_user_notification_preferences(sender, instance, created, **kwargs):
     if created:
         NotificationPreference.objects.get_or_create(user=instance)
 
+
+@receiver(post_save, sender='Messages.Message')
+def handle_new_message_push(sender, instance, created, **kwargs):
+    if not created:
+        return
+    transaction.on_commit(lambda: _enqueue(
+        'Notifications.tasks.create_message_push',
+        instance.id,
+        task_name=f'msg_push_{instance.id}',
+    ))
 
 # ---------------------------------------------------------------------------
 # Transaction saved → enqueue notification task

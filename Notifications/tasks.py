@@ -11,23 +11,99 @@ def _safe_reverse(name, *args, **kwargs):
         return None
 
 
-def _send_push_for_user(user, title, message, url=None, icon=None):
-    """
-    Enqueue a push notification task for all of a user's active subscriptions.
-    Separated so it can be retried independently from the DB notification creation.
-    """
+def _send_push_for_user(user, title, message, url=None, icon=None, tag=None):
     from django_q.tasks import async_task
     async_task(
         'Notifications.tasks.dispatch_push_notifications',
-        user.id,
-        title,
-        message,
-        url,
-        icon,
+        user.id, title, message, url, icon, tag,
         task_name=f'push_{user.id}_{title[:30]}',
     )
 
 
+def dispatch_push_notifications(user_id: int, title: str, body: str,
+                                url: str = None, icon: str = None, tag: str = None):
+    """Send a Web Push to every active subscription of a user."""
+    import json
+    from django.conf import settings
+    from django.utils import timezone
+    from pywebpush import webpush, WebPushException
+    from .models import PushSubscription
+
+    try:
+        subscriptions = list(PushSubscription.objects.filter(user_id=user_id, active=True))
+        if not subscriptions:
+            return
+
+        private_key = getattr(settings, 'VAPID_PRIVATE_KEY', '')
+        if not private_key:
+            logger.warning("VAPID_PRIVATE_KEY not set - push skipped.")
+            return
+        admin_email = getattr(settings, 'VAPID_ADMIN_EMAIL', 'support@opensell.ng')
+
+        payload = json.dumps({
+            "title": title,
+            "body": body,
+            "url": url or "/notifications/",
+            "icon": icon or "/static/images/logoicon.png",
+            "tag": tag or "opensell-notification",
+        })
+
+        for sub in subscriptions:
+            try:
+                webpush(
+                    subscription_info={
+                        "endpoint": sub.endpoint,
+                        "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
+                    },
+                    data=payload,
+                    vapid_private_key=private_key,
+                    # fresh dict per send: pywebpush writes 'aud' into it
+                    vapid_claims={"sub": f"mailto:{admin_email}"},
+                    ttl=86400,
+                )
+                PushSubscription.objects.filter(pk=sub.pk).update(last_used=timezone.now())
+            except WebPushException as exc:
+                status = exc.response.status_code if exc.response is not None else None
+                if status in (404, 410):
+                    PushSubscription.objects.filter(pk=sub.pk).update(active=False)
+                    logger.info(f"Deactivated stale push subscription {sub.id}")
+                else:
+                    logger.error(f"WebPush failed for sub {sub.id} (status={status}): {exc}")
+            except Exception as exc:
+                logger.error(f"Unexpected push error for sub {sub.id}: {exc}", exc_info=True)
+    except Exception as exc:
+        logger.error(f"dispatch_push_notifications(user_id={user_id}) failed: {exc}", exc_info=True)
+        
+def create_message_push(message_id: int):
+    """Push-only notification for a new chat message (the inbox has its own unread badge)."""
+    from Messages.models import Message
+    from .models import NotificationPreference
+
+    try:
+        msg = Message.objects.select_related('conversation', 'sender__user').get(id=message_id)
+    except Message.DoesNotExist:
+        return
+
+    try:
+        conv = msg.conversation
+        url = _safe_reverse('conversation_detail', kwargs={'conversation_uuid': conv.uuid})
+        sender_name = msg.sender.user.username
+        item_title = conv.get_content_title()
+
+        for profile in conv.participants.exclude(id=msg.sender_id).select_related('user'):
+            prefs = NotificationPreference.get_or_create_preferences(profile.user)
+            if not prefs.push_notifications:
+                continue
+            _send_push_for_user(
+                profile.user,
+                title=f"New message from {sender_name}",
+                message=f"About: {item_title[:60]}",
+                url=url,
+                tag=f"chat-{conv.id}",
+            )
+    except Exception as exc:
+        logger.error(f"create_message_push({message_id}) failed: {exc}", exc_info=True)
+        raise
 # ---------------------------------------------------------------------------
 # Transaction notification
 # ---------------------------------------------------------------------------
