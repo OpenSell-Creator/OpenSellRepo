@@ -412,13 +412,30 @@ class PWAManager {
     async _syncPushSubscription(registration) {
         try {
             // Fetch VAPID public key from the server
-            const res    = await fetch('/notifications/push/vapid-key/', { credentials: 'same-origin' });
+            const res = await fetch('/notifications/push/vapid-key/', { credentials: 'same-origin' });
+            if (!res.ok) { console.warn('[PWAManager] VAPID key request failed', res.status); return false; }
             const { publicKey } = await res.json();
-            if (!publicKey) { console.warn('[PWAManager] No VAPID key returned'); return false; }
 
             const appServerKey = this._urlBase64ToUint8Array(publicKey);
 
-            let subscription = await registration.pushManager.getSubscription();
+                        let subscription = await registration.pushManager.getSubscription();
+
+            // If the subscription was made with a different VAPID key, drop it
+            if (subscription && subscription.options && subscription.options.applicationServerKey) {
+                const current = new Uint8Array(subscription.options.applicationServerKey);
+                const same = current.length === appServerKey.length &&
+                             current.every((b, i) => b === appServerKey[i]);
+                if (!same) {
+                    try {
+                        await this._postJSON('/notifications/push/unsubscribe/', {
+                            endpoint: subscription.endpoint,
+                        });
+                    } catch (e) {}
+                    await subscription.unsubscribe();
+                    subscription = null;
+                }
+            }
+
             if (!subscription) {
                 subscription = await registration.pushManager.subscribe({
                     userVisibleOnly: true,

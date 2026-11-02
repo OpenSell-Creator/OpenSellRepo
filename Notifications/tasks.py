@@ -11,6 +11,13 @@ def _safe_reverse(name, *args, **kwargs):
         return None
 
 
+# ---------------------------------------------------------------------------
+# Push helpers
+# NOTE: in-app notifications created through create_notification() (models.py)
+# already queue their own push. _send_push_for_user is only for push-only
+# events such as chat messages.
+# ---------------------------------------------------------------------------
+
 def _send_push_for_user(user, title, message, url=None, icon=None, tag=None):
     from django_q.tasks import async_task
     async_task(
@@ -60,6 +67,7 @@ def dispatch_push_notifications(user_id: int, title: str, body: str,
                     # fresh dict per send: pywebpush writes 'aud' into it
                     vapid_claims={"sub": f"mailto:{admin_email}"},
                     ttl=86400,
+                    headers={"Urgency": "high"},
                 )
                 PushSubscription.objects.filter(pk=sub.pk).update(last_used=timezone.now())
             except WebPushException as exc:
@@ -73,9 +81,13 @@ def dispatch_push_notifications(user_id: int, title: str, body: str,
                 logger.error(f"Unexpected push error for sub {sub.id}: {exc}", exc_info=True)
     except Exception as exc:
         logger.error(f"dispatch_push_notifications(user_id={user_id}) failed: {exc}", exc_info=True)
-        
+
+
+# ---------------------------------------------------------------------------
+# Chat message push (push-only: the inbox has its own unread badge)
+# ---------------------------------------------------------------------------
+
 def create_message_push(message_id: int):
-    """Push-only notification for a new chat message (the inbox has its own unread badge)."""
     from Messages.models import Message
     from .models import NotificationPreference
 
@@ -104,13 +116,17 @@ def create_message_push(message_id: int):
     except Exception as exc:
         logger.error(f"create_message_push({message_id}) failed: {exc}", exc_info=True)
         raise
+
+
 # ---------------------------------------------------------------------------
 # Transaction notification
+# (wallet notifications are currently created by Dashboard/signals.py;
+#  this task is kept for reference / manual use)
 # ---------------------------------------------------------------------------
 
 def create_transaction_notification(transaction_id: int):
     """
-    Create an in-app Notification for a Transaction and queue a push notification.
+    Create an in-app Notification for a Transaction.
     Handles: deposit, withdrawal, transfer_in, transfer_out, subscription,
              boost_fee, refund, bonus, and any future types (generic fallback).
     """
@@ -263,8 +279,8 @@ def create_transaction_notification(transaction_id: int):
             action_url = history_url
             action_text = "View Transactions"
 
-        # Create the in-app notification
-        notification = create_notification(
+        # Creates the in-app notification AND queues the push
+        create_notification(
             user=user,
             title=title,
             message=message,
@@ -275,89 +291,12 @@ def create_transaction_notification(transaction_id: int):
             action_text=action_text,
         )
 
-        # Queue a push notification (if user has push enabled)
-        if notification and preferences.push_notifications:
-            _send_push_for_user(user, title, message, url=action_url)
-
     except Exception as exc:
         logger.error(
             f"create_transaction_notification({transaction_id}) failed: {exc}",
             exc_info=True,
         )
         raise  # re-raise so Django-Q can retry
-
-
-# ---------------------------------------------------------------------------
-# Push notification dispatcher (runs per-user, per-event)
-# ---------------------------------------------------------------------------
-
-def dispatch_push_notifications(user_id: int, title: str, body: str,
-                                    url: str = None, icon: str = None):
-    """
-    Send a Web Push notification to every active PushSubscription for a user.
-    Called by Django-Q, so it can be retried independently if it fails.
-    """
-    try:
-        from django.contrib.auth.models import User
-        from django.conf import settings
-        from pywebpush import webpush, WebPushException
-        from .models import PushSubscription
-
-        try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return
-
-        subscriptions = PushSubscription.objects.filter(user=user, active=True)
-        if not subscriptions.exists():
-            return
-
-        vapid_claims = {
-            "sub": f"mailto:{getattr(settings, 'VAPID_ADMIN_EMAIL', 'admin@example.com')}"
-        }
-        vapid_private_key = getattr(settings, 'VAPID_PRIVATE_KEY', None)
-        if not vapid_private_key:
-            logger.warning("VAPID_PRIVATE_KEY not set — push skipped.")
-            return
-
-        import json
-        payload = json.dumps({
-            "title": title,
-            "body": body,
-            "url": url or "/notifications/",
-            "icon": icon or "/static/icons/icon-192x192.png",
-        })
-
-        for sub in subscriptions:
-            subscription_info = {
-                "endpoint": sub.endpoint,
-                "keys": {
-                    "p256dh": sub.p256dh,
-                    "auth": sub.auth,
-                },
-            }
-            try:
-                webpush(
-                    subscription_info=subscription_info,
-                    data=payload,
-                    vapid_private_key=vapid_private_key,
-                    vapid_claims=vapid_claims,
-                )
-            except WebPushException as exc:
-                if exc.response and exc.response.status_code in (404, 410):
-                    # Subscription expired/unregistered — deactivate it
-                    sub.active = False
-                    sub.save(update_fields=['active'])
-                    logger.info(f"Deactivated stale push subscription {sub.id}")
-                else:
-                    logger.error(f"WebPush failed for sub {sub.id}: {exc}")
-
-    except Exception as exc:
-        logger.error(
-            f"dispatch_push_notifications(user_id={user_id}) failed: {exc}",
-            exc_info=True,
-        )
-        raise
 
 
 # ---------------------------------------------------------------------------
@@ -384,7 +323,7 @@ def create_expiration_notification(listing_id: int, days_left: int):
             urgency = f"expires in {days_left} days"
             priority = NotificationPriority.NORMAL
 
-        notification = create_notification(
+        create_notification(
             user=listing.seller.user,
             title=f"⚠️ Listing {urgency}",
             message=f"Your listing '{listing.title}' will expire in {days_left} day{'s' if days_left > 1 else ''}. Renew it to keep it active.",
@@ -392,8 +331,6 @@ def create_expiration_notification(listing_id: int, days_left: int):
             priority=priority,
             content_object=listing,
         )
-        if notification and prefs.push_notifications:
-            _send_push_for_user(listing.seller.user, f"⚠️ Listing {urgency}", notification.message)
     except Exception as exc:
         logger.error(f"create_expiration_notification({listing_id}) failed: {exc}", exc_info=True)
         raise
@@ -409,7 +346,7 @@ def create_stock_alert_notification(listing_id: int, current_stock: int):
         if not prefs.stock_alerts:
             return
 
-        notification = create_notification(
+        create_notification(
             user=listing.seller.user,
             title="📦 Low Stock Alert",
             message=f"Your listing '{listing.title}' is running low on stock ({current_stock} remaining).",
@@ -417,8 +354,6 @@ def create_stock_alert_notification(listing_id: int, current_stock: int):
             priority=NotificationPriority.HIGH,
             content_object=listing,
         )
-        if notification and prefs.push_notifications:
-            _send_push_for_user(listing.seller.user, "📦 Low Stock Alert", notification.message)
     except Exception as exc:
         logger.error(f"create_stock_alert_notification({listing_id}) failed: {exc}", exc_info=True)
         raise
@@ -427,10 +362,9 @@ def create_stock_alert_notification(listing_id: int, current_stock: int):
 def create_listing_milestone_notification(listing_id: int, count: int):
     try:
         from Home.models import Product_Listing
-        from .models import create_notification, NotificationCategory, NotificationPriority, NotificationPreference
+        from .models import create_notification, NotificationCategory, NotificationPriority
 
         listing = Product_Listing.objects.select_related('seller__user').get(id=listing_id)
-        prefs = NotificationPreference.get_or_create_preferences(listing.seller.user)
 
         if count == 1:
             title = "🎉 Welcome to selling!"
@@ -439,7 +373,7 @@ def create_listing_milestone_notification(listing_id: int, count: int):
             title = f"🌟 {count} Listings Milestone!"
             message = f"Congratulations! You've now created {count} listings. Keep up the great work!"
 
-        notification = create_notification(
+        create_notification(
             user=listing.seller.user,
             title=title,
             message=message,
@@ -447,8 +381,6 @@ def create_listing_milestone_notification(listing_id: int, count: int):
             priority=NotificationPriority.NORMAL,
             content_object=listing,
         )
-        if notification and prefs.push_notifications:
-            _send_push_for_user(listing.seller.user, title, message)
     except Exception as exc:
         logger.error(f"create_listing_milestone_notification({listing_id}) failed: {exc}", exc_info=True)
         raise
@@ -480,7 +412,7 @@ def create_price_drop_notifications(listing_id: int, old_price: float, new_price
                 f"'{listing.title}' dropped by {discount_pct:.0f}%! "
                 f"Now: ₦{new_price:,.0f} (was ₦{old_price:,.0f})"
             )
-            notification = create_notification(
+            create_notification(
                 user=saved_item.user,
                 title=title,
                 message=message,
@@ -488,8 +420,6 @@ def create_price_drop_notifications(listing_id: int, old_price: float, new_price
                 priority=NotificationPriority.HIGH,
                 content_object=listing,
             )
-            if notification and prefs.push_notifications:
-                _send_push_for_user(saved_item.user, title, message)
     except Exception as exc:
         logger.error(f"create_price_drop_notifications({listing_id}) failed: {exc}", exc_info=True)
         raise
@@ -527,7 +457,7 @@ def create_review_notification(review_id: int):
             title = "📝 New Seller Review"
             message = f"{review.reviewer.username} left you a {review.rating}-star review: {stars}"
 
-        notification = create_notification(
+        create_notification(
             user=owner,
             title=title,
             message=message,
@@ -535,8 +465,6 @@ def create_review_notification(review_id: int):
             priority=NotificationPriority.NORMAL,
             content_object=review,
         )
-        if notification and prefs.push_notifications:
-            _send_push_for_user(owner, title, message)
     except Exception as exc:
         logger.error(f"create_review_notification({review_id}) failed: {exc}", exc_info=True)
         raise
@@ -560,7 +488,7 @@ def create_review_reply_notification(reply_id: int):
         title = "💬 Seller replied to your review"
         message = f"{reply.reviewer.username} replied to your review on '{product_name}'"
 
-        notification = create_notification(
+        create_notification(
             user=recipient,
             title=title,
             message=message,
@@ -568,8 +496,6 @@ def create_review_reply_notification(reply_id: int):
             priority=NotificationPriority.NORMAL,
             content_object=reply,
         )
-        if notification and prefs.push_notifications:
-            _send_push_for_user(recipient, title, message)
     except Exception as exc:
         logger.error(f"create_review_reply_notification({reply_id}) failed: {exc}", exc_info=True)
         raise
@@ -626,7 +552,7 @@ def create_save_notification(saved_item_id: int):
         title   = titles.get(item_type, "📌 Item Saved")
         message = messages.get(item_type, f"Someone saved your {item_type}")
 
-        notification = create_notification(
+        create_notification(
             user=owner,
             title=title,
             message=message,
@@ -634,8 +560,6 @@ def create_save_notification(saved_item_id: int):
             priority=NotificationPriority.LOW,
             content_object=item,
         )
-        if notification and prefs.push_notifications:
-            _send_push_for_user(owner, title, message)
 
         # Milestone
         if total_saves in [5, 10, 25, 50, 100]:
@@ -725,7 +649,7 @@ def create_view_milestone_notification(product_id: int, milestone: int):
 
         title = f"👀 {milestone:,} Views Milestone!"
         message = f"Your listing '{product.title}' has reached {milestone:,} views! Great visibility."
-        notification = create_notification(
+        create_notification(
             user=product.seller.user,
             title=title,
             message=message,
@@ -733,8 +657,6 @@ def create_view_milestone_notification(product_id: int, milestone: int):
             priority=NotificationPriority.NORMAL,
             content_object=product,
         )
-        if notification and prefs.push_notifications:
-            _send_push_for_user(product.seller.user, title, message)
     except Exception as exc:
         logger.error(f"create_view_milestone_notification({product_id}, {milestone}) failed: {exc}", exc_info=True)
         raise

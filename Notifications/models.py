@@ -5,6 +5,25 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from datetime import timedelta
 
+import logging
+logger = logging.getLogger(__name__)
+
+def _queue_push(user, title, message, url=None, tag=None):
+    """Queue a web push after the DB transaction commits."""
+    from django.db import transaction
+
+    def _go():
+        try:
+            from django_q.tasks import async_task
+            async_task(
+                'Notifications.tasks.dispatch_push_notifications',
+                user.id, title, message, url, None, tag,
+            )
+        except Exception as exc:
+            logger.warning(f"Could not queue push for user {user.id}: {exc}")
+
+    transaction.on_commit(_go)
+
 class NotificationCategory(models.TextChoices):
     ANNOUNCEMENT = 'announcement', '📢 Announcements'
     SYSTEM = 'system', '⚙️ System'
@@ -162,22 +181,10 @@ class NotificationPreference(models.Model):
         )
         return preferences
 
-def create_notification(user, title, message, category=NotificationCategory.ANNOUNCEMENT, 
-                        content_object=None, priority=NotificationPriority.NORMAL, 
-                        action_url=None, action_text=None):
-    """
-    Utility function to create notifications.
-
-    Args:
-        user: User to send notification to
-        title: Notification title
-        message: Notification message
-        category: NotificationCategory choice
-        content_object: Related model instance (optional)
-        priority: NotificationPriority choice
-        action_url: URL for quick action (optional)
-        action_text: Text for action button (optional)
-    """
+def create_notification(user, title, message, category=NotificationCategory.ANNOUNCEMENT,
+                        content_object=None, priority=NotificationPriority.NORMAL,
+                        action_url=None, action_text=None, push=True):
+    
     preferences = NotificationPreference.get_or_create_preferences(user)
 
     category_prefs = {
@@ -196,7 +203,7 @@ def create_notification(user, title, message, category=NotificationCategory.ANNO
     if not category_prefs.get(category, True):
         return None
 
-    return Notification.objects.create(
+    notification = Notification.objects.create(
         recipient=user,
         title=title,
         message=message,
@@ -204,8 +211,13 @@ def create_notification(user, title, message, category=NotificationCategory.ANNO
         priority=priority,
         content_object=content_object,
         action_url=action_url,
-        action_text=action_text
+        action_text=action_text,
     )
+
+    if push and preferences.push_notifications:
+        _queue_push(user, title, message, url=action_url)
+
+    return notification
 
 # Bulk notification utilities
 def create_bulk_notification(users, title, message, category=NotificationCategory.ANNOUNCEMENT):

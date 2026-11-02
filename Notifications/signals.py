@@ -65,16 +65,16 @@ def handle_new_message_push(sender, instance, created, **kwargs):
 # Transaction saved → enqueue notification task
 # ---------------------------------------------------------------------------
 
-@receiver(post_save, sender='Dashboard.Transaction')
-def send_transaction_notification(sender, instance, created, **kwargs):
-    """Thin dispatcher — enqueues an async task immediately and returns."""
-    if not created:
-        return
-    _enqueue(
-        'Notifications.tasks.create_transaction_notification',
-        instance.id,
-        task_name=f'txn_notif_{instance.id}',   # idempotency — prevents duplicates
-    )
+#@receiver(post_save, sender='Dashboard.Transaction')
+#def send_transaction_notification(sender, instance, created, **kwargs):
+ #   """Thin dispatcher — enqueues an async task immediately and returns."""
+  #  if not created:
+   #     return
+    #_enqueue(
+     #   'Notifications.tasks.create_transaction_notification',
+      #  instance.id,
+       # task_name=f'txn_notif_{instance.id}',   # idempotency — prevents duplicates
+    #)
 
 
 # ---------------------------------------------------------------------------
