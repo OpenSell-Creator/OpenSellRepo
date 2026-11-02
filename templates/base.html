@@ -1,5 +1,6 @@
 {% load static %}
 {% load compress %}
+{% load socialaccount %}
 <!DOCTYPE html>
 <html lang="en" data-bs-theme="light">
     <head>
@@ -189,6 +190,68 @@
         {% endblock %}
 
         {% include "pwa_install_modal.html" %}
+
+        {# ===== Google One Tap / auto sign-in (anonymous visitors only) ===== #}
+        <script>
+            window.OS_GSI_FLAG = 'os_gsi_signed_out';
+            /* Remember an explicit logout so Google does not silently sign the user straight back in */
+            document.addEventListener('click', function (e) {
+                var a = e.target.closest && e.target.closest('a[href*="logout"]');
+                if (a) { try { localStorage.setItem(window.OS_GSI_FLAG, '1'); } catch (_) {} }
+            });
+        </script>
+        {% if not user.is_authenticated %}
+            {% get_providers as socialaccount_providers %}
+            {% for provider in socialaccount_providers %}
+                {% if provider.id == 'google' and provider.app.client_id %}
+        <script>
+            /* Google hands us a signed ID token; we POST it to allauth ourselves so the result is visible */
+            window.osGoogleCredential = function (resp) {
+                var url = "{% url 'google_login_by_token' %}";
+                var arr = new Uint8Array(16); crypto.getRandomValues(arr);
+                var csrf = Array.prototype.map.call(arr, function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+                /* allauth checks this double-submit cookie against the same value in the body */
+                document.cookie = 'g_csrf_token=' + csrf + '; path=/; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '');
+                var body = new URLSearchParams();
+                body.set('credential', resp.credential);
+                body.set('g_csrf_token', csrf);
+                fetch(url, { method: 'POST', body: body, credentials: 'same-origin', redirect: 'follow' })
+                    .then(function (res) {
+                        /* allauth answers a good login with a redirect; a failure is a 4xx/5xx page with no redirect */
+                        if (res.redirected && res.ok) {
+                            var onAuthPage = /login|signup|register/i.test(location.pathname);
+                            var toSignup = /signup/i.test(new URL(res.url).pathname);
+                            if (toSignup || onAuthPage) { location.href = res.url; } else { location.reload(); }
+                        } else {
+                            res.text().then(function (t) {
+                                console.error('[OpenSell] Google sign-in failed:', res.status, res.url, t.slice(0, 300));
+                            });
+                        }
+                    })
+                    .catch(function (err) { console.error('[OpenSell] Google sign-in request failed:', err); });
+            };
+            window.onGoogleLibraryLoad = function () {
+                var signedOut = false;
+                try { signedOut = localStorage.getItem(window.OS_GSI_FLAG) === '1'; } catch (_) {}
+                google.accounts.id.initialize({
+                    client_id: "{{ provider.app.client_id|escapejs }}",
+                    callback: window.osGoogleCredential,
+                    auto_select: !signedOut,
+                    context: 'signin',
+                    itp_support: true,
+                    cancel_on_tap_outside: false
+                });
+                if (signedOut) {
+                    google.accounts.id.disableAutoSelect();
+                    try { localStorage.removeItem(window.OS_GSI_FLAG); } catch (_) {}
+                }
+                google.accounts.id.prompt();
+            };
+        </script>
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
+                {% endif %}
+            {% endfor %}
+        {% endif %}
 
         <script>
                 window.SAVE_TOGGLE_URL = "{% url 'toggle_save' %}";
