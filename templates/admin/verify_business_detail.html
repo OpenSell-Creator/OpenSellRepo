@@ -3,493 +3,410 @@
 
 {% block title %}Verify Business: {{ profile.business_name }} - Admin{% endblock %}
 
+{% block page_css %}
+<style>
+/* Highlight colour for hover, selection and links: navy in light mode, orange in dark mode (no blue) */
+:root, [data-bs-theme="light"] { --hl: var(--primary-color); --hl-edge: var(--primary-color); --hl-soft: var(--primary-soft); }
+[data-bs-theme="dark"] { --hl: var(--accent-text); --hl-edge: var(--accent-color); --hl-soft: var(--accent-soft); }
+/* Buttons: same pill as login, profile and the wallet pages. Hover fills with the brand orange. */
+.ox-btn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-4); border: 2px solid var(--bs-white); border-radius: var(--radius-full); background: var(--primary-color); color: var(--bs-white); font: inherit; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); text-align: center; text-decoration: none; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); cursor: pointer; touch-action: manipulation; }
+.ox-btn:disabled { opacity: .7; cursor: default; }
+.ox-btn .spinner-border { width: 1rem; height: 1rem; border-width: .15em; }
+.ox-btn-sm { min-height: 2.5rem; width: auto; padding: 0 var(--sp-4); font-size: var(--font-size-sm); }
+.ox-btn.ox-btn-neutral { border: 1px solid var(--border-color); background: var(--card-background); color: var(--text-primary); box-shadow: none; }
+.ox-btn.ox-btn-light { border-color: var(--bs-white); background: var(--bs-white); color: var(--primary-color); box-shadow: none; }
+.ox-btn.ox-btn-ghost { border-color: var(--bs-white); background: transparent; color: var(--bs-white); box-shadow: none; }
+.ox-btn:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+@media (hover: hover) {
+    .ox-btn.ox-btn:not(:disabled):hover { background: var(--accent-color); color: var(--on-accent); }
+    .ox-btn.ox-btn-neutral:not(:disabled):hover { background: var(--hover-bg); color: var(--text-primary); border-color: var(--hl-edge); }
+}
+/* Shared core */
+.ox {
+    --ox-navy: var(--primary-color);
+    --ox-orange: var(--accent-color);
+    --ox-green: var(--bs-success, var(--primary-color));
+    --ox-red: var(--bs-danger, var(--accent-color));
+    --ox-purple: var(--bs-purple, var(--primary-color));
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+    line-height: var(--lh-body);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-4));
+}
+.ox a { text-decoration: none; }
+.ox p { margin: 0; }
+.ox [hidden] { display: none !important; }
+.t-navy { --tint: var(--ox-navy); } .t-orange { --tint: var(--ox-orange); } .t-green { --tint: var(--ox-green); } .t-red { --tint: var(--ox-red); } .t-purple { --tint: var(--ox-purple); }
+.ox-ico { display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-lg); }
+.t-orange .ox-ico, .t-orange.ox-ico { color: var(--on-accent); }
+.ox-wash { position: relative; isolation: isolate; }
+.ox-wash::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .ox-wash::before { opacity: .09; }
+.ox a:focus-visible, .ox button:focus-visible, .ox summary:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+
+/* Header */
+.ox-head { margin: -2rem -1rem var(--gap-sections); padding: calc(2rem + var(--sp-4)) var(--sp-4) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); }
+.ox-head-in { display: grid; gap: var(--sp-4); max-width: var(--ox-w); margin: 0 auto; }
+.ox-head-l { display: flex; align-items: center; gap: var(--sp-2); }
+.ox-back { display: grid; place-items: center; flex: none; width: 2.75rem; height: 2.75rem; margin-left: calc(var(--sp-2) * -1); border-radius: var(--radius-full); color: var(--bs-white); font-size: var(--font-size-xl); }
+.ox-title { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-tight); }
+.ox-sub { margin: var(--sp-1) 0 0; font-size: var(--font-size-sm); color: rgba(255, 255, 255, .85); }
+.ox-bal { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--pad-l); border-radius: var(--radius-lg); background: var(--card-background); color: var(--text-primary); }
+.ox-bal-l { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.ox-total { margin: 0; font-size: var(--font-size-3xl); font-weight: 600; line-height: var(--lh-tight); }
+.ox-link { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1); min-height: 2.75rem; padding: 0 var(--sp-2); color: var(--hl); font-size: var(--font-size-sm); font-weight: 600; }
+@media (hover: hover) { .ox-link:hover { text-decoration: underline; } }
+
+/* Layout and cards (same as the profile page: icon, title, one-line subtitle) */
+.ox-main { display: flex; flex-direction: column; gap: var(--gap-sections); max-width: var(--ox-w); margin: 0 auto; }
+.ox-card { padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); }
+@media (min-width: 768px) { .ox-card { padding: var(--pad-l); } }
+.ox-sec-h { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.ox-sec-t { flex: 1 1 auto; min-width: 0; }
+.ox-h2 { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-tight); }
+.ox-card-sub { margin: var(--sp-1) 0 0; font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+.ox-pill { display: inline-flex; align-items: center; gap: var(--sp-1); padding: 0 var(--sp-2); border: 1px solid var(--tint); border-radius: var(--radius-full); font-size: var(--font-size-xs); font-weight: 600; line-height: var(--lh-body); white-space: nowrap; }
+.ox-alert { display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-md); font-size: var(--font-size-sm); line-height: var(--lh-snug); --tint: var(--ox-red); }
+.ox-alert i { margin-top: 1px; color: var(--error-text); }
+.ox-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-cards); }
+.ox-tile { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); line-height: var(--lh-tight); }
+.ox-tile .ox-ico { width: 2rem; height: 2rem; margin-bottom: var(--sp-1); color: var(--bs-white); font-size: var(--font-size-lg); }
+.ox-tile .t-orange.ox-ico { color: var(--on-accent); }
+.ox-tile b { font-size: var(--font-size-xl); font-weight: 600; overflow-wrap: anywhere; }
+.ox-tile span { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.ox-tile small { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.ox-dl { margin: 0; border: 1px solid var(--border-color); border-radius: var(--r-card-s); }
+.ox-dl div { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3); border-top: 1px solid var(--border-color); }
+.ox-dl div:first-child { border-top: 0; }
+.ox-dl dt { font-size: var(--font-size-sm); font-weight: 400; color: var(--text-secondary); }
+.ox-dl dd { margin: 0; font-size: var(--font-size-base); font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+@media (hover: hover) { a.ox-tile:hover, a.ox-row:hover { border-color: var(--hl-edge); } }
+.ox-row { display: flex; align-items: center; gap: var(--sp-3); min-height: 2.75rem; padding: var(--pad-s) var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-base); font-weight: 600; }
+.ox-row .ox-ico { width: 2rem; height: 2rem; }
+.ox-row .bi-chevron-right { margin-left: auto; color: var(--text-secondary); }
+@media (min-width: 768px) { .ox-head-in { gap: var(--sp-5); } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+/* Status pills: one tint per state. The icon and the label carry the meaning, not the colour alone. */
+.st { --tint: var(--text-secondary); }
+.st-pending { --tint: var(--ox-orange); }
+.st-under_review, .st-approved, .st-processing { --tint: var(--hl-edge); }
+.st-completed { --tint: var(--ox-green); }
+.st-rejected, .st-failed { --tint: var(--ox-red); }
+
+.ox { --ox-w: 72rem; }
+.st-verified { --tint: var(--ox-green); }
+
+.bd-bal { flex-wrap: wrap; }
+.bd-bal-m { display: block; }
+
+.bd-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-sections, var(--sp-4)); }
+.bd-main, .bd-side { display: flex; flex-direction: column; gap: var(--gap-cards); min-width: 0; }
+@media (min-width: 992px) {
+    .bd-layout { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; }
+    .bd-sticky { position: sticky; top: calc(var(--navbar-height, 4rem) + var(--sp-3)); }
+}
+.bd-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-cards); }
+@media (min-width: 768px) { .bd-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.bd-sub { margin: 0 0 var(--sp-2); font-size: var(--font-size-base); font-weight: 600; }
+.bd-code { --tint: var(--ox-navy); font-family: var(--bs-font-monospace, monospace); }
+.bd-mail { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 2.5rem; height: 2.5rem; margin: -0.5rem -0.5rem -0.5rem 0; border-radius: var(--radius-full); color: var(--hl); }
+.bd-dd { display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-2); }
+
+.bd-note { margin-top: var(--gap-fields); }
+.bd-note-b { padding: var(--pad-m); border-left: 3px solid var(--hl-edge); border-radius: var(--radius-md); background: var(--hl-soft); font-size: var(--font-size-base); overflow-wrap: anywhere; }
+.bd-note-b p { margin: 0 0 var(--sp-2); }
+.bd-note-b > :last-child { margin-bottom: 0; }
+
+.bd-warn { border-color: var(--ox-red); }
+.ox-alert.t-orange { --tint: var(--ox-orange); } .ox-alert.t-orange i { color: var(--accent-text); }
+.ox-alert.t-navy { --tint: var(--ox-navy); } .ox-alert.t-navy i { color: var(--hl); }
+.bd-warn-l { display: flex; flex-direction: column; gap: var(--sp-2); }
+
+/* Referral and commission rows */
+.bd-list { display: flex; flex-direction: column; gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
+.bd-li { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "who pill" "nums nums"; align-items: center; gap: var(--sp-2); padding: var(--pad-s) var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); }
+.bd-li-t { grid-area: who; min-width: 0; line-height: var(--lh-snug); }
+.bd-li-t b { display: block; font-size: var(--font-size-base); font-weight: 600; overflow-wrap: anywhere; }
+.bd-li-t span { display: block; font-size: var(--font-size-sm); color: var(--text-secondary); overflow-wrap: anywhere; }
+.bd-li > .ox-pill { grid-area: pill; }
+.bd-nums { grid-area: nums; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2) var(--sp-3); margin: 0; padding-top: var(--sp-2); border-top: 1px solid var(--border-color); }
+.bd-nums dt { font-size: var(--font-size-xs); font-weight: 400; color: var(--text-secondary); }
+.bd-nums dd { margin: 0; font-size: var(--font-size-sm); font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.bd-nums dd small { display: block; font-size: var(--font-size-xs); font-weight: 400; color: var(--text-secondary); }
+.bd-mono { font-family: var(--bs-font-monospace, monospace); font-weight: 400; }
+@media (min-width: 640px) {
+    .bd-li { grid-template-columns: minmax(0, 1.2fr) minmax(0, 2.6fr) auto; grid-template-areas: "who nums pill"; gap: var(--sp-4); }
+    .bd-nums { grid-template-columns: repeat(3, minmax(0, 1fr)); padding-top: 0; border-top: 0; }
+}
+.bd-empty { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); padding: var(--sp-4) var(--sp-2); text-align: center; color: var(--text-secondary); }
+.bd-empty .ox-ico { width: 3rem; height: 3rem; font-size: var(--font-size-3xl); }
+
+.bd-rates { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap-cards); }
+.bd-rates .ox-tile b { font-size: var(--font-size-xl); }
+@media (max-width: 420px) { .bd-rates { grid-template-columns: minmax(0, 1fr); } }
+
+/* Review actions */
+.bd-state { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); margin-bottom: var(--gap-fields); text-align: center; }
+.bd-state .ox-ico { width: 3rem; height: 3rem; font-size: var(--font-size-3xl); }
+.bd-state h3 { margin: 0; font-size: var(--font-size-lg); font-weight: 600; }
+.bd-state p { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.bd-form { display: grid; gap: var(--gap-fields); }
+.bd-lab { display: block; margin-bottom: var(--sp-1); font-size: var(--font-size-sm); font-weight: 600; }
+.bd-ctl { box-sizing: border-box; width: 100%; min-height: 5.5rem; padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--background-color); color: var(--text-primary); font: inherit; font-size: var(--font-size-base); line-height: var(--lh-body); resize: vertical; }
+.bd-ctl::placeholder { color: var(--text-secondary); opacity: 1; }
+.bd-ctl:focus { outline: 2px solid var(--accent-color); outline-offset: 1px; border-color: var(--accent-color); box-shadow: none; background-color: var(--background-color); color: var(--text-primary); }
+[data-bs-theme="dark"] .bd-ctl { color-scheme: dark; }
+@supports (-webkit-touch-callout: none) { .bd-ctl { font-size: 16px; } }
+.bd-acts { display: grid; gap: var(--sp-2); }
+.ox-btn.bd-danger { border: 1px solid var(--ox-red); background: var(--card-background); color: var(--error-text); box-shadow: none; }
+@media (hover: hover) { .ox-btn.bd-danger:not(:disabled):hover { background: var(--ox-red); color: var(--bs-white); border-color: var(--ox-red); } }
+form[aria-busy="true"] button[type="submit"] { opacity: .7; cursor: progress; }
+
+.bd-time { margin: 0; padding: 0; list-style: none; }
+.bd-time li { padding: var(--sp-2) 0; border-bottom: 1px solid var(--border-color); font-size: var(--font-size-base); }
+.bd-time li:first-child { padding-top: 0; }
+.bd-time li:last-child { padding-bottom: 0; border-bottom: 0; }
+.bd-time small { display: block; font-size: var(--font-size-xs); color: var(--text-secondary); }
+.bd-time b { font-weight: 600; }
+
+.bd-dd { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--sp-2); }
+.bd-link { display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 2.75rem; color: var(--hl); font-weight: 600; overflow-wrap: anywhere; }
+.bd-docs { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-cards); }
+@media (min-width: 640px) { .bd-docs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.bd-doc { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); min-width: 0; }
+.bd-doc-h { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+.bd-doc-t { flex: 1 1 auto; min-width: 0; line-height: var(--lh-snug); }
+.bd-doc-t b { display: block; font-size: var(--font-size-base); font-weight: 600; overflow-wrap: anywhere; }
+.bd-doc-t span { display: block; font-size: var(--font-size-sm); color: var(--text-secondary); overflow-wrap: anywhere; }
+.bd-doc-acts { display: flex; gap: var(--sp-2); }
+.bd-doc-acts .ox-btn { flex: 1 1 auto; }
+.bd-doc-acts .ox-btn.bd-icon { flex: none; width: 2.5rem; padding: 0; }
+.bd-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap-cards); margin-bottom: var(--gap-fields); }
+.bd-stats .ox-tile b { font-size: var(--font-size-xl); font-variant-numeric: tabular-nums; }
+@media (max-width: 339px) { .bd-stats { grid-template-columns: minmax(0, 1fr); } }
+.bd-store { width: auto; }
+.bd-empty { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); padding: var(--sp-4) var(--sp-2); text-align: center; color: var(--text-secondary); }
+.bd-empty .ox-ico { width: 3rem; height: 3rem; font-size: var(--font-size-3xl); }
+@media (max-width: 575.98px) { .bd-store { width: 100%; } }
+</style>
+{% endblock %}
+
 {% block 'Body' %}
-<div class="container-fluid my-4">
-    <div class="row">
-        <!-- Back Navigation -->
-        <div class="col-12 mb-3">
-            <a href="{% url 'admin_business_verifications' %}" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left"></i> Back to Verifications
-            </a>
-        </div>
-        
-        <!-- Main Content -->
-        <div class="col-lg-8">
-            <!-- Business Information Card -->
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h4><i class="bi bi-building me-2"></i>{{ profile.business_name }}</h4>
-                    <div class="status-badge">
-                        {% if profile.business_verification_status == 'pending' %}
-                            <span class="badge bg-warning fs-6">Pending Review</span>
-                        {% elif profile.business_verification_status == 'verified' %}
-                            <span class="badge bg-success fs-6">Verified</span>
-                        {% elif profile.business_verification_status == 'rejected' %}
-                            <span class="badge bg-danger fs-6">Rejected</span>
-                        {% endif %}
-                    </div>
-                </div>
-                
-                <div class="card-body">
-                    <div class="row">
-                        <!-- Business Details -->
-                        <div class="col-md-6">
-                            <h6 class="section-title">Business Information</h6>
-                            <div class="info-list">
-                                <div class="info-item">
-                                    <strong>Business Name:</strong>
-                                    <span>{{ profile.business_name }}</span>
-                                </div>
-                                <div class="info-item">
-                                    <strong>Business Type:</strong>
-                                    <span>{{ profile.get_business_type_display|default:"Not specified" }}</span>
-                                </div>
-                                <div class="info-item">
-                                    <strong>Registration Number:</strong>
-                                    <span>{{ profile.business_registration_number|default:"Not provided" }}</span>
-                                </div>
-                                <div class="info-item">
-                                    <strong>Business Email:</strong>
-                                    <span>{{ profile.business_email|default:"Not provided" }}</span>
-                                </div>
-                                <div class="info-item">
-                                    <strong>Business Phone:</strong>
-                                    <span>{{ profile.business_phone|default:"Not provided" }}</span>
-                                </div>
-                                {% if profile.business_website %}
-                                <div class="info-item">
-                                    <strong>Website:</strong>
-                                    <a href="{{ profile.business_website }}" target="_blank" class="text-primary">
-                                        {{ profile.business_website }} <i class="bi bi-box-arrow-up-right"></i>
-                                    </a>
-                                </div>
-                                {% endif %}
-                                <div class="info-item">
-                                    <strong>Address Visibility:</strong>
-                                    <span class="badge {% if profile.business_address_visible %}bg-success{% else %}bg-secondary{% endif %}">
-                                        {% if profile.business_address_visible %}Public{% else %}Private{% endif %}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Owner Details -->
-                        <div class="col-md-6">
-                            <h6 class="section-title">Owner Information</h6>
-                            <div class="info-list">
-                                <div class="info-item">
-                                    <strong>Full Name:</strong>
-                                    <span>{{ profile.user.get_full_name|default:"Not provided" }}</span>
-                                </div>
-                                <div class="info-item">
-                                    <strong>Username:</strong>
-                                    <span>@{{ profile.user.username }}</span>
-                                </div>
-                                <div class="info-item">
-                                    <strong>Email:</strong>
-                                    <span>{{ profile.user.email }}</span>
-                                    {% if profile.email_verified %}
-                                        <span class="badge bg-success ms-2">Verified</span>
-                                    {% else %}
-                                        <span class="badge bg-warning ms-2">Unverified</span>
-                                    {% endif %}
-                                </div>
-                                <div class="info-item">
-                                    <strong>Personal Phone:</strong>
-                                    <span>{{ profile.phone_number|default:"Not provided" }}</span>
-                                </div>
-                                <div class="info-item">
-                                    <strong>Location:</strong>
-                                    <span>{{ profile.location|default:"Not provided" }}</span>
-                                </div>
-                                <div class="info-item">
-                                    <strong>Join Date:</strong>
-                                    <span>{{ profile.user.date_joined|date:"F d, Y" }}</span>
-                                </div>
-                                <div class="info-item">
-                                    <strong>Last Login:</strong>
-                                    <span>{{ profile.user.last_login|date:"F d, Y H:i"|default:"Never" }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Business Description -->
-                    {% if profile.business_description %}
-                    <div class="mt-4">
-                        <h6 class="section-title">Business Description</h6>
-                        <div class="description-box">
-                            {{ profile.business_description|linebreaks }}
-                        </div>
-                    </div>
-                    {% endif %}
+<div class="ox">
+
+    <header class="ox-head">
+        <div class="ox-head-in">
+            <div class="ox-head-l">
+                <a href="{% url 'admin_business_verifications' %}" class="ox-back" aria-label="Back to verifications"><i class="bi bi-arrow-left" aria-hidden="true"></i></a>
+                <div>
+                    <h1 class="ox-title">{{ profile.business_name }}</h1>
+                    <p class="ox-sub">Owner: @{{ profile.user.username }}</p>
                 </div>
             </div>
-            
-            <!-- Uploaded Documents -->
-            {% if documents %}
-            <div class="card mb-4">
-                <div class="card-header bg-info text-white">
-                    <h5><i class="bi bi-file-earmark-text me-2"></i>Uploaded Documents ({{ documents.count }})</h5>
+            <div class="ox-bal bd-bal">
+                <div>
+                    <span class="ox-bal-l">Documents uploaded</span>
+                    <p class="ox-total">{{ documents|length }}</p>
                 </div>
-                <div class="card-body">
-                    <div class="documents-grid">
+                <span class="ox-pill ox-wash st st-{{ profile.business_verification_status }}"><i class="bi {% if profile.business_verification_status == 'pending' %}bi-clock{% elif profile.business_verification_status == 'verified' %}bi-patch-check-fill{% else %}bi-x-circle-fill{% endif %}" aria-hidden="true"></i>{% if profile.business_verification_status == 'pending' %}Pending review{% elif profile.business_verification_status == 'verified' %}Verified{% else %}Rejected{% endif %}</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="ox-main">
+        <div class="bd-layout">
+
+            {# ================= Main column ================= #}
+            <div class="bd-main">
+
+                <section class="ox-card" aria-labelledby="infoTitle">
+                    <div class="ox-sec-h">
+                        <span class="ox-ico t-green"><i class="bi bi-building" aria-hidden="true"></i></span>
+                        <div class="ox-sec-t"><h2 class="ox-h2" id="infoTitle">Business and owner</h2></div>
+                    </div>
+                    <div class="bd-cols">
+                        <div>
+                            <h3 class="bd-sub">Business information</h3>
+                            <dl class="ox-dl">
+                                <div><dt>Business name</dt><dd>{{ profile.business_name }}</dd></div>
+                                <div><dt>Type</dt><dd>{{ profile.get_business_type_display|default:"Not specified" }}</dd></div>
+                                <div><dt>Registration no.</dt><dd>{{ profile.business_registration_number|default:"Not provided" }}</dd></div>
+                                <div><dt>Business email</dt><dd>{{ profile.business_email|default:"Not provided" }}</dd></div>
+                                <div><dt>Business phone</dt><dd>{{ profile.business_phone|default:"Not provided" }}</dd></div>
+                                {% if profile.business_website %}<div><dt>Website</dt><dd><a href="{{ profile.business_website }}" target="_blank" rel="noopener" class="bd-link">{{ profile.business_website }} <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a></dd></div>{% endif %}
+                                <div><dt>Address</dt><dd><span class="ox-pill ox-wash {% if profile.business_address_visible %}t-green{% else %}st{% endif %}">{% if profile.business_address_visible %}Public{% else %}Private{% endif %}</span></dd></div>
+                            </dl>
+                        </div>
+                        <div>
+                            <h3 class="bd-sub">Owner information</h3>
+                            <dl class="ox-dl">
+                                <div><dt>Full name</dt><dd>{{ profile.user.get_full_name|default:"Not provided" }}</dd></div>
+                                <div><dt>Username</dt><dd>@{{ profile.user.username }}</dd></div>
+                                <div><dt>Email</dt><dd class="bd-dd"><span>{{ profile.user.email }}</span>{% if profile.email_verified %}<span class="ox-pill ox-wash st st-verified"><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Verified</span>{% else %}<span class="ox-pill ox-wash st st-pending"><i class="bi bi-clock" aria-hidden="true"></i>Unverified</span>{% endif %}</dd></div>
+                                <div><dt>Personal phone</dt><dd>{{ profile.phone_number|default:"Not provided" }}</dd></div>
+                                <div><dt>Location</dt><dd>{{ profile.location|default:"Not provided" }}</dd></div>
+                                <div><dt>Joined</dt><dd>{{ profile.user.date_joined|date:"M d, Y" }}</dd></div>
+                                <div><dt>Last login</dt><dd>{{ profile.user.last_login|date:"M d, Y H:i"|default:"Never" }}</dd></div>
+                            </dl>
+                        </div>
+                    </div>
+
+                    {% if profile.business_description %}
+                    <div class="bd-note">
+                        <h3 class="bd-sub">Business description</h3>
+                        <div class="bd-note-b">{{ profile.business_description|linebreaks }}</div>
+                    </div>
+                    {% endif %}
+                </section>
+
+                <section class="ox-card" aria-labelledby="docTitle">
+                    <div class="ox-sec-h">
+                        <span class="ox-ico t-navy"><i class="bi bi-file-earmark-text-fill" aria-hidden="true"></i></span>
+                        <div class="ox-sec-t"><h2 class="ox-h2" id="docTitle">Uploaded documents ({{ documents|length }})</h2></div>
+                    </div>
+                    {% if documents %}
+                    <div class="bd-docs">
                         {% for document in documents %}
-                        <div class="document-card">
-                            <div class="document-header">
-                                <div class="document-type">
-                                    <i class="bi bi-file-earmark-pdf fs-3 text-danger"></i>
-                                    <div>
-                                        <strong>{{ document.get_document_type_display }}</strong>
-                                        {% if document.verified %}
-                                            <span class="badge bg-success ms-2">Verified</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary ms-2">Pending</span>
-                                        {% endif %}
-                                    </div>
+                        <div class="bd-doc">
+                            <div class="bd-doc-h">
+                                {% with n=document.document.name|lower %}
+                                <span class="ox-ico t-navy"><i class="bi {% if n|slice:'-4:' == '.pdf' %}bi-file-earmark-pdf{% elif n|slice:'-4:' == '.jpg' or n|slice:'-4:' == '.png' or n|slice:'-5:' == '.jpeg' or n|slice:'-5:' == '.webp' %}bi-file-earmark-image{% else %}bi-file-earmark-text{% endif %}" aria-hidden="true"></i></span>
+                                {% endwith %}
+                                <div class="bd-doc-t">
+                                    <b>{{ document.get_document_type_display }}</b>
+                                    {% if document.description %}<span>{{ document.description }}</span>{% endif %}
+                                    <span>Uploaded {{ document.uploaded_at|date:"M d, Y H:i" }}</span>
                                 </div>
-                                <div class="document-actions">
-                                    <a href="{{ document.document.url }}" target="_blank" class="btn btn-outline-primary btn-sm">
-                                        <i class="bi bi-eye"></i> View
-                                    </a>
-                                    <a href="{{ document.document.url }}" download class="btn btn-outline-secondary btn-sm">
-                                        <i class="bi bi-download"></i>
-                                    </a>
-                                </div>
+                                {% if document.verified %}<span class="ox-pill ox-wash st st-verified"><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Verified</span>{% else %}<span class="ox-pill ox-wash st st-pending"><i class="bi bi-clock" aria-hidden="true"></i>Pending</span>{% endif %}
                             </div>
-                            {% if document.description %}
-                            <div class="document-description">
-                                <small class="text-muted">{{ document.description }}</small>
-                            </div>
-                            {% endif %}
-                            <div class="document-meta">
-                                <small class="text-muted">
-                                    Uploaded {{ document.uploaded_at|date:"M d, Y H:i" }}
-                                </small>
+                            <div class="bd-doc-acts">
+                                <a href="{{ document.document.url }}" target="_blank" rel="noopener" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-eye" aria-hidden="true"></i>View</a>
+                                <a href="{{ document.document.url }}" download class="ox-btn ox-btn-sm ox-btn-neutral bd-icon" aria-label="Download {{ document.get_document_type_display }}"><i class="bi bi-download" aria-hidden="true"></i></a>
                             </div>
                         </div>
                         {% endfor %}
                     </div>
-                </div>
-            </div>
-            {% else %}
-            <div class="card mb-4">
-                <div class="card-body text-center">
-                    <i class="bi bi-file-earmark-x fs-1 text-muted"></i>
-                    <h5 class="text-muted mt-3">No Documents Uploaded</h5>
-                    <p class="text-muted">This business verification request has no supporting documents.</p>
-                </div>
-            </div>
-            {% endif %}
-            
-            <!-- User's Products -->
-            <div class="card">
-                <div class="card-header bg-secondary text-white">
-                    <h5><i class="bi bi-shop me-2"></i>Business Activity</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="stat-card">
-                                <h4>{{ profile.total_products_listed }}</h4>
-                                <small>Total Products Listed</small>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="stat-card">
-                                <h4>{{ profile.seller_average_rating|floatformat:1 }}</h4>
-                                <small>Average Rating</small>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="stat-card">
-                                <h4>{{ profile.total_seller_reviews }}</h4>
-                                <small>Total Reviews</small>
-                            </div>
-                        </div>
+                    {% else %}
+                    <div class="bd-empty"><span class="ox-ico t-navy"><i class="bi bi-file-earmark-x" aria-hidden="true"></i></span><p>No documents uploaded. This request has no supporting documents.</p></div>
+                    {% endif %}
+                </section>
+
+                <section class="ox-card" aria-labelledby="actvTitle">
+                    <div class="ox-sec-h">
+                        <span class="ox-ico t-orange"><i class="bi bi-shop" aria-hidden="true"></i></span>
+                        <div class="ox-sec-t"><h2 class="ox-h2" id="actvTitle">Business activity</h2></div>
                     </div>
-                    <div class="mt-3">
-                        <a href="{% url 'user_store' profile.user.username %}" target="_blank" class="btn btn-outline-primary">
-                            <i class="bi bi-shop"></i> View Store
-                        </a>
+                    <div class="bd-stats">
+                        <div class="ox-tile"><span class="ox-ico t-orange"><i class="bi bi-box-seam-fill" aria-hidden="true"></i></span><b>{{ profile.total_products_listed }}</b><span>Products listed</span></div>
+                        <div class="ox-tile"><span class="ox-ico t-purple"><i class="bi bi-star-fill" aria-hidden="true"></i></span><b>{{ profile.seller_average_rating|floatformat:1 }}</b><span>Average rating</span></div>
+                        <div class="ox-tile"><span class="ox-ico t-green"><i class="bi bi-chat-square-text-fill" aria-hidden="true"></i></span><b>{{ profile.total_seller_reviews }}</b><span>Total reviews</span></div>
                     </div>
-                </div>
+                    <a href="{% url 'user_store' profile.user.username %}" target="_blank" rel="noopener" class="ox-btn ox-btn-neutral bd-store"><i class="bi bi-shop" aria-hidden="true"></i>View store</a>
+                </section>
             </div>
-        </div>
-        
-        <!-- Action Panel -->
-        <div class="col-lg-4">
-            <div class="card sticky-top" style="top: 20px;">
-                <div class="card-header bg-dark text-white">
-                    <h5><i class="bi bi-gear me-2"></i>Review Actions</h5>
-                </div>
-                <div class="card-body">
+
+            {# ================= Side column ================= #}
+            <div class="bd-side">
+
+                <section class="ox-card bd-sticky" aria-labelledby="actTitle">
+                    <div class="ox-sec-h">
+                        <span class="ox-ico t-navy"><i class="bi bi-clipboard-check-fill" aria-hidden="true"></i></span>
+                        <div class="ox-sec-t"><h2 class="ox-h2" id="actTitle">Review actions</h2></div>
+                    </div>
+
                     {% if profile.business_verification_status == 'pending' %}
-                    <!-- Verification Form -->
-                    <form method="post">
+                    <form method="post" class="bd-form">
                         {% csrf_token %}
-                        
-                        <div class="mb-3">
-                            <label for="admin_notes" class="form-label">Admin Notes</label>
-                            <textarea name="admin_notes" class="form-control" rows="4" 
-                                      placeholder="Add notes about this verification decision..."></textarea>
+                        <div>
+                            <label for="admin_notes" class="bd-lab">Admin notes</label>
+                            <textarea name="admin_notes" id="admin_notes" class="bd-ctl" rows="4" placeholder="Add notes about this verification decision..."></textarea>
                         </div>
-                        
-                        <div class="d-grid gap-2">
-                            <button type="submit" name="action" value="verify" class="btn btn-success btn-lg">
-                                <i class="bi bi-check-circle-fill me-2"></i>Verify Business
-                            </button>
-                            
-                            <button type="submit" name="action" value="reject" class="btn btn-danger btn-lg">
-                                <i class="bi bi-x-circle-fill me-2"></i>Reject Application
-                            </button>
+                        <div class="bd-acts">
+                            <button type="submit" name="action" value="verify" class="ox-btn"><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Verify business</button>
+                            <button type="submit" name="action" value="reject" class="ox-btn ox-btn-neutral bd-danger"><i class="bi bi-x-circle-fill" aria-hidden="true"></i>Reject application</button>
                         </div>
                     </form>
-                    
+
                     {% elif profile.business_verification_status == 'verified' %}
-                    <!-- Already Verified -->
-                    <div class="text-center">
-                        <i class="bi bi-patch-check-fill fs-1 text-success"></i>
-                        <h5 class="text-success mt-3">Business Verified</h5>
-                        <p class="text-muted">
-                            Verified on {{ profile.business_verified_at|date:"F d, Y" }}
-                            {% if profile.business_verified_by %}
-                            by {{ profile.business_verified_by.get_full_name|default:profile.business_verified_by.username }}
-                            {% endif %}
-                        </p>
-                        
-                        <!-- Option to reverse verification -->
-                        <form method="post" class="mt-3">
-                            {% csrf_token %}
-                            <div class="mb-3">
-                                <textarea name="admin_notes" class="form-control" rows="3" 
-                                          placeholder="Reason for reversing verification..."></textarea>
-                            </div>
-                            <button type="submit" name="action" value="reject" class="btn btn-outline-danger">
-                                <i class="bi bi-arrow-counterclockwise me-2"></i>Reverse Verification
-                            </button>
-                        </form>
+                    <div class="bd-state">
+                        <span class="ox-ico t-green"><i class="bi bi-patch-check-fill" aria-hidden="true"></i></span>
+                        <h3>Business verified</h3>
+                        <p>Verified on {{ profile.business_verified_at|date:"M d, Y" }}{% if profile.business_verified_by %} by {{ profile.business_verified_by.get_full_name|default:profile.business_verified_by.username }}{% endif %}</p>
                     </div>
-                    
+                    <form method="post" class="bd-form">
+                        {% csrf_token %}
+                        <div>
+                            <label for="admin_notes" class="visually-hidden">Reason for reversing verification</label>
+                            <textarea name="admin_notes" id="admin_notes" class="bd-ctl" rows="3" placeholder="Reason for reversing verification..."></textarea>
+                        </div>
+                        <button type="submit" name="action" value="reject" class="ox-btn ox-btn-neutral bd-danger"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Reverse verification</button>
+                    </form>
+
                     {% elif profile.business_verification_status == 'rejected' %}
-                    <!-- Previously Rejected -->
-                    <div class="text-center">
-                        <i class="bi bi-x-circle-fill fs-1 text-danger"></i>
-                        <h5 class="text-danger mt-3">Application Rejected</h5>
-                        
-                        <!-- Option to approve after rejection -->
-                        <form method="post" class="mt-3">
-                            {% csrf_token %}
-                            <div class="mb-3">
-                                <textarea name="admin_notes" class="form-control" rows="3" 
-                                          placeholder="Reason for approving after rejection..."></textarea>
-                            </div>
-                            <button type="submit" name="action" value="verify" class="btn btn-success">
-                                <i class="bi bi-check-circle-fill me-2"></i>Approve Now
-                            </button>
-                        </form>
+                    <div class="bd-state">
+                        <span class="ox-ico t-red"><i class="bi bi-x-circle-fill" aria-hidden="true"></i></span>
+                        <h3>Application rejected</h3>
                     </div>
+                    <form method="post" class="bd-form">
+                        {% csrf_token %}
+                        <div>
+                            <label for="admin_notes" class="visually-hidden">Reason for approving after rejection</label>
+                            <textarea name="admin_notes" id="admin_notes" class="bd-ctl" rows="3" placeholder="Reason for approving after rejection..."></textarea>
+                        </div>
+                        <button type="submit" name="action" value="verify" class="ox-btn"><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Approve now</button>
+                    </form>
                     {% endif %}
-                </div>
-            </div>
-            
-            <!-- Quick Info Panel -->
-            <div class="card mt-3">
-                <div class="card-header bg-light">
-                    <h6><i class="bi bi-info-circle me-2"></i>Quick Actions</h6>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <a href="mailto:{{ profile.user.email }}" class="btn btn-outline-primary btn-sm">
-                            <i class="bi bi-envelope"></i> Email Owner
-                        </a>
-                        <a href="{% url 'user_store' profile.user.username %}" target="_blank" class="btn btn-outline-secondary btn-sm">
-                            <i class="bi bi-shop"></i> View Store
-                        </a>
+                </section>
+
+                <section class="ox-card" aria-labelledby="qaTitle">
+                    <div class="ox-sec-h">
+                        <span class="ox-ico t-orange"><i class="bi bi-lightning-fill" aria-hidden="true"></i></span>
+                        <div class="ox-sec-t"><h2 class="ox-h2" id="qaTitle">Quick actions</h2></div>
+                    </div>
+                    <div class="bd-acts">
+                        <a href="mailto:{{ profile.user.email }}" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-envelope" aria-hidden="true"></i>Email owner</a>
+                        <a href="{% url 'user_store' profile.user.username %}" target="_blank" rel="noopener" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-shop" aria-hidden="true"></i>View store</a>
                         {% if profile.business_website %}
-                        <a href="{{ profile.business_website }}" target="_blank" class="btn btn-outline-info btn-sm">
-                            <i class="bi bi-globe"></i> Visit Website
-                        </a>
+                        <a href="{{ profile.business_website }}" target="_blank" rel="noopener" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-globe" aria-hidden="true"></i>Visit website</a>
                         {% endif %}
                     </div>
-                </div>
+                </section>
             </div>
+
         </div>
     </div>
 </div>
 
-<style>
-.card {
-    border: none;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    border-radius: 8px;
-}
-
-.section-title {
-    color: #495057;
-    font-weight: 600;
-    border-bottom: 2px solid #e9ecef;
-    padding-bottom: 8px;
-    margin-bottom: 15px;
-}
-
-.info-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.info-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid #f8f9fa;
-}
-
-.info-item:last-child {
-    border-bottom: none;
-}
-
-.info-item strong {
-    color: #6c757d;
-    font-weight: 600;
-    min-width: 140px;
-}
-
-.description-box {
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 6px;
-    border-left: 4px solid #0d6efd;
-}
-
-.documents-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 15px;
-}
-
-.document-card {
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 15px;
-    transition: all 0.3s ease;
-}
-
-.document-card:hover {
-    border-color: #0d6efd;
-    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.15);
-}
-
-.document-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 10px;
-}
-
-.document-type {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-grow: 1;
-}
-
-.document-actions {
-    display: flex;
-    gap: 5px;
-}
-
-.document-description {
-    margin-bottom: 8px;
-}
-
-.document-meta {
-    font-size: 0.85rem;
-}
-
-.stat-card {
-    text-align: center;
-    padding: 15px;
-    background: #f8f9fa;
-    border-radius: 6px;
-    border: 1px solid #dee2e6;
-}
-
-.stat-card h4 {
-    margin-bottom: 5px;
-    color: #0d6efd;
-    font-weight: 700;
-}
-
-.status-badge {
-    position: absolute;
-    top: 15px;
-    right: 20px;
-}
-
-.btn-lg {
-    padding: 12px 20px;
-    font-weight: 600;
-}
-
-.sticky-top {
-    position: sticky;
-    z-index: 1020;
-}
-
-@media (max-width: 992px) {
-    .sticky-top {
-        position: relative;
-        top: auto !important;
-    }
-    
-    .documents-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .info-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 5px;
-    }
-    
-    .info-item strong {
-        min-width: auto;
-    }
-}
-
-/* Animation for form submission */
-.btn:active {
-    transform: scale(0.98);
-}
-</style>
-
 <script>
-// Simple confirmation dialogs
-document.addEventListener('DOMContentLoaded', function() {
-    // Add confirmation to verify buttons
-    document.querySelectorAll('button[value="verify"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            if (!confirm('Are you sure you want to VERIFY this business?')) {
-                e.preventDefault();
-            }
+document.addEventListener('DOMContentLoaded', function () {
+    var messages = {
+        verify: 'Are you sure you want to VERIFY this business?',
+        reject: 'Are you sure you want to REJECT this business verification?'
+    };
+    Object.keys(messages).forEach(function (action) {
+        document.querySelectorAll('button[value="' + action + '"]').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                if (!window.confirm(messages[action])) e.preventDefault();
+            });
         });
     });
-    
-    // Add confirmation to reject buttons
-    document.querySelectorAll('button[value="reject"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            if (!confirm('Are you sure you want to REJECT this business verification?')) {
-                e.preventDefault();
-            }
+
+    // Ignore a second submit. Buttons stay enabled: a disabled submitter would not send action=...
+    document.querySelectorAll('form[method="post"]').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+            if (form.dataset.busy) { e.preventDefault(); return; }
+            form.dataset.busy = '1';
+            form.setAttribute('aria-busy', 'true');
+        });
+    });
+    window.addEventListener('pageshow', function (e) {
+        if (!e.persisted) return;
+        document.querySelectorAll('form[data-busy]').forEach(function (form) {
+            delete form.dataset.busy;
+            form.removeAttribute('aria-busy');
         });
     });
 });
 </script>
 {% endblock %}
-
-{% block 'Footer'%}
-{% endblock%}
+{% block 'Footer' %}{% endblock %}

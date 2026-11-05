@@ -28,6 +28,10 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from .forms import SignUpForm, ProfileUpdateForm, LocationForm, BusinessVerificationForm, BusinessDocumentForm, ItemReportForm
 from .models import Profile,LGA,State,Location, BusinessVerificationDocument
+from datetime import timedelta
+from django.db.models import Sum
+from django.utils import timezone
+from Dashboard.models import (AffiliateProfile, AffiliateWithdrawal, WithdrawalRequest, Referral, ProductBoost, UserAccount, Transaction, MonnifyTransaction)
 from .utils import get_client_ip
 from django.views.decorators.http import require_GET, require_POST
 from .utils import send_otp_email, send_business_verification_approved_email, send_business_verification_rejected_email, send_business_verification_submitted_email, send_welcome_email
@@ -423,35 +427,57 @@ def profile_menu(request):
     
     return render(request, 'profile_menu.html', context)
 
+
+#ADMIN PANEL
 @login_required
 @user_passes_test(lambda u: u.is_staff or u.is_superuser)
 def admin_panel(request):
-    """
-    Main admin panel with links to all admin sections
-    Only accessible to staff and superusers
-    """
-    # Get quick stats
-    total_users = User.objects.count()
-    total_products = Product_Listing.objects.count()
-    
-    # Pending business verifications
-    pending_verifications = Profile.objects.filter(
-        business_name__isnull=False,
-        business_verification_status='pending'
-    ).count()
-    
-    # Pending product reports
-    pending_reports = ItemReport.objects.filter(
-        status='pending'
-    ).count()
-    
+    now = timezone.now()
+    today = timezone.localdate()
+ 
     context = {
-        'total_users': total_users,
-        'total_products': total_products,
-        'pending_verifications': pending_verifications,
-        'pending_reports': pending_reports,
+        # existing
+        'total_users': User.objects.count(),
+        'total_products': Product_Listing.objects.count(),
+        'pending_verifications': Profile.objects.filter(
+            business_name__isnull=False, business_verification_status='pending').count(),
+        'pending_reports': ItemReport.objects.filter(status='pending').count(),
+ 
+        # new: approvals and reviews
+        'pending_affiliates': AffiliateProfile.objects.filter(status='pending').count(),
+        'pending_withdrawals': WithdrawalRequest.objects.filter(
+            status__in=['pending', 'under_review']).count(),
+        'withdrawals_to_pay': WithdrawalRequest.objects.filter(
+            status__in=['approved', 'processing']).count(),
+        'pending_affiliate_withdrawals': AffiliateWithdrawal.objects.filter(
+            status__in=['pending', 'approved', 'processing']).count(),
+        'flagged_referrals': Referral.objects.filter(flagged_for_review=True).count(),
+        'unprocessed_payments': MonnifyTransaction.objects.filter(
+            payment_status='PAID', processed=False).count(),
+ 
+        # new: overview
+        'new_users_today': User.objects.filter(date_joined__date=today).count(),
+        'active_boosts': ProductBoost.objects.filter(is_active=True, end_date__gt=now).count(),
+        'boosts_expiring': ProductBoost.objects.filter(
+            is_active=True, end_date__gt=now, end_date__lte=now + timedelta(hours=24)).count(),
+        'deposits_today': Transaction.objects.filter(
+            transaction_type='deposit', amount__gt=0, created_at__date=today
+        ).aggregate(t=Sum('amount'))['t'] or 0,
+        'wallet_total': UserAccount.objects.aggregate(t=Sum('balance'))['t'] or 0,
+        'affiliate_owed': (AffiliateProfile.objects.aggregate(
+            p=Sum('pending_balance'), a=Sum('available_balance'))),
     }
-    
+    owed = context['affiliate_owed']
+    context['affiliate_owed'] = (owed['p'] or 0) + (owed['a'] or 0)
+ 
+    # django-q failed tasks in the last 24h (skip silently if django-q is not installed)
+    try:
+        from django_q.models import Task
+        context['failed_tasks'] = Task.objects.filter(
+            success=False, started__gte=now - timedelta(hours=24)).count()
+    except Exception:
+        pass
+ 
     return render(request, 'admin/admin_panel.html', context)
 
 class ProfileUpdateView(LoginRequiredMixin, UpdateView):

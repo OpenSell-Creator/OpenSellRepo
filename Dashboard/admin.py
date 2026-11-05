@@ -10,7 +10,7 @@ from .models import (
 )
 from django.shortcuts import render
 from django import forms as django_forms
-from .models import WithdrawalRequest, WalletTransfer
+from .models import WithdrawalRequest, WalletTransfer, MonnifyTransaction, VirtualAccount, PaymentNotification
 from .forms import WithdrawalAdminActionForm
 
 
@@ -809,3 +809,19 @@ class WalletTransferAdmin(admin.ModelAdmin):
     def amount_display(self, obj):
         return format_html('₦{}', f'{obj.amount:,.2f}')
     amount_display.short_description = 'Amount'
+    
+@admin.register(MonnifyTransaction)
+class MonnifyTransactionAdmin(admin.ModelAdmin):
+    list_display = ('transaction_reference', 'user_account', 'amount_paid', 'payment_status', 'processed', 'paid_on')
+    list_filter = ('payment_status', 'processed', 'credited_to_account')
+    search_fields = ('transaction_reference', 'payment_reference', 'user_account__user__username')
+@admin.register(VirtualAccount)
+class VirtualAccountAdmin(admin.ModelAdmin):
+    list_display = ('account_name', 'account_number', 'bank_name', 'status', 'user_account')
+    list_filter = ('status', 'bank_name')
+    search_fields = ('account_number', 'account_name', 'user_account__user__username')
+@admin.register(PaymentNotification)
+class PaymentNotificationAdmin(admin.ModelAdmin):
+    list_display = ('transaction_reference', 'notification_type', 'processed', 'received_at')
+    list_filter = ('notification_type', 'processed')
+ 

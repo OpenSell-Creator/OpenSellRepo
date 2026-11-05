@@ -3,531 +3,370 @@
 
 {% block title %}Affiliate Approvals - Admin{% endblock %}
 
-{% block 'Body' %}
+{% block page_css %}
 <style>
-.adm {
-    display: flex;
-    flex-direction: column;
-    gap: var(--gap-sections);
-    min-width: 0;
-}
-.adm-card {
-    padding: var(--pad-m);
-    min-width: 0;
-}
-.adm-card--flush {
-    padding: 0;
-    overflow: hidden;
-}
-.adm-head--pad {
-    padding: var(--pad-m) var(--pad-m) 0;
-}
-.adm-title {
-    margin: 0;
-    font-size: var(--font-size-xl);
-    font-weight: 600;
-    line-height: var(--lh-tight);
-    color: var(--text-primary);
-}
-.adm-card__title {
-    margin: 0;
-    font-size: var(--font-size-lg);
-    font-weight: 600;
-    line-height: var(--lh-snug);
-    color: var(--text-primary);
-}
-.adm-meta {
-    display: block;
-    font-size: var(--font-size-sm);
-    line-height: var(--lh-snug);
-    color: var(--text-secondary);
-}
-.adm-strong {
-    font-weight: 600;
-}
-.adm-money {
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-}
-@media (min-width: 768px) {
-    .adm-title {
-        font-size: var(--font-size-3xl);
-    }
-}
-.adm-badge {
-    --tone: var(--border-color);
-    --tone-soft: var(--hover-bg);
-    display: inline-flex;
-    align-items: center;
-    gap: var(--sp-1);
-    padding: .125rem var(--sp-2);
-    border: 1px solid var(--tone);
-    border-radius: var(--radius-full);
-    background: var(--tone-soft);
-    color: var(--text-primary);
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-    line-height: var(--lh-snug);
-    white-space: nowrap;
-}
-.adm-badge--pending {
-    --tone: var(--warning);
-    --tone-soft: var(--warning-soft);
-}
-.adm-badge--success {
-    --tone: var(--success);
-    --tone-soft: var(--success-soft);
-}
-.adm-badge--danger {
-    --tone: var(--error);
-    --tone-soft: var(--danger-soft);
-}
-.adm-badge--info {
-    --tone: var(--link-color);
-    --tone-soft: var(--primary-soft);
-}
+/* Highlight colour for hover, selection and links: navy in light mode, orange in dark mode (no blue) */
+:root, [data-bs-theme="light"] { --hl: var(--primary-color); --hl-edge: var(--primary-color); --hl-soft: var(--primary-soft); }
+[data-bs-theme="dark"] { --hl: var(--accent-text); --hl-edge: var(--accent-color); --hl-soft: var(--accent-soft); }
+/* Buttons: same pill as login, profile and the wallet pages. Hover fills with the brand orange. */
+.ox-btn { box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: var(--h-control-lg); margin: 0; padding: 0 var(--sp-4); border: 2px solid var(--bs-white); border-radius: var(--radius-full); background: var(--primary-color); color: var(--bs-white); font: inherit; font-size: var(--font-size-base); font-weight: 600; line-height: var(--lh-tight); text-align: center; text-decoration: none; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); cursor: pointer; touch-action: manipulation; }
+.ox-btn:disabled { opacity: .7; cursor: default; }
+.ox-btn .spinner-border { width: 1rem; height: 1rem; border-width: .15em; }
+.ox-btn-sm { min-height: 2.5rem; width: auto; padding: 0 var(--sp-4); font-size: var(--font-size-sm); }
+.ox-btn.ox-btn-neutral { border: 1px solid var(--border-color); background: var(--card-background); color: var(--text-primary); box-shadow: none; }
+.ox-btn.ox-btn-light { border-color: var(--bs-white); background: var(--bs-white); color: var(--primary-color); box-shadow: none; }
+.ox-btn.ox-btn-ghost { border-color: var(--bs-white); background: transparent; color: var(--bs-white); box-shadow: none; }
+.ox-btn:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
 @media (hover: hover) {
-    .adm-filter:hover {
-        background: var(--hover-bg);
-    }
+    .ox-btn.ox-btn:not(:disabled):hover { background: var(--accent-color); color: var(--on-accent); }
+    .ox-btn.ox-btn-neutral:not(:disabled):hover { background: var(--hover-bg); color: var(--text-primary); border-color: var(--hl-edge); }
 }
-.adm-filters {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
-    gap: var(--gap-cards);
-}
-.adm-filter {
-    --edge: var(--link-color);
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-1);
-    min-width: 0;
-    padding: var(--pad-s) var(--pad-m);
-    border: 1px solid var(--border-color);
-    border-left: 4px solid var(--edge);
-    border-radius: var(--r-card-s);
-    background: var(--card-background);
+/* Shared core */
+.ox {
+    --ox-navy: var(--primary-color);
+    --ox-orange: var(--accent-color);
+    --ox-green: var(--bs-success, var(--primary-color));
+    --ox-red: var(--bs-danger, var(--accent-color));
+    --ox-purple: var(--bs-purple, var(--primary-color));
     color: var(--text-primary);
-    text-decoration: none;
-    touch-action: manipulation;
-}
-.adm-filter--pending {
-    --edge: var(--warning);
-}
-.adm-filter--success {
-    --edge: var(--success);
-}
-.adm-filter--danger {
-    --edge: var(--error);
-}
-.adm-filter--neutral {
-    --edge: var(--text-secondary);
-}
-.adm-filter[aria-current="true"] {
-    border-color: var(--link-color);
-    border-left-color: var(--edge);
-    background: var(--primary-soft);
-}
-.adm-filter__count {
-    font-size: var(--font-size-xl);
-    font-weight: 600;
-    line-height: var(--lh-tight);
-}
-.adm-filter__label {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--sp-1);
-    font-size: var(--font-size-sm);
-    color: var(--text-secondary);
-}
-.adm-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--gap-cards);
-}
-.adm-toolbar form {
-    display: flex;
-    gap: var(--sp-2);
-    flex: 1 1 16rem;
-    min-width: 0;
-}
-.adm-toolbar .form-control,
-.adm-toolbar .form-select {
-    min-width: 0;
-}
-.adm-scroll {
-    overflow-x: auto;
-}
-.adm-table {
-    width: 100%;
-    border-collapse: collapse;
     font-size: var(--font-size-base);
+    line-height: var(--lh-body);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--sp-4));
 }
-.adm-table th {
-    padding: var(--sp-2) var(--sp-3);
-    border-bottom: 1px solid var(--border-color);
-    background: var(--hover-bg);
-    color: var(--text-secondary);
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-    text-align: left;
-    white-space: nowrap;
+.ox a { text-decoration: none; }
+.ox p { margin: 0; }
+.ox [hidden] { display: none !important; }
+.t-navy { --tint: var(--ox-navy); } .t-orange { --tint: var(--ox-orange); } .t-green { --tint: var(--ox-green); } .t-red { --tint: var(--ox-red); } .t-purple { --tint: var(--ox-purple); }
+.ox-ico { display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-full); background: var(--tint); color: var(--bs-white); font-size: var(--font-size-lg); }
+.t-orange .ox-ico, .t-orange.ox-ico { color: var(--on-accent); }
+.ox-wash { position: relative; isolation: isolate; }
+.ox-wash::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--tint); opacity: .14; }
+[data-bs-theme="dark"] .ox-wash::before { opacity: .09; }
+.ox a:focus-visible, .ox button:focus-visible, .ox summary:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+
+/* Header */
+.ox-head { margin: -2rem -1rem var(--gap-sections); padding: calc(2rem + var(--sp-4)) var(--sp-4) var(--sp-5); border-radius: 0 0 var(--radius-xl) var(--radius-xl); background: var(--primary-color); color: var(--bs-white); }
+.ox-head-in { display: grid; gap: var(--sp-4); max-width: var(--ox-w); margin: 0 auto; }
+.ox-head-l { display: flex; align-items: center; gap: var(--sp-2); }
+.ox-back { display: grid; place-items: center; flex: none; width: 2.75rem; height: 2.75rem; margin-left: calc(var(--sp-2) * -1); border-radius: var(--radius-full); color: var(--bs-white); font-size: var(--font-size-xl); }
+.ox-title { margin: 0; font-size: var(--font-size-xl); font-weight: 600; line-height: var(--lh-tight); }
+.ox-sub { margin: var(--sp-1) 0 0; font-size: var(--font-size-sm); color: rgba(255, 255, 255, .85); }
+.ox-bal { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--pad-l); border-radius: var(--radius-lg); background: var(--card-background); color: var(--text-primary); }
+.ox-bal-l { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.ox-total { margin: 0; font-size: var(--font-size-3xl); font-weight: 600; line-height: var(--lh-tight); }
+.ox-link { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1); min-height: 2.75rem; padding: 0 var(--sp-2); color: var(--hl); font-size: var(--font-size-sm); font-weight: 600; }
+@media (hover: hover) { .ox-link:hover { text-decoration: underline; } }
+
+/* Layout and cards (same as the profile page: icon, title, one-line subtitle) */
+.ox-main { display: flex; flex-direction: column; gap: var(--gap-sections); max-width: var(--ox-w); margin: 0 auto; }
+.ox-card { padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card); background: var(--card-background); }
+@media (min-width: 768px) { .ox-card { padding: var(--pad-l); } }
+.ox-sec-h { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.ox-sec-t { flex: 1 1 auto; min-width: 0; }
+.ox-h2 { margin: 0; font-size: var(--font-size-lg); font-weight: 600; line-height: var(--lh-tight); }
+.ox-card-sub { margin: var(--sp-1) 0 0; font-size: var(--font-size-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+.ox-pill { display: inline-flex; align-items: center; gap: var(--sp-1); padding: 0 var(--sp-2); border: 1px solid var(--tint); border-radius: var(--radius-full); font-size: var(--font-size-xs); font-weight: 600; line-height: var(--lh-body); white-space: nowrap; }
+.ox-alert { display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-md); font-size: var(--font-size-sm); line-height: var(--lh-snug); --tint: var(--ox-red); }
+.ox-alert i { margin-top: 1px; color: var(--error-text); }
+.ox-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-cards); }
+.ox-tile { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); line-height: var(--lh-tight); }
+.ox-tile .ox-ico { width: 2rem; height: 2rem; margin-bottom: var(--sp-1); color: var(--bs-white); font-size: var(--font-size-lg); }
+.ox-tile .t-orange.ox-ico { color: var(--on-accent); }
+.ox-tile b { font-size: var(--font-size-xl); font-weight: 600; overflow-wrap: anywhere; }
+.ox-tile span { font-size: var(--font-size-sm); color: var(--text-secondary); }
+.ox-tile small { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.ox-dl { margin: 0; border: 1px solid var(--border-color); border-radius: var(--r-card-s); }
+.ox-dl div { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3); border-top: 1px solid var(--border-color); }
+.ox-dl div:first-child { border-top: 0; }
+.ox-dl dt { font-size: var(--font-size-sm); font-weight: 400; color: var(--text-secondary); }
+.ox-dl dd { margin: 0; font-size: var(--font-size-base); font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+@media (hover: hover) { a.ox-tile:hover, a.ox-row:hover { border-color: var(--hl-edge); } }
+.ox-row { display: flex; align-items: center; gap: var(--sp-3); min-height: 2.75rem; padding: var(--pad-s) var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); color: var(--text-primary); font-size: var(--font-size-base); font-weight: 600; }
+.ox-row .ox-ico { width: 2rem; height: 2rem; }
+.ox-row .bi-chevron-right { margin-left: auto; color: var(--text-secondary); }
+@media (min-width: 768px) { .ox-head-in { gap: var(--sp-5); } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+/* Status pills: one tint per state. The icon and the label carry the meaning, not the colour alone. */
+.st { --tint: var(--text-secondary); }
+.st-pending { --tint: var(--ox-orange); }
+.st-under_review, .st-approved, .st-processing { --tint: var(--hl-edge); }
+.st-completed { --tint: var(--ox-green); }
+.st-rejected, .st-failed { --tint: var(--ox-red); }
+.ox { --ox-w: 72rem; }
+.st-active { --tint: var(--ox-green); }
+
+/* Status filter tiles */
+.aa-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-cards); }
+@media (min-width: 768px) { .aa-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.aa-f { color: var(--text-primary); }
+.aa-f b { font-size: var(--font-size-2xl); font-variant-numeric: tabular-nums; }
+.aa-f[aria-current="true"] { border-color: var(--hl-edge); background: var(--hl-soft); box-shadow: inset 0 0 0 1px var(--hl-edge); }
+@media (hover: hover) { .aa-f:hover { border-color: var(--hl-edge); } }
+.aa-f:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+
+/* Toolbar */
+.aa-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--sp-2); margin-bottom: var(--gap-fields); }
+.aa-bar select { grid-column: 1 / -1; }
+@media (min-width: 640px) { .aa-bar { grid-template-columns: 11rem minmax(0, 1fr) auto; } .aa-bar select { grid-column: auto; } }
+.aa-ctl { box-sizing: border-box; width: 100%; min-height: var(--h-control-lg); padding: 0 var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--background-color); color: var(--text-primary); font: inherit; font-size: var(--font-size-base); }
+select.aa-ctl { padding-right: 2rem; }
+.aa-ctl::placeholder { color: var(--text-secondary); opacity: 1; }
+.aa-ctl:focus { outline: 2px solid var(--accent-color); outline-offset: 1px; border-color: var(--accent-color); box-shadow: none; background-color: var(--background-color); color: var(--text-primary); }
+[data-bs-theme="dark"] .aa-ctl { color-scheme: dark; }
+@supports (-webkit-touch-callout: none) { .aa-ctl { font-size: 16px; } }
+.aa-bar .ox-btn { width: auto; min-width: 3rem; }
+
+/* Applications */
+.aa-list { display: flex; flex-direction: column; gap: var(--gap-cards); margin: 0; padding: 0; list-style: none; }
+.aa-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "who pill" "nums nums" "acts acts"; align-items: center; gap: var(--sp-3) var(--sp-2); padding: var(--pad-m); border: 1px solid var(--border-color); border-radius: var(--r-card-s); background: var(--card-background); }
+.aa-item.is-pending { border-color: var(--ox-orange); }
+.aa-who { grid-area: who; display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+.aa-av { display: grid; place-items: center; flex: none; width: 2.5rem; height: 2.5rem; border-radius: var(--radius-full); background: var(--primary-soft); color: var(--hl); font-weight: 600; text-transform: uppercase; }
+.aa-who-t { min-width: 0; line-height: var(--lh-snug); }
+.aa-who-t b { display: block; font-size: var(--font-size-base); font-weight: 600; overflow-wrap: anywhere; }
+.aa-who-t span { display: block; font-size: var(--font-size-sm); color: var(--text-secondary); overflow-wrap: anywhere; }
+.aa-item > .ox-pill { grid-area: pill; }
+.aa-nums { grid-area: nums; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2) var(--sp-3); margin: 0; padding-top: var(--sp-3); border-top: 1px solid var(--border-color); }
+.aa-nums dt { font-size: var(--font-size-xs); font-weight: 400; color: var(--text-secondary); }
+.aa-nums dd { margin: 0; font-size: var(--font-size-base); font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.aa-nums dd small { display: block; font-size: var(--font-size-xs); font-weight: 400; color: var(--text-secondary); }
+.aa-code { --tint: var(--ox-navy); font-family: var(--bs-font-monospace, monospace); }
+.aa-acts { grid-area: acts; display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.aa-acts .ox-btn { flex: 1 1 7rem; }
+.ox-btn.aa-danger { border: 1px solid var(--ox-red); background: var(--card-background); color: var(--error-text); box-shadow: none; }
+@media (hover: hover) { .ox-btn.aa-danger:not(:disabled):hover { background: var(--ox-red); color: var(--bs-white); border-color: var(--ox-red); } }
+@media (min-width: 992px) {
+    .aa-item { grid-template-columns: minmax(0, 1.5fr) auto minmax(0, 3.2fr) auto; grid-template-areas: "who pill nums acts"; gap: var(--sp-4); }
+    .aa-nums { grid-template-columns: repeat(4, minmax(0, 1fr)); padding-top: 0; border-top: 0; }
+    .aa-acts { flex-wrap: nowrap; justify-content: flex-end; }
+    .aa-acts .ox-btn { flex: none; }
 }
-.adm-table td {
-    padding: var(--sp-2) var(--sp-3);
-    border-bottom: 1px solid var(--border-color);
-    vertical-align: middle;
-}
-.adm-table tbody tr:last-child td {
-    border-bottom: 0;
-}
-.adm-row--pending td:first-child {
-    box-shadow: inset 4px 0 0 var(--warning);
-}
-.adm-table .adm-actions {
-    white-space: nowrap;
-}
-@media (hover: hover) {
-    .adm-table tbody tr:hover {
-        background: var(--hover-bg);
-    }
-}
-.adm-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--sp-1);
-}
-.adm-form {
-    display: grid;
-    gap: var(--gap-fields);
-}
-.adm-empty {
-    display: grid;
-    justify-items: center;
-    gap: var(--sp-1);
-    padding: var(--pad-l) var(--pad-m);
-    text-align: center;
-    color: var(--text-secondary);
-}
-.adm-empty i {
-    font-size: var(--font-size-4xl);
-}
-.adm-empty__title {
-    margin: 0;
-    font-size: var(--font-size-lg);
-    font-weight: 600;
-    color: var(--text-primary);
-}
-.adm-empty p {
-    margin: 0;
-    font-size: var(--font-size-base);
-}
-form[aria-busy="true"] button[type="submit"] {
-    opacity: .7;
-    cursor: progress;
-}
+
+/* Pager */
+.aa-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--sp-2); margin-top: var(--gap-fields); }
+.aa-pager .ox-btn { width: auto; }
+.aa-pager-n { font-size: var(--font-size-sm); font-weight: 600; color: var(--text-secondary); }
+
+/* Empty */
+.aa-empty { display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); padding: var(--sp-6, 2rem) var(--sp-2); text-align: center; }
+.aa-empty .ox-ico { width: 3rem; height: 3rem; font-size: var(--font-size-3xl); }
+.aa-empty h2 { margin: 0 0 var(--sp-1); font-size: var(--font-size-lg); font-weight: 600; }
+.aa-empty p { max-width: 22rem; font-size: var(--font-size-base); color: var(--text-secondary); }
+
+/* Confirm modal (inside .ox so it carries the same hues) */
+.ox .modal-content { --bs-modal-bg: var(--card-background); --bs-modal-color: var(--text-primary); --bs-modal-border-color: var(--border-color); --bs-modal-border-radius: var(--r-card); --bs-modal-inner-border-radius: var(--r-card); background: var(--card-background); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--r-card); }
+.ox .modal-dialog { max-width: 26rem; margin-right: var(--sp-4); margin-left: var(--sp-4); }
+@media (min-width: 468px) { .ox .modal-dialog { margin-right: auto; margin-left: auto; } }
+.ox .modal-header { display: flex; align-items: center; gap: var(--sp-3); padding: var(--pad-l) var(--pad-l) 0; border: 0; }
+.ox .modal-title { flex: 1 1 auto; margin: 0; font-size: var(--font-size-lg); font-weight: 600; }
+.ox .modal-body { display: grid; gap: var(--gap-fields); padding: var(--pad-m) var(--pad-l) var(--pad-l); }
+[data-bs-theme="dark"] .ox .btn-close { filter: invert(1) grayscale(1) brightness(1.6); }
+.aa-lab { display: block; margin-bottom: var(--sp-1); font-size: var(--font-size-sm); font-weight: 600; }
+textarea.aa-ctl { min-height: 5.5rem; padding: var(--sp-2) var(--sp-3); line-height: var(--lh-body); resize: vertical; }
+.aa-mf { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+form[aria-busy="true"] button[type="submit"] { opacity: .7; cursor: progress; }
 </style>
+{% endblock %}
 
-<div class="adm">
+{% block 'Body' %}
+<div class="ox">
 
-    <h1 class="adm-title">Affiliate Approvals</h1>
+    <header class="ox-head">
+        <div class="ox-head-in">
+            <div class="ox-head-l">
+                <a href="{% url 'admin_panel' %}" class="ox-back" aria-label="Back to admin panel"><i class="bi bi-arrow-left" aria-hidden="true"></i></a>
+                <div>
+                    <h1 class="ox-title">Affiliate approvals</h1>
+                    <p class="ox-sub">Review applications and manage affiliates</p>
+                </div>
+            </div>
+            <div class="ox-bal">
+                <div>
+                    <span class="ox-bal-l">Waiting for review</span>
+                    <p class="ox-total">{{ status_counts.pending }}</p>
+                </div>
+            </div>
+        </div>
+    </header>
 
-    <!-- Status filters (the active one carries aria-current) -->
-    <nav class="adm-filters" aria-label="Filter by status">
-        <a href="?status=pending&search={{ search_query|urlencode }}"
-           class="adm-filter adm-filter--pending"{% if status_filter == 'pending' %} aria-current="true"{% endif %}>
-            <span class="adm-filter__count">{{ status_counts.pending }}</span>
-            <span class="adm-filter__label">Pending Review
-                {% if status_filter == 'pending' %}<i class="bi bi-check-circle-fill" aria-hidden="true"></i>{% endif %}
-            </span>
-        </a>
-        <a href="?status=active&search={{ search_query|urlencode }}"
-           class="adm-filter adm-filter--success"{% if status_filter == 'active' %} aria-current="true"{% endif %}>
-            <span class="adm-filter__count">{{ status_counts.active }}</span>
-            <span class="adm-filter__label">Active Affiliates
-                {% if status_filter == 'active' %}<i class="bi bi-check-circle-fill" aria-hidden="true"></i>{% endif %}
-            </span>
-        </a>
-        <a href="?status=rejected&search={{ search_query|urlencode }}"
-           class="adm-filter adm-filter--danger"{% if status_filter == 'rejected' %} aria-current="true"{% endif %}>
-            <span class="adm-filter__count">{{ status_counts.rejected }}</span>
-            <span class="adm-filter__label">Rejected
-                {% if status_filter == 'rejected' %}<i class="bi bi-check-circle-fill" aria-hidden="true"></i>{% endif %}
-            </span>
-        </a>
-        <a href="?status=suspended&search={{ search_query|urlencode }}"
-           class="adm-filter adm-filter--neutral"{% if status_filter == 'suspended' %} aria-current="true"{% endif %}>
-            <span class="adm-filter__count">{{ status_counts.suspended }}</span>
-            <span class="adm-filter__label">Suspended
-                {% if status_filter == 'suspended' %}<i class="bi bi-check-circle-fill" aria-hidden="true"></i>{% endif %}
-            </span>
-        </a>
-    </nav>
+    <div class="ox-main">
 
-    <section class="card adm-card adm-card--flush">
+        <nav class="aa-tabs" aria-label="Filter by status">
+            <a href="?status=pending&amp;search={{ search_query|urlencode }}" class="ox-tile aa-f t-orange"{% if status_filter == 'pending' %} aria-current="true"{% endif %}>
+                <span class="ox-ico t-orange"><i class="bi bi-hourglass-split" aria-hidden="true"></i></span>
+                <b>{{ status_counts.pending }}</b><span>Pending review</span>
+            </a>
+            <a href="?status=active&amp;search={{ search_query|urlencode }}" class="ox-tile aa-f t-green"{% if status_filter == 'active' %} aria-current="true"{% endif %}>
+                <span class="ox-ico t-green"><i class="bi bi-patch-check-fill" aria-hidden="true"></i></span>
+                <b>{{ status_counts.active }}</b><span>Active affiliates</span>
+            </a>
+            <a href="?status=rejected&amp;search={{ search_query|urlencode }}" class="ox-tile aa-f t-red"{% if status_filter == 'rejected' %} aria-current="true"{% endif %}>
+                <span class="ox-ico t-red"><i class="bi bi-x-circle-fill" aria-hidden="true"></i></span>
+                <b>{{ status_counts.rejected }}</b><span>Rejected</span>
+            </a>
+            <a href="?status=suspended&amp;search={{ search_query|urlencode }}" class="ox-tile aa-f t-navy"{% if status_filter == 'suspended' %} aria-current="true"{% endif %}>
+                <span class="ox-ico t-navy"><i class="bi bi-pause-circle-fill" aria-hidden="true"></i></span>
+                <b>{{ status_counts.suspended }}</b><span>Suspended</span>
+            </a>
+        </nav>
 
-        <!-- Filters -->
-        <div class="adm-toolbar adm-head--pad">
-            <form method="get">
-                <select name="status" class="form-select" aria-label="Filter by status" onchange="this.form.submit()">
-                    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Status</option>
+        <section class="ox-card" aria-labelledby="listTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-purple"><i class="bi bi-megaphone-fill" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="listTitle">Applications</h2></div>
+            </div>
+
+            <form method="get" class="aa-bar" id="filterForm" role="search">
+                <select name="status" class="aa-ctl form-select" aria-label="Filter by status">
+                    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All status</option>
                     <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
                     <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
                     <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
                     <option value="suspended" {% if status_filter == 'suspended' %}selected{% endif %}>Suspended</option>
                 </select>
-                <input type="hidden" name="search" value="{{ search_query }}">
+                <input type="search" name="search" class="aa-ctl" autocomplete="off" enterkeyhint="search" aria-label="Search affiliates" placeholder="Username, email or referral code" value="{{ search_query }}">
+                <button type="submit" class="ox-btn ox-btn-neutral" aria-label="Search"><i class="bi bi-search" aria-hidden="true"></i></button>
             </form>
-            <form method="get" role="search">
-                <input type="search" name="search" class="form-control" autocomplete="off" enterkeyhint="search"
-                       aria-label="Search affiliates"
-                       placeholder="Search by username, email, or referral code..." value="{{ search_query }}">
-                <button type="submit" class="btn btn-outline-primary" aria-label="Search">
-                    <i class="bi bi-search" aria-hidden="true"></i>
-                </button>
-                <input type="hidden" name="status" value="{{ status_filter }}">
-            </form>
-        </div>
 
-        <!-- Affiliate Applications Table -->
-        {% if page_obj %}
-        <div class="adm-scroll mt-3">
-            <table class="adm-table">
-                <thead>
-                    <tr>
-                        <th scope="col">User</th>
-                        <th scope="col">Referral Code</th>
-                        <th scope="col">Email</th>
-                        <th scope="col">Status</th>
-                        <th scope="col">Referrals</th>
-                        <th scope="col">Earnings</th>
-                        <th scope="col">Applied</th>
-                        <th scope="col">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for affiliate in page_obj %}
-                    <tr{% if affiliate.status == 'pending' %} class="adm-row--pending"{% endif %}>
-                        <td>
-                            <span class="adm-strong">{{ affiliate.user.get_full_name|default:affiliate.user.username }}</span>
-                            <span class="adm-meta">@{{ affiliate.user.username }}</span>
-                        </td>
-                        <td><span class="adm-badge adm-badge--info">{{ affiliate.referral_code }}</span></td>
-                        <td>{{ affiliate.user.email }}</td>
-                        <td>
-                            {% if affiliate.status == 'pending' %}
-                                <span class="adm-badge adm-badge--pending">Pending</span>
-                            {% elif affiliate.status == 'active' %}
-                                <span class="adm-badge adm-badge--success">Active</span>
-                                {% if affiliate.approved_at %}
-                                <span class="adm-meta">{{ affiliate.approved_at|date:"M d, Y" }}</span>
-                                {% endif %}
-                            {% elif affiliate.status == 'rejected' %}
-                                <span class="adm-badge adm-badge--danger">Rejected</span>
-                            {% elif affiliate.status == 'suspended' %}
-                                <span class="adm-badge">Suspended</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <span class="adm-strong">{{ affiliate.total_referrals }}</span>
-                            {% if affiliate.active_referrals > 0 %}
-                            <span class="adm-meta">{{ affiliate.active_referrals }} active</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <span class="adm-money">₦{{ affiliate.total_earned|floatformat:2 }}</span>
-                            {% if affiliate.pending_balance > 0 %}
-                            <span class="adm-meta">₦{{ affiliate.pending_balance|floatformat:2 }} pending</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {{ affiliate.created_at|date:"M d, Y" }}
-                            <span class="adm-meta">{{ affiliate.created_at|timesince }} ago</span>
-                        </td>
-                        <td>
-                            <div class="adm-actions">
-                                <a href="{% url 'admin_affiliate_detail' affiliate.id %}" class="btn btn-primary btn-sm">
-                                    <i class="bi bi-eye" aria-hidden="true"></i> Review
-                                </a>
-                                {% if affiliate.status == 'pending' %}
-                                <button type="button" class="btn btn-outline-primary btn-sm"
-                                        onclick="quickAction({{ affiliate.id }}, 'approve')">
-                                    <i class="bi bi-check-lg" aria-hidden="true"></i> Approve
-                                </button>
-                                <button type="button" class="btn btn-outline-danger btn-sm"
-                                        onclick="quickAction({{ affiliate.id }}, 'reject')">
-                                    <i class="bi bi-x-lg" aria-hidden="true"></i> Reject
-                                </button>
-                                {% elif affiliate.status == 'active' %}
-                                <button type="button" class="btn btn-outline-secondary btn-sm"
-                                        onclick="quickAction({{ affiliate.id }}, 'suspend')">
-                                    <i class="bi bi-pause-circle" aria-hidden="true"></i> Suspend
-                                </button>
-                                {% elif affiliate.status == 'suspended' %}
-                                <button type="button" class="btn btn-outline-primary btn-sm"
-                                        onclick="quickAction({{ affiliate.id }}, 'approve')">
-                                    <i class="bi bi-play-circle" aria-hidden="true"></i> Reactivate
-                                </button>
-                                {% endif %}
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Pagination -->
-        {% if page_obj.has_other_pages %}
-        <nav aria-label="Affiliate pagination" class="p-3">
-            <ul class="pagination justify-content-center mb-0">
-                {% if page_obj.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page=1&status={{ status_filter }}&search={{ search_query|urlencode }}">First</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}&status={{ status_filter }}&search={{ search_query|urlencode }}">Previous</a>
-                    </li>
-                {% endif %}
-
-                <li class="page-item active">
-                    <span class="page-link">{{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-                </li>
-
-                {% if page_obj.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}&status={{ status_filter }}&search={{ search_query|urlencode }}">Next</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&status={{ status_filter }}&search={{ search_query|urlencode }}">Last</a>
-                    </li>
-                {% endif %}
-            </ul>
-        </nav>
-        {% endif %}
-
-        {% else %}
-        <div class="adm-empty">
-            <i class="bi bi-inbox" aria-hidden="true"></i>
-            <h2 class="adm-empty__title">No affiliate applications found</h2>
-            <p>
-                {% if status_filter == 'pending' %}
-                    No pending affiliate applications at the moment.
-                {% elif search_query %}
-                    No results found for "{{ search_query }}".
-                {% else %}
-                    No affiliate applications have been submitted yet.
-                {% endif %}
-            </p>
-        </div>
-        {% endif %}
-    </section>
-</div>
-
-<!-- Quick Action Modal -->
-<div class="modal fade" id="quickActionModal" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title adm-card__title" id="modalTitle">Confirm Action</h2>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form method="post" id="quickActionForm">
-                {% csrf_token %}
-                <input type="hidden" name="affiliate_id" id="affiliateId">
-                <input type="hidden" name="action" id="actionType">
-
-                <div class="modal-body adm-form">
-                    <p id="modalMessage" class="mb-0"></p>
-                    <div>
-                        <label for="adminNotes" class="form-label">Admin Notes (Optional)</label>
-                        <textarea class="form-control" name="admin_notes" id="adminNotes" rows="3"
-                                  placeholder="Add notes about this decision..."></textarea>
+            {% if page_obj %}
+            <ul class="aa-list">
+                {% for affiliate in page_obj %}
+                <li class="aa-item{% if affiliate.status == 'pending' %} is-pending{% endif %}">
+                    <div class="aa-who">
+                        <span class="aa-av" aria-hidden="true">{{ affiliate.user.username|slice:":1" }}</span>
+                        <div class="aa-who-t">
+                            <b>{{ affiliate.user.get_full_name|default:affiliate.user.username }}</b>
+                            <span>@{{ affiliate.user.username }}</span>
+                            <span>{{ affiliate.user.email }}</span>
+                        </div>
                     </div>
+                    <span class="ox-pill ox-wash st st-{{ affiliate.status }}"><i class="bi {% if affiliate.status == 'pending' %}bi-clock{% elif affiliate.status == 'active' %}bi-patch-check-fill{% elif affiliate.status == 'rejected' %}bi-x-circle-fill{% else %}bi-pause-circle-fill{% endif %}" aria-hidden="true"></i>{{ affiliate.get_status_display }}</span>
+                    <dl class="aa-nums">
+                        <div><dt>Referral code</dt><dd><span class="ox-pill ox-wash aa-code">{{ affiliate.referral_code }}</span></dd></div>
+                        <div><dt>Referrals</dt><dd>{{ affiliate.total_referrals }}{% if affiliate.active_referrals > 0 %}<small>{{ affiliate.active_referrals }} active</small>{% endif %}</dd></div>
+                        <div><dt>Earned</dt><dd>₦{{ affiliate.total_earned|floatformat:"2g" }}{% if affiliate.pending_balance > 0 %}<small>₦{{ affiliate.pending_balance|floatformat:"2g" }} pending</small>{% endif %}</dd></div>
+                        <div><dt>Applied</dt><dd>{{ affiliate.created_at|date:"M d, Y" }}<small>{{ affiliate.created_at|timesince }} ago</small></dd></div>
+                    </dl>
+                    <div class="aa-acts">
+                        <a href="{% url 'admin_affiliate_detail' affiliate.id %}" class="ox-btn ox-btn-sm"><i class="bi bi-eye" aria-hidden="true"></i>Review</a>
+                        {% if affiliate.status == 'pending' %}
+                        <button type="button" class="ox-btn ox-btn-sm ox-btn-neutral" data-qa="approve" data-id="{{ affiliate.id }}"><i class="bi bi-check-lg" aria-hidden="true"></i>Approve</button>
+                        <button type="button" class="ox-btn ox-btn-sm ox-btn-neutral aa-danger" data-qa="reject" data-id="{{ affiliate.id }}"><i class="bi bi-x-lg" aria-hidden="true"></i>Reject</button>
+                        {% elif affiliate.status == 'active' %}
+                        <button type="button" class="ox-btn ox-btn-sm ox-btn-neutral aa-danger" data-qa="suspend" data-id="{{ affiliate.id }}"><i class="bi bi-pause-circle" aria-hidden="true"></i>Suspend</button>
+                        {% elif affiliate.status == 'suspended' %}
+                        <button type="button" class="ox-btn ox-btn-sm ox-btn-neutral" data-qa="approve" data-label="Reactivate" data-id="{{ affiliate.id }}"><i class="bi bi-play-circle" aria-hidden="true"></i>Reactivate</button>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+
+            {% if page_obj.has_other_pages %}
+            <nav class="aa-pager" aria-label="Affiliate pagination">
+                {% if page_obj.has_previous %}
+                <a class="ox-btn ox-btn-sm ox-btn-neutral" href="?page=1&amp;status={{ status_filter }}&amp;search={{ search_query|urlencode }}">First</a>
+                <a class="ox-btn ox-btn-sm ox-btn-neutral" href="?page={{ page_obj.previous_page_number }}&amp;status={{ status_filter }}&amp;search={{ search_query|urlencode }}">Previous</a>
+                {% endif %}
+                <span class="aa-pager-n">{{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                {% if page_obj.has_next %}
+                <a class="ox-btn ox-btn-sm ox-btn-neutral" href="?page={{ page_obj.next_page_number }}&amp;status={{ status_filter }}&amp;search={{ search_query|urlencode }}">Next</a>
+                <a class="ox-btn ox-btn-sm ox-btn-neutral" href="?page={{ page_obj.paginator.num_pages }}&amp;status={{ status_filter }}&amp;search={{ search_query|urlencode }}">Last</a>
+                {% endif %}
+            </nav>
+            {% endif %}
+
+            {% else %}
+            <div class="aa-empty">
+                <span class="ox-ico t-purple"><i class="bi bi-inbox" aria-hidden="true"></i></span>
+                <div>
+                    <h2>No affiliate applications found</h2>
+                    <p>{% if search_query %}No results for "{{ search_query }}".{% elif status_filter == 'pending' %}No pending applications right now.{% else %}No affiliate applications have been submitted yet.{% endif %}</p>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="confirmBtn">Confirm</button>
+            </div>
+            {% endif %}
+        </section>
+
+    </div>
+
+    {# ---- Confirm action modal ---- #}
+    <div class="modal fade" id="quickActionModal" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title" id="modalTitle">Confirm action</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-            </form>
+                <form method="post" id="quickActionForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="affiliate_id" id="affiliateId">
+                    <input type="hidden" name="action" id="actionType">
+                    <div class="modal-body">
+                        <p id="modalMessage"></p>
+                        <div>
+                            <label for="adminNotes" class="aa-lab">Admin notes (optional)</label>
+                            <textarea class="aa-ctl" name="admin_notes" id="adminNotes" rows="3" placeholder="Add notes about this decision..."></textarea>
+                        </div>
+                        <div class="aa-mf">
+                            <button type="button" class="ox-btn ox-btn-neutral" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="ox-btn" id="confirmBtn">Confirm</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
+
 </div>
 
 <script>
-function quickAction(affiliateId, action) {
-    const modal = new bootstrap.Modal(document.getElementById('quickActionModal'));
+document.addEventListener('DOMContentLoaded', function () {
+    var byId = function (id) { return document.getElementById(id); };
 
-    document.getElementById('affiliateId').value = affiliateId;
-    document.getElementById('actionType').value = action;
-
-    // Set modal content based on action
-    let title, message, btnClass, btnText;
-
-    switch(action) {
-        case 'approve':
-            title = 'Approve Affiliate';
-            message = 'Are you sure you want to APPROVE this affiliate? They will be able to earn commissions immediately.';
-            btnClass = 'btn-primary';
-            btnText = 'Approve';
-            break;
-        case 'reject':
-            title = 'Reject Application';
-            message = 'Are you sure you want to REJECT this affiliate application? The user will be notified.';
-            btnClass = 'btn-danger';
-            btnText = 'Reject';
-            break;
-        case 'suspend':
-            title = 'Suspend Affiliate';
-            message = 'Are you sure you want to SUSPEND this affiliate? They will stop earning commissions.';
-            btnClass = 'btn-danger';
-            btnText = 'Suspend';
-            break;
+    // Status select submits straight away
+    var bar = byId('filterForm');
+    if (bar) {
+        var sel = bar.querySelector('select');
+        if (sel) sel.addEventListener('change', function () { bar.submit(); });
     }
 
-    document.getElementById('modalTitle').textContent = title;
-    document.getElementById('modalMessage').textContent = message;
+    var modalEl = byId('quickActionModal');
+    var form = byId('quickActionForm');
+    var confirmBtn = byId('confirmBtn');
+    var copy = {
+        approve: { title: 'Approve affiliate', msg: 'Are you sure you want to APPROVE this affiliate? They will be able to earn commissions immediately.', label: 'Approve', danger: false },
+        reject: { title: 'Reject application', msg: 'Are you sure you want to REJECT this affiliate application? The user will be notified.', label: 'Reject', danger: true },
+        suspend: { title: 'Suspend affiliate', msg: 'Are you sure you want to SUSPEND this affiliate? They will stop earning commissions.', label: 'Suspend', danger: true }
+    };
 
-    const confirmBtn = document.getElementById('confirmBtn');
-    confirmBtn.className = `btn ${btnClass}`;
-    confirmBtn.textContent = btnText;
-
-    modal.show();
-}
-
-// Ignore a second submit of the modal form (the button stays enabled so the form data is intact)
-(function () {
-    const form = document.getElementById('quickActionForm');
-    form.addEventListener('submit', function (e) {
-        if (form.dataset.busy) { e.preventDefault(); return; }
-        form.dataset.busy = '1';
-        form.setAttribute('aria-busy', 'true');
+    document.querySelectorAll('[data-qa]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var action = btn.getAttribute('data-qa');
+            var c = copy[action];
+            if (!c || !modalEl || !window.bootstrap) return;
+            byId('affiliateId').value = btn.getAttribute('data-id');
+            byId('actionType').value = action;
+            byId('modalTitle').textContent = btn.getAttribute('data-label') === 'Reactivate' ? 'Reactivate affiliate' : c.title;
+            byId('modalMessage').textContent = btn.getAttribute('data-label') === 'Reactivate' ? 'Reactivate this affiliate? They will start earning commissions again.' : c.msg;
+            confirmBtn.textContent = btn.getAttribute('data-label') || c.label;
+            confirmBtn.classList.toggle('aa-danger', c.danger);
+            confirmBtn.classList.toggle('ox-btn-neutral', c.danger);
+            window.bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        });
     });
-    window.addEventListener('pageshow', function (e) {
-        if (e.persisted) { delete form.dataset.busy; form.removeAttribute('aria-busy'); }
-    });
-})();
 
-// Auto-refresh pending count every 60 seconds
-{% if status_filter == 'pending' %}
-setInterval(function() {
-    if (document.visibilityState === 'visible') {
-        // Could add AJAX call here to just update the count
-        const currentUrl = new URL(window.location.href);
-        fetch(currentUrl.pathname + '?ajax=1&status=pending')
-            .then(response => response.json())
-            .then(data => {
-                // Update pending count without full reload
-                if (data.pending_count !== {{ status_counts.pending }}) {
-                    location.reload();
-                }
-            })
-            .catch(function () { /* endpoint missing or offline: skip this tick */ });
+    // Ignore a second submit (the button stays enabled so the form data is intact)
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            if (form.dataset.busy) { e.preventDefault(); return; }
+            form.dataset.busy = '1';
+            form.setAttribute('aria-busy', 'true');
+        });
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted) { delete form.dataset.busy; form.removeAttribute('aria-busy'); }
+        });
     }
-}, 60000);
-{% endif %}
+});
 </script>
 {% endblock %}
-{% block 'Footer'%}
-{% endblock%}
+{% block 'Footer' %}{% endblock %}
