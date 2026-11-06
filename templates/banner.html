@@ -1,48 +1,49 @@
 {% comment %}
-This template handles ALL banner types dynamically based on what's passed in
+Handles ALL banner types (global + section positions).
 Usage: {% include 'banner.html' with banners=your_banner_list %}
+Layout note: pages (.ox, .pl, .hm) are flex columns with a gap, so a banner is full width
+and adds no outer margin of its own; the page gap does the spacing.
+Safe to include several times on one page: each carousel is initialised once.
 {% endcomment %}
 
 {% if banners %}
 {% with first_banner=banners|first %}
 
-{% comment %}GLOBAL BANNERS - Top of pages{% endcomment %}
+{% comment %}GLOBAL BANNERS - top of pages{% endcomment %}
 {% if first_banner.is_global_banner %}
 <div class="global-banner-section" aria-label="Advertisement Banners">
     <div class="global-banner-container">
         {% for banner in banners %}
-        <div class="global-banner-slide {% if forloop.first %}active{% endif %}" 
+        <div class="global-banner-slide {% if forloop.first %}active{% endif %}"
             data-index="{{ forloop.counter0 }}"
             data-url="{{ banner.url }}"
             role="group"
             aria-label="Banner slide {{ forloop.counter }} of {{ banners|length }}">
-            <a href="{{ banner.url }}" class="global-banner-link" target="_blank" rel="noopener">
+            <a href="{{ banner.url }}" class="global-banner-link" target="_blank" rel="noopener sponsored">
                 <picture>
                     {% if banner.mobile_image %}
                     <source media="(max-width: 768px)" srcset="{{ banner.mobile_image.url }}">
                     {% endif %}
-                    <img src="{{ banner.image.url }}" 
+                    <img src="{{ banner.image.url }}"
                         alt="{{ banner.get_alt_text }}"
                         class="global-banner-image"
+                        decoding="async"
                         loading="{% if forloop.first %}eager{% else %}lazy{% endif %}">
                 </picture>
-                
-                <div class="ad-label">
-                    <span>Sponsored</span>
-                </div>
+                <div class="ad-label"><span>Sponsored</span></div>
             </a>
         </div>
         {% endfor %}
-        
+
         {% if banners|length > 1 %}
         <div class="global-banner-controls">
-            <button class="global-nav-button global-prev-button" aria-label="Previous banner">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+            <button type="button" class="global-nav-button global-prev-button" aria-label="Previous banner">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
                     <path fill="currentColor" d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
                 </svg>
             </button>
-            <button class="global-nav-button global-next-button" aria-label="Next banner">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+            <button type="button" class="global-nav-button global-next-button" aria-label="Next banner">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
                     <path fill="currentColor" d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/>
                 </svg>
             </button>
@@ -50,53 +51,52 @@ Usage: {% include 'banner.html' with banners=your_banner_list %}
 
         <div class="global-banner-progress">
             {% for banner in banners %}
-            <div class="global-progress-dot {% if forloop.first %}active{% endif %}"
-                data-index="{{ forloop.counter0 }}">
-                <div class="global-progress-inner"></div>
-            </div>
+            <button type="button" class="global-progress-dot {% if forloop.first %}active{% endif %}"
+                data-index="{{ forloop.counter0 }}" aria-label="Show banner {{ forloop.counter }}">
+                <span class="global-progress-inner"></span>
+            </button>
             {% endfor %}
         </div>
         {% endif %}
     </div>
 </div>
 
-{% comment %}SECTION BANNERS - Homepage positions{% endcomment %}
+{% comment %}SECTION BANNERS - homepage positions{% endcomment %}
 {% else %}
 <div class="section-banner-section" aria-label="Advertisement">
     <div class="section-banner-container">
         {% for banner in banners %}
-        <div class="section-banner-slide {% if forloop.first %}active{% endif %}" 
+        <div class="section-banner-slide {% if forloop.first %}active{% endif %}"
             data-index="{{ forloop.counter0 }}"
             data-url="{{ banner.url }}"
             role="group"
             aria-label="Banner slide {{ forloop.counter }} of {{ banners|length }}"
-            style="{% if banner.background_color %}background-color: {{ banner.background_color }};{% endif %}">
-            <a href="{{ banner.url }}" class="section-banner-link" target="_blank" rel="noopener">
+            {% if banner.background_color %}style="background-color: {{ banner.background_color }};"{% endif %}>
+            <a href="{{ banner.url }}" class="section-banner-link" target="_blank" rel="noopener sponsored">
                 <picture>
                     {% if banner.mobile_image %}
                     <source media="(max-width: 768px)" srcset="{{ banner.mobile_image.url }}">
                     {% endif %}
-                    <img src="{{ banner.image.url }}" 
+                    <img src="{{ banner.image.url }}"
                         alt="{{ banner.get_alt_text }}"
                         class="section-banner-image"
+                        decoding="async"
                         loading="lazy">
                 </picture>
-                <div class="ad-label">
-                    <span>Sponsored</span>
-                </div>
+                <div class="ad-label"><span>Sponsored</span></div>
             </a>
         </div>
         {% endfor %}
-        
+
         {% if banners|length > 1 %}
         <div class="section-banner-controls">
-            <button class="section-nav-button section-prev-button" aria-label="Previous banner">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+            <button type="button" class="section-nav-button section-prev-button" aria-label="Previous banner">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
                     <path fill="currentColor" d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
                 </svg>
             </button>
-            <button class="section-nav-button section-next-button" aria-label="Next banner">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+            <button type="button" class="section-nav-button section-next-button" aria-label="Next banner">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
                     <path fill="currentColor" d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/>
                 </svg>
             </button>
@@ -104,10 +104,10 @@ Usage: {% include 'banner.html' with banners=your_banner_list %}
 
         <div class="section-banner-progress">
             {% for banner in banners %}
-            <div class="section-progress-dot {% if forloop.first %}active{% endif %}"
-                data-index="{{ forloop.counter0 }}">
-                <div class="section-progress-inner"></div>
-            </div>
+            <button type="button" class="section-progress-dot {% if forloop.first %}active{% endif %}"
+                data-index="{{ forloop.counter0 }}" aria-label="Show banner {{ forloop.counter }}">
+                <span class="section-progress-inner"></span>
+            </button>
             {% endfor %}
         </div>
         {% endif %}
@@ -117,482 +117,293 @@ Usage: {% include 'banner.html' with banners=your_banner_list %}
 {% endwith %}
 
 <style>
-
-.global-banner-section {
-    margin: 1rem auto;
-    max-width: 100%;
-    padding: 0rem;
-}
-
-.global-banner-container {
-    position: relative;
-    border-radius: 1rem;
-    overflow: hidden;
-    aspect-ratio: 6/1;
-    background: var(--background-color, #f8f9fa);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    touch-action: pan-y pinch-zoom;
-}
-
-.global-banner-slide {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    transition: opacity 0.5s ease;
-    transform: translateZ(0);
-}
-
-.global-banner-slide.active {
-    opacity: 1;
-    z-index: 1;
-}
-
-.global-banner-link {
-    display: block;
-    height: 100%;
-    text-decoration: none;
-}
-
-.global-banner-image {
-    width: 100%;
-    height: 100%;
-    object-fit: fill;
-    transition: transform 0.3s ease;
-}
-
-.global-banner-link:hover .global-banner-image {
-    transform: scale(1.02);
-}
-
-.global-banner-controls {
-    position: absolute;
-    top: 50%;
-    left: 0;
-    right: 0;
-    transform: translateY(-50%);
-    z-index: 2;
-    display: flex;
-    justify-content: space-between;
-    padding: 0 1rem;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
-}
-
-.global-banner-container:hover .global-banner-controls {
-    opacity: 0.8;
-    pointer-events: auto;
-}
-
-.global-nav-button {
-    background: rgba(0, 0, 0, 0.7);
-    border: none;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.global-nav-button:hover {
-    background: rgba(0, 0, 0, 0.9);
-    transform: scale(1.1);
-}
-
-.global-banner-progress {
-    position: absolute;
-    bottom: 0.5rem;
-    left: 0;
-    right: 0;
-    z-index: 2;
-    display: flex;
-    justify-content: center;
-    gap: 0.25rem;
-    opacity: 0.15;
-}
-
-.global-progress-dot {
-    width: 8px;
-    height: 1.5px;
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 1px;
-    overflow: hidden;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.global-progress-dot:hover {
-    background: rgba(255, 255, 255, 0.5);
-    opacity: 0.4;
-}
-
-.global-progress-dot.active {
-    background: rgba(255, 255, 255, 0.7);
-}
-
-.global-progress-dot.active .global-progress-inner {
-    width: 100%;
-    height: 100%;
-    background: rgba(255, 255, 255, 0.6);
-    transform-origin: left;
-    animation: globalProgress 4s linear;
-}
-
-@keyframes globalProgress {
-    from { transform: scaleX(0); }
-    to { transform: scaleX(1); }
-}
-
-/* ========== SECTION BANNER STYLES ========== */
-
+/* Banners: one compact look for global and section banners, built on the shared design tokens.
+   Width is explicit (100%): inside the flex-column pages an auto-margin section would shrink to
+   its contents, and the slides are absolutely positioned, so it collapsed to zero width. */
+.global-banner-section,
 .section-banner-section {
-    margin: 2rem auto;
-    max-width: 100%;
-    padding: 0 1rem;
+    display: block;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
 }
 
+.global-banner-container,
 .section-banner-container {
+    --bn-interval: 7s;                      /* keep in step with INTERVAL in the script below */
     position: relative;
-    border-radius: 1rem;
+    isolation: isolate;                     /* keeps the slide/controls z-indexes inside the banner */
+    width: 100%;
     overflow: hidden;
-    aspect-ratio: 6/1;
-    background: var(--card-background, #ffffff);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    touch-action: pan-y pinch-zoom;
-    transition: all 0.3s ease;
+    aspect-ratio: 6 / 1;
+    border: 1px solid var(--border-color, rgba(0, 0, 0, .12));
+    border-radius: var(--r-card, .75rem);
+    background: var(--card-background, #fff);
+    touch-action: pan-y pinch-zoom;         /* vertical scroll stays native, horizontal swipes reach the script */
 }
 
-.section-banner-container:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-}
-
+.global-banner-slide,
 .section-banner-slide {
     position: absolute;
     inset: 0;
     opacity: 0;
-    transition: opacity 0.5s ease;
-    transform: translateZ(0);
+    visibility: hidden;                     /* hidden slides cannot be tabbed to or read aloud */
+    transition: opacity .4s ease, visibility 0s linear .4s;
 }
 
+.global-banner-slide.active,
 .section-banner-slide.active {
     opacity: 1;
+    visibility: visible;
     z-index: 1;
+    transition-delay: 0s;
 }
 
+.global-banner-link,
 .section-banner-link {
     display: block;
     height: 100%;
     text-decoration: none;
 }
 
+.global-banner-image,
 .section-banner-image {
+    display: block;
     width: 100%;
     height: 100%;
-    object-fit: fill;
-    transition: transform 0.3s ease;
-}
-
-.section-banner-link:hover .section-banner-image {
-    transform: scale(1.02);
+    object-fit: cover;
 }
 
 .ad-label {
     position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
+    top: var(--sp-1, .25rem);
+    right: var(--sp-1, .25rem);
     z-index: 3;
-    background: rgba(0, 0, 0, 0.6);
-    color: white;
-    padding: 0.2rem 0.375rem;
-    border-radius: 0.25rem;
-    font-size: 0.4rem;
-    font-weight: 500;
+    padding: 0 var(--sp-1, .25rem);
+    border-radius: var(--radius-sm, .25rem);
+    background: rgba(0, 0, 0, .55);
+    color: #fff;
+    font-size: var(--font-size-xs, .6875rem);
+    line-height: 1.5;
+    letter-spacing: .04em;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    backdrop-filter: blur(4px);
-    opacity: 0.8;
-    transition: opacity 0.3s ease;
-}
-
-.ad-label:hover {
-    opacity: 1;
-}
-
-.section-banner-controls {
-    position: absolute;
-    top: 50%;
-    left: 0;
-    right: 0;
-    transform: translateY(-50%);
-    z-index: 2;
-    display: flex;
-    justify-content: space-between;
-    padding: 0 1rem;
-    opacity: 0;
-    transition: opacity 0.3s ease;
     pointer-events: none;
 }
 
-.section-banner-container:hover .section-banner-controls {
-    opacity: 0.8;
-    pointer-events: auto;
-}
-
-.section-nav-button {
-    background: rgba(0, 0, 0, 0.7);
-    border: none;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
+.global-banner-controls,
+.section-banner-controls {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
     display: flex;
     align-items: center;
-    justify-content: center;
-    color: white;
+    justify-content: space-between;
+    padding: 0 var(--sp-2, .5rem);
+    opacity: 0;
+    transition: opacity .2s ease;
+    pointer-events: none;                   /* clicks pass through to the banner link */
+}
+
+.global-banner-container:hover .global-banner-controls,
+.global-banner-container:focus-within .global-banner-controls,
+.section-banner-container:hover .section-banner-controls,
+.section-banner-container:focus-within .section-banner-controls {
+    opacity: 1;
+}
+
+.global-nav-button,
+.section-nav-button {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-full, 999px);
+    background: rgba(0, 0, 0, .55);
+    color: #fff;
     cursor: pointer;
-    transition: all 0.3s ease;
+    pointer-events: auto;
+    transition: background-color .2s ease;
 }
 
+.global-nav-button:hover,
 .section-nav-button:hover {
-    background: rgba(0, 0, 0, 0.9);
-    transform: scale(1.1);
+    background: rgba(0, 0, 0, .8);
 }
 
+.global-banner-progress,
 .section-banner-progress {
     position: absolute;
-    bottom: 0.5rem;
     left: 0;
     right: 0;
+    bottom: var(--sp-1, .25rem);
     z-index: 2;
     display: flex;
     justify-content: center;
-    gap: 0.25rem;
-    opacity: 0.15;
+    gap: var(--sp-1, .25rem);
+    pointer-events: none;
 }
 
+.global-progress-dot,
 .section-progress-dot {
-    width: 8px;
-    height: 1.5px;
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 1px;
-    overflow: hidden;
+    position: relative;
+    width: 1.25rem;
+    height: 3px;
+    padding: 0;
+    border: 0;
+    border-radius: 2px;
+    background: rgba(0, 0, 0, .35);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, .25);
     cursor: pointer;
-    transition: all 0.3s ease;
+    pointer-events: auto;
 }
 
-.section-progress-dot:hover {
-    background: rgba(255, 255, 255, 0.5);
-    opacity: 0.4;
+.global-progress-dot::before,
+.section-progress-dot::before {             /* larger tap area than the 3px bar */
+    content: "";
+    position: absolute;
+    inset: -8px -2px;
 }
 
-.section-progress-dot.active {
-    background: rgba(255, 255, 255, 0.7);
-}
-
-.section-progress-dot.active .section-progress-inner {
-    width: 100%;
-    height: 100%;
-    background: rgba(255, 255, 255, 0.6);
+.global-progress-inner,
+.section-progress-inner {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: #fff;
+    transform: scaleX(0);
     transform-origin: left;
-    animation: sectionProgress 4s linear;
 }
 
-@keyframes sectionProgress {
+.global-progress-dot.active .global-progress-inner,
+.section-progress-dot.active .section-progress-inner {
+    animation: bnProgress var(--bn-interval, 7s) linear forwards;
+}
+
+.global-banner-container:hover .global-progress-dot.active .global-progress-inner,
+.section-banner-container:hover .section-progress-dot.active .section-progress-inner {
+    animation-play-state: paused;           /* autoplay pauses on hover, so the bar pauses too */
+}
+
+@keyframes bnProgress {
     from { transform: scaleX(0); }
-    to { transform: scaleX(1); }
+    to   { transform: scaleX(1); }
 }
 
-/* ========== RESPONSIVE DESIGN ========== */
 @media (max-width: 768px) {
     .global-banner-container,
     .section-banner-container {
-        aspect-ratio: 4/1;
-        border-radius: 0.5rem;
+        aspect-ratio: 4 / 1;
+        border-radius: var(--r-card-s, .5rem);
     }
 
     .global-banner-controls,
     .section-banner-controls {
         display: none;
     }
-    
-    .section-banner-section {
-        margin: 1.5rem auto;
-        padding: 0 0.5rem;
-    }
 }
 
-@media (max-width: 480px) {
-    .global-banner-container,
-    .section-banner-container {
-        aspect-ratio: 4/1;
-    }
-}
+@media (prefers-reduced-motion: reduce) {
+    .global-banner-slide,
+    .section-banner-slide { transition: none; }
 
-[data-bs-theme="dark"] .section-banner-container,
-[data-bs-theme="dark"] .global-banner-container {
-    background: var(--card-background, #212529);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-}
-
-[data-bs-theme="dark"] .section-banner-container:hover {
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    .global-progress-dot.active .global-progress-inner,
+    .section-progress-dot.active .section-progress-inner { animation: none; transform: scaleX(1); }
 }
 </style>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize ALL global banners
-        document.querySelectorAll('.global-banner-container').forEach(container => {
-            initializeBannerCarousel(container, {
-                slideSelector: '.global-banner-slide',
-                dotsSelector: '.global-progress-dot',
-                prevButtonSelector: '.global-prev-button',
-                nextButtonSelector: '.global-next-button',
-                progressInnerSelector: '.global-progress-inner'
-            });
-        });
-    
-        // Initialize ALL section banners
-        document.querySelectorAll('.section-banner-container').forEach(container => {
-            initializeBannerCarousel(container, {
-                slideSelector: '.section-banner-slide',
-                dotsSelector: '.section-progress-dot',
-                prevButtonSelector: '.section-prev-button',
-                nextButtonSelector: '.section-next-button',
-                progressInnerSelector: '.section-progress-inner'
-            });
-        });
-    
-        function initializeBannerCarousel(bannerContainer, selectors) {
-            if (!bannerContainer) return;
-    
-            const slides = bannerContainer.querySelectorAll(selectors.slideSelector);
-            const progressDots = bannerContainer.querySelectorAll(selectors.dotsSelector);
-            const prevButton = bannerContainer.querySelector(selectors.prevButtonSelector);
-            const nextButton = bannerContainer.querySelector(selectors.nextButtonSelector);
-            
-            if (slides.length <= 1) return;
-            
-            let currentSlide = 0;
-            let autoplayInterval;
-            let touchStartX = 0;
-            let touchEndX = 0;
-            let isDragging = false;
-    
-            function showSlide(index, resetProgress = true) {
-                slides[currentSlide].classList.remove('active');
-                progressDots[currentSlide].classList.remove('active');
-                
-                currentSlide = (index + slides.length) % slides.length;
-                
-                slides[currentSlide].classList.add('active');
-                progressDots[currentSlide].classList.add('active');
-                
-                if (resetProgress) {
-                    const dot = progressDots[currentSlide];
-                    const inner = dot.querySelector(selectors.progressInnerSelector);
-                    if (inner) {
-                        inner.style.animation = 'none';
-                        inner.offsetHeight;
-                        inner.style.animation = null;
-                    }
-                }
-            }
-    
-            function nextSlide() {
-                showSlide(currentSlide + 1);
-            }
-    
-            function prevSlide() {
-                showSlide(currentSlide - 1);
-            }
-    
-            function startAutoplay() {
-                stopAutoplay();
-                autoplayInterval = setInterval(nextSlide, 7000);
-            }
-    
-            function stopAutoplay() {
-                if (autoplayInterval) {
-                    clearInterval(autoplayInterval);
-                }
-            }
-    
-            // Prevent carousel navigation when clicking on links
-            const links = bannerContainer.querySelectorAll('a');
-            links.forEach(link => {
-                link.addEventListener('click', (e) => {
-                    // Allow the link to work normally, don't interfere
-                    stopAutoplay();
-                });
-            });
+(function () {
+    var INTERVAL = 7000;                    /* keep in step with --bn-interval in the CSS above */
+    var SWIPE_MIN = 40;
+    var KINDS = [
+        { box: '.global-banner-container', slide: '.global-banner-slide', dot: '.global-progress-dot',
+          prev: '.global-prev-button', next: '.global-next-button', inner: '.global-progress-inner' },
+        { box: '.section-banner-container', slide: '.section-banner-slide', dot: '.section-progress-dot',
+          prev: '.section-prev-button', next: '.section-next-button', inner: '.section-progress-inner' }
+    ];
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-            bannerContainer.addEventListener('touchstart', (e) => {
-                // Don't interfere if clicking on a link
-                if (e.target.closest('a')) return;
-                
-                touchStartX = e.touches[0].clientX;
-                isDragging = true;
-                stopAutoplay();
-            }, { passive: true });
-    
-            bannerContainer.addEventListener('touchmove', (e) => {
-                if (!isDragging) return;
-                // Don't interfere if touching a link
-                if (e.target.closest('a')) return;
-                
-                e.preventDefault();
-                touchEndX = e.touches[0].clientX;
-            }, { passive: false });
-    
-            bannerContainer.addEventListener('touchend', (e) => {
-                if (!isDragging) return;
-                // Don't interfere if clicking on a link
-                if (e.target.closest('a')) return;
-                
-                isDragging = false;
-                const diff = touchStartX - touchEndX;
-    
-                if (Math.abs(diff) > 50) {
-                    if (diff > 0) {
-                        nextSlide();
-                    } else {
-                        prevSlide();
-                    }
-                }
-                startAutoplay();
-            });
-    
-            if (prevButton) {
-                prevButton.addEventListener('click', () => {
-                    prevSlide();
-                    startAutoplay();
-                });
-            }
-    
-            if (nextButton) {
-                nextButton.addEventListener('click', () => {
-                    nextSlide();
-                    startAutoplay();
-                });
-            }
-    
-            progressDots.forEach((dot, index) => {
-                dot.addEventListener('click', () => {
-                    showSlide(index);
-                    startAutoplay();
-                });
-            });
-    
-            bannerContainer.addEventListener('mouseenter', stopAutoplay);
-            bannerContainer.addEventListener('mouseleave', startAutoplay);
-    
-            startAutoplay();
+    function setup(box, s) {
+        if (box.dataset.bnReady) return;    /* this file may be included several times per page */
+        box.dataset.bnReady = '1';
+
+        var slides = box.querySelectorAll(s.slide);
+        var dots = box.querySelectorAll(s.dot);
+        if (slides.length < 2) return;
+
+        var current = 0, timer = null, x0 = 0, y0 = 0, swiped = false;
+
+        function restartProgress() {
+            var inner = dots[current] && dots[current].querySelector(s.inner);
+            if (!inner) return;
+            inner.style.animation = 'none';
+            void inner.offsetWidth;
+            inner.style.animation = '';
         }
-    });
+
+        function show(i) {
+            slides[current].classList.remove('active');
+            dots[current].classList.remove('active');
+            current = (i + slides.length) % slides.length;
+            slides[current].classList.add('active');
+            dots[current].classList.add('active');
+            restartProgress();
+        }
+
+        function stop() { if (timer) { clearInterval(timer); timer = null; } }
+        function start() {
+            stop();
+            if (reduceMotion || document.hidden) return;
+            restartProgress();              /* progress bar and autoplay timer start together */
+            timer = setInterval(function () { show(current + 1); }, INTERVAL);
+        }
+
+        var prev = box.querySelector(s.prev), next = box.querySelector(s.next);
+        if (prev) prev.addEventListener('click', function () { show(current - 1); start(); });
+        if (next) next.addEventListener('click', function () { show(current + 1); start(); });
+        dots.forEach(function (dot, i) {
+            dot.addEventListener('click', function () { show(i); start(); });
+        });
+
+        /* Swipe: horizontal only, never blocks page scrolling, and never opens the link by accident */
+        box.addEventListener('touchstart', function (e) {
+            var t = e.touches[0];
+            x0 = t.clientX; y0 = t.clientY; swiped = false;
+            stop();
+        }, { passive: true });
+        box.addEventListener('touchend', function (e) {
+            var t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+            if (Math.abs(dx) > SWIPE_MIN && Math.abs(dx) > Math.abs(dy) * 1.5) {
+                swiped = true;
+                show(dx < 0 ? current + 1 : current - 1);
+            }
+            start();
+        }, { passive: true });
+        box.addEventListener('click', function (e) {
+            if (swiped) { e.preventDefault(); swiped = false; }
+        }, true);
+
+        box.addEventListener('mouseenter', stop);
+        box.addEventListener('mouseleave', start);
+        document.addEventListener('visibilitychange', function () { document.hidden ? stop() : start(); });
+
+        start();
+    }
+
+    function initAll() {
+        KINDS.forEach(function (k) {
+            document.querySelectorAll(k.box).forEach(function (box) { setup(box, k); });
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAll);
+    } else {
+        initAll();
+    }
+})();
 </script>
 {% endif %}
