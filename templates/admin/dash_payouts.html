@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Affiliate payouts - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% include 'admin/_ox_head.html' with title="Affiliate payouts" sub="Commission withdrawals" label="Owed right now" value=open_total|floatformat:2|intcomma %}
+
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav_dash.html' with active="payouts" %}
+        {% include 'admin/_ox_tabs.html' with tabs=tabs current=status param="status" q=q cols=6 %}
+
+        <div class="ox-alert t-navy ox-wash" role="note"><i class="bi bi-info-circle-fill" aria-hidden="true"></i><span>The amount leaves the affiliate's available balance when they request it. Rejecting gives it back. Completing records it as withdrawn.</span></div>
+
+        <section class="ox-card" aria-labelledby="listTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-purple"><i class="bi bi-people" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="listTitle">Payouts</h2></div>
+            </div>
+
+            <form method="get" class="ox-bar" role="search">
+                <input type="hidden" name="status" value="{{ status }}">
+                <input type="search" name="q" class="ox-ctl ox-grow" autocomplete="off" enterkeyhint="search" aria-label="Search payouts" placeholder="Referral code, username or account" value="{{ q }}">
+                <button type="submit" class="ox-btn ox-btn-neutral" aria-label="Search"><i class="bi bi-search" aria-hidden="true"></i></button>
+            </form>
+
+            {% if page_obj.object_list %}
+            <ul class="ox-list">
+                {% for w in page_obj %}
+                <li class="ox-item has-body{% if w.status == 'pending' %} is-flag{% endif %}">
+                    <div class="ox-who">
+                        <span class="ox-av" aria-hidden="true">{{ w.affiliate.user.username|slice:":1" }}</span>
+                        <div class="ox-who-t">
+                            <b>@{{ w.affiliate.user.username }}</b>
+                            <a href="{% url 'admin_affiliate_detail' w.affiliate.pk %}">{{ w.affiliate.referral_code }}</a>
+                        </div>
+                    </div>
+                    <span class="ox-pill ox-wash st st-{{ w.status }}">{{ w.get_status_display }}</span>
+
+                    <div class="ox-body">
+                        <dl class="ox-dl">
+                            <div><dt>Bank</dt><dd>{{ w.bank_name }}</dd></div>
+                            <div><dt>Account name</dt><dd>{{ w.account_name }}</dd></div>
+                            <div><dt>Account number</dt><dd><button type="button" class="ox-copy" data-copy="{{ w.account_number }}" aria-label="Copy account number">{{ w.account_number }} <i class="bi bi-copy" aria-hidden="true"></i></button></dd></div>
+                        </dl>
+                        {% if w.rejection_reason %}<div class="ox-quote" style="margin-top:var(--sp-2)"><small class="ox-help" style="margin:0">Rejected: </small>{{ w.rejection_reason }}</div>{% endif %}
+                    </div>
+
+                    <dl class="ox-nums" style="--ncols:4">
+                        <div><dt>Amount</dt><dd>&#8358;{{ w.amount|floatformat:2|intcomma }}</dd></div>
+                        <div><dt>Requested</dt><dd>{{ w.requested_at|date:"M d, Y" }}<small>{{ w.requested_at|timesince }} ago</small></dd></div>
+                        <div><dt>Available now</dt><dd>&#8358;{{ w.affiliate.available_balance|floatformat:2|intcomma }}</dd></div>
+                        <div><dt>{% if w.payment_reference %}Reference{% else %}Handled by{% endif %}</dt><dd>{% if w.payment_reference %}{{ w.payment_reference }}{% elif w.processed_by %}@{{ w.processed_by.username }}{% else %}-{% endif %}</dd></div>
+                    </dl>
+
+                    <div class="ox-acts">
+                        <a href="{% url 'dash_admin_affiliate_settings' w.affiliate.pk %}" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-sliders" aria-hidden="true"></i>Rates</a>
+                        {% if w.status == 'pending' %}
+                        <button type="button" class="ox-btn ox-btn-sm" data-confirm data-action="{% url 'dash_admin_payout_action' w.pk 'approve' %}"
+                                data-title="Approve payout" data-message="Approve &#8358;{{ w.amount|floatformat:2|intcomma }} for {{ w.affiliate.referral_code }}?" data-label="Approve"><i class="bi bi-check2-circle" aria-hidden="true"></i>Approve</button>
+                        {% endif %}
+                        {% if w.status == 'approved' %}
+                        <button type="button" class="ox-btn ox-btn-sm ox-btn-neutral" data-confirm data-action="{% url 'dash_admin_payout_action' w.pk 'processing' %}"
+                                data-title="Mark as processing" data-message="Use this once you have started the bank transfer." data-label="Mark processing"><i class="bi bi-hourglass-split" aria-hidden="true"></i>Processing</button>
+                        {% endif %}
+                        {% if w.status == 'pending' or w.status == 'approved' or w.status == 'processing' %}
+                        <button type="button" class="ox-btn ox-btn-sm" data-confirm data-action="{% url 'dash_admin_payout_action' w.pk 'complete' %}"
+                                data-title="Complete payout" data-message="Only after the bank transfer of &#8358;{{ w.amount|floatformat:2|intcomma }} has gone through."
+                                data-label="Complete" data-reason="Bank transfer reference"><i class="bi bi-patch-check" aria-hidden="true"></i>Completed</button>
+                        {% endif %}
+                        {% if w.status == 'pending' or w.status == 'approved' %}
+                        <button type="button" class="ox-btn ox-btn-sm ox-danger" data-confirm data-action="{% url 'dash_admin_payout_action' w.pk 'reject' %}"
+                                data-title="Reject payout" data-message="&#8358;{{ w.amount|floatformat:2|intcomma }} goes back to the affiliate's available balance."
+                                data-label="Reject" data-danger="1" data-reason="Reason for the affiliate"><i class="bi bi-x-circle" aria-hidden="true"></i>Reject</button>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% include 'admin/_ox_pager.html' %}
+            {% else %}
+            <div class="ox-empty">
+                <span class="ox-ico t-purple"><i class="bi bi-inbox" aria-hidden="true"></i></span>
+                <div><h2>No payouts here</h2><p>{% if q %}No results for "{{ q }}".{% else %}Nothing in this status right now.{% endif %}</p></div>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% include 'admin/_ox_confirm.html' %}
+<script>
+document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-copy]');
+    if (!b || !navigator.clipboard) return;
+    navigator.clipboard.writeText(b.getAttribute('data-copy')).then(function () {
+        var i = b.querySelector('i'); if (!i) return;
+        i.className = 'bi bi-check2'; setTimeout(function () { i.className = 'bi bi-copy'; }, 1500);
+    });
+});
+</script>
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

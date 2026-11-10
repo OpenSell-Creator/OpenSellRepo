@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Affiliate settings - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+.ox-form-narrow { max-width: 40rem; margin: 0 auto; width: 100%; }
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% url 'admin_affiliate_detail' affiliate.pk as back_url %}
+    {% include 'admin/_ox_head.html' with title="Affiliate settings" sub=affiliate.referral_code back=back_url %}
+
+    <div class="ox-main">
+        <form method="post" class="ox-form-narrow ox-col ox-stack" id="affForm" novalidate>
+            {% csrf_token %}
+            <div class="ox-alert t-navy ox-wash" role="note"><i class="bi bi-info-circle-fill" aria-hidden="true"></i><span>New rates apply to commissions earned from now on. Commissions already recorded keep the rate they were created with.</span></div>
+
+            <section class="ox-card" aria-labelledby="r1">
+                <div class="ox-sec-h"><span class="ox-ico t-purple"><i class="bi bi-percent" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="r1">Commission rates</h2><p class="ox-card-sub">@{{ affiliate.user.username }}. Each rate is a percentage from 0 to 100.</p></div></div>
+                <div class="ox-fgrid">
+                    {% include 'admin/_ox_field.html' with field=form.funding_commission_rate label="On wallet funding (%)" %}
+                    {% include 'admin/_ox_field.html' with field=form.boost_commission_rate label="On boost purchases (%)" %}
+                    {% include 'admin/_ox_field.html' with field=form.subscription_commission_rate label="On Pro subscriptions (%)" %}
+                </div>
+            </section>
+
+            <section class="ox-card" aria-labelledby="r2">
+                <div class="ox-sec-h"><span class="ox-ico t-green"><i class="bi bi-cash-coin" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="r2">Payouts and notes</h2></div></div>
+                <div class="ox-fgrid">
+                    {% include 'admin/_ox_field.html' with field=form.minimum_withdrawal label="Minimum withdrawal (&#8358;)" %}
+                    {% include 'admin/_ox_field.html' with field=form.admin_notes label="Staff notes" help="Only staff see these." %}
+                </div>
+            </section>
+
+            <div class="ox-mf">
+                <a href="{{ back_url }}" class="ox-btn ox-btn-neutral">Cancel</a>
+                <button type="submit" class="ox-btn" id="saveBtn">Save changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var f = document.getElementById('affForm');
+    f.addEventListener('submit', function (e) {
+        if (f.dataset.busy) { e.preventDefault(); return; }
+        f.dataset.busy = '1';
+        var b = document.getElementById('saveBtn'); b.disabled = true;
+        b.innerHTML = '<span class="spinner-border" aria-hidden="true"></span> Saving';
+    });
+    window.addEventListener('pageshow', function (e) { if (e.persisted) { delete f.dataset.busy; document.getElementById('saveBtn').disabled = false; } });
+});
+</script>
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

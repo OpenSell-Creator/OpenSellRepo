@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Background tasks - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+.tm-res { margin: var(--sp-2) 0 0; padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border-color); border-radius: var(--r-card-s); font-size: var(--font-size-xs); line-height: var(--lh-snug); color: var(--text-secondary); overflow-wrap: anywhere; word-break: break-word; }
+.tm-fn { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: var(--font-size-sm); }
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% include 'admin/_ox_head.html' with title="Background tasks" sub="Emails, boosts and other jobs run by the queue" label="Failed" value=failed_tasks %}
+
+    <div class="ox-main">
+        <nav class="ox-tabs" style="--cols:3" aria-label="Filter">
+            <a href="?status=all" class="ox-tile ox-tab t-navy"{% if status == 'all' %} aria-current="true"{% endif %}><span>All</span><b>{{ total_tasks }}</b></a>
+            <a href="?status=success" class="ox-tile ox-tab t-green"{% if status == 'success' %} aria-current="true"{% endif %}><span>Succeeded</span><b>{{ successful_tasks }}</b></a>
+            <a href="?status=failed" class="ox-tile ox-tab t-red"{% if status == 'failed' %} aria-current="true"{% endif %}><span>Failed</span><b>{{ failed_tasks }}</b></a>
+        </nav>
+
+        <section class="ox-card" aria-labelledby="taskTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-orange"><i class="bi bi-activity" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="taskTitle">Recent tasks</h2><p class="ox-card-sub">Newest first. A task can report success and still have a problem in its result, so open the result for bulk emails.</p></div>
+            </div>
+
+            <form method="get" class="ox-bar" role="search">
+                <input type="hidden" name="status" value="{{ status }}">
+                <input type="search" name="q" class="ox-ctl ox-grow" autocomplete="off" enterkeyhint="search" aria-label="Search tasks" placeholder="Function or task name" value="{{ q }}">
+                <button type="submit" class="ox-btn ox-btn-neutral" aria-label="Search"><i class="bi bi-search" aria-hidden="true"></i></button>
+            </form>
+
+            {% if page_obj.object_list %}
+            <ul class="ox-list">
+                {% for t in page_obj %}
+                <li class="ox-item{% if not t.success %} is-flag{% endif %}">
+                    <div class="ox-who">
+                        <span class="ox-av" aria-hidden="true"><i class="bi {% if t.success %}bi-check-lg{% else %}bi-x-lg{% endif %}"></i></span>
+                        <div class="ox-who-t">
+                            <b class="tm-fn">{{ t.func|truncatechars:56 }}</b>
+                            <span>{{ t.name|truncatechars:40 }}{% if t.group %} &middot; {{ t.group|truncatechars:28 }}{% endif %}</span>
+                        </div>
+                    </div>
+                    <span class="ox-pill ox-wash st st-{% if t.success %}completed{% else %}failed{% endif %}">{% if t.success %}Succeeded{% else %}Failed{% endif %}</span>
+                    <dl class="ox-nums" style="--ncols:3">
+                        <div><dt>Started</dt><dd>{{ t.started|date:"M d, H:i" }}<small>{{ t.started|timesince }} ago</small></dd></div>
+                        <div><dt>Took</dt><dd>{% if t.stopped and t.started %}{{ t.time_taken|floatformat:1 }} s{% else %}-{% endif %}</dd></div>
+                        <div><dt>Tries</dt><dd>{{ t.attempt_count|default:1 }}</dd></div>
+                    </dl>
+                    {% if t.result %}<p class="tm-res">{{ t.result|stringformat:"s"|truncatechars:400 }}</p>{% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% include 'admin/_ox_pager.html' with keep=keep %}
+            {% else %}
+            <div class="ox-empty">
+                <span class="ox-ico t-navy"><i class="bi bi-inbox" aria-hidden="true"></i></span>
+                <h2>No tasks here</h2>
+                <p>{% if q or status != 'all' %}Nothing matches this filter.{% else %}No task has run yet. Tasks appear once the qcluster worker has processed one.{% endif %}</p>
+            </div>
+            {% endif %}
+        </section>
+
+        <section class="ox-card" aria-labelledby="schedTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-purple"><i class="bi bi-clock-history" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="schedTitle">Schedules</h2><p class="ox-card-sub">Jobs set to repeat. Add or change them in the raw admin under Django Q.</p></div>
+            </div>
+            {% if schedules %}
+            <ul class="ox-list">
+                {% for s in schedules %}
+                <li class="ox-item">
+                    <div class="ox-who">
+                        <span class="ox-av" aria-hidden="true"><i class="bi bi-arrow-repeat"></i></span>
+                        <div class="ox-who-t">
+                            <b>{{ s.name|default:s.func|truncatechars:48 }}</b>
+                            <span class="tm-fn">{{ s.func|truncatechars:56 }}</span>
+                        </div>
+                    </div>
+                    <span class="ox-pill ox-wash st st-scheduled">{{ s.get_schedule_type_display }}</span>
+                    <dl class="ox-nums" style="--ncols:2">
+                        <div><dt>Next run</dt><dd>{% if s.next_run %}{{ s.next_run|date:"M d, H:i" }}{% else %}-{% endif %}</dd></div>
+                        <div><dt>Repeats</dt><dd>{% if s.repeats < 0 %}Forever{% else %}{{ s.repeats }} left{% endif %}</dd></div>
+                    </dl>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="ox-empty">
+                <span class="ox-ico t-navy"><i class="bi bi-clock" aria-hidden="true"></i></span>
+                <h2>No schedules</h2>
+                <p>Nothing is set to repeat yet.</p>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block 'Footer' %}{% endblock %}

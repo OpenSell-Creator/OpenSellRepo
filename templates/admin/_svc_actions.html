@@ -1,0 +1,23 @@
+{# Needs: s (service), next_url. Optional: detail=1 hides the Details link. #}
+<div class="ox-acts">
+    {% if not detail %}<a href="{% url 'svc_admin_detail' s.pk %}" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-card-list" aria-hidden="true"></i>Details</a>{% endif %}
+    <a href="{{ s.get_absolute_url }}" target="_blank" rel="noopener" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>View</a>
+    {% if s.is_suspended %}
+    <form method="post" action="{% url 'svc_admin_unsuspend' s.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ next_url }}">
+        <button type="submit" class="ox-btn ox-btn-sm"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Reinstate</button></form>
+    {% else %}
+    <button type="button" class="ox-btn ox-btn-sm" data-confirm data-action="{% url 'svc_admin_suspend' s.pk %}"
+            data-title="Suspend service" data-message="It disappears from the site, open reports on it are marked resolved, and the provider is emailed the reason."
+            data-label="Suspend" data-reason="Reason for the provider"><i class="bi bi-slash-circle" aria-hidden="true"></i>Suspend</button>
+    {% endif %}
+    <form method="post" action="{% url 'svc_admin_feature' s.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ next_url }}"><input type="hidden" name="to" value="{% if s.is_featured %}off{% else %}on{% endif %}">
+        <button type="submit" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-{% if s.is_featured %}star-fill{% else %}star{% endif %}" aria-hidden="true"></i>{% if s.is_featured %}Unfeature{% else %}Feature{% endif %}</button></form>
+    {% if not s.is_suspended %}
+    <form method="post" action="{% url 'svc_admin_activate' s.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ next_url }}"><input type="hidden" name="to" value="{% if s.is_active %}off{% else %}on{% endif %}">
+        <button type="submit" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-{% if s.is_active %}eye-slash{% else %}eye{% endif %}" aria-hidden="true"></i>{% if s.is_active %}Hide{% else %}Show{% endif %}</button></form>
+    {% endif %}
+    <a href="{% url 'notif_admin_compose' %}?to={{ s.provider.user.username|urlencode }}" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-megaphone" aria-hidden="true"></i>Message provider</a>
+    <button type="button" class="ox-btn ox-btn-sm ox-danger" data-confirm data-action="{% url 'svc_admin_delete' s.pk %}"
+            data-title="Delete service" data-message="This removes the service, its photos and documents, its inquiries and its reviews for good."
+            data-label="Delete" data-danger="1" data-reason="Reason (kept in the server log)"><i class="bi bi-trash" aria-hidden="true"></i>Delete</button>
+</div>

@@ -389,7 +389,7 @@ if DEBUG:
 # Email settings
 if not DEBUG:
     # Resend SMTP Configuration
-    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_BACKEND = 'User.email_backend.CountingSMTPBackend'
     EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.resend.com')
     EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 465))
     EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'resend')
@@ -403,6 +403,10 @@ if not DEBUG:
     DEFAULT_FROM_EMAIL = 'OpenSell <no-reply@opensell.ng>'
     SUPPORT_EMAIL = 'OpenSell Support <support@opensell.ng>'
     NO_REPLY_EMAIL = 'OpenSell <no-reply@opensell.ng>'
+    
+    BULK_EMAIL_DAILY_CAP = 75     # optional, 75 is the default
+    EMAIL_DAILY_LIMIT = 100
+    
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 

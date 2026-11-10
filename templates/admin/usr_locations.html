@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Locations - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+{% include 'admin/_ox_usr_css.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% include 'admin/_ox_head.html' with title="Locations" sub="States and LGAs shown in the location pickers" label="States" value=totals.n_states %}
+
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav_usr.html' with active="locations" %}
+
+        <div class="ox-sum">
+            <div><span>States</span><b>{{ totals.n_states }}</b></div>
+            <div><span>Hidden states</span><b>{{ totals.n_off }}</b></div>
+            <div><span>LGAs</span><b>{{ totals.n_lgas|intcomma }}</b></div>
+            <div><span>Hidden LGAs</span><b>{{ totals.n_lgas_off|intcomma }}</b></div>
+        </div>
+
+        <section class="ox-card" aria-labelledby="listTitle">
+            <div class="ox-sec-h"><span class="ox-ico t-navy"><i class="bi bi-geo-alt" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="listTitle">States</h2></div></div>
+            <form method="get" class="ox-bar" role="search">
+                <input type="search" name="q" class="ox-ctl ox-grow" autocomplete="off" enterkeyhint="search" aria-label="Search states" placeholder="State name" value="{{ q }}">
+                <button type="submit" class="ox-btn ox-btn-neutral" aria-label="Search"><i class="bi bi-search" aria-hidden="true"></i></button>
+            </form>
+            {% if states %}
+            <ul class="ox-list">
+                {% for s in states %}
+                <li class="ox-item{% if not s.is_active %} is-flag{% endif %}">
+                    <div class="ox-who"><span class="ox-av" aria-hidden="true">{{ s.name|slice:":1" }}</span><div class="ox-who-t"><b>{{ s.name }}</b><span>{{ s.n_lgas }} LGA{{ s.n_lgas|pluralize }}</span></div></div>
+                    <span class="ox-pill ox-wash {% if s.is_active %}us-active{% else %}us-inactive{% endif %}">{% if s.is_active %}Shown{% else %}Hidden{% endif %}</span>
+                    <dl class="ox-nums"><div><dt>People here</dt><dd>{{ s.n_people|intcomma }}</dd></div><div><dt>LGAs</dt><dd>{{ s.n_lgas }}</dd></div></dl>
+                    <div class="ox-acts"><a href="{% url 'usr_admin_state' s.pk %}" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-pencil" aria-hidden="true"></i>Manage</a></div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="ox-empty"><span class="ox-ico t-navy"><i class="bi bi-inbox" aria-hidden="true"></i></span><div><h2>No states found</h2><p>{% if q %}No results for "{{ q }}".{% else %}Add the first one below.{% endif %}</p></div></div>
+            {% endif %}
+        </section>
+
+        <section class="ox-card" aria-labelledby="addTitle">
+            <div class="ox-sec-h"><span class="ox-ico t-green"><i class="bi bi-plus-lg" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="addTitle">Add a state</h2></div></div>
+            <form method="post" action="{% url 'usr_admin_state_add' %}" class="ox-inline">{% csrf_token %}
+                <input type="text" name="name" class="ox-ctl" maxlength="100" required autocomplete="off" aria-label="State name" placeholder="State name">
+                <button type="submit" class="ox-btn ox-btn-sm"><i class="bi bi-plus-lg" aria-hidden="true"></i>Add</button>
+            </form>
+        </section>
+    </div>
+</div>
+{% include 'admin/_ox_confirm.html' %}
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

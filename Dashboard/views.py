@@ -1116,24 +1116,35 @@ def boost_chart_data(request):
 
 @staff_member_required
 def task_monitor(request):
-    """Simple task monitoring view for staff"""
-    recent_tasks = Task.objects.all()[:20]
-    schedules = Schedule.objects.all()
-    
-    # Get task statistics
-    total_tasks = Task.objects.count()
-    successful_tasks = Task.objects.filter(success=True).count()
-    failed_tasks = Task.objects.filter(success=False).count()
-    
+    """Staff view of django-q tasks and schedules, with filter, search and paging."""
+    status = request.GET.get('status', 'all')
+    if status not in ('all', 'success', 'failed'):
+        status = 'all'
+    q = (request.GET.get('q') or '').strip()[:80]
+
+    tasks = Task.objects.all().order_by('-started')
+    if status == 'success':
+        tasks = tasks.filter(success=True)
+    elif status == 'failed':
+        tasks = tasks.filter(success=False)
+    if q:
+        tasks = tasks.filter(Q(func__icontains=q) | Q(name__icontains=q) | Q(group__icontains=q))
+
+    page_obj = Paginator(tasks, 20).get_page(request.GET.get('page'))
+    keep = 'status=%s' % status + ('&q=%s' % q if q else '')
+
     context = {
-        'recent_tasks': recent_tasks,
-        'schedules': schedules,
-        'total_tasks': total_tasks,
-        'successful_tasks': successful_tasks,
-        'failed_tasks': failed_tasks,
+        'page_obj': page_obj,
+        'status': status,
+        'q': q,
+        'keep': keep,
+        'schedules': Schedule.objects.all().order_by('next_run'),
+        'total_tasks': Task.objects.count(),
+        'successful_tasks': Task.objects.filter(success=True).count(),
+        'failed_tasks': Task.objects.filter(success=False).count(),
     }
-    
     return render(request, 'dashboard/task_monitor.html', context)
+
 
 # AJAX views for dynamic content
 @login_required

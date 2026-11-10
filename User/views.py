@@ -477,6 +477,12 @@ def admin_panel(request):
             success=False, started__gte=now - timedelta(hours=24)).count()
     except Exception:
         pass
+    
+    from User.admin_views import users_admin_stats
+    context.update(users_admin_stats())
+    
+    from Home.admin_views import home_admin_stats
+    context.update(home_admin_stats())
  
     return render(request, 'admin/admin_panel.html', context)
 

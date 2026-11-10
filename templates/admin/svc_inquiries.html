@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Service inquiries - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+{% include 'admin/_ox_svc_css.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% include 'admin/_ox_head.html' with title="Inquiries" sub="Hiring requests sent to providers" label="Waiting for a reply" value=counts.n_pending|intcomma %}
+
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav_svc.html' with active="inquiries" %}
+
+        <nav class="ox-tabs" style="--cols:4" aria-label="Quick filters">
+            <a href="?status=pending" class="ox-tile ox-tab t-orange"{% if status == 'pending' %} aria-current="true"{% endif %}><span>Pending</span><b>{{ counts.n_pending }}</b></a>
+            <a href="?status=responded" class="ox-tile ox-tab t-navy"{% if status == 'responded' %} aria-current="true"{% endif %}><span>Responded</span><b>{{ counts.n_responded }}</b></a>
+            <a href="?status=negotiating" class="ox-tile ox-tab t-purple"{% if status == 'negotiating' %} aria-current="true"{% endif %}><span>Negotiating</span><b>{{ counts.n_negotiating }}</b></a>
+            <a href="?status=all" class="ox-tile ox-tab t-green"{% if status == 'all' %} aria-current="true"{% endif %}><span>All</span><b>{{ counts.n_all }}</b></a>
+        </nav>
+
+        <section class="ox-card" aria-labelledby="listTitle">
+            <div class="ox-sec-h"><span class="ox-ico t-navy"><i class="bi bi-chat-left-text" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="listTitle">Inquiries</h2></div></div>
+
+            <form method="get" class="ox-bar" role="search">
+                {% if service_id %}<input type="hidden" name="service" value="{{ service_id }}">{% endif %}
+                <select name="status" class="ox-ctl" aria-label="Status">
+                    <option value="all">All statuses</option>
+                    {% for v, l in statuses %}<option value="{{ v }}"{% if status == v %} selected{% endif %}>{{ l }}</option>{% endfor %}
+                </select>
+                <input type="search" name="q" class="ox-ctl ox-grow" autocomplete="off" enterkeyhint="search" aria-label="Search inquiries" placeholder="Service, client, provider or text" value="{{ q }}">
+                <button type="submit" class="ox-btn ox-btn-neutral" aria-label="Search"><i class="bi bi-search" aria-hidden="true"></i></button>
+            </form>
+            {% if service_id %}<p class="ox-help" style="margin-bottom:var(--sp-3)">Showing one service only. <a class="ox-link" href="{% url 'svc_admin_inquiries' %}">Show all</a></p>{% endif %}
+
+            {% if page_obj.object_list %}
+            <ul class="ox-list">
+                {% for i in page_obj %}
+                <li class="ox-item has-body">
+                    <div class="ox-who">
+                        <span class="ox-av" aria-hidden="true">{{ i.client.user.username|slice:":1" }}</span>
+                        <div class="ox-who-t"><b>@{{ i.client.user.username }}</b><span>to @{{ i.service.provider.user.username }}</span></div>
+                    </div>
+                    <span class="ox-pill ox-wash iq-{{ i.status }}">{{ i.get_status_display }}</span>
+                    <div class="ox-body"><div class="ox-quote">{{ i.message|truncatechars:280|linebreaksbr }}</div></div>
+                    <dl class="ox-nums">
+                        <div><dt>Service</dt><dd><a class="ox-link" href="{% url 'svc_admin_detail' i.service_id %}">{{ i.service.title|truncatechars:34 }}</a></dd></div>
+                        <div><dt>Budget / quote</dt><dd>{{ i.formatted_budget }}<small>{{ i.formatted_quote }}</small></dd></div>
+                        <div><dt>Sent</dt><dd>{{ i.created_at|date:"M d, Y" }}<small>{{ i.created_at|date:"H:i" }}</small></dd></div>
+                        <div><dt>Reply</dt><dd>{% if i.responded_at %}{{ i.responded_at|date:"M d, Y" }}{% else %}None yet{% endif %}<small>{{ i.get_preferred_contact_display }}</small></dd></div>
+                    </dl>
+                    <div class="ox-acts">
+                        <a href="{% url 'notif_admin_compose' %}?to={{ i.service.provider.user.username|urlencode }}" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-megaphone" aria-hidden="true"></i>Message provider</a>
+                        {% if i.status in active_states %}
+                        <button type="button" class="ox-btn ox-btn-sm ox-danger" data-confirm data-action="{% url 'svc_admin_inquiry_cancel' i.pk %}"
+                                data-title="Cancel inquiry" data-message="Marks it cancelled. The client can then send a new inquiry for this service."
+                                data-label="Cancel inquiry" data-danger="1" data-reason="Reason (kept in the server log)"><i class="bi bi-x-circle" aria-hidden="true"></i>Cancel</button>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% include 'admin/_ox_pager.html' %}
+            {% else %}
+            <div class="ox-empty"><span class="ox-ico t-navy"><i class="bi bi-inbox" aria-hidden="true"></i></span><div><h2>No inquiries found</h2><p>{% if q %}No results for "{{ q }}".{% else %}Nothing matches these filters.{% endif %}</p></div></div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% include 'admin/_ox_confirm.html' %}
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Withdrawals - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% include 'admin/_ox_head.html' with title="Withdrawals" sub="Wallet money going back to users' banks" label="Waiting for review" value=open_count %}
+
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav_dash.html' with active="withdrawals" %}
+        {% include 'admin/_ox_tabs.html' with tabs=tabs current=status param="status" q=q cols=4 %}
+
+        <section class="ox-card" aria-labelledby="listTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-green"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="listTitle">Requests</h2>{% if to_pay %}<p class="ox-card-sub">{{ to_pay }} approved and waiting to be paid out.</p>{% endif %}</div>
+            </div>
+
+            <form method="get" class="ox-bar" role="search">
+                <input type="hidden" name="status" value="{{ status }}">
+                <input type="search" name="q" class="ox-ctl ox-grow" autocomplete="off" enterkeyhint="search" aria-label="Search withdrawals" placeholder="Reference, username, email or account number" value="{{ q }}">
+                <button type="submit" class="ox-btn ox-btn-neutral" aria-label="Search"><i class="bi bi-search" aria-hidden="true"></i></button>
+            </form>
+
+            {% if page_obj.object_list %}
+            <ul class="ox-list">
+                {% for w in page_obj %}
+                <li class="ox-item{% if w.status == 'approved' or w.status == 'processing' %} is-flag{% endif %}">
+                    <div class="ox-who">
+                        <span class="ox-av" aria-hidden="true">{{ w.account.user.username|slice:":1" }}</span>
+                        <div class="ox-who-t">
+                            <b>@{{ w.account.user.username }}</b>
+                            <span>{{ w.reference }}</span>
+                        </div>
+                    </div>
+                    <span class="ox-pill ox-wash st st-{{ w.status }}">{{ w.get_status_display }}</span>
+
+                    <dl class="ox-nums">
+                        <div><dt>Requested</dt><dd>&#8358;{{ w.requested_amount|floatformat:2|intcomma }}</dd></div>
+                        <div><dt>Fee ({{ w.fee_rate|floatformat:0 }}%)</dt><dd>&#8358;{{ w.fee_amount|floatformat:2|intcomma }}</dd></div>
+                        <div><dt>Pay out</dt><dd>&#8358;{{ w.net_payout|floatformat:2|intcomma }}</dd></div>
+                        <div><dt>Submitted</dt><dd>{{ w.submitted_at|date:"M d, Y" }}<small>{{ w.submitted_at|timesince }} ago</small></dd></div>
+                    </dl>
+
+                    <div class="ox-acts">
+                        <a href="{% url 'dash_admin_withdrawal_detail' w.pk %}" class="ox-btn ox-btn-sm"><i class="bi bi-eye" aria-hidden="true"></i>Open</a>
+                        {% if w.status == 'pending' or w.status == 'under_review' %}
+                        <button type="button" class="ox-btn ox-btn-sm ox-btn-neutral" data-confirm
+                                data-action="{% url 'dash_admin_withdrawal_action' w.pk 'approve' %}"
+                                data-title="Approve withdrawal" data-message="Approve {{ w.reference }}? You still have to pay it out and mark it complete."
+                                data-label="Approve"><i class="bi bi-check2-circle" aria-hidden="true"></i>Approve</button>
+                        <button type="button" class="ox-btn ox-btn-sm ox-danger" data-confirm
+                                data-action="{% url 'dash_admin_withdrawal_action' w.pk 'reject' %}"
+                                data-title="Reject withdrawal" data-message="The wallet is not touched. The user sees your reason."
+                                data-label="Reject" data-danger="1" data-reason="Reason for the user"><i class="bi bi-x-circle" aria-hidden="true"></i>Reject</button>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% include 'admin/_ox_pager.html' %}
+            {% else %}
+            <div class="ox-empty">
+                <span class="ox-ico t-green"><i class="bi bi-inbox" aria-hidden="true"></i></span>
+                <div><h2>No requests here</h2><p>{% if q %}No results for "{{ q }}".{% else %}Nothing in this status right now.{% endif %}</p></div>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% include 'admin/_ox_confirm.html' %}
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

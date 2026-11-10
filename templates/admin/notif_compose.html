@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Send notification - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+{% include 'admin/_ox_notif_css.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% include 'admin/_ox_head.html' with title="Send notification" sub="Message users in the app and on their devices" label="Sent in the last 30 days" value=sends|length %}
+
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav_notif.html' with active="compose" %}
+
+        <form method="post" class="ox-layout" id="sendForm" novalidate>
+            {% csrf_token %}
+            <div class="ox-col ox-stack">
+                <section class="ox-card" aria-labelledby="toTitle">
+                    <div class="ox-sec-h">
+                        <span class="ox-ico t-navy"><i class="bi bi-people" aria-hidden="true"></i></span>
+                        <div class="ox-sec-t"><h2 class="ox-h2" id="toTitle">Who gets it</h2><p class="ox-card-sub">People who turned the category off are skipped, except announcements.</p></div>
+                    </div>
+                    {% with chosen=form.audience.value|default:'users' %}
+                    <div class="ox-opts" role="radiogroup" aria-label="Audience">
+                        <label class="ox-opt"><input type="radio" name="audience" value="users"{% if chosen == 'users' %} checked{% endif %}><span>Specific people</span></label>
+                        <label class="ox-opt"><input type="radio" name="audience" value="affiliates" data-count="{{ counts.affiliates }}"{% if chosen == 'affiliates' %} checked{% endif %}><span>Active affiliates</span><small class="ox-cnt">{{ counts.affiliates|default:0|intcomma }}</small></label>
+                        <label class="ox-opt"><input type="radio" name="audience" value="pro" data-count="{{ counts.pro }}"{% if chosen == 'pro' %} checked{% endif %}><span>Pro tier members</span><small class="ox-cnt">{{ counts.pro|default:0|intcomma }}</small></label>
+                        <label class="ox-opt"><input type="radio" name="audience" value="staff" data-count="{{ counts.staff }}"{% if chosen == 'staff' %} checked{% endif %}><span>Staff</span><small class="ox-cnt">{{ counts.staff|default:0|intcomma }}</small></label>
+                        {% if allow_all %}<label class="ox-opt"><input type="radio" name="audience" value="all" data-count="{{ counts.all }}"{% if chosen == 'all' %} checked{% endif %}><span>Everyone</span><small class="ox-cnt">{{ counts.all|default:0|intcomma }}</small></label>{% endif %}
+                    </div>
+                    {% endwith %}
+                    {% for e in form.audience.errors %}<p class="ox-err" role="alert"><i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i><span>{{ e }}</span></p>{% endfor %}
+                    <div class="ox-field" id="namesWrap" style="margin-top:var(--gap-fields)">
+                        <label for="{{ form.usernames.id_for_label }}" class="ox-lab">Usernames</label>
+                        {{ form.usernames }}
+                        <p class="ox-help">Separate with commas or spaces. Up to 200.</p>
+                        {% for e in form.usernames.errors %}<p class="ox-err" role="alert"><i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i><span>{{ e }}</span></p>{% endfor %}
+                    </div>
+                </section>
+
+                <section class="ox-card" aria-labelledby="msgTitle">
+                    <div class="ox-sec-h">
+                        <span class="ox-ico t-orange"><i class="bi bi-chat-left-text" aria-hidden="true"></i></span>
+                        <div class="ox-sec-t"><h2 class="ox-h2" id="msgTitle">Message</h2></div>
+                    </div>
+                    <div class="ox-fgrid">
+                        {% include 'admin/_ox_field.html' with field=form.title label="Title" help="Up to 100 characters. Phones show about the first 50." %}
+                        {% include 'admin/_ox_field.html' with field=form.message label="Message" help="Up to 1000 characters. Push alerts show only the start." %}
+                        <div class="ox-fgrid two">
+                            {% include 'admin/_ox_field.html' with field=form.category label="Category" %}
+                            {% include 'admin/_ox_field.html' with field=form.priority label="Priority" %}
+                        </div>
+                    </div>
+                </section>
+
+                <section class="ox-card" aria-labelledby="btnTitle">
+                    <div class="ox-sec-h">
+                        <span class="ox-ico t-green"><i class="bi bi-cursor" aria-hidden="true"></i></span>
+                        <div class="ox-sec-t"><h2 class="ox-h2" id="btnTitle">Button and delivery</h2><p class="ox-card-sub">Optional button that opens a page when tapped.</p></div>
+                    </div>
+                    <div class="ox-fgrid">
+                        <div class="ox-fgrid two">
+                            {% include 'admin/_ox_field.html' with field=form.action_url label="Link" help="A site path like /boost/ or a full https:// address." %}
+                            {% include 'admin/_ox_field.html' with field=form.action_text label="Button text" %}
+                        </div>
+                        <label class="ox-switch">
+                            {{ form.push }}
+                            <div><b>Also send a push alert</b><span>Reaches people who allowed notifications in their browser. Up to 2,000 per send.</span></div>
+                        </label>
+                    </div>
+                </section>
+
+                <div class="ox-mf">
+                    <button type="submit" class="ox-btn" id="sendBtn"><i class="bi bi-send" aria-hidden="true"></i>Send</button>
+                </div>
+            </div>
+
+            <aside class="ox-col ox-sticky ox-stack" aria-label="Preview">
+                <section class="ox-card">
+                    <div class="ox-sec-h"><div class="ox-sec-t"><h2 class="ox-h2">Preview</h2><p class="ox-card-sub">How it reads in the inbox.</p></div></div>
+                    <div class="ox-prev" aria-live="polite">
+                        <b id="pvTitle">Your title</b>
+                        <p id="pvMsg">Your message appears here.</p>
+                        <span class="ox-btn ox-btn-sm" id="pvBtn" hidden></span>
+                    </div>
+                </section>
+            </aside>
+        </form>
+
+        <section class="ox-card" aria-labelledby="sentTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-purple"><i class="bi bi-clock-history" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="sentTitle">Recent sends</h2><p class="ox-card-sub">Anything sent to two or more people in the last 30 days.</p></div>
+            </div>
+            {% if sends %}
+            <ul class="ox-list">
+                {% for s in sends %}
+                <li class="ox-item has-body">
+                    <div class="ox-who"><div class="ox-who-t"><b>{{ s.title }}</b><span>{{ s.minute|date:"M d, Y H:i" }}</span></div></div>
+                    <span class="ox-pill ox-wash cat-pill">{{ s.category|title }}</span>
+                    <div class="ox-body"><div class="ox-quote">{{ s.message|truncatechars:220|linebreaksbr }}</div></div>
+                    <dl class="ox-nums" style="--ncols:3">
+                        <div><dt>Delivered to</dt><dd>{{ s.n|intcomma }}</dd></div>
+                        <div><dt>Read</dt><dd>{{ s.n_read|intcomma }}<small>{% widthratio s.n_read s.n 100 %}%</small></dd></div>
+                        <div><dt>Priority</dt><dd>{{ s.priority|title }}</dd></div>
+                    </dl>
+                    <div class="ox-acts">
+                        <button type="button" class="ox-btn ox-btn-sm ox-danger" data-confirm data-action="{% url 'notif_admin_withdraw' s.rep_id %}"
+                                data-title="Withdraw this message" data-message="Deletes all {{ s.n }} copies from people's inboxes. Push alerts already delivered cannot be recalled."
+                                data-label="Withdraw" data-danger="1"><i class="bi bi-trash" aria-hidden="true"></i>Withdraw from everyone</button>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="ox-empty"><span class="ox-ico t-purple"><i class="bi bi-inbox" aria-hidden="true"></i></span><div><h2>Nothing sent yet</h2><p>Broadcasts you send show up here.</p></div></div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% include 'admin/_ox_confirm.html' %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var f = document.getElementById('sendForm');
+    var q = function (s) { return f.querySelector(s); };
+    var names = document.getElementById('namesWrap');
+    function aud() { var r = q('input[name=audience]:checked'); return r ? r.value : 'users'; }
+    function toggle() { names.hidden = aud() !== 'users'; }
+    f.querySelectorAll('input[name=audience]').forEach(function (r) { r.addEventListener('change', toggle); });
+    toggle();
+
+    var title = q('[name=title]'), msg = q('[name=message]'), url = q('[name=action_url]'), txt = q('[name=action_text]');
+    var pvT = document.getElementById('pvTitle'), pvM = document.getElementById('pvMsg'), pvB = document.getElementById('pvBtn');
+    function paint() {
+        pvT.textContent = title.value.trim() || 'Your title';
+        pvM.textContent = msg.value.trim() || 'Your message appears here.';
+        var t = txt.value.trim();
+        pvB.hidden = !(url.value.trim() && t);
+        pvB.textContent = t;
+    }
+    [title, msg, url, txt].forEach(function (el) { el.addEventListener('input', paint); });
+    paint();
+
+    f.addEventListener('submit', function (e) {
+        if (f.dataset.busy) { e.preventDefault(); return; }
+        var r = q('input[name=audience]:checked');
+        var who = r ? r.parentElement.querySelector('span').textContent : 'the chosen people';
+        var n = r && r.dataset.count ? ' (' + r.dataset.count + ' users)' : '';
+        if (!window.confirm('Send "' + title.value.trim() + '" to ' + who + n + '? It cannot be undone, only withdrawn.')) { e.preventDefault(); return; }
+        f.dataset.busy = '1';
+        var b = document.getElementById('sendBtn'); b.disabled = true;
+        b.innerHTML = '<span class="spinner-border" aria-hidden="true"></span> Sending';
+    });
+    window.addEventListener('pageshow', function (e) { if (e.persisted) { delete f.dataset.busy; var b = document.getElementById('sendBtn'); b.disabled = false; } });
+});
+</script>
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

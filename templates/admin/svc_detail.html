@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}{{ s.title|truncatechars:40 }} - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+{% include 'admin/_ox_svc_css.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% url 'svc_admin_list' as list_url %}
+    {% include 'admin/_ox_head.html' with title=s.title|truncatechars:48 sub=s.provider.user.username label="Status" value=s.state_label back=list_url %}
+
+    <div class="ox-main">
+        <section class="ox-card" aria-labelledby="actTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-navy"><i class="bi bi-lightning-charge" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="actTitle">Actions</h2></div>
+                <span class="ox-pill ox-wash st st-{{ s.state }}">{{ s.state_label }}</span>
+            </div>
+            {% if s.is_suspended and s.suspension_reason %}
+            <div class="ox-alert t-red ox-wash" role="note" style="margin-bottom:var(--sp-3)"><i class="bi bi-slash-circle" aria-hidden="true"></i><span>Suspended{% if s.suspended_at %} {{ s.suspended_at|date:"M d, Y" }}{% endif %}{% if s.suspended_by %} by @{{ s.suspended_by.username }}{% endif %}: {{ s.suspension_reason }}</span></div>
+            {% endif %}
+            {% include 'admin/_svc_actions.html' with detail=1 %}
+        </section>
+
+        <div class="ox-layout">
+            <div class="ox-col ox-stack">
+                <section class="ox-card" aria-labelledby="infoTitle">
+                    <div class="ox-sec-h"><span class="ox-ico t-orange"><i class="bi bi-info-circle" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="infoTitle">Listing</h2></div></div>
+                    {% if images %}<div class="ox-gal" style="margin-bottom:var(--sp-3)">{% for i in images %}<a href="{{ i.image.url }}" target="_blank" rel="noopener"><img src="{{ i.image.url }}" alt="{{ i.caption|default:'Service photo' }}" loading="lazy"></a>{% endfor %}</div>{% endif %}
+                    <dl class="ox-dl">
+                        <div><dt>Category</dt><dd>{{ category_label }}</dd></div>
+                        <div><dt>Type</dt><dd>{{ s.get_service_type_display }}</dd></div>
+                        <div><dt>Price</dt><dd>{{ s.price_display }} ({{ s.get_pricing_type_display }})</dd></div>
+                        <div><dt>Experience</dt><dd>{{ s.get_experience_level_display }}</dd></div>
+                        <div><dt>Delivery</dt><dd>{{ s.get_delivery_method_display }}, {{ s.delivery_days }} day{{ s.delivery_days|pluralize }}</dd></div>
+                        <div><dt>Where</dt><dd>{% if s.serves_nationwide %}Nationwide{% elif s.location %}{{ s.location }}{% else %}Not set{% endif %}</dd></div>
+                        <div><dt>Listed</dt><dd>{{ s.created_at|date:"M d, Y H:i" }}</dd></div>
+                        <div><dt>Expires</dt><dd>{% if s.expiration_date %}{{ s.expiration_date|date:"M d, Y" }}{% else %}Never{% endif %}</dd></div>
+                        <div><dt>Ranking score</dt><dd>{{ s.boost_score|floatformat:1 }}</dd></div>
+                        <div><dt>Views / inquiries / hires</dt><dd>{{ s.view_count|intcomma }} / {{ s.inquiry_count|intcomma }} / {{ s.hire_count|intcomma }}</dd></div>
+                    </dl>
+                    <h3 class="ox-h3" style="margin-top:var(--sp-4)">Description</h3>
+                    <div class="ox-quote">{{ s.description|linebreaksbr }}</div>
+                    {% if s.skills_offered %}<p class="ox-help" style="margin-top:var(--sp-2)">Skills: {{ s.skills_offered }}</p>{% endif %}
+                    {% if s.portfolio_url %}<p class="ox-help">Portfolio: <a class="ox-link" href="{{ s.portfolio_url }}" target="_blank" rel="noopener nofollow">{{ s.portfolio_url|truncatechars:60 }}</a></p>{% endif %}
+                    {% if documents %}<h3 class="ox-h3" style="margin-top:var(--sp-4)">Documents</h3>{% for d in documents %}<div class="ox-sub-item"><a class="ox-link" href="{{ d.document.url }}" target="_blank" rel="noopener">{{ d.title|truncatechars:50 }}</a><small>{{ d.get_document_type_display }}</small></div>{% endfor %}{% endif %}
+                </section>
+
+                <section class="ox-card" aria-labelledby="repTitle">
+                    <div class="ox-sec-h"><span class="ox-ico t-red"><i class="bi bi-flag-fill" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="repTitle">Reports</h2><p class="ox-card-sub">{{ open_reports }} open. Suspending resolves the open ones.</p></div></div>
+                    {% for r in reports %}
+                    <div class="ox-sub-item"><b>{{ r.get_reason_display }}</b> <span class="ox-pill ox-wash {% if r.status == 'pending' or r.status == 'reviewing' %}t-red{% else %}t-green{% endif %}">{{ r.get_status_display }}</span>
+                        <div>{{ r.details|truncatechars:240 }}</div>
+                        <small>{{ r.reported_at|date:"M d, Y H:i" }}{% if r.reporter_email %} &middot; {{ r.reporter_email }}{% endif %}{% if r.reviewed_by %} &middot; handled by @{{ r.reviewed_by.username }}{% endif %}</small>
+                        <div class="ox-acts"><a href="{% url 'admin_report_detail' r.pk %}" class="ox-btn ox-btn-sm ox-btn-neutral">Open report</a></div></div>
+                    {% empty %}<p class="ox-help">No reports on this service.</p>{% endfor %}
+                </section>
+            </div>
+
+            <div class="ox-col ox-stack">
+                <section class="ox-card" aria-labelledby="provTitle">
+                    <div class="ox-sec-h"><span class="ox-ico t-purple"><i class="bi bi-person" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="provTitle">Provider</h2></div></div>
+                    <dl class="ox-dl">
+                        <div><dt>Username</dt><dd>@{{ s.provider.user.username }}</dd></div>
+                        <div><dt>Email</dt><dd>{{ s.provider.user.email|default:"-" }}</dd></div>
+                        <div><dt>Verified business</dt><dd>{% if s.provider_is_verified_business %}Yes{% else %}No{% endif %}</dd></div>
+                        <div><dt>Joined</dt><dd>{{ s.provider.user.date_joined|date:"M d, Y" }}</dd></div>
+                    </dl>
+                    <div class="ox-acts" style="margin-top:var(--sp-3)"><a href="{% url 'admin:User_profile_change' s.provider_id %}" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-person-gear" aria-hidden="true"></i>Open profile</a></div>
+                </section>
+
+                <section class="ox-card" aria-labelledby="inqTitle">
+                    <div class="ox-sec-h"><span class="ox-ico t-green"><i class="bi bi-chat-left-text" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="inqTitle">Inquiries</h2><p class="ox-card-sub">{{ inq_total }} in all</p></div><a href="{% url 'svc_admin_inquiries' %}?service={{ s.pk }}" class="ox-btn ox-btn-sm ox-btn-neutral">See all</a></div>
+                    {% for i in inquiries %}<div class="ox-sub-item"><b>@{{ i.client.user.username }}</b> <span class="ox-pill ox-wash iq-{{ i.status }}">{{ i.get_status_display }}</span><small>{{ i.created_at|date:"M d, Y" }} &middot; {{ i.formatted_budget }}</small></div>
+                    {% empty %}<p class="ox-help">No inquiries yet.</p>{% endfor %}
+                </section>
+
+                <section class="ox-card" aria-labelledby="revTitle">
+                    <div class="ox-sec-h"><span class="ox-ico t-orange"><i class="bi bi-star-fill" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="revTitle">Reviews</h2><p class="ox-card-sub">{% if rating.n %}{{ rating.avg|floatformat:1 }} average from {{ rating.n }}{% else %}None yet{% endif %}</p></div><a href="{% url 'svc_admin_reviews' %}?service={{ s.pk }}" class="ox-btn ox-btn-sm ox-btn-neutral">See all</a></div>
+                    {% for r in reviews %}<div class="ox-sub-item"><b>{{ r.rating }}/5</b> by @{{ r.reviewer.username }}<div>{{ r.review_text|truncatechars:160 }}</div><small>{{ r.created_at|date:"M d, Y" }}{% if r.replies.all %} &middot; {{ r.replies.all|length }} repl{{ r.replies.all|length|pluralize:"y,ies" }}{% endif %}</small></div>
+                    {% empty %}<p class="ox-help">No reviews yet.</p>{% endfor %}
+                </section>
+            </div>
+        </div>
+    </div>
+</div>
+{% include 'admin/_ox_confirm.html' %}
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

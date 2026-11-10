@@ -1,47 +1,35 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}Quick Announcement{% endblock %}
+{% block title %}Quick announcement - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+{% include 'admin/_ox_mail_css.html' %}
+</style>
+{% endblock %}
 
 {% block 'Body' %}
-<div class="container my-5">
-    <div class="row">
-        <div class="col-md-6 mx-auto">
-            <div class="card">
-                <div class="card-header bg-success text-white">
-                    <h4 class="mb-0">⚡ Quick Announcement</h4>
+<div class="ox">
+    {% url 'bulk_email_list' as back_url %}
+    {% include 'admin/_ox_head.html' with title="Quick announcement" sub="Plain text, to everyone who opted in to announcements" back=back_url %}
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav_mail.html' with active="quick" %}
+        <form method="post" class="ox-col" style="max-width:40rem;margin:0 auto;width:100%">{% csrf_token %}
+            <section class="ox-card" aria-labelledby="qTitle">
+                <div class="ox-sec-h"><span class="ox-ico t-green"><i class="bi bi-lightning-charge" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="qTitle">Write it</h2><p class="ox-card-sub">You see the recipient count and confirm on the next screen.</p></div></div>
+                <div class="ox-fgrid">
+                    <div class="ox-field"><label for="qSubject" class="ox-lab">Subject<span class="ox-req" aria-hidden="true">*</span></label><input type="text" id="qSubject" name="subject" class="ox-ctl" maxlength="255" required autocomplete="off" value="{{ subject|default:'' }}"></div>
+                    <div class="ox-field"><label for="qMsg" class="ox-lab">Message<span class="ox-req" aria-hidden="true">*</span></label><textarea id="qMsg" name="message" class="ox-ctl" rows="8" required>{{ message|default:'' }}</textarea><p class="ox-help">Plain text. Line breaks become paragraphs.</p></div>
+                    <div class="ox-field"><span class="ox-lab">Send to</span>
+                        <div class="ox-radios" role="radiogroup" aria-label="Audience">{% for key, label, help in audiences %}<label class="ox-radio"><input type="radio" name="recipient_type" value="{{ key }}"{% if audience == key %} checked{% endif %}><div><b>{{ label }}</b><span>{{ help }}</span></div></label>{% endfor %}</div></div>
                 </div>
-                <div class="card-body">
-                    <form method="post">
-                        {% csrf_token %}
-                        
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Subject *</label>
-                            <input type="text" name="subject" class="form-control" required>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Message *</label>
-                            <textarea name="message" class="form-control" rows="6" required></textarea>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Send To:</label>
-                            <select name="recipient_type" class="form-control">
-                                <option value="all">All Users</option>
-                                <option value="verified">Verified Users Only</option>
-                                <option value="business">Business Users Only</option>
-                            </select>
-                        </div>
-
-                        <button type="submit" class="btn btn-success btn-lg w-100">
-                            📤 Send Now
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
+                <div class="ox-acts" style="margin-top:var(--sp-4)"><button type="submit" class="ox-btn"><i class="bi bi-arrow-right" aria-hidden="true"></i>Continue</button></div>
+            </section>
+        </form>
     </div>
 </div>
 {% endblock %}
-{% block 'Footer'%}
-{% endblock%}
+{% block 'Footer' %}{% endblock %}

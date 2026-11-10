@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if tier %}Edit tier{% else %}Add tier{% endif %} - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+.ox-form-narrow { max-width: 44rem; margin: 0 auto; width: 100%; }
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% url 'dash_admin_tiers' as list_url %}
+    {% include 'admin/_ox_head.html' with title=tier.name|default:"New tier" sub="Prices are in naira" back=list_url %}
+
+    <div class="ox-main">
+        <form method="post" class="ox-form-narrow ox-col ox-stack" id="tierForm" novalidate>
+            {% csrf_token %}
+
+            {% if tier and n_accounts %}
+            <div class="ox-alert t-orange ox-wash" role="note"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i><span>{{ n_accounts }} account{{ n_accounts|pluralize }} use this tier. Limits and discounts change for them straight away.</span></div>
+            {% endif %}
+
+            <section class="ox-card" aria-labelledby="t1">
+                <div class="ox-sec-h"><span class="ox-ico t-navy"><i class="bi bi-card-text" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="t1">Basics</h2></div></div>
+                <div class="ox-fgrid">
+                    <div class="ox-fgrid two">
+                        {% include 'admin/_ox_field.html' with field=form.name label="Name" %}
+                        {% include 'admin/_ox_field.html' with field=form.tier_type label="Type" help="Only one tier of each type is allowed." %}
+                    </div>
+                    {% include 'admin/_ox_field.html' with field=form.description label="Short description" %}
+                    {% include 'admin/_ox_field.html' with field=form.benefits label="Benefits" help="Shown to users on the subscription page. One per line." %}
+                </div>
+            </section>
+
+            <section class="ox-card" aria-labelledby="t2">
+                <div class="ox-sec-h"><span class="ox-ico t-green"><i class="bi bi-cash" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="t2">Pricing</h2><p class="ox-card-sub">Leave both at 0 for a free tier.</p></div></div>
+                <div class="ox-fgrid two">
+                    {% include 'admin/_ox_field.html' with field=form.monthly_price label="Monthly price (&#8358;)" %}
+                    {% include 'admin/_ox_field.html' with field=form.two_month_price label="Two-month price (&#8358;)" help="Should be less than twice the monthly price." %}
+                </div>
+            </section>
+
+            <section class="ox-card" aria-labelledby="t3">
+                <div class="ox-sec-h"><span class="ox-ico t-orange"><i class="bi bi-sliders" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="t3">Limits and perks</h2></div></div>
+                <div class="ox-fgrid">
+                    <div class="ox-fgrid two">
+                        {% include 'admin/_ox_field.html' with field=form.max_listings label="Maximum listings" %}
+                        {% include 'admin/_ox_field.html' with field=form.featured_listings label="Featured listings" %}
+                        {% include 'admin/_ox_field.html' with field=form.listing_discount label="Listing discount (%)" help="0 to 100." %}
+                        {% include 'admin/_ox_field.html' with field=form.boost_discount label="Boost discount (%)" help="0 to 100. Applied to every boost purchase." %}
+                    </div>
+                    <label class="ox-switch">{{ form.priority_support }}<div><b>Priority support</b><span>Show the priority support badge.</span></div></label>
+                    <label class="ox-switch">{{ form.analytics_access }}<div><b>Analytics access</b><span>Allow the boost and view charts.</span></div></label>
+                </div>
+            </section>
+
+            {% if form.non_field_errors %}<div class="ox-alert ox-wash" role="alert"><i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i><span>{{ form.non_field_errors|join:" " }}</span></div>{% endif %}
+
+            <div class="ox-mf">
+                <a href="{{ list_url }}" class="ox-btn ox-btn-neutral">Cancel</a>
+                <button type="submit" class="ox-btn" id="saveBtn">{% if tier %}Save changes{% else %}Add tier{% endif %}</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var f = document.getElementById('tierForm');
+    f.addEventListener('submit', function (e) {
+        if (f.dataset.busy) { e.preventDefault(); return; }
+        f.dataset.busy = '1';
+        var b = document.getElementById('saveBtn'); b.disabled = true;
+        b.innerHTML = '<span class="spinner-border" aria-hidden="true"></span> Saving';
+    });
+    window.addEventListener('pageshow', function (e) { if (e.persisted) { delete f.dataset.busy; document.getElementById('saveBtn').disabled = false; } });
+});
+</script>
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

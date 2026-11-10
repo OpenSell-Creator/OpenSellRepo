@@ -1,57 +1,52 @@
 {% extends 'base.html' %}
+{% load static humanize %}
 
-{% block title %}Confirm Send{% endblock %}
+{% block title %}Confirm send - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+{% include 'admin/_ox_mail_css.html' %}
+</style>
+{% endblock %}
 
 {% block 'Body' %}
-<div class="container my-5">
-    <div class="row">
-        <div class="col-md-6 mx-auto">
-            <div class="card border-warning">
-                <div class="card-header bg-warning">
-                    <h4 class="mb-0">⚠️ Confirm Email Send</h4>
-                </div>
-                <div class="card-body">
-                    <h5>{{ campaign.title }}</h5>
-                    
-                    <div class="alert alert-info">
-                        <p><strong>Type:</strong> {{ campaign.get_campaign_type_display }}</p>
-                        <p><strong>Subject:</strong> {{ campaign.subject }}</p>
-                        <p><strong>Recipients:</strong> <span class="badge bg-primary">{{ recipient_count }} users</span></p>
-                    </div>
-                    
-                    <div class="card mb-3">
-                        <div class="card-header bg-light">
-                            <strong>Message Preview:</strong>
-                        </div>
-                        <div class="card-body">
-                            {{ campaign.message|safe|truncatewords_html:50 }}
-                        </div>
-                    </div>
-                    
-                    <div class="alert alert-warning">
-                        <strong>⚠️ Warning:</strong> This will send emails to {{ recipient_count }} users immediately. 
-                        This action cannot be undone.
-                    </div>
-                    
-                    <form method="post">
-                        {% csrf_token %}
-                        <input type="hidden" name="confirmed" value="1">
-                        
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-warning btn-lg">
-                                📧 Yes, Send to {{ recipient_count }} Users
-                            </button>
-                            <a href="{% url 'bulk_email_detail' campaign.pk %}" class="btn btn-outline-secondary btn-lg">
-                                Cancel
-                            </a>
+<div class="ox">
+    {% url 'bulk_email_detail' campaign.pk as back_url %}
+    {% include 'admin/_ox_head.html' with title="Review and send" sub=campaign.title|truncatechars:60 label="Will reach" value=recipient_count|intcomma back=back_url %}
+    <div class="ox-main">
+        <div class="ox-layout">
+            <div class="ox-col">
+                <section class="ox-card" aria-labelledby="cTitle">
+                    <div class="ox-sec-h"><span class="ox-ico t-red"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="cTitle">Before you send</h2></div></div>
+                    <dl class="ox-dl">
+                        <div><dt>Subject</dt><dd>{{ campaign.subject }}</dd></div>
+                        <div><dt>Type</dt><dd>{{ campaign.get_campaign_type_display }}</dd></div>
+                        <div><dt>Audience</dt><dd>{{ audience }}</dd></div>
+                        <div><dt>Recipients</dt><dd><b>{{ recipient_count|intcomma }}</b></dd></div>
+                        <div><dt>Sent today</dt><dd>{{ plan.today }}<small>{{ budget.bulk_used }} of {{ budget.cap }} already used today</small></dd></div>
+                        <div><dt>Finishes in</dt><dd>about {{ plan.days }} day{{ plan.days|pluralize }}<small>{{ plan.per_day }} a day, so the daily limit of the email provider keeps room for sign-in and welcome emails</small></dd></div>
+                    </dl>
+                    {% if bad_vars %}<div class="ox-alert t-orange ox-wash" role="note" style="margin-top:var(--sp-3)"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><span>Unknown variable{{ bad_vars|length|pluralize }}: {% for b in bad_vars %}{{ b }}{% if not forloop.last %}, {% endif %}{% endfor %}. They will be sent exactly as typed, because the sender needs no spaces inside the braces and fills only first_name in the subject. <a class="ox-link" href="{% url 'bulk_email_edit' campaign.pk %}">Fix the draft</a></span></div>{% endif %}
+                    <div class="ox-alert t-red ox-wash" role="note" style="margin-top:var(--sp-3)"><i class="bi bi-send-exclamation" aria-hidden="true"></i><span>Sent emails cannot be recalled. {% if plan.days > 1 %}This one goes out in daily batches, so people receive it on different days.{% endif %}</span></div>
+                    <form method="post" style="margin-top:var(--sp-4)">{% csrf_token %}
+                        <label class="ox-switch"><input type="checkbox" name="confirmed" value="1" required><div><b>I checked the preview and the recipient count</b><span>Required to send.</span></div></label>
+                        <div class="ox-acts" style="margin-top:var(--sp-3)">
+                            <button type="submit" class="ox-btn"><i class="bi bi-send" aria-hidden="true"></i>{% if plan.today %}Start: send {{ plan.today|intcomma }} today{% else %}Start sending tomorrow{% endif %}</button>
+                            <a href="{% url 'bulk_email_detail' campaign.pk %}" class="ox-btn ox-btn-neutral">Cancel</a>
                         </div>
                     </form>
-                </div>
+                </section>
+            </div>
+            <div class="ox-col">
+                <section class="ox-card" aria-labelledby="pvTitle">
+                    <div class="ox-sec-h"><span class="ox-ico t-green"><i class="bi bi-eye" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="pvTitle">Preview</h2></div></div>
+                    <iframe class="ox-preview" sandbox title="Email preview" srcdoc="<base target=_blank><body style='font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#222;margin:16px'>{{ preview_html }}"></iframe>
+                </section>
             </div>
         </div>
     </div>
 </div>
 {% endblock %}
-
-{% block 'Footer'%}
-{% endblock %}
+{% block 'Footer' %}{% endblock %}

@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}@{{ u.username }} - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+{% include 'admin/_ox_usr_css.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% url 'usr_admin_list' as list_url %}
+    {% include 'admin/_ox_head.html' with title=u.username sub=u.email label="Account" value=u.is_active|yesno:"Active,Deactivated" back=list_url %}
+
+    <div class="ox-main">
+        <section class="ox-card" aria-labelledby="actTitle">
+            <div class="ox-sec-h">
+                {% if photo_url %}<img class="ox-avimg" src="{{ photo_url }}" alt="">{% else %}<span class="ox-ico t-navy"><i class="bi bi-person" aria-hidden="true"></i></span>{% endif %}
+                <div class="ox-sec-t"><h2 class="ox-h2" id="actTitle">Actions</h2></div>
+                <span class="ox-pill ox-wash {% if not u.is_active %}us-inactive{% elif u.is_superuser or u.is_staff %}us-staff{% else %}us-active{% endif %}">{% if not u.is_active %}Deactivated{% elif u.is_superuser %}Superuser{% elif u.is_staff %}Staff{% else %}Active{% endif %}</span>
+            </div>
+            {% if locked %}<div class="ox-alert t-orange ox-wash" role="note" style="margin-bottom:var(--sp-3)"><i class="bi bi-lock-fill" aria-hidden="true"></i><span>{{ locked }}</span></div>{% endif %}
+            <div class="ox-acts">
+                <a href="{% url 'notif_admin_compose' %}?to={{ u.username|urlencode }}" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-megaphone" aria-hidden="true"></i>Send notification</a>
+                <a href="{% url 'dash_admin_accounts' %}?q={{ u.username|urlencode }}" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-wallet2" aria-hidden="true"></i>Wallet</a>
+                {% if p %}<a href="{% url 'admin_verify_business' p.pk %}" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-building-check" aria-hidden="true"></i>Business review</a>{% endif %}
+                {% if not locked %}
+                    {% if u.is_active %}
+                    <button type="button" class="ox-btn ox-btn-sm ox-danger" data-confirm data-action="{% url 'usr_admin_deactivate' u.pk %}"
+                            data-title="Deactivate @{{ u.username }}" data-message="They are signed out and cannot log in. Nothing is deleted and their listings stay up until you suspend them."
+                            data-label="Deactivate" data-danger="1" data-reason="Reason (kept in the server log)"><i class="bi bi-person-slash" aria-hidden="true"></i>Deactivate</button>
+                    {% else %}
+                    <form method="post" action="{% url 'usr_admin_reactivate' u.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ next_url }}"><button type="submit" class="ox-btn ox-btn-sm"><i class="bi bi-person-check" aria-hidden="true"></i>Reactivate</button></form>
+                    {% endif %}
+                    {% if user.is_superuser and u.is_active %}
+                    <form method="post" action="{% url 'usr_admin_staff' u.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ next_url }}"><input type="hidden" name="to" value="{% if u.is_staff %}off{% else %}on{% endif %}">
+                        <button type="submit" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-shield{% if u.is_staff %}-x{% else %}-plus{% endif %}" aria-hidden="true"></i>{% if u.is_staff %}Remove staff access{% else %}Make staff{% endif %}</button></form>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </section>
+
+        <div class="ox-layout">
+            <div class="ox-col ox-stack">
+                <section class="ox-card" aria-labelledby="accTitle">
+                    <div class="ox-sec-h"><span class="ox-ico t-purple"><i class="bi bi-person-badge" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="accTitle">Account</h2></div></div>
+                    <dl class="ox-dl">
+                        <div><dt>Username</dt><dd>@{{ u.username }}</dd></div>
+                        <div><dt>Name</dt><dd>{{ u.get_full_name|default:"-" }}</dd></div>
+                        <div><dt>Email</dt><dd>{{ u.email|default:"-" }}</dd></div>
+                        <div><dt>Email verified</dt><dd>{% if not p %}No profile{% elif p.email_verified %}Yes{% else %}No{% endif %}</dd></div>
+                        <div><dt>Phone</dt><dd>{{ p.phone_number|default:"-" }}</dd></div>
+                        <div><dt>Joined</dt><dd>{{ u.date_joined|date:"M d, Y H:i" }}</dd></div>
+                        <div><dt>Last login</dt><dd>{% if u.last_login %}{{ u.last_login|date:"M d, Y H:i" }}{% else %}Never{% endif %}</dd></div>
+                        <div><dt>Location</dt><dd>{% if p.location %}{{ p.location }}{% else %}-{% endif %}</dd></div>
+                    </dl>
+                    {% if p and not locked %}
+                    <div class="ox-acts" style="margin-top:var(--sp-3)">
+                        {% if not p.email_verified %}
+                        <form method="post" action="{% url 'usr_admin_verify_email' u.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ next_url }}"><button type="submit" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-patch-check" aria-hidden="true"></i>Mark email verified</button></form>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </section>
+
+                {% if p %}
+                <section class="ox-card" aria-labelledby="profTitle">
+                    <div class="ox-sec-h"><span class="ox-ico t-orange"><i class="bi bi-card-text" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="profTitle">Public profile</h2><p class="ox-card-sub">Remove content that breaks the rules.</p></div></div>
+                    {% if p.bio %}<div class="ox-quote">{{ p.bio }}</div>{% else %}<p class="ox-help">No bio.</p>{% endif %}
+                    {% if not locked %}
+                    <div class="ox-acts" style="margin-top:var(--sp-3)">
+                        {% if photo_url %}<button type="button" class="ox-btn ox-btn-sm ox-danger" data-confirm data-action="{% url 'usr_admin_clear' u.pk 'photo' %}" data-title="Remove photo" data-message="Deletes their profile photo file. They can upload another." data-label="Remove photo" data-danger="1" data-reason="Reason (kept in the server log)"><i class="bi bi-image" aria-hidden="true"></i>Remove photo</button>{% endif %}
+                        {% if p.bio %}<button type="button" class="ox-btn ox-btn-sm ox-danger" data-confirm data-action="{% url 'usr_admin_clear' u.pk 'bio' %}" data-title="Clear bio" data-message="Empties their bio. They can write a new one." data-label="Clear bio" data-danger="1" data-reason="Reason (kept in the server log)"><i class="bi bi-eraser" aria-hidden="true"></i>Clear bio</button>{% endif %}
+                    </div>
+                    {% endif %}
+                </section>
+
+                <section class="ox-card" aria-labelledby="bizTitle">
+                    <div class="ox-sec-h"><span class="ox-ico t-green"><i class="bi bi-building" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="bizTitle">Business</h2></div><span class="ox-pill ox-wash vb-{{ p.business_verification_status }}">{{ p.get_business_verification_status_display }}</span></div>
+                    <dl class="ox-dl">
+                        <div><dt>Name</dt><dd>{{ p.business_name|default:"-" }}</dd></div>
+                        <div><dt>Type</dt><dd>{% if p.business_name %}{{ p.get_business_type_display }}{% else %}-{% endif %}</dd></div>
+                        <div><dt>Verified</dt><dd>{% if p.business_verified_at %}{{ p.business_verified_at|date:"M d, Y" }}{% if p.business_verified_by %} by @{{ p.business_verified_by.username }}{% endif %}{% else %}-{% endif %}</dd></div>
+                    </dl>
+                    {% if not locked %}
+                    <h3 class="ox-h3" style="margin-top:var(--sp-4)">Perks</h3>
+                    <div class="ox-acts">
+                        {% for key, label, on in privileges %}
+                        <form method="post" action="{% url 'usr_admin_privilege' u.pk key %}">{% csrf_token %}<input type="hidden" name="next" value="{{ next_url }}"><input type="hidden" name="to" value="{% if on %}off{% else %}on{% endif %}">
+                            <button type="submit" class="ox-btn ox-btn-sm {% if not on %}ox-btn-neutral{% endif %}" aria-pressed="{% if on %}true{% else %}false{% endif %}"><i class="bi bi-{% if on %}check-circle-fill{% else %}circle{% endif %}" aria-hidden="true"></i>{{ label }}</button></form>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </section>
+                {% endif %}
+            </div>
+
+            <div class="ox-col ox-stack">
+                <section class="ox-card" aria-labelledby="actvTitle">
+                    <div class="ox-sec-h"><span class="ox-ico t-navy"><i class="bi bi-activity" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="actvTitle">Marketplace activity</h2></div></div>
+                    <dl class="ox-dl">
+                        <div><dt>Products</dt><dd>{% if activity.products is None %}-{% else %}{{ activity.products }}{% endif %}</dd></div>
+                        <div><dt>Services</dt><dd>{% if activity.services is None %}-{% else %}{{ activity.services }}{% endif %}</dd></div>
+                        <div><dt>Buyer requests</dt><dd>{% if activity.requests is None %}-{% else %}{{ activity.requests }}{% endif %}</dd></div>
+                        <div><dt>Open reports on their listings</dt><dd{% if open_reports %} class="ox-neg"{% endif %}>{{ open_reports }}</dd></div>
+                        <div><dt>Reports they filed</dt><dd>{{ filed_reports }}</dd></div>
+                    </dl>
+                    <div class="ox-acts" style="margin-top:var(--sp-3)">
+                        <a href="{% url 'home_admin_listings' %}?q={{ u.username|urlencode }}" class="ox-btn ox-btn-sm ox-btn-neutral">Their products</a>
+                        <a href="{% url 'svc_admin_list' %}?q={{ u.username|urlencode }}" class="ox-btn ox-btn-sm ox-btn-neutral">Their services</a>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+</div>
+{% include 'admin/_ox_confirm.html' %}
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

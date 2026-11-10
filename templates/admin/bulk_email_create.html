@@ -1,147 +1,114 @@
 {% extends 'base.html' %}
-{% load widget_tweaks %}
+{% load static %}
 
-{% block title %}Send Bulk Email{% endblock %}
+{% block title %}{% if campaign %}Edit draft{% else %}New campaign{% endif %} - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+{% include 'admin/_ox_mail_css.html' %}
+</style>
+{% endblock %}
 
 {% block 'Body' %}
-<div class="container my-5">
-    <div class="row">
-        <div class="col-md-8 mx-auto">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">📧 Send Bulk Email</h4>
+<div class="ox">
+    {% url 'bulk_email_list' as back_url %}
+    {% include 'admin/_ox_head.html' with title=campaign|yesno:"Edit draft,New campaign" sub="Saved as a draft. Nothing is sent from this page." back=back_url %}
+
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav_mail.html' with active="create" %}
+        <form method="post" id="mailForm" novalidate data-preview-url="{{ preview_url }}">
+            {% csrf_token %}
+            <div class="ox-layout">
+                <div class="ox-col">
+                    <section class="ox-card" aria-labelledby="mTitle">
+                        <div class="ox-sec-h"><span class="ox-ico t-navy"><i class="bi bi-envelope-paper" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="mTitle">Message</h2></div></div>
+                        <div class="ox-fgrid">
+                            {% include 'admin/_ox_field.html' with field=form.title label="Campaign name" help="Only you see this." %}
+                            {% include 'admin/_ox_field.html' with field=form.campaign_type label="Email type" help="Decides who may receive it. Users who switched this type off are skipped." %}
+                            <div>
+                                {% include 'admin/_ox_field.html' with field=form.subject label="Subject" %}
+                                <p class="ox-count" id="subjCount" aria-live="polite"></p>
+                            </div>
+                            <div>
+                                {% include 'admin/_ox_field.html' with field=form.message label="Message (HTML)" help="Plain HTML. Use h2, p, strong, ul, li and a. Put styles inline." %}
+                                <div class="ox-chips" role="group" aria-label="Insert a variable">
+                                    {% for v in variables %}<button type="button" class="ox-chip" data-var="{{ v }}">{% templatetag openvariable %}{{ v }}{% templatetag closevariable %}</button>{% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </section>
                 </div>
-                <div class="card-body">
-                    <form method="post">
-                        {% csrf_token %}
-                        
-                        <!-- Campaign Name -->
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Campaign Name *</label>
-                            {{ form.title }}
-                            <small class="text-muted">Internal reference name</small>
+                <div class="ox-col">
+                    <section class="ox-card" aria-labelledby="aTitle">
+                        <div class="ox-sec-h"><span class="ox-ico t-green"><i class="bi bi-people" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="aTitle">Audience</h2></div></div>
+                        <div class="ox-radios" role="radiogroup" aria-label="Audience">
+                            {% for key, label, help in audiences %}
+                            <label class="ox-radio"><input type="radio" name="audience" value="{{ key }}"{% if form.audience.value == key or not form.audience.value and key == 'all' %} checked{% endif %}><div><b>{{ label }}</b><span>{{ help }}</span></div></label>
+                            {% endfor %}
                         </div>
-
-                        <!-- Type -->
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Email Type *</label>
-                            {{ form.campaign_type }}
-                            <small class="text-muted">Determines who can receive based on preferences</small>
-                        </div>
-
-                        <!-- Subject -->
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Subject *</label>
-                            {{ form.subject }}
-                            <small class="text-muted">Use {{first_name}} for personalization</small>
-                        </div>
-
-                        <!-- Message -->
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Message *</label>
-                            {{ form.message }}
-                            <small class="text-muted">
-                                Variables: {{first_name}}, {{username}}, {{site_name}}, {{site_url}}
-                            </small>
-                        </div>
-
-                        <!-- Recipients -->
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Send To:</label>
-                            
-                            <div class="form-check mb-2">
-                                {{ form.target_all }}
-                                <label class="form-check-label">All users (who opted in)</label>
-                            </div>
-
-                            <div class="form-check mb-2">
-                                {{ form.verified_only }}
-                                <label class="form-check-label">Only verified emails</label>
-                            </div>
-
-                            <div class="form-check mb-3">
-                                {{ form.business_only }}
-                                <label class="form-check-label">Only verified businesses</label>
-                            </div>
-                        </div>
-
-                        <!-- Recipient Preview -->
-                        <div id="recipientPreview" class="alert alert-info">
-                            <strong>ℹ️ Checking recipients...</strong>
-                        </div>
-
-                        <!-- Info -->
-                        <div class="alert alert-secondary">
-                            <small>
-                                <strong>Note:</strong> Emails are sent in the background. Only users who opted in for this type will receive it.
-                            </small>
-                        </div>
-
-                        <!-- Buttons -->
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                📤 Send Email
-                            </button>
-                            <a href="{% url 'bulk_email_list' %}" class="btn btn-outline-secondary btn-lg">
-                                Cancel
-                            </a>
-                        </div>
-                    </form>
+                        {% for e in form.audience.errors %}<p class="ox-err" role="alert"><i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i><span>{{ e }}</span></p>{% endfor %}
+                        <p class="ox-live" id="liveCount" style="margin-top:var(--sp-3)" aria-live="polite">Checking recipients...</p>
+                    </section>
+                    <section class="ox-card" aria-labelledby="pTitle" style="margin-top:var(--sp-3)">
+                        <div class="ox-sec-h"><span class="ox-ico t-orange"><i class="bi bi-eye" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="pTitle">Preview</h2><p class="ox-card-sub">Sample name and links. Scripts never run here.</p></div></div>
+                        <iframe class="ox-preview" id="mailPreview" sandbox title="Email preview"></iframe>
+                    </section>
                 </div>
             </div>
-
-            <!-- Tips -->
-            <div class="card mt-3">
-                <div class="card-body">
-                    <h6>💡 Tips:</h6>
-                    <ul class="mb-0 small">
-                        <li>Keep subject under 50 characters</li>
-                        <li>Use HTML tags: &lt;h2&gt;, &lt;p&gt;, &lt;strong&gt;, &lt;a&gt;</li>
-                        <li>Test by sending to yourself first (add your email to specific users)</li>
-                        <li>Emails process in background - won't slow down site</li>
-                    </ul>
-                </div>
+            <div class="ox-acts" style="margin-top:var(--sp-4)">
+                <button type="submit" class="ox-btn"><i class="bi bi-check2" aria-hidden="true"></i>{% if campaign %}Save changes{% else %}Save draft{% endif %}</button>
+                <a href="{% if campaign %}{% url 'bulk_email_detail' campaign.pk %}{% else %}{% url 'bulk_email_list' %}{% endif %}" class="ox-btn ox-btn-neutral">Cancel</a>
             </div>
-        </div>
+        </form>
     </div>
 </div>
-
+{% verbatim %}
 <script>
-// Live recipient count preview
-function updateRecipientCount() {
-    const type = document.querySelector('select[name="campaign_type"]').value;
-    const verified = document.querySelector('input[name="verified_only"]').checked;
-    const business = document.querySelector('input[name="business_only"]').checked;
-    
-    const preview = document.getElementById('recipientPreview');
-    preview.innerHTML = '<strong>⏳ Checking recipients...</strong>';
-    
-    fetch(`/admin/email-preferences/preview/?type=${type}&verified=${verified}&business=${business}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.count > 0) {
-                preview.className = 'alert alert-success';
-                preview.innerHTML = `<strong>✅ Will send to ${data.count} users</strong><br><small>${data.message}</small>`;
-            } else {
-                preview.className = 'alert alert-danger';
-                preview.innerHTML = '<strong>⚠️ No users match these criteria!</strong><br><small>Try different filters or check if users have email preferences.</small>';
-            }
-        })
-        .catch(error => {
-            preview.className = 'alert alert-warning';
-            preview.innerHTML = '<strong>⚠️ Could not load recipient count</strong>';
-        });
-}
-
-// Update count on any change
-document.addEventListener('DOMContentLoaded', function() {
-    updateRecipientCount();
-    
-    document.querySelector('select[name="campaign_type"]').addEventListener('change', updateRecipientCount);
-    document.querySelector('input[name="verified_only"]').addEventListener('change', updateRecipientCount);
-    document.querySelector('input[name="business_only"]').addEventListener('change', updateRecipientCount);
-});
+(function () {
+  var f = document.getElementById('mailForm');
+  var subj = f.querySelector('[name=subject]'), msg = f.querySelector('[name=message]');
+  var type = f.querySelector('[name=campaign_type]');
+  var sc = document.getElementById('subjCount'), live = document.getElementById('liveCount');
+  var frame = document.getElementById('mailPreview');
+  var sample = { first_name: 'Ada', username: 'ada_o', site_name: 'OpenSell', site_url: location.origin };
+  function fill(t) { return t.replace(/\{\{\s*(\w+)\s*\}\}/g, function (m, k) { return sample[k] !== undefined ? sample[k] : m; }); }
+  function subjectCount() {
+    var n = subj.value.length;
+    sc.textContent = n + ' characters. Under 50 shows in full on most phones.';
+    sc.classList.toggle('is-over', n > 255);
+  }
+  function preview() {
+    frame.srcdoc = '<base target="_blank"><body style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#222;margin:16px">' + fill(msg.value);
+  }
+  var timer;
+  function count() {
+    var aud = (f.querySelector('[name=audience]:checked') || {}).value || 'all';
+    var url = f.dataset.previewUrl + '?type=' + encodeURIComponent(type.value) + '&verified=' + (aud === 'verified') + '&business=' + (aud === 'business');
+    live.className = 'ox-live'; live.textContent = 'Checking recipients...';
+    fetch(url, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
+      live.className = 'ox-live ' + (d.count > 0 ? 'is-ok' : 'is-bad');
+      live.textContent = d.count > 0 ? d.message : 'No one matches. Try another audience or email type.';
+    }).catch(function () { live.className = 'ox-live is-bad'; live.textContent = 'Could not load the recipient count.'; });
+  }
+  function later() { clearTimeout(timer); timer = setTimeout(count, 300); }
+  subj.addEventListener('input', subjectCount);
+  msg.addEventListener('input', preview);
+  type.addEventListener('change', later);
+  f.querySelectorAll('[name=audience]').forEach(function (r) { r.addEventListener('change', later); });
+  f.querySelectorAll('[data-var]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var el = document.activeElement === subj ? subj : msg, tok = '{{' + b.dataset.var + '}}';
+      var s = el.selectionStart || 0, e = el.selectionEnd || 0;
+      el.value = el.value.slice(0, s) + tok + el.value.slice(e);
+      el.focus(); el.selectionStart = el.selectionEnd = s + tok.length;
+      subjectCount(); preview();
+    });
+  });
+  subjectCount(); preview(); count();
+})();
 </script>
+{% endverbatim %}
 {% endblock %}
-{% block 'Footer'%}
-{% endblock%}
+{% block 'Footer' %}{% endblock %}

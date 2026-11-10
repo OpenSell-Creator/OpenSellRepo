@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Accounts - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% include 'admin/_ox_head.html' with title="Accounts" sub="Wallets, tiers and subscriptions" label="Total in all wallets" value=wallet_total|floatformat:2|intcomma %}
+
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav_dash.html' with active="accounts" %}
+        {% include 'admin/_ox_tabs.html' with tabs=tabs current=tier param="tier" q=q cols=3 %}
+
+        <section class="ox-card" aria-labelledby="listTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-green"><i class="bi bi-wallet2" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="listTitle">Accounts</h2><p class="ox-card-sub">Largest balances first.</p></div>
+            </div>
+
+            <form method="get" class="ox-bar" role="search">
+                <input type="hidden" name="tier" value="{{ tier }}">
+                <input type="search" name="q" class="ox-ctl ox-grow" autocomplete="off" enterkeyhint="search" aria-label="Search accounts" placeholder="Username or email" value="{{ q }}">
+                <button type="submit" class="ox-btn ox-btn-neutral" aria-label="Search"><i class="bi bi-search" aria-hidden="true"></i></button>
+            </form>
+
+            {% if page_obj.object_list %}
+            <ul class="ox-list">
+                {% for a in page_obj %}
+                <li class="ox-item{% if a.sub_expired %} is-flag{% endif %}">
+                    <div class="ox-who">
+                        <span class="ox-av" aria-hidden="true">{{ a.user.username|slice:":1" }}</span>
+                        <div class="ox-who-t"><b>@{{ a.user.username }}</b><span>{{ a.user.email }}</span></div>
+                    </div>
+                    <span class="ox-pill ox-wash st {% if a.sub %}st-pro{% elif a.sub_expired %}st-expired{% else %}st-free{% endif %}">{% if a.sub %}{{ a.status.name }}{% elif a.sub_expired %}Expired{% else %}Free{% endif %}</span>
+                    <dl class="ox-nums" style="--ncols:3">
+                        <div><dt>Balance</dt><dd>&#8358;{{ a.balance|floatformat:2|intcomma }}</dd></div>
+                        <div><dt>Subscription</dt><dd>{% if a.sub %}{{ a.sub.end_date|date:"M d, Y" }}<small>{{ a.sub_days }} day{{ a.sub_days|pluralize }} left</small>{% elif a.sub_expired %}Lapsed, tier not yet reset{% else %}None{% endif %}</dd></div>
+                        <div><dt>Joined</dt><dd>{{ a.created_at|date:"M d, Y" }}</dd></div>
+                    </dl>
+                    <div class="ox-acts"><a href="{% url 'dash_admin_account' a.pk %}" class="ox-btn ox-btn-sm"><i class="bi bi-eye" aria-hidden="true"></i>Open</a></div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% include 'admin/_ox_pager.html' %}
+            {% else %}
+            <div class="ox-empty">
+                <span class="ox-ico t-green"><i class="bi bi-wallet2" aria-hidden="true"></i></span>
+                <div><h2>No accounts found</h2><p>{% if q %}No results for "{{ q }}".{% else %}Nothing matches this filter.{% endif %}</p></div>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Listings - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% include 'admin/_ox_head.html' with title="Listings" sub="Suspend, reinstate or remove products" label="Suspended" value=counts.suspended %}
+
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav.html' with active="listings" %}
+
+        <nav class="ox-tabs" style="--cols:4" aria-label="Filter by status">
+            <a href="?status=suspended&amp;q={{ q|urlencode }}" class="ox-tile ox-tab t-red"{% if status == 'suspended' %} aria-current="true"{% endif %}><span>Suspended</span><b>{{ counts.suspended }}</b></a>
+            <a href="?status=expiring&amp;q={{ q|urlencode }}" class="ox-tile ox-tab t-orange"{% if status == 'expiring' %} aria-current="true"{% endif %}><span>Expiring soon</span><b>{{ counts.expiring }}</b></a>
+            <a href="?status=expired&amp;q={{ q|urlencode }}" class="ox-tile ox-tab t-purple"{% if status == 'expired' %} aria-current="true"{% endif %}><span>Expired</span><b>{{ counts.expired }}</b></a>
+            <a href="?status=all&amp;q={{ q|urlencode }}" class="ox-tile ox-tab t-navy"{% if status == 'all' %} aria-current="true"{% endif %}><span>All</span><b>{{ counts.all }}</b></a>
+        </nav>
+
+        <section class="ox-card" aria-labelledby="listTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-navy"><i class="bi bi-bag" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="listTitle">Listings</h2></div>
+            </div>
+
+            <form method="get" class="ox-bar" role="search">
+                <input type="hidden" name="status" value="{{ status }}">
+                <input type="search" name="q" class="ox-ctl ox-grow" autocomplete="off" enterkeyhint="search" aria-label="Search listings" placeholder="Title, seller or email" value="{{ q }}">
+                <button type="submit" class="ox-btn ox-btn-neutral" aria-label="Search"><i class="bi bi-search" aria-hidden="true"></i></button>
+            </form>
+
+            {% if page_obj.object_list %}
+            <ul class="ox-list">
+                {% for p in page_obj %}
+                <li class="ox-item{% if p.state == 'suspended' or p.state == 'expired' %} is-bad{% elif p.state == 'expiring' %} is-flag{% endif %}{% if p.is_suspended and p.suspension_reason %} has-body{% endif %}">
+                    <div class="ox-who">
+                        {% if p.cover_url %}<img class="ox-thumb" src="{{ p.cover_url }}" alt="" loading="lazy">{% else %}<span class="ox-thumb" aria-hidden="true"></span>{% endif %}
+                        <div class="ox-who-t">
+                            <b>{{ p.title|truncatechars:60 }}</b>
+                            <span>by @{{ p.seller.user.username }}</span>
+                        </div>
+                    </div>
+                    <span class="ox-pill ox-wash st st-{{ p.state }}"><i class="bi {% if p.state == 'suspended' %}bi-slash-circle{% elif p.state == 'expired' %}bi-calendar-x{% elif p.state == 'expiring' %}bi-hourglass-split{% else %}bi-check-circle{% endif %}" aria-hidden="true"></i>{{ p.state_label }}</span>
+
+                    {% if p.is_suspended and p.suspension_reason %}
+                    <div class="ox-body"><div class="ox-quote"><small class="ox-help" style="margin:0">Suspended{% if p.suspended_at %} {{ p.suspended_at|date:"M d, Y" }}{% endif %}{% if p.suspended_by %} by @{{ p.suspended_by.username }}{% endif %}</small>{{ p.suspension_reason }}</div></div>
+                    {% endif %}
+
+                    <dl class="ox-nums">
+                        <div><dt>Price</dt><dd>&#8358;{{ p.price|floatformat:0|intcomma }}</dd></div>
+                        <div><dt>Category</dt><dd>{{ p.category.name }}</dd></div>
+                        <div><dt>Listed</dt><dd>{{ p.created_at|date:"M d, Y" }}<small>{{ p.get_listing_type_display|truncatechars:22 }}</small></dd></div>
+                        <div><dt>{% if p.listing_type == 'permanent' %}Expires{% else %}Expires{% endif %}</dt><dd>{% if p.listing_type == 'permanent' or not p.expiration_date %}Never{% else %}{{ p.expiration_date|date:"M d, Y" }}<small>{{ p.expiration_date|timesince }}{% if p.state == 'expired' %} ago{% endif %}</small>{% endif %}</dd></div>
+                    </dl>
+
+                    <div class="ox-acts">
+                        <a href="{{ p.get_absolute_url }}" target="_blank" rel="noopener" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>View</a>
+                        {% if p.is_suspended %}
+                        <form method="post" action="{% url 'home_admin_listing_unsuspend' p.pk %}">
+                            {% csrf_token %}<input type="hidden" name="next" value="{{ next_url }}">
+                            <button type="submit" class="ox-btn ox-btn-sm"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Reinstate</button>
+                        </form>
+                        {% else %}
+                        <button type="button" class="ox-btn ox-btn-sm" data-confirm
+                                data-action="{% url 'home_admin_listing_suspend' p.pk %}"
+                                data-title="Suspend listing" data-message="It disappears from the site and the seller is emailed the reason."
+                                data-label="Suspend" data-reason="Reason for the seller"><i class="bi bi-slash-circle" aria-hidden="true"></i>Suspend</button>
+                        {% endif %}
+                        <button type="button" class="ox-btn ox-btn-sm ox-danger" data-confirm
+                                data-action="{% url 'home_admin_listing_delete' p.pk %}"
+                                data-title="Delete listing" data-message="This removes the listing and its photos for good."
+                                data-label="Delete" data-danger="1" data-reason="Reason (kept in the server log)"><i class="bi bi-trash" aria-hidden="true"></i>Delete</button>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% include 'admin/_ox_pager.html' %}
+            {% else %}
+            <div class="ox-empty">
+                <span class="ox-ico t-green"><i class="bi bi-inbox" aria-hidden="true"></i></span>
+                <div>
+                    <h2>No listings found</h2>
+                    <p>{% if q %}No results for "{{ q }}".{% elif status == 'suspended' %}Nothing is suspended right now.{% elif status == 'all' %}No listings yet.{% else %}Nothing matches this filter.{% endif %}</p>
+                </div>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+
+{% include 'admin/_ox_confirm.html' %}
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

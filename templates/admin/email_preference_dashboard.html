@@ -1,124 +1,38 @@
 {% extends 'base.html' %}
+{% load static humanize %}
 
-{% block title %}Email Preferences Dashboard{% endblock %}
+{% block title %}Email preferences - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+{% include 'admin/_ox_mail_css.html' %}
+</style>
+{% endblock %}
 
 {% block 'Body' %}
-<div class="container my-5">
-    <h2>📊 Email Preferences Dashboard</h2>
-    <p class="text-muted">See how many users have opted in for each type of email</p>
-
-    <!-- Warning if users missing preferences -->
-    {% if stats.users_without_preferences > 0 %}
-    <div class="alert alert-warning">
-        <strong>⚠️ Action Needed!</strong> 
-        {{ stats.users_without_preferences }} users don't have email preferences yet.
-        <a href="{% url 'create_missing_preferences' %}" class="btn btn-sm btn-warning ms-2">
-            Fix Now
-        </a>
-    </div>
-    {% endif %}
-
-    <!-- Statistics Cards -->
-    <div class="row mb-4">
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body text-center">
-                    <h3 class="text-primary">{{ stats.total_users }}</h3>
-                    <p class="mb-0">Total Users</p>
-                </div>
-            </div>
+<div class="ox">
+    {% url 'bulk_email_list' as back_url %}
+    {% include 'admin/_ox_head.html' with title="Email preferences" sub="Who allowed which kind of email" label="Have preferences" value=stats.n_prefs|intcomma back=back_url %}
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav_mail.html' with active="prefs" %}
+        {% if stats.n_missing %}
+        <div class="ox-alert t-orange ox-wash" role="note"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><span>{{ stats.n_missing|intcomma }} profile{{ stats.n_missing|pluralize }} {{ stats.n_missing|pluralize:"has,have" }} no email preferences, so campaigns skip them. <a class="ox-link" href="{% url 'create_missing_preferences' %}">Fix this</a></span></div>
+        {% endif %}
+        {% if stats.n_no_profile %}<div class="ox-alert t-orange ox-wash" role="note"><i class="bi bi-person-exclamation" aria-hidden="true"></i><span>{{ stats.n_no_profile }} active account{{ stats.n_no_profile|pluralize }} {{ stats.n_no_profile|pluralize:"has,have" }} no profile at all. <a class="ox-link" href="{% url 'usr_admin_overview' %}">Repair them</a></span></div>{% endif %}
+        <div class="ox-sum">
+            <div><span>Active accounts</span><b>{{ stats.n_users|intcomma }}</b></div>
+            <div><span>Profiles</span><b>{{ stats.n_profiles|intcomma }}</b></div>
+            <div><span>With preferences</span><b>{{ stats.n_prefs|intcomma }}</b></div>
+            <div><span>Turned everything off</span><b>{{ stats.n_none|intcomma }}</b></div>
         </div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body text-center">
-                    <h3 class="text-success">{{ stats.users_with_preferences }}</h3>
-                    <p class="mb-0">With Preferences</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body text-center">
-                    <h3 class="text-warning">{{ stats.users_without_preferences }}</h3>
-                    <p class="mb-0">Missing Preferences</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Opted-In Statistics -->
-    <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0">📧 Opted-In Users by Email Type</h5>
-        </div>
-        <div class="card-body">
-            <div class="row text-center">
-                <div class="col-md-4 mb-3">
-                    <div class="p-4 bg-light rounded">
-                        <i class="bi bi-megaphone" style="font-size: 2rem; color: #0d6efd;"></i>
-                        <h3 class="mt-3 mb-0">{{ stats.marketing_opted_in }}</h3>
-                        <p class="text-muted mb-0">Marketing Emails</p>
-                        <small class="text-muted">
-                            ({{ stats.marketing_opted_in|floatformat:0 }} / {{ stats.users_with_preferences }})
-                        </small>
-                    </div>
-                </div>
-
-                <div class="col-md-4 mb-3">
-                    <div class="p-4 bg-light rounded">
-                        <i class="bi bi-bell" style="font-size: 2rem; color: #198754;"></i>
-                        <h3 class="mt-3 mb-0">{{ stats.announcements_opted_in }}</h3>
-                        <p class="text-muted mb-0">Announcements</p>
-                        <small class="text-muted">
-                            ({{ stats.announcements_opted_in|floatformat:0 }} / {{ stats.users_with_preferences }})
-                        </small>
-                    </div>
-                </div>
-
-                <div class="col-md-4 mb-3">
-                    <div class="p-4 bg-light rounded">
-                        <i class="bi bi-info-circle" style="font-size: 2rem; color: #ffc107;"></i>
-                        <h3 class="mt-3 mb-0">{{ stats.notifications_opted_in }}</h3>
-                        <p class="text-muted mb-0">Notifications</p>
-                        <small class="text-muted">
-                            ({{ stats.notifications_opted_in|floatformat:0 }} / {{ stats.users_with_preferences }})
-                        </small>
-                    </div>
-                </div>
-            </div>
-
-            <div class="alert alert-info mt-4">
-                <i class="bi bi-info-circle"></i>
-                <strong>How it works:</strong> 
-                When you create a campaign, only users who opted in for that specific type will receive it.
-                Users can manage their preferences at any time.
-            </div>
-        </div>
-    </div>
-
-    <!-- Quick Actions -->
-    <div class="card mt-4">
-        <div class="card-header">
-            <h5 class="mb-0">🚀 Quick Actions</h5>
-        </div>
-        <div class="card-body">
-            <div class="d-grid gap-2">
-                <a href="{% url 'bulk_email_create' %}" class="btn btn-primary btn-lg">
-                    📧 Create Email Campaign
-                </a>
-                <a href="{% url 'quick_announcement' %}" class="btn btn-success btn-lg">
-                    ⚡ Send Quick Announcement
-                </a>
-                {% if stats.users_without_preferences > 0 %}
-                <a href="{% url 'create_missing_preferences' %}" class="btn btn-warning btn-lg">
-                    🔧 Create Missing Preferences ({{ stats.users_without_preferences }} users)
-                </a>
-                {% endif %}
-            </div>
-        </div>
+        <section class="ox-card" aria-labelledby="oTitle">
+            <div class="ox-sec-h"><span class="ox-ico t-green"><i class="bi bi-envelope-check" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="oTitle">Opted in</h2><p class="ox-card-sub">Share of people who have preferences. A campaign only reaches people opted in to its type.</p></div></div>
+            <div class="ox-bars">{% for r in rows %}<div><span>{{ r.label }}</span><i aria-hidden="true"><s style="width:{{ r.pct }}%"></s></i><span>{{ r.n|intcomma }} ({{ r.pct }}%)</span></div>{% endfor %}</div>
+        </section>
+        <div class="ox-acts"><a href="{% url 'bulk_email_create' %}" class="ox-btn"><i class="bi bi-pencil-square" aria-hidden="true"></i>New campaign</a><a href="{% url 'quick_announcement' %}" class="ox-btn ox-btn-neutral"><i class="bi bi-lightning-charge" aria-hidden="true"></i>Quick announcement</a></div>
     </div>
 </div>
 {% endblock %}
-
-{% block 'Footer'%}
-{% endblock%}
+{% block 'Footer' %}{% endblock %}

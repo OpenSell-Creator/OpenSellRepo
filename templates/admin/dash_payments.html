@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Payments - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% include 'admin/_ox_head.html' with title="Payments" sub="Monnify deposits and virtual accounts" label=head_label value=head_value %}
+
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav_dash.html' with active="payments" %}
+
+        <nav class="ox-nav" aria-label="Payments section">
+            <a href="?tab=deposits" class="ox-btn ox-btn-sm ox-btn-neutral"{% if tab == 'deposits' %} aria-current="page"{% endif %}>Deposits</a>
+            <a href="?tab=accounts" class="ox-btn ox-btn-sm ox-btn-neutral"{% if tab == 'accounts' %} aria-current="page"{% endif %}>Virtual accounts</a>
+        </nav>
+
+        {% include 'admin/_ox_tabs.html' with tabs=tabs current=status param="status" q=q cols=4 extra="tab="|add:tab %}
+
+        {% if tab == 'deposits' and pending_count %}
+        <div class="ox-alert t-orange ox-wash" role="note">
+            <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+            <span>{{ pending_count }} payment{{ pending_count|pluralize }} marked paid by Monnify but not yet credited to a wallet. This usually means the webhook failed.</span>
+            <button type="button" class="ox-btn ox-btn-sm" style="margin-left:auto" data-confirm data-action="{% url 'dash_admin_payment_process_all' %}"
+                    data-title="Credit all pending payments" data-message="Credits up to 200 paid deposits to their users' wallets. Each one is credited once only." data-label="Credit them"><i class="bi bi-lightning-charge" aria-hidden="true"></i>Credit all</button>
+        </div>
+        {% endif %}
+
+        <section class="ox-card" aria-labelledby="listTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-green"><i class="bi bi-bank" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="listTitle">{% if tab == 'accounts' %}Virtual accounts{% else %}Deposits{% endif %}</h2></div>
+            </div>
+
+            <form method="get" class="ox-bar" role="search">
+                <input type="hidden" name="tab" value="{{ tab }}">
+                <input type="hidden" name="status" value="{{ status }}">
+                <input type="search" name="q" class="ox-ctl ox-grow" autocomplete="off" enterkeyhint="search" aria-label="Search" placeholder="{% if tab == 'accounts' %}Account number, name or username{% else %}Reference, username or email{% endif %}" value="{{ q }}">
+                <button type="submit" class="ox-btn ox-btn-neutral" aria-label="Search"><i class="bi bi-search" aria-hidden="true"></i></button>
+            </form>
+
+            {% if page_obj.object_list %}
+            <ul class="ox-list">
+                {% if tab == 'deposits' %}
+                {% for m in page_obj %}
+                <li class="ox-item{% if m.payment_status == 'PAID' and not m.processed %} is-flag{% elif m.payment_status == 'FAILED' or m.payment_status == 'REVERSED' %} is-bad{% endif %}">
+                    <div class="ox-who">
+                        <span class="ox-av" aria-hidden="true">{{ m.user_account.user.username|slice:":1" }}</span>
+                        <div class="ox-who-t">
+                            <b>@{{ m.user_account.user.username }}</b>
+                            <span>{{ m.transaction_reference }}</span>
+                        </div>
+                    </div>
+                    <span class="ox-pill ox-wash st st-{{ m.payment_status|lower }}">{{ m.get_payment_status_display }}</span>
+                    <dl class="ox-nums">
+                        <div><dt>Paid</dt><dd>&#8358;{{ m.amount_paid|floatformat:2|intcomma }}</dd></div>
+                        <div><dt>Method</dt><dd>{{ m.payment_method|default:"-" }}</dd></div>
+                        <div><dt>Paid on</dt><dd>{{ m.paid_on|date:"M d, Y" }}<small>{{ m.paid_on|date:"H:i" }}</small></dd></div>
+                        <div><dt>Wallet</dt><dd>{% if m.processed %}Credited{% if m.processed_at %}<small>{{ m.processed_at|date:"M d, H:i" }}</small>{% endif %}{% else %}Not credited{% endif %}</dd></div>
+                    </dl>
+                    <div class="ox-acts">
+                        <a href="{% url 'dash_admin_account' m.user_account_id %}" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-wallet2" aria-hidden="true"></i>Account</a>
+                        {% if m.payment_status == 'PAID' and not m.processed %}
+                        <button type="button" class="ox-btn ox-btn-sm" data-confirm data-action="{% url 'dash_admin_payment_process' m.pk %}"
+                                data-title="Credit this payment" data-message="Adds &#8358;{{ m.amount_paid|floatformat:2|intcomma }} to {{ m.user_account.user.username }}'s wallet. It can only be credited once."
+                                data-label="Credit wallet"><i class="bi bi-lightning-charge" aria-hidden="true"></i>Credit wallet</button>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+                {% else %}
+                {% for v in page_obj %}
+                <li class="ox-item">
+                    <div class="ox-who">
+                        <span class="ox-av" aria-hidden="true">{{ v.bank_name|slice:":1" }}</span>
+                        <div class="ox-who-t">
+                            <b>{{ v.account_name }}</b>
+                            <span>{{ v.bank_name }}</span>
+                        </div>
+                    </div>
+                    <span class="ox-pill ox-wash st st-{{ v.status }}">{{ v.get_status_display }}</span>
+                    <dl class="ox-nums" style="--ncols:4">
+                        <div><dt>Account number</dt><dd>{{ v.account_number }}</dd></div>
+                        <div><dt>User</dt><dd>@{{ v.user_account.user.username }}</dd></div>
+                        <div><dt>KYC</dt><dd>{% if v.kyc_verified %}Verified{% else %}Not verified{% endif %}<small>{{ v.transaction_limit_info.level }} limits</small></dd></div>
+                        <div><dt>Created</dt><dd>{{ v.created_at|date:"M d, Y" }}</dd></div>
+                    </dl>
+                    <div class="ox-acts"><a href="{% url 'dash_admin_account' v.user_account_id %}" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-wallet2" aria-hidden="true"></i>Account</a></div>
+                </li>
+                {% endfor %}
+                {% endif %}
+            </ul>
+            {% include 'admin/_ox_pager.html' %}
+            {% else %}
+            <div class="ox-empty">
+                <span class="ox-ico t-green"><i class="bi bi-inbox" aria-hidden="true"></i></span>
+                <div><h2>Nothing here</h2><p>{% if q %}No results for "{{ q }}".{% elif tab == 'deposits' and status == 'unprocessed' %}Every paid deposit has been credited.{% else %}Nothing matches this filter.{% endif %}</p></div>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% include 'admin/_ox_confirm.html' %}
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

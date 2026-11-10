@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Services - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+{% include 'admin/_ox_svc_css.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% include 'admin/_ox_head.html' with title="Services" sub="Suspend, hide, feature or remove service listings" label="Live now" value=counts.n_active|intcomma %}
+
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav_svc.html' with active="list" %}
+
+        <nav class="ox-tabs" style="--cols:4" aria-label="Quick filters">
+            <a href="?status=reported" class="ox-tile ox-tab t-red"{% if status == 'reported' %} aria-current="true"{% endif %}><span>Reported</span><b>{{ counts.n_reported }}</b></a>
+            <a href="?status=suspended" class="ox-tile ox-tab t-orange"{% if status == 'suspended' %} aria-current="true"{% endif %}><span>Suspended</span><b>{{ counts.n_suspended }}</b></a>
+            <a href="?status=expired" class="ox-tile ox-tab t-purple"{% if status == 'expired' %} aria-current="true"{% endif %}><span>Expired</span><b>{{ counts.n_expired }}</b></a>
+            <a href="?status=all" class="ox-tile ox-tab t-navy"{% if status == 'all' %} aria-current="true"{% endif %}><span>All</span><b>{{ counts.n_all }}</b></a>
+        </nav>
+
+        <section class="ox-card" aria-labelledby="listTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-navy"><i class="bi bi-briefcase" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="listTitle">Listings</h2></div>
+            </div>
+
+            <form method="get" class="ox-bar" role="search">
+                <select name="status" class="ox-ctl" aria-label="Status">
+                    <option value="all"{% if status == 'all' %} selected{% endif %}>All ({{ counts.n_all }})</option>
+                    <option value="active"{% if status == 'active' %} selected{% endif %}>Live ({{ counts.n_active }})</option>
+                    <option value="reported"{% if status == 'reported' %} selected{% endif %}>Reported ({{ counts.n_reported }})</option>
+                    <option value="suspended"{% if status == 'suspended' %} selected{% endif %}>Suspended ({{ counts.n_suspended }})</option>
+                    <option value="hidden"{% if status == 'hidden' %} selected{% endif %}>Hidden ({{ counts.n_hidden }})</option>
+                    <option value="featured"{% if status == 'featured' %} selected{% endif %}>Featured ({{ counts.n_featured }})</option>
+                    <option value="expiring"{% if status == 'expiring' %} selected{% endif %}>Expiring in 7 days ({{ counts.n_expiring }})</option>
+                    <option value="expired"{% if status == 'expired' %} selected{% endif %}>Expired ({{ counts.n_expired }})</option>
+                </select>
+                <select name="category" class="ox-ctl" aria-label="Category">
+                    <option value="">All categories</option>
+                    {% for v, l in categories %}<option value="{{ v }}"{% if category == v %} selected{% endif %}>{{ l }}</option>{% endfor %}
+                </select>
+                <input type="search" name="q" class="ox-ctl ox-grow" autocomplete="off" enterkeyhint="search" aria-label="Search services" placeholder="Title, provider or email" value="{{ q }}">
+                <button type="submit" class="ox-btn ox-btn-neutral" aria-label="Search"><i class="bi bi-search" aria-hidden="true"></i></button>
+            </form>
+
+            {% if page_obj.object_list %}
+            <ul class="ox-list">
+                {% for s in page_obj %}
+                <li class="ox-item{% if s.state == 'suspended' or s.state == 'expired' or s.reports.open %} is-bad{% elif s.state == 'expiring' %} is-flag{% endif %}{% if s.is_suspended and s.suspension_reason %} has-body{% endif %}">
+                    <div class="ox-who">
+                        {% if s.cover_url %}<img class="ox-thumb" src="{{ s.cover_url }}" alt="" loading="lazy">{% else %}<span class="ox-thumb" aria-hidden="true"></span>{% endif %}
+                        <div class="ox-who-t">
+                            <b>{{ s.title|truncatechars:60 }}</b>
+                            <span>by @{{ s.provider.user.username }}{% if s.is_featured %} &middot; <i class="bi bi-star-fill" aria-hidden="true"></i> Featured{% endif %}</span>
+                        </div>
+                    </div>
+                    <span class="ox-pill ox-wash st st-{{ s.state }}"><i class="bi {% if s.state == 'suspended' %}bi-slash-circle{% elif s.state == 'hidden' %}bi-eye-slash{% elif s.state == 'expired' %}bi-calendar-x{% elif s.state == 'expiring' %}bi-hourglass-split{% else %}bi-check-circle{% endif %}" aria-hidden="true"></i>{{ s.state_label }}</span>
+
+                    {% if s.is_suspended and s.suspension_reason %}
+                    <div class="ox-body"><div class="ox-quote"><small class="ox-help" style="margin:0">Suspended{% if s.suspended_at %} {{ s.suspended_at|date:"M d, Y" }}{% endif %}{% if s.suspended_by %} by @{{ s.suspended_by.username }}{% endif %}</small>{{ s.suspension_reason }}</div></div>
+                    {% endif %}
+
+                    <dl class="ox-nums">
+                        <div><dt>Price</dt><dd>{{ s.price_display }}<small>{{ s.get_pricing_type_display }}</small></dd></div>
+                        <div><dt>Category</dt><dd>{{ s.category_display }}</dd></div>
+                        <div><dt>Views / inquiries</dt><dd>{{ s.view_count|intcomma }} / {{ s.inquiry_count|intcomma }}</dd></div>
+                        <div><dt>Rating</dt><dd>{% if s.n_reviews %}{{ s.avg_stars|floatformat:1 }}<small>{{ s.n_reviews }} review{{ s.n_reviews|pluralize }}</small>{% else %}-{% endif %}</dd></div>
+                        <div><dt>Reports</dt><dd{% if s.reports.open %} class="ox-neg"{% endif %}>{{ s.reports.open }} open<small>{{ s.reports.all }} in all</small></dd></div>
+                        <div><dt>Expires</dt><dd>{% if s.expiration_date %}{{ s.expiration_date|date:"M d, Y" }}{% else %}Never{% endif %}<small>Listed {{ s.created_at|date:"M d, Y" }}</small></dd></div>
+                    </dl>
+                    {% include 'admin/_svc_actions.html' %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% include 'admin/_ox_pager.html' %}
+            {% else %}
+            <div class="ox-empty"><span class="ox-ico t-green"><i class="bi bi-inbox" aria-hidden="true"></i></span><div><h2>No services found</h2><p>{% if q %}No results for "{{ q }}".{% elif status == 'reported' %}Nothing has an open report.{% elif status == 'suspended' %}Nothing is suspended right now.{% else %}Nothing matches these filters.{% endif %}</p></div></div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% include 'admin/_ox_confirm.html' %}
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

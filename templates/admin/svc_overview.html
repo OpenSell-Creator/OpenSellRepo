@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Services overview - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+{% include 'admin/_ox_svc_css.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% include 'admin/_ox_head.html' with title="Overview and tools" sub="How services are doing, and expiry upkeep" label="Live services" value=stats.n_live|intcomma %}
+
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav_svc.html' with active="overview" %}
+
+        <div class="ox-sum">
+            <div><span>All listings</span><b>{{ stats.n_all|intcomma }}</b></div>
+            <div><span>New, last 30 days</span><b>{{ stats.n_new|intcomma }}</b></div>
+            <div><span>Total views</span><b>{{ stats.total_views|intcomma }}</b></div>
+            <div><span>Open reports</span><b{% if open_reports %} class="ox-neg"{% endif %}>{{ open_reports }}</b></div>
+            <div><span>Suspended</span><b>{{ stats.n_suspended|intcomma }}</b></div>
+            <div><span>Hidden</span><b>{{ stats.n_hidden|intcomma }}</b></div>
+            <div><span>Featured</span><b>{{ stats.n_featured|intcomma }}</b></div>
+            <div><span>Average rating</span><b>{% if rv.n %}{{ rv.avg|floatformat:1 }}{% else %}-{% endif %}</b></div>
+        </div>
+
+        <section class="ox-card" aria-labelledby="catTitle">
+            <div class="ox-sec-h"><span class="ox-ico t-navy"><i class="bi bi-grid" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="catTitle">Live listings by category</h2><p class="ox-card-sub">Count of listings, then how many providers.</p></div></div>
+            <div class="ox-bars">{% for c in categories %}<div><span>{{ c.label }}</span><i aria-hidden="true"><s style="width:{{ c.pct }}%"></s></i><span>{{ c.n }} / {{ c.providers }}</span></div>{% endfor %}</div>
+        </section>
+
+        <section class="ox-card" aria-labelledby="inqTitle">
+            <div class="ox-sec-h"><span class="ox-ico t-green"><i class="bi bi-chat-left-text" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="inqTitle">Inquiries</h2><p class="ox-card-sub">{{ inq_total|intcomma }} in all, {{ inq_new|intcomma }} in the last 30 days.</p></div></div>
+            <div class="ox-bars">{% for r in inquiries %}<div><span>{{ r.label }}</span><i aria-hidden="true"><s style="width:{{ r.pct }}%"></s></i><span>{{ r.n }}</span></div>{% endfor %}</div>
+        </section>
+
+        <section class="ox-card" aria-labelledby="rvTitle">
+            <div class="ox-sec-h"><span class="ox-ico t-orange"><i class="bi bi-star-fill" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="rvTitle">Reviews</h2><p class="ox-card-sub">{{ rv.n|intcomma }} in all, {{ rv.n_new|intcomma }} in the last 30 days.</p></div></div>
+            <div class="ox-bars">{% for r in distribution %}<div><span>{{ r.stars }} star{{ r.stars|pluralize }}</span><i aria-hidden="true"><s style="width:{{ r.pct }}%"></s></i><span>{{ r.n }}</span></div>{% endfor %}</div>
+        </section>
+
+        <section class="ox-card" aria-labelledby="topTitle">
+            <div class="ox-sec-h"><span class="ox-ico t-purple"><i class="bi bi-trophy" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="topTitle">Top live services</h2></div></div>
+            <h3 class="ox-h3">Most viewed</h3>
+            {% for s in top_viewed %}<div class="ox-sub-item"><a class="ox-link" style="min-height:0;padding:0" href="{% url 'svc_admin_detail' s.pk %}">{{ s.title|truncatechars:50 }}</a><small>@{{ s.provider.user.username }} &middot; {{ s.view_count|intcomma }} views</small></div>{% empty %}<p class="ox-help">No services yet.</p>{% endfor %}
+            <h3 class="ox-h3" style="margin-top:var(--sp-4)">Most inquiries</h3>
+            {% for s in top_inquired %}<div class="ox-sub-item"><a class="ox-link" style="min-height:0;padding:0" href="{% url 'svc_admin_detail' s.pk %}">{{ s.title|truncatechars:50 }}</a><small>@{{ s.provider.user.username }} &middot; {{ s.inquiry_count|intcomma }} inquiries</small></div>{% empty %}<p class="ox-help">No services yet.</p>{% endfor %}
+        </section>
+
+        <section class="ox-card" aria-labelledby="toolTitle">
+            <div class="ox-sec-h"><span class="ox-ico t-red"><i class="bi bi-tools" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="toolTitle">Tools</h2></div></div>
+            <div class="ox-stack">
+                <div>
+                    <p class="ox-help" style="margin-bottom:var(--sp-2)">The public list does not check expiry dates, so expired services stay visible until they are deleted. {{ stats.n_expired }} past their date{% if stats.n_expired %} (suspended ones are kept as evidence){% endif %}.</p>
+                    <button type="button" class="ox-btn ox-btn-sm ox-danger" data-confirm data-action="{% url 'svc_admin_tool' 'expired' %}"
+                            data-title="Delete expired services" data-message="Deletes up to 200 live, non-suspended services past their expiry date, with their photos, inquiries and reviews. This cannot be undone."
+                            data-label="Delete expired" data-danger="1"><i class="bi bi-calendar-x" aria-hidden="true"></i>Delete expired services</button>
+                </div>
+                <div>
+                    <p class="ox-help" style="margin-bottom:var(--sp-2)">{{ stats.n_expiring }} expire within 7 days, {{ warn_due }} not yet warned. A warning only goes out when exactly 1, 3 or 7 days are left.</p>
+                    <button type="button" class="ox-btn ox-btn-sm" data-confirm data-action="{% url 'svc_admin_tool' 'warnings' %}"
+                            data-title="Send expiry warnings" data-message="Notifies providers whose service has exactly 1, 3 or 7 days left and has not been warned yet."
+                            data-label="Send warnings"><i class="bi bi-bell" aria-hidden="true"></i>Send expiry warnings</button>
+                </div>
+                <div>
+                    <p class="ox-help" style="margin-bottom:var(--sp-2)">Ranking scores only update when a listing is saved. This recalculates them for every non-suspended service.</p>
+                    <button type="button" class="ox-btn ox-btn-sm ox-btn-neutral" data-confirm data-action="{% url 'svc_admin_tool' 'rescore' %}"
+                            data-title="Recalculate rankings" data-message="Recomputes the ranking score of every non-suspended service (up to 5,000)."
+                            data-label="Recalculate"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>Recalculate rankings</button>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+{% include 'admin/_ox_confirm.html' %}
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

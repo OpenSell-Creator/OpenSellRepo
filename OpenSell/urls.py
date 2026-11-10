@@ -33,6 +33,12 @@ sitemaps = {
 }
 
 urlpatterns = [
+    path('controlroom/home/', include('Home.admin_urls')),
+    path('admin/', include('User.email_admin_urls')),
+    path('controlroom/people/', include('User.admin_urls')),
+    path('controlroom/money/', include('Dashboard.admin_urls')),
+    path('controlroom/notify/', include('Notifications.admin_urls')),
+    path('controlroom/services/', include('Services.admin_urls')),
     path('controlroom/', admin.site.urls),
     path('', include('Home.urls')),
     path('', include('BuyerRequest.urls')),

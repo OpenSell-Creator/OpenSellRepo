@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if obj %}Edit{% else %}Add{% endif %} {{ noun }} - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+.ox-form-narrow { max-width: 40rem; margin: 0 auto; width: 100%; }
+.ox-cur { display: flex; align-items: center; gap: var(--sp-3); margin-top: var(--sp-2); }
+.ox-opt-grp { padding: var(--sp-2) var(--sp-2) 0; font-size: var(--font-size-xs); font-weight: 600; color: var(--text-secondary); }
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% url 'home_admin_catalog' as base_url %}
+    {% include 'admin/_ox_head.html' with title=page_title|default:noun|capfirst sub="Slug is built from the name when left empty" back=base_url %}
+
+    <div class="ox-main">
+        <form method="post" enctype="multipart/form-data" class="ox-form-narrow ox-col" id="catForm" novalidate>
+            {% csrf_token %}
+            <section class="ox-card" aria-labelledby="fTitle">
+                <div class="ox-sec-h">
+                    <span class="ox-ico t-navy"><i class="bi bi-diagram-3" aria-hidden="true"></i></span>
+                    <div class="ox-sec-t"><h2 class="ox-h2" id="fTitle">{% if obj %}Edit {{ noun }}{% else %}New {{ noun }}{% endif %}</h2></div>
+                </div>
+
+                <div class="ox-fgrid">
+                    {% if kind == 'subcategories' %}
+                        {% include 'admin/_ox_field.html' with field=form.category label="Category" %}
+                    {% endif %}
+                    {% include 'admin/_ox_field.html' with field=form.name label="Name" %}
+                    {% include 'admin/_ox_field.html' with field=form.slug label="Slug" help="Used in the web address. Lower case letters, numbers and hyphens." %}
+
+                    {% if kind == 'categories' %}
+                    <div class="ox-field">
+                        <label for="{{ form.image.id_for_label }}" class="ox-lab">Image</label>
+                        <input type="file" name="image" id="{{ form.image.id_for_label }}" class="ox-ctl" accept="image/jpeg,image/png,image/webp">
+                        <p class="ox-help">Shown as a small icon. It is resized to 80 x 80 px and saved as WebP, so use a square image. Up to 2 MB.</p>
+                        {% for e in form.image.errors %}<p class="ox-err" role="alert"><i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i><span>{{ e }}</span></p>{% endfor %}
+                        {% if obj and obj.image %}
+                        <div class="ox-cur"><img class="ox-ico-img" src="{{ obj.image.url }}" alt="Current image"><span class="ox-help" style="margin:0">Current image. Choose a file to replace it.</span></div>
+                        <label class="ox-switch" style="margin-top:var(--sp-2)">
+                            <input type="checkbox" name="image-clear" value="on">
+                            <div><b>Remove the current image</b><span>The category will show its first letter instead.</span></div>
+                        </label>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if kind == 'brands' %}
+                    <div class="ox-field">
+                        <span class="ox-lab">Categories</span>
+                        <div class="ox-opts" role="group" aria-label="Categories">
+                            {% for c in form.categories %}<label class="ox-opt">{{ c.tag }}<span>{{ c.choice_label }}</span></label>{% endfor %}
+                        </div>
+                        {% for e in form.categories.errors %}<p class="ox-err" role="alert"><i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i><span>{{ e }}</span></p>{% endfor %}
+                    </div>
+                    <div class="ox-field">
+                        <span class="ox-lab">Subcategories</span>
+                        <div class="ox-opts" role="group" aria-label="Subcategories">
+                            {% for s in form.subcategories %}<label class="ox-opt">{{ s.tag }}<span>{{ s.choice_label }}</span></label>{% endfor %}
+                        </div>
+                        <p class="ox-help">A subcategory only counts when its category is ticked above.</p>
+                        {% for e in form.subcategories.errors %}<p class="ox-err" role="alert"><i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i><span>{{ e }}</span></p>{% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+
+            {% if form.non_field_errors %}
+            <div class="ox-alert ox-wash" role="alert"><i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i><span>{{ form.non_field_errors|join:" " }}</span></div>
+            {% endif %}
+
+            <div class="ox-mf">
+                <a href="{{ base_url }}?tab={{ kind }}" class="ox-btn ox-btn-neutral">Cancel</a>
+                <button type="submit" class="ox-btn" id="saveBtn">{% if obj %}Save changes{% else %}Add {{ noun }}{% endif %}</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var form = document.getElementById('catForm');
+    form.addEventListener('submit', function (e) {
+        if (form.dataset.busy) { e.preventDefault(); return; }
+        form.dataset.busy = '1';
+        var b = document.getElementById('saveBtn');
+        b.disabled = true;
+        b.innerHTML = '<span class="spinner-border" aria-hidden="true"></span> Saving';
+    });
+    window.addEventListener('pageshow', function (e) {
+        if (e.persisted) { delete form.dataset.busy; var b = document.getElementById('saveBtn'); b.disabled = false; }
+    });
+});
+</script>
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

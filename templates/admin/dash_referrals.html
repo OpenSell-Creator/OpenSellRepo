@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Referrals - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% if tab == 'commissions' %}
+    {% include 'admin/_ox_head.html' with title="Referrals" sub="Commission records. Read only." label="Total in this view" value=total|floatformat:2|intcomma %}
+    {% else %}
+    {% include 'admin/_ox_head.html' with title="Referrals" sub="Signups, fraud flags and commissions" label="Flagged for review" value=flagged %}
+    {% endif %}
+
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav_dash.html' with active="referrals" %}
+
+        <nav class="ox-nav" aria-label="Section">
+            <a href="?tab=referrals" class="ox-btn ox-btn-sm ox-btn-neutral"{% if tab == 'referrals' %} aria-current="page"{% endif %}>Referrals</a>
+            <a href="?tab=commissions" class="ox-btn ox-btn-sm ox-btn-neutral"{% if tab == 'commissions' %} aria-current="page"{% endif %}>Commissions</a>
+        </nav>
+
+        {% include 'admin/_ox_tabs.html' with tabs=tabs current=status param="status" q=q cols=cols extra="tab="|add:tab %}
+
+        <section class="ox-card" aria-labelledby="listTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-purple"><i class="bi bi-diagram-2" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="listTitle">{% if tab == 'commissions' %}Commissions{% else %}Referrals{% endif %}</h2></div>
+            </div>
+
+            <form method="get" class="ox-bar" role="search">
+                <input type="hidden" name="tab" value="{{ tab }}">
+                <input type="hidden" name="status" value="{{ status }}">
+                <input type="search" name="q" class="ox-ctl ox-grow" autocomplete="off" enterkeyhint="search" aria-label="Search" placeholder="{% if tab == 'commissions' %}Referral code or username{% else %}Username, referral code or IP{% endif %}" value="{{ q }}">
+                <button type="submit" class="ox-btn ox-btn-neutral" aria-label="Search"><i class="bi bi-search" aria-hidden="true"></i></button>
+            </form>
+
+            {% if page_obj.object_list %}
+            <ul class="ox-list">
+                {% if tab == 'referrals' %}
+                {% for r in page_obj %}
+                <li class="ox-item{% if r.status == 'fraud' %} is-bad has-body{% elif r.flagged_for_review %} is-flag has-body{% endif %}">
+                    <div class="ox-who">
+                        <span class="ox-av" aria-hidden="true">{{ r.referred_user.username|slice:":1" }}</span>
+                        <div class="ox-who-t"><b>@{{ r.referred_user.username }}</b><a href="{% url 'admin_affiliate_detail' r.affiliate_id %}">via {{ r.affiliate.referral_code }}</a></div>
+                    </div>
+                    <span class="ox-pill ox-wash st st-{{ r.status }}">{{ r.get_status_display }}</span>
+                    {% if r.fraud_reason %}<div class="ox-body"><div class="ox-quote">{{ r.fraud_reason|linebreaksbr }}</div></div>{% endif %}
+                    <dl class="ox-nums">
+                        <div><dt>Signed up</dt><dd>{{ r.signup_date|date:"M d, Y" }}<small>{{ r.signup_ip|default:"no IP" }}</small></dd></div>
+                        <div><dt>First qualifying</dt><dd>{% if r.first_qualifying_transaction %}{{ r.first_qualifying_transaction|date:"M d, Y" }}{% else %}Not yet{% endif %}</dd></div>
+                        <div><dt>Revenue</dt><dd>&#8358;{{ r.total_revenue_generated|floatformat:2|intcomma }}</dd></div>
+                        <div><dt>Commission</dt><dd>&#8358;{{ r.total_commission_earned|floatformat:2|intcomma }}</dd></div>
+                    </dl>
+                    <div class="ox-acts">
+                        {% if r.status != 'fraud' %}
+                        <button type="button" class="ox-btn ox-btn-sm ox-danger" data-confirm data-action="{% url 'dash_admin_referral_action' r.pk 'fraud' %}"
+                                data-title="Mark as fraud" data-message="Held commissions for this referral are cancelled and taken off the affiliate. Commissions already released are left alone."
+                                data-label="Mark as fraud" data-danger="1" data-reason="Why is this fraud?"><i class="bi bi-flag-fill" aria-hidden="true"></i>Mark fraud</button>
+                        {% endif %}
+                        {% if r.flagged_for_review or r.status == 'fraud' %}
+                        <button type="button" class="ox-btn ox-btn-sm ox-btn-neutral" data-confirm data-action="{% url 'dash_admin_referral_action' r.pk 'clear' %}"
+                                data-title="Clear the flag" data-message="Sets this referral back to {% if r.first_qualifying_transaction %}active{% else %}pending{% endif %}. Cancelled commissions are not restored." data-label="Clear flag"><i class="bi bi-check2-circle" aria-hidden="true"></i>Clear flag</button>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+                {% else %}
+                {% for c in page_obj %}
+                <li class="ox-item">
+                    <div class="ox-who">
+                        <span class="ox-av" aria-hidden="true">{{ c.affiliate.user.username|slice:":1" }}</span>
+                        <div class="ox-who-t"><b>{{ c.affiliate.referral_code }}</b><span>from @{{ c.referral.referred_user.username }}</span></div>
+                    </div>
+                    <span class="ox-pill ox-wash st st-{{ c.status }}">{{ c.get_status_display }}</span>
+                    <dl class="ox-nums">
+                        <div><dt>Commission</dt><dd>&#8358;{{ c.commission_amount|floatformat:2|intcomma }}</dd></div>
+                        <div><dt>On</dt><dd>&#8358;{{ c.base_amount|floatformat:2|intcomma }}<small>{{ c.get_transaction_type_display }} at {{ c.commission_rate|floatformat:0 }}%</small></dd></div>
+                        <div><dt>Created</dt><dd>{{ c.created_at|date:"M d, Y" }}</dd></div>
+                        <div><dt>{% if c.status == 'pending' %}Releases{% else %}Available since{% endif %}</dt><dd>{{ c.available_at|date:"M d, Y" }}</dd></div>
+                    </dl>
+                </li>
+                {% endfor %}
+                {% endif %}
+            </ul>
+            {% include 'admin/_ox_pager.html' %}
+            {% else %}
+            <div class="ox-empty"><span class="ox-ico t-purple"><i class="bi bi-inbox" aria-hidden="true"></i></span><div><h2>Nothing here</h2><p>{% if q %}No results for "{{ q }}".{% else %}Nothing matches this filter.{% endif %}</p></div></div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% include 'admin/_ox_confirm.html' %}
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

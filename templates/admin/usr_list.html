@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}People - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+{% include 'admin/_ox_usr_css.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% include 'admin/_ox_head.html' with title="People" sub="Find an account, review it, deactivate abuse" label="Accounts" value=counts.n_all|intcomma %}
+
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav_usr.html' with active="list" %}
+
+        <nav class="ox-tabs" style="--cols:4" aria-label="Quick filters">
+            <a href="?status=new" class="ox-tile ox-tab t-green"{% if status == 'new' %} aria-current="true"{% endif %}><span>New, 7 days</span><b>{{ counts.n_new }}</b></a>
+            <a href="?status=pending" class="ox-tile ox-tab t-orange"{% if status == 'pending' %} aria-current="true"{% endif %}><span>Business pending</span><b>{{ counts.n_pending }}</b></a>
+            <a href="?status=inactive" class="ox-tile ox-tab t-red"{% if status == 'inactive' %} aria-current="true"{% endif %}><span>Deactivated</span><b>{{ counts.n_inactive }}</b></a>
+            <a href="?status=all" class="ox-tile ox-tab t-navy"{% if status == 'all' %} aria-current="true"{% endif %}><span>All</span><b>{{ counts.n_all }}</b></a>
+        </nav>
+
+        <section class="ox-card" aria-labelledby="listTitle">
+            <div class="ox-sec-h"><span class="ox-ico t-navy"><i class="bi bi-people" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="listTitle">Accounts</h2></div></div>
+
+            <form method="get" class="ox-bar" role="search">
+                <select name="status" class="ox-ctl" aria-label="Show">
+                    <option value="all"{% if status == 'all' %} selected{% endif %}>Everyone ({{ counts.n_all }})</option>
+                    <option value="new"{% if status == 'new' %} selected{% endif %}>Joined in 7 days ({{ counts.n_new }})</option>
+                    <option value="unverified"{% if status == 'unverified' %} selected{% endif %}>Email not verified ({{ counts.n_unverified }})</option>
+                    <option value="business"{% if status == 'business' %} selected{% endif %}>Verified businesses ({{ counts.n_business }})</option>
+                    <option value="pending"{% if status == 'pending' %} selected{% endif %}>Business pending ({{ counts.n_pending }})</option>
+                    <option value="staff"{% if status == 'staff' %} selected{% endif %}>Staff ({{ counts.n_staff }})</option>
+                    <option value="inactive"{% if status == 'inactive' %} selected{% endif %}>Deactivated ({{ counts.n_inactive }})</option>
+                    <option value="noprofile"{% if status == 'noprofile' %} selected{% endif %}>No profile ({{ counts.n_noprofile }})</option>
+                </select>
+                <input type="search" name="q" class="ox-ctl ox-grow" autocomplete="off" enterkeyhint="search" aria-label="Search people" placeholder="Username, name, email, phone or business" value="{{ q }}">
+                <button type="submit" class="ox-btn ox-btn-neutral" aria-label="Search"><i class="bi bi-search" aria-hidden="true"></i></button>
+            </form>
+
+            {% if page_obj.object_list %}
+            <ul class="ox-list">
+                {% for x in page_obj %}
+                <li class="ox-item{% if not x.is_active %} is-bad{% endif %}">
+                    <div class="ox-who">
+                        {% if x.photo_url %}<img class="ox-avimg" src="{{ x.photo_url }}" alt="" loading="lazy">{% else %}<span class="ox-av" aria-hidden="true">{{ x.username|slice:":1" }}</span>{% endif %}
+                        <div class="ox-who-t"><b>@{{ x.username }}</b><span>{{ x.email|default:"No email" }}</span></div>
+                    </div>
+                    <span class="ox-pill ox-wash {% if not x.is_active %}us-inactive{% elif x.is_superuser or x.is_staff %}us-staff{% else %}us-active{% endif %}">{% if not x.is_active %}Deactivated{% elif x.is_superuser %}Superuser{% elif x.is_staff %}Staff{% else %}Active{% endif %}</span>
+                    <dl class="ox-nums">
+                        <div><dt>Joined</dt><dd>{{ x.date_joined|date:"M d, Y" }}<small>{{ x.date_joined|timesince }} ago</small></dd></div>
+                        <div><dt>Last login</dt><dd>{% if x.last_login %}{{ x.last_login|date:"M d, Y" }}<small>{{ x.last_login|timesince }} ago</small>{% else %}Never{% endif %}</dd></div>
+                        <div><dt>Email</dt><dd>{% if not x.prof %}No profile{% elif x.prof.email_verified %}Verified{% else %}Not verified{% endif %}</dd></div>
+                        <div><dt>Business</dt><dd>{% if x.prof %}{{ x.prof.get_business_verification_status_display }}{% else %}-{% endif %}{% if x.prof.business_name %}<small>{{ x.prof.business_name|truncatechars:24 }}</small>{% endif %}</dd></div>
+                    </dl>
+                    <div class="ox-acts">
+                        <a href="{% url 'usr_admin_detail' x.pk %}" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-person-lines-fill" aria-hidden="true"></i>Details</a>
+                        <a href="{% url 'notif_admin_compose' %}?to={{ x.username|urlencode }}" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-megaphone" aria-hidden="true"></i>Message</a>
+                        {% if not x.locked %}
+                            {% if x.is_active %}
+                            <button type="button" class="ox-btn ox-btn-sm ox-danger" data-confirm data-action="{% url 'usr_admin_deactivate' x.pk %}"
+                                    data-title="Deactivate @{{ x.username }}" data-message="They are signed out and cannot log in. Nothing is deleted and their listings stay up until you suspend them."
+                                    data-label="Deactivate" data-danger="1" data-reason="Reason (kept in the server log)"><i class="bi bi-person-slash" aria-hidden="true"></i>Deactivate</button>
+                            {% else %}
+                            <form method="post" action="{% url 'usr_admin_reactivate' x.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ next_url }}">
+                                <button type="submit" class="ox-btn ox-btn-sm"><i class="bi bi-person-check" aria-hidden="true"></i>Reactivate</button></form>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% include 'admin/_ox_pager.html' %}
+            {% else %}
+            <div class="ox-empty"><span class="ox-ico t-navy"><i class="bi bi-inbox" aria-hidden="true"></i></span><div><h2>No accounts found</h2><p>{% if q %}No results for "{{ q }}".{% else %}Nothing matches this filter.{% endif %}</p></div></div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% include 'admin/_ox_confirm.html' %}
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

@@ -186,7 +186,7 @@
                 </a>
                 {% endif %}
                 {% if pending_withdrawals is not None %}
-                <a href="/controlroom/Dashboard/withdrawalrequest/?status__in=pending,under_review" class="ox-tile pn-q{% if pending_withdrawals %} is-open{% endif %}">
+                <a href="{% url 'dash_admin_withdrawals' %}?status=pending" class="ox-tile pn-q{% if pending_withdrawals %} is-open{% endif %}">
                     <span class="ox-ico t-navy"><i class="bi bi-cash-stack" aria-hidden="true"></i></span>
                     <b>{{ pending_withdrawals|default:0 }}</b>
                     <span class="pn-q-l">Withdrawals to review</span>
@@ -194,7 +194,7 @@
                 </a>
                 {% endif %}
                 {% if withdrawals_to_pay is not None %}
-                <a href="/controlroom/Dashboard/withdrawalrequest/?status__in=approved,processing" class="ox-tile pn-q{% if withdrawals_to_pay %} is-open{% endif %}">
+                <a href="{% url 'dash_admin_withdrawals' %}?status=approved" class="ox-tile pn-q{% if withdrawals_to_pay %} is-open{% endif %}">
                     <span class="ox-ico t-orange"><i class="bi bi-send-check-fill" aria-hidden="true"></i></span>
                     <b>{{ withdrawals_to_pay|default:0 }}</b>
                     <span class="pn-q-l">Withdrawals to pay out</span>
@@ -202,7 +202,7 @@
                 </a>
                 {% endif %}
                 {% if pending_affiliate_withdrawals is not None %}
-                <a href="/controlroom/Dashboard/affiliatewithdrawal/?status__in=pending,approved,processing" class="ox-tile pn-q{% if pending_affiliate_withdrawals %} is-open{% endif %}">
+                <a href="{% url 'dash_admin_payouts' %}?status=pending" class="ox-tile pn-q{% if pending_affiliate_withdrawals %} is-open{% endif %}">
                     <span class="ox-ico t-orange"><i class="bi bi-wallet2" aria-hidden="true"></i></span>
                     <b>{{ pending_affiliate_withdrawals|default:0 }}</b>
                     <span class="pn-q-l">Affiliate withdrawals</span>
@@ -210,7 +210,7 @@
                 </a>
                 {% endif %}
                 {% if flagged_referrals is not None %}
-                <a href="/controlroom/Dashboard/referral/?flagged_for_review__exact=1" class="ox-tile pn-q{% if flagged_referrals %} is-open{% endif %}">
+                <a href="{% url 'dash_admin_referrals' %}?status=flagged" class="ox-tile pn-q{% if flagged_referrals %} is-open{% endif %}">
                     <span class="ox-ico t-red"><i class="bi bi-shield-exclamation" aria-hidden="true"></i></span>
                     <b>{{ flagged_referrals|default:0 }}</b>
                     <span class="pn-q-l">Flagged referrals</span>
@@ -218,7 +218,7 @@
                 </a>
                 {% endif %}
                 {% if unprocessed_payments is not None %}
-                <a href="/controlroom/Dashboard/monnifytransaction/?processed__exact=0&payment_status__exact=PAID" class="ox-tile pn-q{% if unprocessed_payments %} is-open{% endif %}">
+                <a href="{% url 'dash_admin_payments' %}?status=unprocessed" class="ox-tile pn-q{% if unprocessed_payments %} is-open{% endif %}">
                     <span class="ox-ico t-red"><i class="bi bi-credit-card-2-front-fill" aria-hidden="true"></i></span>
                     <b>{{ unprocessed_payments|default:0 }}</b>
                     <span class="pn-q-l">Payments not credited</span>
@@ -288,44 +288,43 @@
         </section>
 
         {# ---- User management ---- #}
-        {% if user.is_superuser %}
+        {% if user.is_staff %}
         <section class="ox-card" aria-labelledby="umTitle">
             <div class="ox-sec-h">
                 <span class="ox-ico t-navy"><i class="bi bi-people-fill" aria-hidden="true"></i></span>
                 <div class="ox-sec-t"><h2 class="ox-h2" id="umTitle">User management</h2></div>
             </div>
             <div class="pn-links">
-                <a href="/controlroom/User/profile/" class="pn-link">
+                <a href="{% url 'usr_admin_list' %}" class="pn-link">
                     <span class="ox-ico t-navy"><i class="bi bi-person-lines-fill" aria-hidden="true"></i></span>
-                    <span class="pn-link-t"><b>User profiles</b><span>Manage user accounts and profiles</span></span>
+                    <span class="pn-link-t"><b>People</b><span>Find, review and deactivate accounts</span></span>
+                    {% if users_inactive %}<span class="ox-pill ox-wash">{{ users_inactive }} deactivated</span>{% endif %}
                     <i class="bi bi-chevron-right" aria-hidden="true"></i>
                 </a>
+                <a href="{% url 'usr_admin_locations' %}" class="pn-link">
+                    <span class="ox-ico t-orange"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i></span>
+                    <span class="pn-link-t"><b>Locations</b><span>States and LGAs in the pickers</span></span>
+                    <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                </a>
+                <a href="{% url 'usr_admin_overview' %}" class="pn-link">
+                    <span class="ox-ico t-purple"><i class="bi bi-bar-chart-fill" aria-hidden="true"></i></span>
+                    <span class="pn-link-t"><b>People overview</b><span>Growth, verification, account repair</span></span>
+                    {% if users_no_profile %}<span class="ox-pill ox-wash">{{ users_no_profile }} no profile</span>{% endif %}
+                    <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                </a>
+                <a href="{% url 'admin_business_verifications' %}" class="pn-link">
+                    <span class="ox-ico t-green"><i class="bi bi-building-check" aria-hidden="true"></i></span>
+                    <span class="pn-link-t"><b>Business verifications</b><span>Review and approve businesses</span></span>
+                    {% if pending_verifications %}<span class="ox-pill ox-wash">{{ pending_verifications }} pending</span>{% endif %}
+                    <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                </a>
+                {% if user.is_superuser %}
                 <a href="/controlroom/auth/user/" class="pn-link">
                     <span class="ox-ico t-purple"><i class="bi bi-shield-check" aria-hidden="true"></i></span>
-                    <span class="pn-link-t"><b>User permissions</b><span>Manage roles and permissions</span></span>
+                    <span class="pn-link-t"><b>User permissions</b><span>Roles and permissions (raw admin)</span></span>
                     <i class="bi bi-chevron-right" aria-hidden="true"></i>
                 </a>
-                <a href="{% url 'admin_business_verifications' %}" class="pn-link">
-                    <span class="ox-ico t-green"><i class="bi bi-building-check" aria-hidden="true"></i></span>
-                    <span class="pn-link-t"><b>Business verifications</b><span>Review and approve businesses</span></span>
-                    {% if pending_verifications %}<span class="ox-pill ox-wash">{{ pending_verifications }} pending</span>{% endif %}
-                    <i class="bi bi-chevron-right" aria-hidden="true"></i>
-                </a>
-            </div>
-        </section>
-        {% elif user.is_staff %}
-        <section class="ox-card" aria-labelledby="umTitle">
-            <div class="ox-sec-h">
-                <span class="ox-ico t-navy"><i class="bi bi-people-fill" aria-hidden="true"></i></span>
-                <div class="ox-sec-t"><h2 class="ox-h2" id="umTitle">User management</h2></div>
-            </div>
-            <div class="pn-links">
-                <a href="{% url 'admin_business_verifications' %}" class="pn-link">
-                    <span class="ox-ico t-green"><i class="bi bi-building-check" aria-hidden="true"></i></span>
-                    <span class="pn-link-t"><b>Business verifications</b><span>Review and approve businesses</span></span>
-                    {% if pending_verifications %}<span class="ox-pill ox-wash">{{ pending_verifications }} pending</span>{% endif %}
-                    <i class="bi bi-chevron-right" aria-hidden="true"></i>
-                </a>
+                {% endif %}
             </div>
         </section>
         {% endif %}
@@ -338,20 +337,83 @@
                 <div class="ox-sec-t"><h2 class="ox-h2" id="pmTitle">Product management</h2></div>
             </div>
             <div class="pn-links">
-                <a href="/controlroom/Home/product_listing/" class="pn-link">
+                <a href="{% url 'home_admin_listings' %}" class="pn-link">
                     <span class="ox-ico t-orange"><i class="bi bi-boxes" aria-hidden="true"></i></span>
-                    <span class="pn-link-t"><b>All products</b><span>View and manage all listings</span></span>
+                    <span class="pn-link-t"><b>All products</b><span>Suspend, reinstate or remove listings</span></span>
+                    {% if listings_suspended %}<span class="ox-pill ox-wash">{{ listings_suspended }} suspended</span>{% endif %}
                     <i class="bi bi-chevron-right" aria-hidden="true"></i>
                 </a>
-                <a href="/controlroom/Home/category/" class="pn-link">
+                <a href="{% url 'home_admin_catalog' %}" class="pn-link">
                     <span class="ox-ico t-navy"><i class="bi bi-tags-fill" aria-hidden="true"></i></span>
-                    <span class="pn-link-t"><b>Categories</b><span>Manage product categories</span></span>
+                    <span class="pn-link-t"><b>Catalog</b><span>Categories, subcategories and brands</span></span>
                     <i class="bi bi-chevron-right" aria-hidden="true"></i>
                 </a>
                 <a href="{% url 'admin_reports' %}" class="pn-link">
                     <span class="ox-ico t-red"><i class="bi bi-flag-fill" aria-hidden="true"></i></span>
                     <span class="pn-link-t"><b>Reported items</b><span>Products, services and requests</span></span>
                     {% if pending_reports %}<span class="ox-pill ox-wash">{{ pending_reports }} open</span>{% endif %}
+                    <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                </a>
+            </div>
+        </section>
+
+        {# ---- Service management ---- #}
+        {% if user.is_superuser or user.is_staff %}
+        <section class="ox-card" aria-labelledby="svTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-purple"><i class="bi bi-briefcase-fill" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="svTitle">Service management</h2></div>
+            </div>
+            <div class="pn-links">
+                <a href="{% url 'svc_admin_list' %}" class="pn-link">
+                    <span class="ox-ico t-purple"><i class="bi bi-briefcase" aria-hidden="true"></i></span>
+                    <span class="pn-link-t"><b>All services</b><span>Suspend, hide, feature or remove listings</span></span>
+                    {% if services_suspended %}<span class="ox-pill ox-wash">{{ services_suspended }} suspended</span>{% endif %}
+                    <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                </a>
+                <a href="{% url 'svc_admin_inquiries' %}" class="pn-link">
+                    <span class="ox-ico t-green"><i class="bi bi-chat-left-text" aria-hidden="true"></i></span>
+                    <span class="pn-link-t"><b>Inquiries</b><span>Hiring requests sent to providers</span></span>
+                    {% if services_pending_inquiries %}<span class="ox-pill ox-wash">{{ services_pending_inquiries }} pending</span>{% endif %}
+                    <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                </a>
+                <a href="{% url 'svc_admin_reviews' %}" class="pn-link">
+                    <span class="ox-ico t-orange"><i class="bi bi-star-fill" aria-hidden="true"></i></span>
+                    <span class="pn-link-t"><b>Service reviews</b><span>Remove abusive reviews and replies</span></span>
+                    <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                </a>
+                <a href="{% url 'svc_admin_overview' %}" class="pn-link">
+                    <span class="ox-ico t-navy"><i class="bi bi-bar-chart-fill" aria-hidden="true"></i></span>
+                    <span class="pn-link-t"><b>Overview and tools</b><span>Category stats, expired services, warnings</span></span>
+                    {% if services_open_reports %}<span class="ox-pill ox-wash">{{ services_open_reports }} reported</span>{% endif %}
+                    <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                </a>
+            </div>
+        </section>
+        {% endif %}
+
+        {# ---- Content and banners ---- #}
+        <section class="ox-card" aria-labelledby="cbTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-purple"><i class="bi bi-megaphone-fill" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="cbTitle">Content and banners</h2></div>
+            </div>
+            <div class="pn-links">
+                <a href="{% url 'home_admin_banners' %}" class="pn-link">
+                    <span class="ox-ico t-purple"><i class="bi bi-image-fill" aria-hidden="true"></i></span>
+                    <span class="pn-link-t"><b>Banners</b><span>Upload and schedule site adverts</span></span>
+                    {% if banners_live %}<span class="ox-pill ox-wash">{{ banners_live }} live</span>{% endif %}
+                    <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                </a>
+                <a href="{% url 'home_admin_reviews' %}" class="pn-link">
+                    <span class="ox-ico t-orange"><i class="bi bi-star-fill" aria-hidden="true"></i></span>
+                    <span class="pn-link-t"><b>Reviews</b><span>Remove abusive reviews and replies</span></span>
+                    <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                </a>
+                <a href="{% url 'home_admin_tools' %}" class="pn-link">
+                    <span class="ox-ico t-navy"><i class="bi bi-tools" aria-hidden="true"></i></span>
+                    <span class="pn-link-t"><b>Listing tools</b><span>Expired listings, warnings, boost scores</span></span>
+                    {% if listings_expired %}<span class="ox-pill ox-wash">{{ listings_expired }} expired</span>{% endif %}
                     <i class="bi bi-chevron-right" aria-hidden="true"></i>
                 </a>
             </div>
@@ -364,45 +426,45 @@
                 <div class="ox-sec-t"><h2 class="ox-h2" id="fmTitle">Financial management</h2></div>
             </div>
             <div class="pn-links">
-                <a href="/controlroom/Dashboard/transaction/" class="pn-link">
+                <a href="{% url 'dash_admin_transactions' %}" class="pn-link">
                     <span class="ox-ico t-green"><i class="bi bi-receipt" aria-hidden="true"></i></span>
                     <span class="pn-link-t"><b>Transactions</b><span>View all transactions</span></span>
                     <i class="bi bi-chevron-right" aria-hidden="true"></i>
                 </a>
-                <a href="/controlroom/Dashboard/withdrawalrequest/?status__in=pending,under_review" class="pn-link">
+                <a href="{% url 'dash_admin_withdrawals' %}?status=pending" class="pn-link">
                     <span class="ox-ico t-navy"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
                     <span class="pn-link-t"><b>User withdrawals</b><span>Review wallet withdrawal requests</span></span>
                     {% if pending_withdrawals %}<span class="ox-pill ox-wash">{{ pending_withdrawals }} to review</span>{% endif %}
                     <i class="bi bi-chevron-right" aria-hidden="true"></i>
                 </a>
-                <a href="/controlroom/Dashboard/withdrawalrequest/?status__in=approved,processing" class="pn-link">
+                <a href="{% url 'dash_admin_withdrawals' %}?status=approved" class="pn-link">
                     <span class="ox-ico t-orange"><i class="bi bi-send-check-fill" aria-hidden="true"></i></span>
                     <span class="pn-link-t"><b>Withdrawals to pay out</b><span>Approved, waiting for payout</span></span>
                     {% if withdrawals_to_pay %}<span class="ox-pill ox-wash">{{ withdrawals_to_pay }} to pay</span>{% endif %}
                     <i class="bi bi-chevron-right" aria-hidden="true"></i>
                 </a>
-                <a href="/controlroom/Dashboard/affiliatewithdrawal/" class="pn-link">
+                <a href="{% url 'dash_admin_payouts' %}" class="pn-link">
                     <span class="ox-ico t-orange"><i class="bi bi-wallet2" aria-hidden="true"></i></span>
                     <span class="pn-link-t"><b>Affiliate withdrawals</b><span>Process commission payouts</span></span>
                     {% if pending_affiliate_withdrawals %}<span class="ox-pill ox-wash">{{ pending_affiliate_withdrawals }} open</span>{% endif %}
                     <i class="bi bi-chevron-right" aria-hidden="true"></i>
                 </a>
-                <a href="/controlroom/Dashboard/wallettransfer/" class="pn-link">
+                <a href="{% url 'dash_admin_transactions' %}?tab=transfers" class="pn-link">
                     <span class="ox-ico t-navy"><i class="bi bi-arrow-left-right" aria-hidden="true"></i></span>
                     <span class="pn-link-t"><b>Wallet transfers</b><span>User to user transfers</span></span>
                     <i class="bi bi-chevron-right" aria-hidden="true"></i>
                 </a>
-                <a href="/controlroom/Dashboard/useraccount/" class="pn-link">
+                <a href="{% url 'dash_admin_accounts' %}" class="pn-link">
                     <span class="ox-ico t-green"><i class="bi bi-person-vcard-fill" aria-hidden="true"></i></span>
                     <span class="pn-link-t"><b>User accounts</b><span>Balances and subscriptions</span></span>
                     <i class="bi bi-chevron-right" aria-hidden="true"></i>
                 </a>
-                <a href="/controlroom/Dashboard/accountstatus/" class="pn-link">
+                <a href="{% url 'dash_admin_tiers' %}" class="pn-link">
                     <span class="ox-ico t-purple"><i class="bi bi-award-fill" aria-hidden="true"></i></span>
                     <span class="pn-link-t"><b>Account tiers</b><span>Free and Pro plan settings</span></span>
                     <i class="bi bi-chevron-right" aria-hidden="true"></i>
                 </a>
-                <a href="/controlroom/Dashboard/productboost/" class="pn-link">
+                <a href="{% url 'dash_admin_boosts' %}" class="pn-link">
                     <span class="ox-ico t-purple"><i class="bi bi-rocket-takeoff" aria-hidden="true"></i></span>
                     <span class="pn-link-t"><b>Product boosts</b><span>Manage boost campaigns</span></span>
                     {% if active_boosts %}<span class="ox-pill ox-wash">{{ active_boosts }} active</span>{% endif %}
@@ -429,13 +491,13 @@
                     <span class="pn-link-t"><b>All affiliates</b><span>Manage all affiliate accounts</span></span>
                     <i class="bi bi-chevron-right" aria-hidden="true"></i>
                 </a>
-                <a href="/controlroom/Dashboard/referral/" class="pn-link">
+                <a href="{% url 'dash_admin_referrals' %}" class="pn-link">
                     <span class="ox-ico t-orange"><i class="bi bi-diagram-3-fill" aria-hidden="true"></i></span>
                     <span class="pn-link-t"><b>Referrals</b><span>Referral records and fraud flags</span></span>
                     {% if flagged_referrals %}<span class="ox-pill ox-wash">{{ flagged_referrals }} flagged</span>{% endif %}
                     <i class="bi bi-chevron-right" aria-hidden="true"></i>
                 </a>
-                <a href="/controlroom/Dashboard/affiliatecommission/" class="pn-link">
+                <a href="{% url 'dash_admin_referrals' %}?tab=commissions" class="pn-link">
                     <span class="ox-ico t-green"><i class="bi bi-cash-stack" aria-hidden="true"></i></span>
                     <span class="pn-link-t"><b>Commissions</b><span>View all commission records</span></span>
                     <i class="bi bi-chevron-right" aria-hidden="true"></i>
@@ -450,13 +512,13 @@
                 <div class="ox-sec-t"><h2 class="ox-h2" id="syTitle">Payments &amp; system</h2></div>
             </div>
             <div class="pn-links">
-                <a href="/controlroom/Dashboard/monnifytransaction/" class="pn-link">
+                <a href="{% url 'dash_admin_payments' %}" class="pn-link">
                     <span class="ox-ico t-green"><i class="bi bi-credit-card-2-front-fill" aria-hidden="true"></i></span>
                     <span class="pn-link-t"><b>Monnify payments</b><span>Incoming deposits</span></span>
                     {% if unprocessed_payments %}<span class="ox-pill ox-wash">{{ unprocessed_payments }} not credited</span>{% endif %}
                     <i class="bi bi-chevron-right" aria-hidden="true"></i>
                 </a>
-                <a href="/controlroom/Dashboard/virtualaccount/" class="pn-link">
+                <a href="{% url 'dash_admin_payments' %}?tab=accounts" class="pn-link">
                     <span class="ox-ico t-navy"><i class="bi bi-bank" aria-hidden="true"></i></span>
                     <span class="pn-link-t"><b>Virtual accounts</b><span>Customer bank accounts</span></span>
                     <i class="bi bi-chevron-right" aria-hidden="true"></i>
@@ -484,9 +546,19 @@
                 <div class="ox-sec-t"><h2 class="ox-h2" id="ntTitle">Notifications &amp; communication</h2></div>
             </div>
             <div class="pn-links">
-                <a href="/controlroom/notifications/notification/" class="pn-link">
+                <a href="{% url 'notif_admin_compose' %}" class="pn-link">
+                    <span class="ox-ico t-purple"><i class="bi bi-megaphone-fill" aria-hidden="true"></i></span>
+                    <span class="pn-link-t"><b>Send notification</b><span>Message users in the app and by push</span></span>
+                    <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                </a>
+                <a href="{% url 'notif_admin_list' %}" class="pn-link">
                     <span class="ox-ico t-navy"><i class="bi bi-envelope-fill" aria-hidden="true"></i></span>
-                    <span class="pn-link-t"><b>All notifications</b><span>View sent notifications</span></span>
+                    <span class="pn-link-t"><b>All notifications</b><span>Browse and delete what users received</span></span>
+                    <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                </a>
+                <a href="{% url 'notif_admin_overview' %}" class="pn-link">
+                    <span class="ox-ico t-green"><i class="bi bi-bar-chart-fill" aria-hidden="true"></i></span>
+                    <span class="pn-link-t"><b>Delivery and tools</b><span>Opt-outs, push test, clean-up</span></span>
                     <i class="bi bi-chevron-right" aria-hidden="true"></i>
                 </a>
             </div>

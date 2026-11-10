@@ -1,109 +1,81 @@
 {% extends 'base.html' %}
+{% load static humanize %}
 
-{% block title %}Campaign Details{% endblock %}
+{% block title %}{{ campaign.title|truncatechars:40 }} - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+{% include 'admin/_ox_mail_css.html' %}
+</style>
+{% endblock %}
 
 {% block 'Body' %}
-<div class="container my-5">
-    <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h4 class="mb-0">{{ campaign.title }}</h4>
-            {% if campaign.status == 'draft' %}
-                <span class="badge bg-secondary fs-6">Draft</span>
-            {% elif campaign.status == 'sending' %}
-                <span class="badge bg-warning fs-6">
-                    <span class="spinner-border spinner-border-sm" role="status"></span>
-                    Sending...
-                </span>
-            {% else %}
-                <span class="badge bg-success fs-6">✓ Sent</span>
-            {% endif %}
-        </div>
-        <div class="card-body">
-            <!-- Campaign Info -->
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <p><strong>Type:</strong> <span class="badge bg-info">{{ campaign.get_campaign_type_display }}</span></p>
-                    <p><strong>Subject:</strong> {{ campaign.subject }}</p>
-                    <p><strong>Status:</strong> 
-                        {% if campaign.status == 'draft' %}
-                            <span class="text-secondary">Draft</span>
-                        {% elif campaign.status == 'sending' %}
-                            <span class="text-warning">Sending in progress...</span>
-                        {% else %}
-                            <span class="text-success">✓ Completed</span>
-                        {% endif %}
-                    </p>
-                </div>
-                <div class="col-md-6">
-                    <p><strong>Total Sent:</strong> 
-                        <span class="badge bg-primary fs-6">{{ campaign.total_sent }}</span> users
-                    </p>
-                    <p><strong>Created:</strong> {{ campaign.created_at|date:"F d, Y H:i" }}</p>
-                    {% if campaign.sent_at %}
-                    <p><strong>Completed:</strong> {{ campaign.sent_at|date:"F d, Y H:i" }}</p>
-                    {% endif %}
-                    <p><strong>Created by:</strong> {{ campaign.created_by.username }}</p>
-                </div>
-            </div>
+<div class="ox">
+    {% url 'bulk_email_list' as back_url %}
+    {% include 'admin/_ox_head.html' with title=campaign.title|truncatechars:48 sub=campaign.subject|truncatechars:70 label="Status" value=campaign.get_status_display back=back_url %}
 
-            <!-- Targeting Info -->
-            <div class="alert alert-info">
-                <strong>📊 Targeting:</strong>
-                {% if campaign.target_all %}All users{% endif %}
-                {% if campaign.verified_only %}, Verified emails only{% endif %}
-                {% if campaign.business_only %}, Business accounts only{% endif %}
-            </div>
-            
-            <hr>
-            
-            <!-- Message Preview -->
-            <h5>📧 Message Content:</h5>
-            <div class="border rounded p-3 bg-light">
-                {{ campaign.message|safe }}
-            </div>
-            
-            <!-- Action Buttons -->
-            <div class="mt-4 d-flex gap-2">
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav_mail.html' with active="list" %}
+
+        <section class="ox-card" aria-labelledby="actTitle">
+            <div class="ox-sec-h"><span class="ox-ico t-navy"><i class="bi bi-lightning-charge" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="actTitle">Actions</h2></div>
+                <span class="ox-pill ox-wash ml-{{ campaign.status }}">{{ campaign.get_status_display }}</span></div>
+            {% if prog and campaign.status != 'draft' %}<div class="ox-prog" role="img" aria-label="{{ prog.sent }} of {{ prog.total }} sent" style="margin-bottom:var(--sp-3)"><i><s style="width:{{ prog.percent }}%"></s></i><span>{{ prog.sent }} of {{ prog.total }} sent{% if campaign.status == 'partial' %}. The rest go out in the next daily batch.{% endif %}</span></div>{% endif %}
+            {% if bad_vars %}<div class="ox-alert t-orange ox-wash" role="note" style="margin-bottom:var(--sp-3)"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><span>Unknown variable{{ bad_vars|length|pluralize }}: {% for b in bad_vars %}{{ b }}{% if not forloop.last %}, {% endif %}{% endfor %}. They will be sent exactly as typed, because the sender needs no spaces inside the braces and fills only first_name in the subject.</span></div>{% endif %}
+            {% if campaign.status == 'draft' and recipient_count == 0 %}<div class="ox-alert t-red ox-wash" role="note" style="margin-bottom:var(--sp-3)"><i class="bi bi-people" aria-hidden="true"></i><span>No one matches this audience yet, so it cannot be sent.</span></div>{% endif %}
+            <div class="ox-acts">
                 {% if campaign.status == 'draft' %}
-                <a href="{% url 'bulk_email_send_now' campaign.pk %}" class="btn btn-warning btn-lg">
-                    ⚡ Send Now ({{ campaign.get_recipient_count }} recipients)
-                </a>
+                <a href="{% url 'bulk_email_send_now' campaign.pk %}" class="ox-btn"><i class="bi bi-send" aria-hidden="true"></i>Review and send{% if recipient_count %} ({{ recipient_count|intcomma }}){% endif %}</a>
+                <a href="{% url 'bulk_email_edit' campaign.pk %}" class="ox-btn ox-btn-neutral"><i class="bi bi-pencil" aria-hidden="true"></i>Edit</a>
                 {% elif campaign.status == 'sending' %}
-                <button class="btn btn-warning btn-lg" disabled>
-                    <span class="spinner-border spinner-border-sm" role="status"></span>
-                    Sending in progress...
-                </button>
+                <span class="ox-help">A batch is running. This page refreshes every 5 seconds.</span>
+                {% elif campaign.status == 'partial' %}
+                <form method="post" action="{% url 'bulk_email_send_batch' %}">{% csrf_token %}<input type="hidden" name="pk" value="{{ campaign.pk }}"><button type="submit" class="ox-btn"{% if budget.left <= 0 %} disabled{% endif %}><i class="bi bi-send" aria-hidden="true"></i>Send today's batch</button></form>
                 {% endif %}
-                
-                <a href="{% url 'bulk_email_list' %}" class="btn btn-outline-secondary btn-lg">
-                    ← Back to List
-                </a>
+                {% if prog.failed and campaign.status != 'draft' and campaign.status != 'sending' %}
+                <form method="post" action="{% url 'bulk_email_retry_failed' campaign.pk %}">{% csrf_token %}<button type="submit" class="ox-btn ox-btn-neutral"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>Retry {{ prog.failed }} failed</button></form>
+                {% endif %}
+                <form method="post" action="{% url 'bulk_email_duplicate' campaign.pk %}">{% csrf_token %}<button type="submit" class="ox-btn ox-btn-neutral"><i class="bi bi-copy" aria-hidden="true"></i>Duplicate</button></form>
+                {% if campaign.status == 'draft' %}
+                <button type="button" class="ox-btn ox-danger" data-confirm data-action="{% url 'bulk_email_delete' campaign.pk %}" data-title="Delete draft" data-message="Removes this draft. Nothing has been sent." data-label="Delete" data-danger="1"><i class="bi bi-trash" aria-hidden="true"></i>Delete</button>
+                {% endif %}
+            </div>
+        </section>
+
+        <div class="ox-layout">
+            <div class="ox-col">
+                <section class="ox-card" aria-labelledby="infoTitle">
+                    <div class="ox-sec-h"><span class="ox-ico t-orange"><i class="bi bi-info-circle" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="infoTitle">Details</h2></div></div>
+                    <dl class="ox-dl">
+                        <div><dt>Type</dt><dd>{{ campaign.get_campaign_type_display }}</dd></div>
+                        <div><dt>Subject</dt><dd>{{ campaign.subject }}</dd></div>
+                        <div><dt>Audience</dt><dd>{{ audience }}</dd></div>
+                        <div><dt>{% if campaign.status == 'draft' %}Would reach{% else %}Delivered to{% endif %}</dt><dd>{% if campaign.status == 'draft' %}{{ recipient_count|intcomma }}{% else %}{{ prog.sent|intcomma }} of {{ prog.total|intcomma }}{% endif %}</dd></div>
+                        {% if prog.failed %}<div><dt>Failed</dt><dd>{{ prog.failed }}</dd></div>{% endif %}
+                        {% if budget %}<div><dt>Today</dt><dd>{{ budget.bulk_used }} of {{ budget.cap }} sent<small>{{ budget.left }} left today</small></dd></div>{% endif %}
+                        <div><dt>Created</dt><dd>{{ campaign.created_at|date:"M d, Y H:i" }} by @{{ campaign.created_by.username }}</dd></div>
+                        <div><dt>Finished</dt><dd>{% if campaign.sent_at %}{{ campaign.sent_at|date:"M d, Y H:i" }}{% else %}-{% endif %}</dd></div>
+                    </dl>
+                </section>
+                {% if failures %}
+                <section class="ox-card" aria-labelledby="failTitle">
+                    <div class="ox-sec-h"><span class="ox-ico t-red"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="failTitle">Failed recipients</h2><p class="ox-card-sub">Latest {{ failures|length }}. Retried automatically up to {{ campaign.MAX_ATTEMPTS }} times.</p></div></div>
+                    <dl class="ox-dl">{% for f in failures %}<div><dt>@{{ f.user.username }}</dt><dd>{{ f.error|default:"-" }}<small>{{ f.attempts }} attempt{{ f.attempts|pluralize }}</small></dd></div>{% endfor %}</dl>
+                </section>
+                {% endif %}
+            </div>
+            <div class="ox-col">
+                <section class="ox-card" aria-labelledby="pvTitle">
+                    <div class="ox-sec-h"><span class="ox-ico t-green"><i class="bi bi-eye" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="pvTitle">Preview</h2><p class="ox-card-sub">With a sample name. Scripts never run here.</p></div></div>
+                    <iframe class="ox-preview" sandbox title="Email preview" srcdoc="<base target=_blank><body style='font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#222;margin:16px'>{{ preview_html }}"></iframe>
+                </section>
             </div>
         </div>
     </div>
 </div>
-
-{% if campaign.status == 'sending' %}
-<script>
-// Auto-refresh every 5 seconds while campaign is sending
-setTimeout(() => {
-    window.location.reload();
-}, 5000);
-
-// Show a small notification
-const notification = document.createElement('div');
-notification.className = 'alert alert-warning position-fixed bottom-0 end-0 m-3';
-notification.style.zIndex = '9999';
-notification.innerHTML = `
-    <small>
-        <span class="spinner-border spinner-border-sm me-2"></span>
-        Campaign is sending... Auto-refreshing in 5s
-    </small>
-`;
-document.body.appendChild(notification);
-</script>
-{% endif %}
+{% include 'admin/_ox_confirm.html' %}
+{% if campaign.status == 'sending' %}<script>setTimeout(function () { window.location.reload(); }, 5000);</script>{% endif %}
 {% endblock %}
-
-{% block 'Footer'%}
-{% endblock%}
+{% block 'Footer' %}{% endblock %}

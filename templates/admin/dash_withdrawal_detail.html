@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}{{ wr.reference }} - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% url 'dash_admin_withdrawals' as list_url %}
+    {% include 'admin/_ox_head.html' with title=wr.reference sub="Wallet withdrawal" label="Pay out" value=wr.net_payout|floatformat:2|intcomma back=list_url %}
+
+    <div class="ox-main">
+        {% for w in warnings %}
+        <div class="ox-alert t-orange ox-wash" role="alert"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i><span>{{ w }}</span></div>
+        {% endfor %}
+
+        <div class="ox-layout">
+            <div class="ox-col ox-stack">
+                <section class="ox-card" aria-labelledby="amtTitle">
+                    <div class="ox-sec-h">
+                        <span class="ox-ico t-green"><i class="bi bi-cash-stack" aria-hidden="true"></i></span>
+                        <div class="ox-sec-t"><h2 class="ox-h2" id="amtTitle">Amounts</h2></div>
+                        <span class="ox-pill ox-wash st st-{{ wr.status }}">{{ wr.get_status_display }}</span>
+                    </div>
+                    <dl class="ox-dl">
+                        <div><dt>Requested</dt><dd>&#8358;{{ wr.requested_amount|floatformat:2|intcomma }}</dd></div>
+                        <div><dt>Fee ({{ wr.fee_rate|floatformat:0 }}%)</dt><dd>&#8358;{{ wr.fee_amount|floatformat:2|intcomma }}</dd></div>
+                        <div><dt>Pay out to bank</dt><dd>&#8358;{{ wr.net_payout|floatformat:2|intcomma }}</dd></div>
+                        <div><dt>Withdrawable when submitted</dt><dd>&#8358;{{ wr.withdrawable_balance_at_submission|floatformat:2|intcomma }}</dd></div>
+                        <div><dt>Withdrawable now</dt><dd>&#8358;{{ withdrawable_now|floatformat:2|intcomma }}</dd></div>
+                        <div><dt>Wallet balance now</dt><dd>&#8358;{{ account.balance|floatformat:2|intcomma }}</dd></div>
+                    </dl>
+                </section>
+
+                <section class="ox-card" aria-labelledby="bankTitle">
+                    <div class="ox-sec-h">
+                        <span class="ox-ico t-navy"><i class="bi bi-bank" aria-hidden="true"></i></span>
+                        <div class="ox-sec-t"><h2 class="ox-h2" id="bankTitle">Pay to</h2><p class="ox-card-sub">Check the account name matches @{{ account.user.username }}.</p></div>
+                    </div>
+                    <dl class="ox-dl">
+                        <div><dt>Bank</dt><dd>{{ wr.bank_name }}</dd></div>
+                        <div><dt>Account name</dt><dd>{{ wr.account_name }}</dd></div>
+                        <div><dt>Account number</dt><dd><button type="button" class="ox-copy" data-copy="{{ wr.account_number }}" aria-label="Copy account number">{{ wr.account_number }} <i class="bi bi-copy" aria-hidden="true"></i></button></dd></div>
+                        <div><dt>Send exactly</dt><dd><button type="button" class="ox-copy" data-copy="{{ wr.net_payout|floatformat:2 }}" aria-label="Copy amount">&#8358;{{ wr.net_payout|floatformat:2|intcomma }} <i class="bi bi-copy" aria-hidden="true"></i></button></dd></div>
+                    </dl>
+                </section>
+
+                <section class="ox-card" aria-labelledby="proofTitle">
+                    <div class="ox-sec-h">
+                        <span class="ox-ico t-orange"><i class="bi bi-shield-check" aria-hidden="true"></i></span>
+                        <div class="ox-sec-t"><h2 class="ox-h2" id="proofTitle">Proof of deposit</h2><p class="ox-card-sub">{{ wr.get_proof_type_display }}</p></div>
+                    </div>
+                    <div class="ox-stack">
+                        {% if wr.monnify_transaction %}
+                        <dl class="ox-dl">
+                            <div><dt>Monnify reference</dt><dd>{{ wr.monnify_transaction.transaction_reference }}</dd></div>
+                            <div><dt>Amount paid</dt><dd>&#8358;{{ wr.monnify_transaction.amount_paid|floatformat:2|intcomma }}</dd></div>
+                            <div><dt>Status</dt><dd>{{ wr.monnify_transaction.get_payment_status_display }}</dd></div>
+                            <div><dt>Paid on</dt><dd>{{ wr.monnify_transaction.paid_on|date:"M d, Y H:i" }}</dd></div>
+                        </dl>
+                        {% endif %}
+                        {% if wr.monnify_reference_manual %}<p>Typed reference: <b>{{ wr.monnify_reference_manual }}</b></p>{% endif %}
+                        {% if wr.proof_upload %}
+                        <div class="ox-proof">
+                            {% if proof_is_image %}<a href="{{ wr.proof_upload.url }}" target="_blank" rel="noopener"><img src="{{ wr.proof_upload.url }}" alt="Uploaded proof" loading="lazy"></a>
+                            {% else %}<a href="{{ wr.proof_upload.url }}" target="_blank" rel="noopener" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-file-earmark-arrow-down" aria-hidden="true"></i>Open uploaded proof</a>{% endif %}
+                        </div>
+                        {% endif %}
+                        {% if wr.proof_notes %}<div class="ox-quote">{{ wr.proof_notes|linebreaksbr }}</div>{% endif %}
+                        {% if not wr.monnify_transaction and not wr.monnify_reference_manual and not wr.proof_upload %}<p class="ox-help">No proof was attached.</p>{% endif %}
+                    </div>
+                </section>
+
+                {% if wr.reviewed_by or wr.rejection_reason or wr.payment_reference or wr.wallet_transaction %}
+                <section class="ox-card" aria-labelledby="revTitle">
+                    <div class="ox-sec-h"><span class="ox-ico t-navy"><i class="bi bi-clipboard-check" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="revTitle">Review</h2></div></div>
+                    <dl class="ox-dl">
+                        {% if wr.reviewed_by %}<div><dt>Reviewed by</dt><dd>@{{ wr.reviewed_by.username }}</dd></div>{% endif %}
+                        {% if wr.reviewed_at %}<div><dt>Reviewed</dt><dd>{{ wr.reviewed_at|date:"M d, Y H:i" }}</dd></div>{% endif %}
+                        {% if wr.payment_reference %}<div><dt>Payment reference</dt><dd>{{ wr.payment_reference }}</dd></div>{% endif %}
+                        {% if wr.completed_at %}<div><dt>Completed</dt><dd>{{ wr.completed_at|date:"M d, Y H:i" }}</dd></div>{% endif %}
+                        {% if wr.rejection_reason %}<div><dt>Rejection reason</dt><dd>{{ wr.rejection_reason }}</dd></div>{% endif %}
+                    </dl>
+                </section>
+                {% endif %}
+
+                <section class="ox-card" aria-labelledby="noteTitle">
+                    <div class="ox-sec-h"><span class="ox-ico t-navy"><i class="bi bi-journal-text" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="noteTitle">Staff notes</h2><p class="ox-card-sub">Only staff see these.</p></div></div>
+                    <form method="post" action="{% url 'dash_admin_withdrawal_notes' wr.pk %}" class="ox-stack">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ next_url }}">
+                        <label for="adminNotes" class="ox-lab">Notes</label>
+                        <textarea id="adminNotes" name="admin_notes" class="ox-ctl" rows="3" maxlength="2000">{{ wr.admin_notes }}</textarea>
+                        <div><button type="submit" class="ox-btn ox-btn-sm ox-btn-neutral">Save notes</button></div>
+                    </form>
+                </section>
+            </div>
+
+            <aside class="ox-col ox-sticky ox-stack" aria-label="Actions">
+                <section class="ox-card">
+                    <div class="ox-sec-h"><div class="ox-sec-t"><h2 class="ox-h2">Actions</h2></div></div>
+                    <div class="ox-sticky-acts">
+                        {% if can_review %}
+                        <form method="post" action="{% url 'dash_admin_withdrawal_action' wr.pk 'review' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ next_url }}">
+                            <button type="submit" class="ox-btn ox-btn-neutral"><i class="bi bi-search" aria-hidden="true"></i>Start review</button></form>
+                        {% endif %}
+                        {% if can_approve %}
+                        <button type="button" class="ox-btn" data-confirm data-action="{% url 'dash_admin_withdrawal_action' wr.pk 'approve' %}"
+                                data-title="Approve withdrawal" data-message="Approve {{ wr.reference }} for &#8358;{{ wr.net_payout|floatformat:2|intcomma }} payout?" data-label="Approve"><i class="bi bi-check2-circle" aria-hidden="true"></i>Approve</button>
+                        {% endif %}
+                        {% if can_process %}
+                        <button type="button" class="ox-btn ox-btn-neutral" data-confirm data-action="{% url 'dash_admin_withdrawal_action' wr.pk 'processing' %}"
+                                data-title="Mark as processing" data-message="Use this once you have started the bank transfer." data-label="Mark processing"><i class="bi bi-hourglass-split" aria-hidden="true"></i>Mark processing</button>
+                        {% endif %}
+                        {% if can_complete %}
+                        <button type="button" class="ox-btn" data-confirm data-action="{% url 'dash_admin_withdrawal_action' wr.pk 'complete' %}"
+                                data-title="Complete withdrawal" data-message="&#8358;{{ wr.requested_amount|floatformat:2|intcomma }} is deducted from the wallet now. Do this only after the bank transfer has gone through."
+                                data-label="Complete" data-reason="Bank transfer reference"><i class="bi bi-patch-check" aria-hidden="true"></i>Mark completed</button>
+                        {% endif %}
+                        {% if can_reject %}
+                        <button type="button" class="ox-btn ox-danger" data-confirm data-action="{% url 'dash_admin_withdrawal_action' wr.pk 'reject' %}"
+                                data-title="Reject withdrawal" data-message="The wallet is not touched. The user sees your reason." data-label="Reject" data-danger="1" data-reason="Reason for the user"><i class="bi bi-x-circle" aria-hidden="true"></i>Reject</button>
+                        {% endif %}
+                        {% if not can_review and not can_approve and not can_process and not can_complete and not can_reject %}
+                        <p class="ox-help">This request is {{ wr.get_status_display|lower }}. Nothing more to do.</p>
+                        {% endif %}
+                    </div>
+                </section>
+
+                <section class="ox-card">
+                    <div class="ox-sec-h"><div class="ox-sec-t"><h2 class="ox-h2">User</h2></div></div>
+                    <div class="ox-who" style="margin-bottom:var(--sp-3)">
+                        <span class="ox-av" aria-hidden="true">{{ account.user.username|slice:":1" }}</span>
+                        <div class="ox-who-t"><b>@{{ account.user.username }}</b><span>{{ account.user.email }}</span></div>
+                    </div>
+                    <a href="{% url 'dash_admin_account' account.pk %}" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-wallet2" aria-hidden="true"></i>Open account</a>
+                    {% if others %}
+                    <h3 class="ox-h3" style="margin-top:var(--sp-4)">Their other requests</h3>
+                    <dl class="ox-dl">
+                        {% for o in others %}<div><dt><a href="{% url 'dash_admin_withdrawal_detail' o.pk %}">{{ o.submitted_at|date:"M d, Y" }}</a></dt><dd>&#8358;{{ o.requested_amount|floatformat:0|intcomma }} <span class="ox-pill ox-wash st st-{{ o.status }}">{{ o.get_status_display }}</span></dd></div>{% endfor %}
+                    </dl>
+                    {% endif %}
+                </section>
+            </aside>
+        </div>
+    </div>
+</div>
+{% include 'admin/_ox_confirm.html' %}
+<script>
+document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-copy]');
+    if (!b || !navigator.clipboard) return;
+    navigator.clipboard.writeText(b.getAttribute('data-copy')).then(function () {
+        var i = b.querySelector('i'); if (!i) return;
+        i.className = 'bi bi-check2'; setTimeout(function () { i.className = 'bi bi-copy'; }, 1500);
+    });
+});
+</script>
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

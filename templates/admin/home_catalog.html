@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Catalog - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% url 'home_admin_catalog_new' tab as new_url %}
+    {% include 'admin/_ox_head.html' with title="Catalog" sub="Categories, subcategories and brands" label="Categories" value=tab_counts.categories action_url=new_url action_label="Add" %}
+
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav.html' with active="catalog" %}
+
+        <nav class="ox-tabs" style="--cols:3" aria-label="Catalog section">
+            <a href="?tab=categories" class="ox-tile ox-tab t-navy"{% if tab == 'categories' %} aria-current="true"{% endif %}><span>Categories</span><b>{{ tab_counts.categories }}</b></a>
+            <a href="?tab=subcategories" class="ox-tile ox-tab t-orange"{% if tab == 'subcategories' %} aria-current="true"{% endif %}><span>Subcategories</span><b>{{ tab_counts.subcategories }}</b></a>
+            <a href="?tab=brands" class="ox-tile ox-tab t-green"{% if tab == 'brands' %} aria-current="true"{% endif %}><span>Brands</span><b>{{ tab_counts.brands }}</b></a>
+        </nav>
+
+        <section class="ox-card" aria-labelledby="listTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-navy"><i class="bi bi-diagram-3" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="listTitle">{% if tab == 'categories' %}Categories{% elif tab == 'subcategories' %}Subcategories{% else %}Brands{% endif %}</h2></div>
+                <a href="{{ new_url }}" class="ox-btn ox-btn-sm"><i class="bi bi-plus-lg" aria-hidden="true"></i>Add</a>
+            </div>
+
+            <form method="get" class="ox-bar" role="search" id="filterForm">
+                <input type="hidden" name="tab" value="{{ tab }}">
+                {% if tab == 'subcategories' %}
+                <select name="category" class="ox-ctl" aria-label="Filter by category">
+                    <option value="">All categories</option>
+                    {% for c in categories %}<option value="{{ c.pk }}"{% if category_id == c.pk|stringformat:"s" %} selected{% endif %}>{{ c.name }}</option>{% endfor %}
+                </select>
+                {% endif %}
+                <input type="search" name="q" class="ox-ctl ox-grow" autocomplete="off" enterkeyhint="search" aria-label="Search by name" placeholder="Search by name" value="{{ q }}">
+                <button type="submit" class="ox-btn ox-btn-neutral" aria-label="Search"><i class="bi bi-search" aria-hidden="true"></i></button>
+            </form>
+
+            {% if page_obj.object_list %}
+            <ul class="ox-list">
+                {% for o in page_obj %}
+                <li class="ox-item">
+                    <div class="ox-who">
+                        {% if tab == 'categories' %}
+                            {% if o.image %}<img class="ox-ico-img" src="{{ o.image.url }}" alt="" loading="lazy">{% else %}<span class="ox-av" aria-hidden="true">{{ o.name|slice:":1" }}</span>{% endif %}
+                        {% else %}
+                            <span class="ox-av" aria-hidden="true">{{ o.name|slice:":1" }}</span>
+                        {% endif %}
+                        <div class="ox-who-t">
+                            <b>{{ o.name }}</b>
+                            {% if tab == 'subcategories' %}<span>in {{ o.category.name }}</span>
+                            {% elif tab == 'brands' %}<span>{% for c in o.categories.all %}{{ c.name }}{% if not forloop.last %}, {% endif %}{% empty %}No category{% endfor %}</span>
+                            {% else %}<span>{{ o.slug|default:"no slug" }}</span>{% endif %}
+                        </div>
+                    </div>
+                    <span class="ox-pill ox-wash st {% if o.n_products %}st-active{% else %}st-inactive{% endif %}"><i class="bi bi-bag" aria-hidden="true"></i>{{ o.n_products }} listing{{ o.n_products|pluralize }}</span>
+                    {% if tab == 'categories' %}
+                    <dl class="ox-nums" style="--ncols:2">
+                        <div><dt>Subcategories</dt><dd>{{ o.n_subs }}</dd></div>
+                        <div><dt>Slug</dt><dd>{{ o.slug|default:"-" }}</dd></div>
+                    </dl>
+                    {% else %}
+                    <dl class="ox-nums" style="--ncols:2">
+                        <div><dt>Slug</dt><dd>{{ o.slug|default:"-" }}</dd></div>
+                        <div><dt>{% if tab == 'brands' %}Categories{% else %}Category{% endif %}</dt><dd>{% if tab == 'brands' %}{{ o.categories.all|length }}{% else %}{{ o.category.name }}{% endif %}</dd></div>
+                    </dl>
+                    {% endif %}
+                    <div class="ox-acts">
+                        <a href="{% url 'home_admin_catalog_edit' tab o.pk %}" class="ox-btn ox-btn-sm"><i class="bi bi-pencil" aria-hidden="true"></i>Edit</a>
+                        {% if tab == 'categories' %}
+                        <a href="{% url 'home_admin_catalog_new' 'subcategories' %}?category={{ o.pk }}" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-plus-lg" aria-hidden="true"></i>Subcategory</a>
+                        {% endif %}
+                        {% if tab == 'categories' and o.n_products or tab == 'categories' and o.n_subs or tab == 'subcategories' and o.n_products %}
+                        <span class="ox-btn ox-btn-sm ox-danger" aria-disabled="true" title="Move or remove what is inside first"><i class="bi bi-lock" aria-hidden="true"></i>In use</span>
+                        {% else %}
+                        <button type="button" class="ox-btn ox-btn-sm ox-danger" data-confirm
+                                data-action="{% url 'home_admin_catalog_delete' tab o.pk %}"
+                                data-title="Delete {{ o.name|escapejs }}"
+                                data-message="{% if tab == 'brands' and o.n_products %}{{ o.n_products }} listing(s) use this brand and will simply show no brand. {% endif %}This cannot be undone."
+                                data-label="Delete" data-danger="1"><i class="bi bi-trash" aria-hidden="true"></i>Delete</button>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% include 'admin/_ox_pager.html' %}
+            {% else %}
+            <div class="ox-empty">
+                <span class="ox-ico t-navy"><i class="bi bi-diagram-3" aria-hidden="true"></i></span>
+                <div>
+                    <h2>Nothing here yet</h2>
+                    <p>{% if q %}No results for "{{ q }}".{% else %}Add the first one to start building the catalog.{% endif %}</p>
+                </div>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+
+{% include 'admin/_ox_confirm.html' %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var f = document.getElementById('filterForm');
+    var sel = f && f.querySelector('select');
+    if (sel) sel.addEventListener('change', function () { f.submit(); });
+});
+</script>
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

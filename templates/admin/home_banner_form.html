@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if banner %}Edit banner{% else %}Add banner{% endif %} - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+.ox-prev-d { aspect-ratio: 6 / 1; width: 100%; }
+.ox-prev-m { aspect-ratio: 4 / 1; width: min(100%, 16rem); }
+.ox-prev-d img, .ox-prev-m img { width: 100%; height: 100%; object-fit: cover; }
+.ox-prev-empty { padding: var(--sp-2); font-size: var(--font-size-xs); color: var(--text-secondary); text-align: center; }
+.ox-cap { margin-bottom: var(--sp-1); font-size: var(--font-size-xs); color: var(--text-secondary); }
+.ox-sw { display: flex; align-items: center; gap: var(--sp-2); }
+.ox-sw-dot { flex: none; width: 2.75rem; height: 2.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--hover-bg); }
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% url 'home_admin_banners' as list_url %}
+    {% include 'admin/_ox_head.html' with title=banner|yesno:"Edit banner,Add banner" sub="Images are converted to WebP when you save" back=list_url %}
+
+    <div class="ox-main">
+        <form method="post" enctype="multipart/form-data" class="ox-layout" id="bannerForm" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ next_url }}">
+
+            <div class="ox-col">
+                <section class="ox-card" aria-labelledby="imgTitle">
+                    <div class="ox-sec-h">
+                        <span class="ox-ico t-navy"><i class="bi bi-image" aria-hidden="true"></i></span>
+                        <div class="ox-sec-t"><h2 class="ox-h2" id="imgTitle">Images</h2><p class="ox-card-sub">JPG, PNG or WebP, up to 2 MB each.</p></div>
+                    </div>
+                    <div class="ox-fgrid">
+                        <div class="ox-field">
+                            <label for="{{ form.image.id_for_label }}" class="ox-lab">Desktop image<span class="ox-req" aria-hidden="true">*</span></label>
+                            <input type="file" name="image" id="{{ form.image.id_for_label }}" class="ox-ctl" accept="image/jpeg,image/png,image/webp" data-prev="prevD">
+                            <p class="ox-help">1200 x 200 px (6:1). Used on screens wider than a phone.{% if banner and banner.image %} Leave empty to keep the current image.{% endif %}</p>
+                            {% for e in form.image.errors %}<p class="ox-err" role="alert"><i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i><span>{{ e }}</span></p>{% endfor %}
+                        </div>
+                        <div class="ox-field">
+                            <label for="{{ form.mobile_image.id_for_label }}" class="ox-lab">Mobile image</label>
+                            <input type="file" name="mobile_image" id="{{ form.mobile_image.id_for_label }}" class="ox-ctl" accept="image/jpeg,image/png,image/webp" data-prev="prevM">
+                            <p class="ox-help">800 x 200 px (4:1). Optional. Phones use the desktop image when this is empty.</p>
+                            {% for e in form.mobile_image.errors %}<p class="ox-err" role="alert"><i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i><span>{{ e }}</span></p>{% endfor %}
+                            {% if banner and banner.mobile_image %}
+                            <label class="ox-switch" style="margin-top:var(--sp-2)">
+                                <input type="checkbox" name="mobile_image-clear" value="on">
+                                <div><b>Remove the current mobile image</b><span>Phones will use the desktop image.</span></div>
+                            </label>
+                            {% endif %}
+                        </div>
+                    </div>
+                </section>
+
+                <section class="ox-card" aria-labelledby="whereTitle">
+                    <div class="ox-sec-h">
+                        <span class="ox-ico t-orange"><i class="bi bi-link-45deg" aria-hidden="true"></i></span>
+                        <div class="ox-sec-t"><h2 class="ox-h2" id="whereTitle">Link and position</h2></div>
+                    </div>
+                    <div class="ox-fgrid">
+                        {% include 'admin/_ox_field.html' with field=form.url label="Destination URL" help="Where a click goes. Use the full address." %}
+                        <div class="ox-fgrid two">
+                            {% include 'admin/_ox_field.html' with field=form.display_location label="Position" %}
+                            {% include 'admin/_ox_field.html' with field=form.priority label="Priority" help="Higher number shows first." %}
+                        </div>
+                        <div class="ox-field">
+                            <label for="{{ form.background_color.id_for_label }}" class="ox-lab">Background colour</label>
+                            <div class="ox-sw"><span class="ox-sw-dot" id="swatch" aria-hidden="true"></span>{{ form.background_color }}</div>
+                            <p class="ox-help">Optional. Fills any space the image does not cover, for example #FF5733.</p>
+                            {% for e in form.background_color.errors %}<p class="ox-err" role="alert"><i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i><span>{{ e }}</span></p>{% endfor %}
+                        </div>
+                    </div>
+                </section>
+
+                <section class="ox-card" aria-labelledby="schedTitle">
+                    <div class="ox-sec-h">
+                        <span class="ox-ico t-green"><i class="bi bi-calendar-event" aria-hidden="true"></i></span>
+                        <div class="ox-sec-t"><h2 class="ox-h2" id="schedTitle">Schedule</h2><p class="ox-card-sub">Leave both empty to show it until you switch it off.</p></div>
+                    </div>
+                    <div class="ox-fgrid two">
+                        {% include 'admin/_ox_field.html' with field=form.start_date label="Start" %}
+                        {% include 'admin/_ox_field.html' with field=form.end_date label="End" %}
+                    </div>
+                    <label class="ox-switch" style="margin-top:var(--gap-fields)">
+                        {{ form.is_active }}
+                        <div><b>Active</b><span>When off, the banner never shows, whatever the schedule says.</span></div>
+                    </label>
+                </section>
+
+                {% if form.non_field_errors %}
+                <div class="ox-alert ox-wash" role="alert"><i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i><span>{{ form.non_field_errors|join:" " }}</span></div>
+                {% endif %}
+
+                <div class="ox-mf">
+                    <a href="{% if next_url %}{{ next_url }}{% else %}{{ list_url }}{% endif %}" class="ox-btn ox-btn-neutral">Cancel</a>
+                    <button type="submit" class="ox-btn" id="saveBtn">{% if banner %}Save changes{% else %}Add banner{% endif %}</button>
+                </div>
+            </div>
+
+            <aside class="ox-col ox-sticky" aria-label="Preview">
+                <section class="ox-card">
+                    <div class="ox-sec-h"><div class="ox-sec-t"><h2 class="ox-h2">Preview</h2><p class="ox-card-sub">Shown at the real ratio.</p></div></div>
+                    <p class="ox-cap">Desktop</p>
+                    <div class="ox-frame ox-prev-d" id="prevDWrap">
+                        {% if banner and banner.image %}<img id="prevD" src="{{ banner.image.url }}" alt="Desktop banner preview">{% else %}<img id="prevD" alt="" hidden><span class="ox-prev-empty" id="prevDEmpty">Choose a desktop image</span>{% endif %}
+                    </div>
+                    <p class="ox-cap" style="margin-top:var(--sp-3)">Mobile</p>
+                    <div class="ox-frame ox-prev-m" id="prevMWrap">
+                        {% if banner and banner.mobile_image %}<img id="prevM" src="{{ banner.mobile_image.url }}" alt="Mobile banner preview">{% else %}<img id="prevM" alt="" hidden><span class="ox-prev-empty" id="prevMEmpty">No mobile image</span>{% endif %}
+                    </div>
+                </section>
+            </aside>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var MAX = 2 * 1024 * 1024;
+    var form = document.getElementById('bannerForm');
+
+    // Live preview of the chosen files. Also warns about size before upload.
+    form.querySelectorAll('input[type=file][data-prev]').forEach(function (inp) {
+        inp.addEventListener('change', function () {
+            var img = document.getElementById(inp.dataset.prev);
+            var empty = document.getElementById(inp.dataset.prev + 'Empty');
+            var f = inp.files && inp.files[0];
+            if (!f) return;
+            if (f.size > MAX) { alert('That file is ' + (f.size / 1048576).toFixed(1) + ' MB. Keep it under 2 MB.'); inp.value = ''; return; }
+            img.src = URL.createObjectURL(f);
+            img.hidden = false;
+            if (empty) empty.hidden = true;
+        });
+    });
+
+    // Colour swatch and frame background follow the hex field
+    var hex = document.getElementById('{{ form.background_color.id_for_label }}');
+    var dot = document.getElementById('swatch');
+    var frames = [document.getElementById('prevDWrap'), document.getElementById('prevMWrap')];
+    function paint() {
+        var v = hex.value.trim();
+        var ok = /^#[0-9a-fA-F]{6}$/.test(v);
+        dot.style.backgroundColor = ok ? v : '';
+        frames.forEach(function (fr) { fr.style.backgroundColor = ok ? v : ''; });
+    }
+    hex.addEventListener('input', paint);
+    paint();
+
+    // Ignore a second submit while a large upload is in flight
+    form.addEventListener('submit', function (e) {
+        var b = document.getElementById('saveBtn');
+        if (form.dataset.busy) { e.preventDefault(); return; }
+        form.dataset.busy = '1';
+        b.disabled = true;
+        b.innerHTML = '<span class="spinner-border" aria-hidden="true"></span> Saving';
+    });
+    window.addEventListener('pageshow', function (e) {
+        if (e.persisted) { delete form.dataset.busy; var b = document.getElementById('saveBtn'); b.disabled = false; b.textContent = '{% if banner %}Save changes{% else %}Add banner{% endif %}'; }
+    });
+});
+</script>
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

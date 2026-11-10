@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Notification overview - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+{% include 'admin/_ox_notif_css.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% include 'admin/_ox_head.html' with title="Overview and tools" sub="Delivery, opt-outs and clean-up" label="Unread right now" value=stats.unread|intcomma %}
+
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav_notif.html' with active="overview" %}
+
+        <div class="ox-sum">
+            <div><span>Total stored</span><b>{{ stats.total|intcomma }}</b></div>
+            <div><span>Read rate</span><b>{{ read_pct }}%</b></div>
+            <div><span>Last 24 hours</span><b>{{ stats.last_day|intcomma }}</b></div>
+            <div><span>Last 7 days</span><b>{{ stats.last_week|intcomma }}</b></div>
+        </div>
+
+        <section class="ox-card" aria-labelledby="optTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-orange"><i class="bi bi-bell-slash" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="optTitle">Who switched things off</h2><p class="ox-card-sub">Out of {{ pref_total|intcomma }} users with saved preferences. A high number means that type is annoying people.</p></div>
+            </div>
+            {% if pref_total %}
+            <div class="ox-bars">
+                {% for r in optouts %}<div><span>{{ r.label }}</span><i aria-hidden="true"><s style="width:{{ r.pct }}%"></s></i><span>{{ r.off|intcomma }} ({{ r.pct }}%)</span></div>{% endfor %}
+            </div>
+            <p class="ox-help" style="margin-top:var(--sp-3)">{{ email_on|intcomma }} user{{ email_on|pluralize }} turned on email notifications.</p>
+            {% else %}<p class="ox-help">No preferences saved yet.</p>{% endif %}
+        </section>
+
+        <section class="ox-card" aria-labelledby="pushTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-green"><i class="bi bi-phone-vibrate" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="pushTitle">Push alerts</h2><p class="ox-card-sub">{{ push.n_active|intcomma }} active device{{ push.n_active|pluralize }} across {{ push.n_users|intcomma }} user{{ push.n_users|pluralize }}.</p></div>
+            </div>
+            <p class="ox-help" style="margin-bottom:var(--sp-3)">Sends one test to this account. {% if my_subs %}You have {{ my_subs }} active device{{ my_subs|pluralize }}.{% else %}You have no active device, so allow notifications on the site in your browser first.{% endif %}</p>
+            <button type="button" class="ox-btn ox-btn-sm" data-confirm data-action="{% url 'notif_admin_test_push' %}"
+                    data-title="Send a test push" data-message="Queues one push to your own account. It confirms the VAPID keys and the django-q worker."
+                    data-label="Send test"{% if not my_subs %} disabled{% endif %}><i class="bi bi-send" aria-hidden="true"></i>Send test push to me</button>
+        </section>
+
+        <section class="ox-card" aria-labelledby="cleanTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-red"><i class="bi bi-trash3" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="cleanTitle">Clean up old notifications</h2><p class="ox-card-sub">Nothing newer than a week can be removed.</p></div>
+            </div>
+            <form method="post" action="{% url 'notif_admin_cleanup' %}" class="ox-stack" id="cleanForm">
+                {% csrf_token %}
+                <dl class="ox-dl">
+                    {% for s in sweeps %}<div><dt>Older than {{ s.days }} days</dt><dd>{{ s.read|intcomma }} read, {{ s.all|intcomma }} in all</dd></div>{% endfor %}
+                </dl>
+                <div class="ox-bar" style="margin:0">
+                    <select name="days" class="ox-ctl" aria-label="Age">
+                        {% for s in sweeps %}<option value="{{ s.days }}"{% if s.days == 30 %} selected{% endif %}>Older than {{ s.days }} days</option>{% endfor %}
+                    </select>
+                    <select name="scope" class="ox-ctl" aria-label="Which ones">
+                        <option value="read">Read ones only</option>
+                        <option value="all">Read and unread</option>
+                    </select>
+                    <button type="submit" class="ox-btn ox-danger ox-btn-sm" id="cleanBtn"><i class="bi bi-trash" aria-hidden="true"></i>Delete</button>
+                </div>
+            </form>
+        </section>
+    </div>
+</div>
+{% include 'admin/_ox_confirm.html' %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var f = document.getElementById('cleanForm');
+    f.addEventListener('submit', function (e) {
+        if (f.dataset.busy) { e.preventDefault(); return; }
+        var d = f.querySelector('[name=days]').value, s = f.querySelector('[name=scope]').value;
+        if (!window.confirm('Delete ' + (s === 'all' ? 'ALL (read and unread)' : 'read') + ' notifications older than ' + d + ' days? This cannot be undone.')) { e.preventDefault(); return; }
+        f.dataset.busy = '1'; document.getElementById('cleanBtn').disabled = true;
+    });
+    window.addEventListener('pageshow', function (e) { if (e.persisted) { delete f.dataset.busy; document.getElementById('cleanBtn').disabled = false; } });
+});
+</script>
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

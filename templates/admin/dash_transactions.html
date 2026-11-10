@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Transactions - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% if tab == 'transfers' %}
+    {% include 'admin/_ox_head.html' with title="Transactions" sub="Wallet transfers between users" label="Transferred (completed)" value=total|floatformat:2|intcomma %}
+    {% else %}
+    {% include 'admin/_ox_head.html' with title="Transactions" sub="Every wallet movement. Read only." label="Matching" value=sums.count %}
+    {% endif %}
+
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav_dash.html' with active="transactions" %}
+
+        <nav class="ox-nav" aria-label="Section">
+            <a href="?tab=transactions" class="ox-btn ox-btn-sm ox-btn-neutral"{% if tab == 'transactions' %} aria-current="page"{% endif %}>Transactions</a>
+            <a href="?tab=transfers" class="ox-btn ox-btn-sm ox-btn-neutral"{% if tab == 'transfers' %} aria-current="page"{% endif %}>Transfers</a>
+        </nav>
+
+        {% if tab == 'transactions' %}
+        <div class="ox-sum">
+            <div><span>Money in</span><b class="ox-pos">&#8358;{{ money_in|floatformat:2|intcomma }}</b></div>
+            <div><span>Money out</span><b class="ox-neg">&#8358;{{ money_out|floatformat:2|intcomma }}</b></div>
+        </div>
+        {% endif %}
+
+        <section class="ox-card" aria-labelledby="listTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-green"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="listTitle">{% if tab == 'transfers' %}Transfers{% else %}Transactions{% endif %}</h2><p class="ox-card-sub">Totals above follow your filters.</p></div>
+            </div>
+
+            <form method="get" class="ox-bar" role="search" id="filterForm">
+                <input type="hidden" name="tab" value="{{ tab }}">
+                {% if tab == 'transfers' %}
+                <select name="status" class="ox-ctl" aria-label="Status">
+                    {% for v, l in statuses %}<option value="{{ v }}"{% if status == v %} selected{% endif %}>{{ l }}</option>{% endfor %}
+                </select>
+                {% else %}
+                <select name="type" class="ox-ctl" aria-label="Type">
+                    <option value="">All types</option>
+                    {% for v, l in types %}<option value="{{ v }}"{% if type == v %} selected{% endif %}>{{ l }}</option>{% endfor %}
+                </select>
+                <select name="dir" class="ox-ctl" aria-label="Direction">
+                    <option value="">In and out</option>
+                    <option value="in"{% if dir == 'in' %} selected{% endif %}>Money in</option>
+                    <option value="out"{% if dir == 'out' %} selected{% endif %}>Money out</option>
+                </select>
+                {% endif %}
+                <input type="search" name="q" class="ox-ctl ox-grow" autocomplete="off" enterkeyhint="search" aria-label="Search" placeholder="{% if tab == 'transfers' %}Reference or username{% else %}Username, description or reference{% endif %}" value="{{ q }}">
+                <button type="submit" class="ox-btn ox-btn-neutral" aria-label="Search"><i class="bi bi-search" aria-hidden="true"></i></button>
+            </form>
+
+            {% if page_obj.object_list %}
+            <ul class="ox-list">
+                {% if tab == 'transactions' %}
+                {% for t in page_obj %}
+                <li class="ox-item">
+                    <div class="ox-who">
+                        <span class="ox-av" aria-hidden="true">{{ t.account.user.username|slice:":1" }}</span>
+                        <div class="ox-who-t">
+                            <b><a href="{% url 'dash_admin_account' t.account_id %}" style="color:inherit;display:inline;font-size:inherit">@{{ t.account.user.username }}</a></b>
+                            <span>{{ t.get_transaction_type_display }}</span>
+                        </div>
+                    </div>
+                    <span class="ox-pill ox-wash st {% if t.amount > 0 %}st-credit{% elif t.amount < 0 %}st-debit{% else %}st-inactive{% endif %}">{% if t.amount > 0 %}+{% endif %}&#8358;{{ t.amount|floatformat:2|intcomma }}</span>
+                    <dl class="ox-nums" style="--ncols:3">
+                        <div><dt>Description</dt><dd style="font-weight:400">{{ t.description|default:"-" }}</dd></div>
+                        <div><dt>When</dt><dd>{{ t.created_at|date:"M d, Y" }}<small>{{ t.created_at|date:"H:i" }}</small></dd></div>
+                        <div><dt>Reference</dt><dd style="font-weight:400">{{ t.reference_id|default:"-" }}</dd></div>
+                    </dl>
+                </li>
+                {% endfor %}
+                {% else %}
+                {% for t in page_obj %}
+                <li class="ox-item{% if t.status == 'failed' or t.status == 'reversed' %} is-bad{% endif %}">
+                    <div class="ox-who">
+                        <span class="ox-av" aria-hidden="true">{{ t.sender.user.username|slice:":1" }}</span>
+                        <div class="ox-who-t">
+                            <b>@{{ t.sender.user.username }} <i class="bi bi-arrow-right" aria-hidden="true"></i> @{{ t.recipient.user.username }}</b>
+                            <span>{{ t.reference }}</span>
+                        </div>
+                    </div>
+                    <span class="ox-pill ox-wash st st-{{ t.status }}">{{ t.get_status_display }}</span>
+                    <dl class="ox-nums" style="--ncols:3">
+                        <div><dt>Amount</dt><dd>&#8358;{{ t.amount|floatformat:2|intcomma }}</dd></div>
+                        <div><dt>Note</dt><dd style="font-weight:400">{{ t.note|default:"-" }}</dd></div>
+                        <div><dt>When</dt><dd>{{ t.created_at|date:"M d, Y" }}<small>{{ t.created_at|date:"H:i" }}</small></dd></div>
+                    </dl>
+                </li>
+                {% endfor %}
+                {% endif %}
+            </ul>
+            {% include 'admin/_ox_pager.html' %}
+            {% else %}
+            <div class="ox-empty">
+                <span class="ox-ico t-green"><i class="bi bi-inbox" aria-hidden="true"></i></span>
+                <div><h2>Nothing found</h2><p>Change the filters or the search.</p></div>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var f = document.getElementById('filterForm');
+    if (f) f.querySelectorAll('select').forEach(function (s) { s.addEventListener('change', function () { f.submit(); }); });
+});
+</script>
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

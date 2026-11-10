@@ -1,0 +1,41 @@
+"""Starter emails for the campaign form. Variables: {{first_name}}, {{username}}, {{site_name}}, {{site_url}}."""
+TEMPLATES = [
+    {
+        "key": 'welcome', "name": 'Welcome announcement', "type": 'announcement',
+        "best_for": 'Onboarding, new feature launches', "includes": 'Greeting, bullet points, button',
+        "subject": 'Welcome to OpenSell - Start selling today!',
+        "message": '<h2>Hi {{first_name}}! 👋</h2>\n\n<p>Welcome to <strong>OpenSell</strong> - Nigeria\'s fastest growing marketplace!</p>\n\n<p>We\'re excited to have you here. Here\'s what you can do right now:</p>\n\n<ul>\n    <li><strong>List your first product</strong> - It\'s free and takes 2 minutes</li>\n    <li><strong>Browse categories</strong> - Discover what others are selling</li>\n    <li><strong>Connect with buyers</strong> - Start making sales today</li>\n</ul>\n\n<p style="text-align: center; margin: 30px 0;">\n    <a href="{{site_url}}/create-listing" style="display: inline-block; padding: 15px 40px; background: #0d6efd; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">List Your First Product</a>\n</p>\n\n<p>Need help getting started? <a href="{{site_url}}/help">Visit our Help Center</a> or reply to this email.</p>\n\n<p>Happy selling!<br>\nThe OpenSell Team</p>',
+    },
+    {
+        "key": 'feature', "name": 'Feature update', "type": 'announcement',
+        "best_for": 'Product updates, new tools', "includes": 'Highlighted box, benefits list, button',
+        "subject": 'New feature: Boost your listings for more sales!',
+        "message": '<h2>🚀 Exciting News, {{first_name}}!</h2>\n\n<p>We just launched a powerful new feature that will help you sell faster:</p>\n\n<div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">\n    <h3 style="color: #0d6efd; margin-top: 0;">✨ Featured Listings</h3>\n    <p>Get your products seen by <strong>10x more buyers</strong> by making them featured!</p>\n    \n    <ul>\n        <li>Appear at the top of search results</li>\n        <li>Get highlighted with a special badge</li>\n        <li>Increase your sales by up to 300%</li>\n    </ul>\n</div>\n\n<p style="text-align: center; margin: 30px 0;">\n    <a href="{{site_url}}/my-products" style="display: inline-block; padding: 15px 40px; background: #198754; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Boost My Listings</a>\n</p>\n\n<p>Questions? We\'re here to help at <a href="mailto:support@opensell.online">support@opensell.online</a></p>',
+    },
+    {
+        "key": 'reminder', "name": 'Action reminder', "type": 'marketing',
+        "best_for": 'Re-engagement, inactive users', "includes": 'Tip box, list, strong button',
+        "subject": 'Your buyers are waiting… list something today!',
+        "message": '<h2>Hey {{first_name}},</h2>\n\n<p>We noticed you haven\'t listed anything recently. Don\'t miss out on potential sales!</p>\n\n<div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0;">\n    <strong>💡 Did you know?</strong><br>\n    Sellers who list products regularly get <strong>5x more inquiries</strong> than those who don\'t!\n</div>\n\n<p><strong>What\'s selling right now:</strong></p>\n<ul>\n    <li>📱 Electronics & Gadgets</li>\n    <li>👗 Fashion & Accessories</li>\n    <li>🏠 Home & Living</li>\n    <li>📚 Books & Education</li>\n</ul>\n\n<p style="text-align: center; margin: 30px 0;">\n    <a href="{{site_url}}/create-listing" style="display: inline-block; padding: 15px 40px; background: #0d6efd; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">List Something Now</a>\n</p>\n\n<p>It only takes 2 minutes to create a listing. Start earning today!</p>\n\n<p>Cheers,<br>\nThe OpenSell Team</p>',
+    },
+    {
+        "key": 'newsletter', "name": 'Newsletter', "type": 'marketing',
+        "best_for": 'Regular updates, community news', "includes": 'Sections, tips, two buttons',
+        "subject": 'This week on OpenSell: Top picks & trending items',
+        "message": '<h2>📰 Weekly Digest for {{first_name}}</h2>\n\n<p>Here\'s what\'s happening on OpenSell this week:</p>\n\n<div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">\n    <h3 style="color: #6610f2; margin-top: 0;">🔥 Trending This Week</h3>\n    <ul>\n        <li><strong>500+ new listings</strong> added in Lagos</li>\n        <li><strong>Electronics</strong> are selling fast</li>\n        <li><strong>Fashion items</strong> getting 2x more views</li>\n    </ul>\n</div>\n\n<h3>💡 Seller Tips:</h3>\n<ol>\n    <li><strong>Use clear photos</strong> - Products with 3+ photos sell faster</li>\n    <li><strong>Price competitively</strong> - Check similar listings</li>\n    <li><strong>Respond quickly</strong> - Fast replies = more sales</li>\n</ol>\n\n<p style="text-align: center; margin: 30px 0;">\n    <a href="{{site_url}}" style="display: inline-block; padding: 12px 30px; background: #0d6efd; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Browse Marketplace</a>\n    <a href="{{site_url}}/create-listing" style="display: inline-block; padding: 12px 30px; background: #198754; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; margin-left: 10px;">List Product</a>\n</p>',
+    },
+    {
+        "key": 'offer', "name": 'Special offer', "type": 'marketing',
+        "best_for": 'Sales, limited offers, promotions', "includes": 'Gradient header, offer box, urgency note',
+        "subject": '🎉 Limited Offer: Boost your sales this weekend!',
+        "message": '<div style="background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%); color: white; padding: 30px; text-align: center; border-radius: 8px; margin-bottom: 20px;">\n    <h1 style="color: white; margin: 0;">🎉 Weekend Special!</h1>\n    <p style="font-size: 1.2em; margin: 10px 0;">Get More Eyes on Your Products</p>\n</div>\n\n<p>Hi {{first_name}},</p>\n\n<p>This weekend only, we\'re offering something special to help you sell faster!</p>\n\n<div style="background: #d1ecf1; border: 2px solid #0dcaf0; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">\n    <h2 style="color: #0c5460; margin-top: 0;">🌟 Featured Listing Special</h2>\n    <p style="font-size: 1.3em; margin: 10px 0;"><strong>Make your top 3 products featured</strong></p>\n    <p style="font-size: 2em; color: #0d6efd; margin: 10px 0;"><strong>FREE</strong></p>\n    <p style="font-size: 0.9em; margin: 5px 0;">Usually ₦500 each • Offer ends Sunday</p>\n</div>\n\n<p><strong>Why feature your products?</strong></p>\n<ul>\n    <li>✅ Show up first in search results</li>\n    <li>✅ Get a special "Featured" badge</li>\n    <li>✅ Reach 10x more potential buyers</li>\n    <li>✅ Increase sales by up to 300%</li>\n</ul>\n\n<p style="text-align: center; margin: 30px 0;">\n    <a href="{{site_url}}/my-products" style="display: inline-block; padding: 18px 50px; background: #198754; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 1.1em;">Claim Your Free Features</a>\n</p>\n\n<div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0;">\n    <strong>⏰ Hurry!</strong> Offer expires Sunday at midnight. Don\'t miss out!\n</div>\n\n<p>See you on the marketplace!<br>\nThe OpenSell Team</p>',
+    },
+    {
+        "key": 'simple', "name": 'Simple message', "type": 'announcement',
+        "best_for": 'Quick notices', "includes": 'Greeting, message, one button',
+        "subject": 'Important update from OpenSell',
+        "message": '<h2>Hi {{first_name}},</h2>\n\n<p>We wanted to share an important update with you.</p>\n\n<p>[Your main message goes here. Keep it clear and concise.]</p>\n\n<p><strong>What this means for you:</strong></p>\n<ul>\n    <li>Point one</li>\n    <li>Point two</li>\n    <li>Point three</li>\n</ul>\n\n<p style="text-align: center; margin: 30px 0;">\n    <a href="{{site_url}}" style="display: inline-block; padding: 15px 40px; background: #0d6efd; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Learn More</a>\n</p>\n\n<p>If you have any questions, feel free to reply to this email.</p>\n\n<p>Best regards,<br>\nThe OpenSell Team</p>',
+    },
+]
+
+BY_KEY = {t["key"]: t for t in TEMPLATES}

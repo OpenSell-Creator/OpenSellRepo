@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Account tiers - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% url 'dash_admin_tier_new' as new_url %}
+    {% include 'admin/_ox_head.html' with title="Account tiers" sub="Free and Pro plan settings" label="Tiers" value=tiers|length action_url=new_url action_label="Add tier" %}
+
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav_dash.html' with active="tiers" %}
+
+        <div class="ox-alert t-navy ox-wash" role="note"><i class="bi bi-info-circle-fill" aria-hidden="true"></i><span>Price changes apply to the next purchase. People already subscribed keep what they paid for until it ends.</span></div>
+
+        <section class="ox-card" aria-labelledby="listTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-purple"><i class="bi bi-award" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="listTitle">Tiers</h2></div>
+            </div>
+            {% if tiers %}
+            <ul class="ox-list">
+                {% for t in tiers %}
+                <li class="ox-item">
+                    <div class="ox-who">
+                        <span class="ox-av" aria-hidden="true">{{ t.name|slice:":1" }}</span>
+                        <div class="ox-who-t"><b>{{ t.name }}</b><span>{{ t.get_tier_type_display }}</span></div>
+                    </div>
+                    <span class="ox-pill ox-wash st {% if t.is_subscription_based %}st-pro{% else %}st-free{% endif %}">{{ t.n_accounts }} account{{ t.n_accounts|pluralize }}</span>
+                    <dl class="ox-nums">
+                        <div><dt>Monthly</dt><dd>&#8358;{{ t.monthly_price|floatformat:0|intcomma }}</dd></div>
+                        <div><dt>Two months</dt><dd>&#8358;{{ t.two_month_price|floatformat:0|intcomma }}</dd></div>
+                        <div><dt>Max listings</dt><dd>{{ t.max_listings }}</dd></div>
+                        <div><dt>Boost discount</dt><dd>{{ t.boost_discount|floatformat:0 }}%</dd></div>
+                    </dl>
+                    <div class="ox-acts"><a href="{% url 'dash_admin_tier_edit' t.pk %}" class="ox-btn ox-btn-sm"><i class="bi bi-pencil" aria-hidden="true"></i>Edit</a></div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="ox-empty"><span class="ox-ico t-purple"><i class="bi bi-award" aria-hidden="true"></i></span><div><h2>No tiers yet</h2><p>Add a Free tier first, then a Pro tier.</p></div></div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

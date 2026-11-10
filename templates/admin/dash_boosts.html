@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Boosts - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% include 'admin/_ox_head.html' with title="Boosts" sub="Paid product promotions" label="Running now" value=running %}
+
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav_dash.html' with active="boosts" %}
+
+        <div class="ox-sum">
+            <div><span>Boost revenue, last 30 days</span><b>&#8358;{{ revenue.month|default:0|floatformat:2|intcomma }}</b></div>
+            <div><span>Boost revenue, all time</span><b>&#8358;{{ revenue.total|default:0|floatformat:2|intcomma }}</b></div>
+        </div>
+
+        {% include 'admin/_ox_tabs.html' with tabs=tabs current=status param="status" q=q cols=5 %}
+
+        <section class="ox-card" aria-labelledby="listTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-orange"><i class="bi bi-rocket-takeoff" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="listTitle">Boosts</h2><p class="ox-card-sub">Search ranking updates when boost scores are refreshed (Home, Listing tools).</p></div>
+            </div>
+
+            <form method="get" class="ox-bar" role="search">
+                <input type="hidden" name="status" value="{{ status }}">
+                <input type="search" name="q" class="ox-ctl ox-grow" autocomplete="off" enterkeyhint="search" aria-label="Search boosts" placeholder="Product title or username" value="{{ q }}">
+                <button type="submit" class="ox-btn ox-btn-neutral" aria-label="Search"><i class="bi bi-search" aria-hidden="true"></i></button>
+            </form>
+
+            {% if page_obj.object_list %}
+            <ul class="ox-list">
+                {% for b in page_obj %}
+                <li class="ox-item{% if b.state == 'expiring' %} is-flag{% endif %}">
+                    <div class="ox-who">
+                        <span class="ox-av" aria-hidden="true">{{ b.get_boost_type_display|slice:":1" }}</span>
+                        <div class="ox-who-t">
+                            <b>{{ b.product.title|truncatechars:48 }}</b>
+                            <span>{{ b.get_boost_type_display }} by @{{ b.user_account.user.username }}</span>
+                        </div>
+                    </div>
+                    <span class="ox-pill ox-wash st st-{{ b.state }}">{{ b.state_label }}</span>
+                    <dl class="ox-nums">
+                        <div><dt>Paid</dt><dd>&#8358;{{ b.final_cost|floatformat:2|intcomma }}{% if b.discount_applied %}<small>{{ b.discount_applied|floatformat:0 }}% off, {{ b.tier_at_purchase|default:"-" }}</small>{% endif %}</dd></div>
+                        <div><dt>Length</dt><dd>{{ b.duration_days }} day{{ b.duration_days|pluralize }}</dd></div>
+                        <div><dt>Started</dt><dd>{{ b.start_date|date:"M d, Y" }}<small>{{ b.start_date|date:"H:i" }}</small></dd></div>
+                        <div><dt>{% if b.state == 'expired' %}Ended{% else %}Ends{% endif %}</dt><dd>{{ b.end_date|date:"M d, Y" }}<small>{% if b.state == 'expired' %}{{ b.end_date|timesince }} ago{% else %}in {{ b.end_date|timeuntil }}{% endif %}</small></dd></div>
+                    </dl>
+                    <div class="ox-acts">
+                        <a href="{% url 'dash_admin_account' b.user_account_id %}" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-wallet2" aria-hidden="true"></i>Account</a>
+                        {% if b.can_cancel %}
+                        <button type="button" class="ox-btn ox-btn-sm ox-btn-neutral" data-confirm data-action="{% url 'dash_admin_boost_action' b.pk 'deactivate' %}"
+                                data-title="Switch off boost" data-message="Stops the promotion now. No money is refunded." data-label="Switch off"><i class="bi bi-pause-circle" aria-hidden="true"></i>Switch off</button>
+                        <button type="button" class="ox-btn ox-btn-sm ox-danger" data-confirm data-action="{% url 'dash_admin_boost_action' b.pk 'cancel' %}"
+                                data-title="Cancel and refund" data-message="Stops the promotion and refunds the unused full days to the seller's wallet."
+                                data-label="Cancel and refund" data-danger="1"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Cancel and refund</button>
+                        {% elif b.can_activate %}
+                        <button type="button" class="ox-btn ox-btn-sm" data-confirm data-action="{% url 'dash_admin_boost_action' b.pk 'activate' %}"
+                                data-title="Switch on boost" data-message="Resume this boost until its original end date." data-label="Switch on"><i class="bi bi-play-circle" aria-hidden="true"></i>Switch on</button>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% include 'admin/_ox_pager.html' %}
+            {% else %}
+            <div class="ox-empty"><span class="ox-ico t-orange"><i class="bi bi-rocket-takeoff" aria-hidden="true"></i></span><div><h2>No boosts here</h2><p>{% if q %}No results for "{{ q }}".{% else %}Nothing matches this filter.{% endif %}</p></div></div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% include 'admin/_ox_confirm.html' %}
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

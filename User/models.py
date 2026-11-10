@@ -7,7 +7,7 @@ from imagekit.processors import ResizeToFill
 from django.db import models
 from django.utils.crypto import get_random_string
 from django.urls import reverse
-from django.db.models import Avg
+from django.db.models import Avg, Q
 import random
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -567,9 +567,11 @@ class BulkEmail(models.Model):
     
     STATUS_CHOICES = [
         ('draft', 'Draft'),
-        ('sending', 'Sending'),
-        ('sent', 'Sent'),
+        ('sending', 'Sending now'),      # a batch is running right now
+        ('partial', 'In progress'),      # started, some recipients still waiting for a later day's batch
+        ('sent', 'Sent'),                # nobody is left to try
     ]
+    MAX_ATTEMPTS = 3                     # a failed recipient is retried automatically until this many tries
     
     # Basic info
     title = models.CharField(max_length=255)
@@ -609,7 +611,7 @@ class BulkEmail(models.Model):
         from User.models import EmailPreferences
         
         # FIXED: Don't use select_related here - causes conflict with deferred fields
-        users = User.objects.filter(is_active=True)
+        users = User.objects.filter(is_active=True).exclude(email='')   # no address, no email: never a recipient
         
         # CRITICAL: Filter by preferences (using EmailPreferences model)
         # Only users who opted IN for this type will receive emails
@@ -647,6 +649,60 @@ class BulkEmail(models.Model):
     def get_recipient_count(self):
         """Efficient count without loading all users"""
         return self.get_recipients_query().count()
+
+    # --- progress, based on the per-recipient log (BulkEmailRecipient) ---------------------------------
+    def sendable_recipients(self):
+        """Recipients still to be tried: not sent, not being sent right now, not out of attempts."""
+        blocked = self.recipient_logs.filter(
+            Q(status__in=['sent', 'sending']) | Q(status='failed', attempts__gte=self.MAX_ATTEMPTS)
+        ).values('user_id')
+        return self.get_recipients_query().exclude(id__in=blocked)
+
+    def unsent_recipients(self):
+        """Current recipients who have not received this campaign."""
+        sent = self.recipient_logs.filter(status='sent').values('user_id')
+        return self.get_recipients_query().exclude(id__in=sent)
+
+    def progress(self):
+        """{'sent': x, 'total': y, 'failed': n, 'percent': p}. total = already sent + still unsent, so someone who
+        unsubscribes mid-campaign leaves the total instead of leaving the campaign stuck below 100 percent."""
+        sent = self.recipient_logs.filter(status='sent').count()
+        total = sent + self.unsent_recipients().count()
+        failed = self.recipient_logs.filter(status='failed').count()
+        return {'sent': sent, 'total': total, 'failed': failed, 'percent': round(sent * 100 / total) if total else 100}
+
+class BulkEmailRecipient(models.Model):
+    """One row per person per campaign. The unique constraint is what guarantees nobody gets the same campaign twice."""
+    STATUS_CHOICES = [
+        ('sending', 'Sending'),   # claimed by a running batch, result not known yet
+        ('sent', 'Sent'),
+        ('failed', 'Failed'),
+    ]
+    campaign = models.ForeignKey(BulkEmail, on_delete=models.CASCADE, related_name='recipient_logs')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bulk_email_logs')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='sending')
+    attempts = models.PositiveSmallIntegerField(default=0)
+    error = models.CharField(max_length=255, blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['campaign', 'user'], name='uniq_bulk_email_campaign_user')]
+        indexes = [
+            models.Index(fields=['status', 'sent_at']),      # today's count of successful bulk sends
+            models.Index(fields=['campaign', 'status']),
+        ]
+
+    def __str__(self):
+        return f"{self.campaign_id} -> {self.user_id}: {self.status}"
+
+class EmailSendCounter(models.Model):
+    """Emails the provider accepted per UTC day, from every sender in the project (see User/email_backend.py)."""
+    day = models.DateField(unique=True)
+    total = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.day}: {self.total}"
 
 class SavedItem(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saved_items')

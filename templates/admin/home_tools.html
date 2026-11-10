@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Listing tools - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% include 'admin/_ox_head.html' with title="Listing tools" sub="Run the daily jobs by hand" label="Listings on the site" value=stats.total %}
+
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav.html' with active="tools" %}
+
+        <div class="ox-alert t-navy ox-wash" role="note"><i class="bi bi-info-circle-fill" aria-hidden="true"></i><span>These jobs already run on a schedule. Use them when you need the result now.</span></div>
+
+        <section class="ox-card" aria-labelledby="t1">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-red"><i class="bi bi-calendar-x" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="t1">Remove expired listings</h2><p class="ox-card-sub">Deletes standard and urgent listings past their expiry date, with their photos. Permanent listings are never touched.</p></div>
+                <span class="ox-pill ox-wash st st-expired"><i class="bi bi-calendar-x" aria-hidden="true"></i>{{ stats.expired }} due</span>
+            </div>
+            <button type="button" class="ox-btn ox-danger" data-confirm
+                    data-action="{% url 'home_admin_tool_run' 'purge-expired' %}"
+                    data-title="Remove expired listings" data-message="{{ stats.expired }} listing(s) will be deleted for good."
+                    data-label="Delete them" data-danger="1"{% if not stats.expired %} disabled{% endif %}><i class="bi bi-trash" aria-hidden="true"></i>Remove {{ stats.expired }} expired listing{{ stats.expired|pluralize }}</button>
+        </section>
+
+        <section class="ox-card" aria-labelledby="t2">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-orange"><i class="bi bi-envelope-exclamation" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="t2">Send expiry warnings</h2><p class="ox-card-sub">Emails sellers whose listing expires within {{ window }} days. The email only goes out when exactly 3 or 1 days are left, so running this twice in a day does not spam anyone.</p></div>
+                <span class="ox-pill ox-wash st st-expiring"><i class="bi bi-hourglass-split" aria-hidden="true"></i>{{ stats.expiring }} in window</span>
+            </div>
+            <button type="button" class="ox-btn" data-confirm
+                    data-action="{% url 'home_admin_tool_run' 'expiry-warnings' %}"
+                    data-title="Send expiry warnings" data-message="Checks {{ stats.expiring }} listing(s) and emails the sellers who are due a warning."
+                    data-label="Send"{% if not stats.expiring %} disabled{% endif %}><i class="bi bi-send" aria-hidden="true"></i>Send warnings</button>
+        </section>
+
+        <section class="ox-card" aria-labelledby="t3">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-navy"><i class="bi bi-rocket-takeoff" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="t3">Refresh boost scores</h2><p class="ox-card-sub">Recalculates the search ranking score for all {{ stats.total }} listings from active boosts and Pro status. It only saves the ones that changed.</p></div>
+            </div>
+            <button type="button" class="ox-btn" data-confirm
+                    data-action="{% url 'home_admin_tool_run' 'boost-scores' %}"
+                    data-title="Refresh boost scores" data-message="This reads every listing and can take a moment on a large catalog."
+                    data-label="Refresh"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>Refresh scores</button>
+        </section>
+    </div>
+</div>
+
+{% include 'admin/_ox_confirm.html' %}
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

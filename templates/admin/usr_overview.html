@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}People overview - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+{% include 'admin/_ox_usr_css.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% include 'admin/_ox_head.html' with title="Overview and tools" sub="Growth, verification and account health" label="Joined in 7 days" value=u.n_week|intcomma %}
+
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav_usr.html' with active="overview" %}
+
+        <div class="ox-sum">
+            <div><span>All accounts</span><b>{{ u.n_all|intcomma }}</b></div>
+            <div><span>Last 24 hours</span><b>{{ u.n_day|intcomma }}</b></div>
+            <div><span>Last 30 days</span><b>{{ u.n_month|intcomma }}</b></div>
+            <div><span>Logged in, 30 days</span><b>{{ u.n_active30|intcomma }}</b></div>
+            <div><span>Email verified</span><b>{{ verified_pct }}%</b></div>
+            <div><span>Have a photo</span><b>{{ p.n_photo|intcomma }}</b></div>
+            <div><span>Staff</span><b>{{ u.n_staff }}</b></div>
+            <div><span>Deactivated</span><b>{{ u.n_inactive }}</b></div>
+        </div>
+
+        <section class="ox-card" aria-labelledby="sgTitle">
+            <div class="ox-sec-h"><span class="ox-ico t-green"><i class="bi bi-graph-up" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="sgTitle">Sign-ups per week</h2><p class="ox-card-sub">Last 8 weeks, by the Monday that starts each week.</p></div></div>
+            {% if signups %}<div class="ox-bars">{% for r in signups %}<div><span>{{ r.label }}</span><i aria-hidden="true"><s style="width:{{ r.pct }}%"></s></i><span>{{ r.n }}</span></div>{% endfor %}</div>
+            {% else %}<p class="ox-help">No sign-ups in the last 8 weeks.</p>{% endif %}
+        </section>
+
+        <section class="ox-card" aria-labelledby="bzTitle">
+            <div class="ox-sec-h"><span class="ox-ico t-orange"><i class="bi bi-building-check" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="bzTitle">Business verification</h2></div></div>
+            <div class="ox-bars">{% for r in business %}<div><span>{{ r.label }}</span><i aria-hidden="true"><s style="width:{{ r.pct }}%"></s></i><span>{{ r.n|intcomma }}</span></div>{% endfor %}</div>
+        </section>
+
+        <section class="ox-card" aria-labelledby="toolTitle">
+            <div class="ox-sec-h"><span class="ox-ico t-red"><i class="bi bi-tools" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="toolTitle">Tools</h2></div></div>
+            <p class="ox-help" style="margin-bottom:var(--sp-2)">{% if u.n_noprofile %}{{ u.n_noprofile }} account{{ u.n_noprofile|pluralize }} {{ u.n_noprofile|pluralize:"has,have" }} no profile. Those users hit errors on pages that read their profile, so create the missing ones.{% else %}Every account has a profile.{% endif %}</p>
+            <button type="button" class="ox-btn ox-btn-sm{% if not u.n_noprofile %} ox-btn-neutral{% endif %}" data-confirm data-action="{% url 'usr_admin_tool' 'profiles' %}"
+                    data-title="Create missing profiles" data-message="Creates an empty profile, and their email preferences, for up to 500 accounts that have none."
+                    data-label="Create profiles"{% if not u.n_noprofile %} disabled{% endif %}><i class="bi bi-person-plus" aria-hidden="true"></i>Create missing profiles</button>
+        </section>
+    </div>
+</div>
+{% include 'admin/_ox_confirm.html' %}
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

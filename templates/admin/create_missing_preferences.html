@@ -1,48 +1,32 @@
 {% extends 'base.html' %}
+{% load static humanize %}
 
-{% block title %}Create Missing Email Preferences{% endblock %}
+{% block title %}Create email preferences - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+{% include 'admin/_ox_mail_css.html' %}
+</style>
+{% endblock %}
 
 {% block 'Body' %}
-<div class="container my-5">
-    <div class="row">
-        <div class="col-md-6 mx-auto">
-            <div class="card">
-                <div class="card-header bg-warning">
-                    <h4 class="mb-0">🔧 Create Missing Email Preferences</h4>
-                </div>
-                <div class="card-body">
-                    <p>
-                        <strong>{{ missing_count }} users</strong> don't have email preferences yet.
-                    </p>
-
-                    <p>This will create email preferences for them with these defaults:</p>
-                    <ul>
-                        <li>✅ <strong>Marketing:</strong> Opted-in (can unsubscribe anytime)</li>
-                        <li>✅ <strong>Announcements:</strong> Opted-in</li>
-                        <li>✅ <strong>Notifications:</strong> Opted-in</li>
-                    </ul>
-
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i>
-                        Users can change these preferences at any time from their account settings.
-                    </div>
-
-                    <form method="post">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-warning btn-lg w-100">
-                            Create Preferences for {{ missing_count }} Users
-                        </button>
-                    </form>
-
-                    <a href="{% url 'email_preference_dashboard' %}" class="btn btn-outline-secondary w-100 mt-2">
-                        Cancel
-                    </a>
-                </div>
-            </div>
-        </div>
+<div class="ox">
+    {% url 'email_preference_dashboard' as back_url %}
+    {% include 'admin/_ox_head.html' with title="Create missing preferences" sub="One-time fix for older accounts" back=back_url %}
+    <div class="ox-main">
+        <section class="ox-card" style="max-width:36rem;margin:0 auto;width:100%" aria-labelledby="fTitle">
+            <div class="ox-sec-h"><span class="ox-ico t-orange"><i class="bi bi-wrench-adjustable" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="fTitle">{{ missing_count|intcomma }} profile{{ missing_count|pluralize }} without preferences</h2></div></div>
+            {% if missing_count %}
+            <p class="ox-help">Each gets marketing, announcements and notifications switched on, the same as new sign-ups, and an unsubscribe link token. They can change it any time. Up to 1,000 per run.</p>
+            <form method="post" style="margin-top:var(--sp-3)">{% csrf_token %}<div class="ox-acts"><button type="submit" class="ox-btn"><i class="bi bi-check2" aria-hidden="true"></i>Create preferences</button><a href="{% url 'email_preference_dashboard' %}" class="ox-btn ox-btn-neutral">Cancel</a></div></form>
+            {% else %}
+            <p class="ox-help">Everyone already has preferences.</p>
+            <div class="ox-acts" style="margin-top:var(--sp-3)"><a href="{% url 'email_preference_dashboard' %}" class="ox-btn ox-btn-neutral">Back</a></div>
+            {% endif %}
+        </section>
     </div>
 </div>
 {% endblock %}
-
-{% block 'Footer'%}
-{% endblock%}
+{% block 'Footer' %}{% endblock %}

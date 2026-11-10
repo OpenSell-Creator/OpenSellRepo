@@ -3,7 +3,10 @@ from django.utils import timezone
 from django.conf import settings
 from django.urls import reverse
 from django.template.loader import render_to_string
+import datetime
 import hashlib
+import html
+import re
 from django.conf import settings
 import time
 from django.core.mail import EmailMultiAlternatives
@@ -279,128 +282,227 @@ def send_business_verification_rejected_email(user, rejection_reason=None):
 # ============================================================================
 
 def send_bulk_email_task(email_id):
+    """Kept so old callers and queued tasks keep working: sends today's batch for one campaign."""
+    return send_bulk_email_batch(email_id)
+
+
+# --- daily-cap sending ------------------------------------------------------------------------------------------
+# Provider quota (Resend transactional plan): 100 emails per day, shared by everything. Bulk campaigns may use at most
+# BULK_EMAIL_DAILY_CAP of them (default 75); the rest is kept for OTP, welcome and verification emails. A campaign is
+# sent over several days: each batch emails the next people who are not in BulkEmailRecipient yet, and stops at the cap.
+BULK_LOCK_KEY = 'bulk_email_batch_lock'
+BULK_LOCK_SECONDS = 15 * 60          # same 15 minutes as the send lock in the admin view
+BULK_MAX_SECONDS = 480               # stop a batch after 8 minutes, under the 600 s django-q task timeout
+BULK_STALE_CLAIM = datetime.timedelta(hours=2)
+BULK_BREAKER = 3                     # this many failures in a row means the provider is down: stop, do not burn attempts
+
+BULK_VAR_RE = re.compile(r'\{\{(first_name|username|site_name|site_url)\}\}')   # no spaces inside the braces
+BULK_SUBJECT_RE = re.compile(r'\{\{first_name\}\}')
+
+
+def bulk_daily_cap():
+    return max(0, int(getattr(settings, 'BULK_EMAIL_DAILY_CAP', 75)))
+
+
+def provider_daily_limit():
+    return max(0, int(getattr(settings, 'EMAIL_DAILY_LIMIT', 100)))
+
+
+def _utc_day_start():
+    return timezone.now().astimezone(datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def bulk_budget_today():
     """
-    Background task to send bulk email
-    FIXED: Removed .select_related('profile') which was causing the query error
+    How many more bulk emails may go out today (UTC day, which is when the provider's daily quota resets).
+    left = min(cap - bulk_used, limit - bulk_used - max(reserve, other_used)), reserve = limit - cap.
+    Other emails (OTP, welcome, ...) come from the counter in User/email_backend.py: counter total minus bulk sent.
+    If the counter is not installed it reads 0, and the result is the plain cap.
     """
-    from User.models import BulkEmail
-    from django.contrib.auth.models import User
-    from django.utils import timezone
-    
-    logger.info(f"Starting bulk email task for campaign {email_id}")
-    
-    try:
-        email_campaign = BulkEmail.objects.get(id=email_id)
-        
-        # Update status to sending
-        email_campaign.status = 'sending'
-        email_campaign.save(update_fields=['status'])
-        logger.info(f"Campaign {email_id} status updated to 'sending'")
-        
-        # Get recipients query (NOT executed yet - very fast)
-        recipients_query = email_campaign.get_recipients_query()
-        
-        # Process in chunks to avoid memory issues
-        CHUNK_SIZE = 50
-        total_sent = 0
-        total_failed = 0
-        
-        # FIXED: Get just IDs first, then fetch users WITHOUT select_related
-        user_ids = list(recipients_query.values_list('id', flat=True))
-        total_users = len(user_ids)
-        
-        logger.info(f"Campaign {email_id}: Found {total_users} recipients")
-        
-        # Process in chunks
-        for i in range(0, total_users, CHUNK_SIZE):
-            chunk_ids = user_ids[i:i + CHUNK_SIZE]
-            
-            # FIXED: Fetch users WITHOUT select_related to avoid conflict
-            chunk_users = User.objects.filter(id__in=chunk_ids)
-            
-            for user in chunk_users:
-                try:
-                    send_single_email(user, email_campaign)
-                    total_sent += 1
-                    
-                    # Update progress every 50 emails
-                    if total_sent % 50 == 0:
-                        email_campaign.total_sent = total_sent
-                        email_campaign.save(update_fields=['total_sent'])
-                        logger.info(f"Campaign {email_id}: Sent {total_sent}/{total_users} emails")
-                        
-                except Exception as e:
-                    total_failed += 1
-                    logger.error(f"Failed to send to {user.email}: {str(e)}")
-                    continue
-        
-        # Mark as complete
-        email_campaign.status = 'sent'
-        email_campaign.total_sent = total_sent
-        email_campaign.sent_at = timezone.now()
-        email_campaign.save(update_fields=['status', 'total_sent', 'sent_at'])
-        
-        logger.info(f"Campaign {email_id} completed: {total_sent} sent, {total_failed} failed")
-        
-        return {
-            'success': True, 
-            'sent': total_sent, 
-            'failed': total_failed
-        }
-        
-    except BulkEmail.DoesNotExist:
-        logger.error(f"Campaign {email_id} not found")
-        return {'success': False, 'error': 'Campaign not found'}
-        
-    except Exception as e:
-        logger.error(f"Bulk email {email_id} failed: {str(e)}", exc_info=True)
-        try:
-            email_campaign.status = 'draft'
-            email_campaign.save(update_fields=['status'])
-        except:
-            pass
-        return {'success': False, 'error': str(e)}
+    from django.db.models import Q
+    from User.models import BulkEmailRecipient, EmailSendCounter
+    start = _utc_day_start()
+    cap, limit = bulk_daily_cap(), provider_daily_limit()
+    sent = BulkEmailRecipient.objects.filter(status='sent', sent_at__gte=start).count()
+    in_flight = BulkEmailRecipient.objects.filter(status='sending', updated_at__gte=start).count()
+    total_today = EmailSendCounter.objects.filter(day=start.date()).values_list('total', flat=True).first() or 0
+    other = max(0, total_today - sent)
+    reserve = max(0, limit - cap)
+    used = sent + in_flight
+    left = max(0, min(cap - used, limit - used - max(reserve, other)))
+    return {'cap': cap, 'limit': limit, 'bulk_used': sent, 'in_flight': in_flight, 'other_used': other,
+            'reserve': reserve, 'left': left, 'counter_installed': total_today > 0}
+
+
+def bulk_send_plan(remaining):
+    """Plain numbers for the confirm page: how many go today and about how many days it takes."""
+    b = bulk_budget_today()
+    today = min(remaining, b['left'])
+    rest = remaining - today
+    per_day = max(1, b['cap'])
+    days = (1 if today else 0) + -(-rest // per_day)
+    return {'today': today, 'days': days, 'starts_today': today > 0, 'per_day': b['cap']}
+
+
+def _fill(template, values, escape):
+    def repl(m):
+        v = values[m.group(1)]
+        return html.escape(v) if escape else v
+    return BULK_VAR_RE.sub(repl, template or '')      # one pass, so a value is never expanded again
+
 
 def send_single_email(user, campaign):
-    """
-    Send email to single user - optimized for speed
-    """
+    """Send one campaign email. Raises on any problem, so the batch can log the failure for that person."""
     from django.core.mail import EmailMultiAlternatives
-    from django.conf import settings
-    import re
-    
-    # Get user's email preferences to generate unsubscribe link
+
     try:
-        prefs = user.profile.email_preferences
-    except:
-        # If no preferences, skip this user (they shouldn't receive emails)
-        logger.warning(f"User {user.username} has no email preferences, skipping")
-        return
-    
-    # Simple variable replacement (faster than template rendering)
-    first_name = user.first_name or user.username
-    
-    subject = campaign.subject.replace('{{first_name}}', first_name)
-    message = campaign.message.replace('{{first_name}}', first_name)
-    message = message.replace('{{username}}', user.username)
-    message = message.replace('{{site_name}}', settings.SITE_NAME)
-    message = message.replace('{{site_url}}', settings.SITE_URL)
-    
-    # Wrap in simple template
-    html_content = wrap_email_simple(message, user)
-    plain_content = strip_html_simple(message)
-    
-    # Send email
-    email = EmailMultiAlternatives(
-        subject=subject,
-        body=plain_content,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[user.email]
-    )
+        user.profile.email_preferences
+    except Exception:
+        raise ValueError('no email preferences')
+    if not user.email:
+        raise ValueError('no email address')
+
+    first_name = ' '.join((user.first_name or user.username).split())    # one line: it also goes in the subject
+    values = {'first_name': first_name, 'username': user.username,
+              'site_name': settings.SITE_NAME, 'site_url': settings.SITE_URL}
+
+    subject = BULK_SUBJECT_RE.sub(lambda m: first_name, campaign.subject)        # only first_name, plain text
+    html_content = wrap_email_simple(_fill(campaign.message, values, escape=True), user)
+    plain_content = html.unescape(strip_html_simple(_fill(campaign.message, values, escape=False)))
+
+    email = EmailMultiAlternatives(subject=subject, body=plain_content, from_email=settings.DEFAULT_FROM_EMAIL,
+                                   to=[user.email])
     email.attach_alternative(html_content, "text/html")
     email.send(fail_silently=False)
-    
-    logger.debug(f"Email sent to {user.email}")
+
+
+def _claim(campaign, user_id):
+    """Take the right to email this person. Returns the log row, or None if someone else has it or it is done."""
+    from django.db import transaction
+    from django.db.models import F
+    from User.models import BulkEmailRecipient
+    with transaction.atomic():
+        log, created = BulkEmailRecipient.objects.get_or_create(
+            campaign=campaign, user_id=user_id, defaults={'status': 'sending', 'attempts': 1})
+    if created:
+        return log
+    taken = BulkEmailRecipient.objects.filter(
+        pk=log.pk, status='failed', attempts__lt=campaign.MAX_ATTEMPTS
+    ).update(status='sending', attempts=F('attempts') + 1, error='')
+    return log if taken else None
+
+
+def _next_recipient_ids(campaign, limit):
+    """People never tried first, then earlier failures that still have attempts left. Each is returned once."""
+    failed_ids = list(campaign.recipient_logs.filter(status='failed', attempts__lt=campaign.MAX_ATTEMPTS)
+                      .values_list('user_id', flat=True))
+    base = campaign.sendable_recipients()
+    ids = list(base.exclude(id__in=failed_ids).order_by('id').values_list('id', flat=True)[:limit])
+    if len(ids) < limit and failed_ids:
+        ids += list(base.filter(id__in=failed_ids).order_by('id').values_list('id', flat=True)[:limit - len(ids)])
+    return ids
+
+
+def _release_stale_claims():
+    """A claim left in 'sending' for hours means a worker died mid-send. We cannot know whether the email left, and
+    sending twice is worse than missing one, so it is marked failed with no automatic retry. Staff can retry it."""
+    from User.models import BulkEmail, BulkEmailRecipient
+    return BulkEmailRecipient.objects.filter(
+        status='sending', updated_at__lt=timezone.now() - BULK_STALE_CLAIM
+    ).update(status='failed', attempts=BulkEmail.MAX_ATTEMPTS, error='Interrupted, delivery unknown')
+
+
+def _settle(campaign_id):
+    """After a batch: sent when nobody is left to try, otherwise in progress."""
+    from User.models import BulkEmail
+    c = BulkEmail.objects.get(pk=campaign_id)
+    done = not c.sendable_recipients().exists() and not c.recipient_logs.filter(status='sending').exists()
+    fields = {'total_sent': c.recipient_logs.filter(status='sent').count()}
+    if done:
+        fields.update(status='sent', sent_at=c.sent_at or timezone.now())
+    else:
+        fields.update(status='partial')
+    BulkEmail.objects.filter(pk=campaign_id, status='sending').update(**fields)
+    BulkEmail.objects.filter(pk=campaign_id).exclude(status='sending').update(total_sent=fields['total_sent'])
+
+
+def send_bulk_email_batch(campaign_id=None, max_emails=None):
+    """
+    Send today's batch. Called by the django-q schedule (no arguments), by the admin button and by the send view.
+    campaign_id: only that campaign; None: every campaign in progress, oldest first.
+    max_emails: extra limit, used for the in-request fallback when the queue is down.
+    Returns {'success', 'sent', 'failed', 'stopped'}; stopped is '', 'budget', 'time', 'provider' or 'locked'.
+    """
+    from django.core.cache import cache
+    if not cache.add(BULK_LOCK_KEY, 1, BULK_LOCK_SECONDS):
+        logger.info('Bulk batch skipped: another batch is running')
+        return {'success': True, 'sent': 0, 'failed': 0, 'stopped': 'locked'}
+    try:
+        return _run_batch(campaign_id, max_emails)
+    except Exception as e:
+        logger.error('Bulk batch failed: %s', e, exc_info=True)
+        return {'success': False, 'sent': 0, 'failed': 0, 'stopped': '', 'error': str(e)}
+    finally:
+        cache.delete(BULK_LOCK_KEY)
+
+
+def _run_batch(campaign_id, max_emails):
+    from django.contrib.auth.models import User
+    from django.db.models import F
+    from User.models import BulkEmail, BulkEmailRecipient
+
+    _release_stale_claims()
+    left = bulk_budget_today()['left']
+    if max_emails is not None:
+        left = min(left, max_emails)
+    deadline = time.monotonic() + BULK_MAX_SECONDS
+
+    campaigns = BulkEmail.objects.filter(status__in=('sending', 'partial')).order_by('created_at')
+    if campaign_id is not None:
+        campaigns = campaigns.filter(pk=campaign_id)
+
+    sent = failed = 0
+    streak = []
+    stopped = '' if left > 0 else 'budget'
+
+    for campaign in list(campaigns):
+        BulkEmail.objects.filter(pk=campaign.pk, status__in=('sending', 'partial')).update(status='sending')
+        try:
+            if not stopped:
+                for uid in _next_recipient_ids(campaign, left):
+                    if time.monotonic() > deadline:
+                        stopped = 'time'
+                        break
+                    user = User.objects.filter(pk=uid, is_active=True).first()
+                    log = _claim(campaign, uid) if user else None
+                    if log is None:
+                        continue
+                    try:
+                        send_single_email(user, campaign)
+                    except Exception as e:
+                        BulkEmailRecipient.objects.filter(pk=log.pk).update(status='failed', error=str(e)[:255])
+                        failed += 1
+                        streak.append(log.pk)
+                        logger.error('Campaign %s: failed for user %s: %s', campaign.pk, uid, e)
+                        if len(streak) >= BULK_BREAKER:
+                            # Looks like the provider, not these people: give the attempts back and stop for today.
+                            BulkEmailRecipient.objects.filter(pk__in=streak).update(attempts=F('attempts') - 1)
+                            stopped = 'provider'
+                            break
+                    else:
+                        BulkEmailRecipient.objects.filter(pk=log.pk).update(
+                            status='sent', sent_at=timezone.now(), error='')
+                        sent += 1
+                        left -= 1
+                        streak = []
+                        if left <= 0:
+                            stopped = 'budget'
+                            break
+        finally:
+            _settle(campaign.pk)
+
+    logger.info('Bulk batch done: %s sent, %s failed, stopped=%s', sent, failed, stopped or 'none')
+    return {'success': True, 'sent': sent, 'failed': failed, 'stopped': stopped}
 
 def wrap_email_simple(content, user):
     """
@@ -461,30 +563,42 @@ def strip_html_simple(html):
     return text.strip()
 
 def schedule_bulk_email(campaign):
-    """
-    Schedule email to be sent in background
-    FIXED: Using sync=False to prevent signature errors
-    """
+    """Queue a batch for one campaign (the daily schedule continues it on the following days)."""
     try:
         from django_q.tasks import async_task
-        
+
         logger.info(f"Scheduling bulk email campaign {campaign.id}")
-        
-        # FIXED: Use sync=False to ensure proper task serialization
         task_id = async_task(
-            'User.utils.send_bulk_email_task',
+            'User.utils.send_bulk_email_batch',
             campaign.id,
-            timeout=7200,  # 2 hours max
-            sync=False,  # CRITICAL: Prevent signature issues
+            timeout=600,  # must stay below Q_CLUSTER['retry']
+            sync=False,
             group=f'bulk_email_{campaign.id}'
         )
-        
         logger.info(f"Campaign {campaign.id} queued with task_id: {task_id}")
         return task_id
-        
+
     except Exception as e:
         logger.error(f"Failed to schedule campaign {campaign.id}: {str(e)}", exc_info=True)
         return None
+
+def ensure_bulk_email_batch_schedule(hour_utc=8):
+    """
+    Create the daily django-q Schedule that continues campaigns (safe to run twice).
+    Run once:  python manage.py shell -c "from User.utils import ensure_bulk_email_batch_schedule as e; print(e())"
+    """
+    from django_q.models import Schedule
+
+    existing = Schedule.objects.filter(func='User.utils.send_bulk_email_batch').first()
+    if existing:
+        return existing
+    now = timezone.now()
+    first = now.replace(hour=hour_utc, minute=0, second=0, microsecond=0)
+    if first <= now:
+        first += datetime.timedelta(days=1)
+    return Schedule.objects.create(
+        func='User.utils.send_bulk_email_batch', name='Bulk email daily batch',
+        schedule_type=Schedule.DAILY, repeats=-1, next_run=first)
 
 def ensure_all_users_have_email_preferences():
     """

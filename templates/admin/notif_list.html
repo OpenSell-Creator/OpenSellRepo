@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Browse notifications - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+{% include 'admin/_ox_notif_css.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% include 'admin/_ox_head.html' with title="Browse notifications" sub="Everything users have received" label="All notifications" value=total|intcomma %}
+
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav_notif.html' with active="list" %}
+
+        <section class="ox-card" aria-labelledby="listTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-navy"><i class="bi bi-envelope" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="listTitle">Notifications</h2></div>
+                <a href="{% url 'notif_admin_compose' %}" class="ox-btn ox-btn-sm"><i class="bi bi-plus-lg" aria-hidden="true"></i>Send</a>
+            </div>
+
+            <form method="get" class="ox-bar" role="search" id="filterForm">
+                <select name="category" class="ox-ctl" aria-label="Category">
+                    <option value="">All categories</option>
+                    {% for v, l in categories %}<option value="{{ v }}"{% if category == v %} selected{% endif %}>{{ l }}</option>{% endfor %}
+                </select>
+                <select name="state" class="ox-ctl" aria-label="Read state">
+                    <option value="">Read and unread</option>
+                    <option value="unread"{% if state == 'unread' %} selected{% endif %}>Unread</option>
+                    <option value="read"{% if state == 'read' %} selected{% endif %}>Read</option>
+                </select>
+                <select name="priority" class="ox-ctl" aria-label="Priority">
+                    <option value="">Any priority</option>
+                    {% for v, l in priorities %}<option value="{{ v }}"{% if priority == v %} selected{% endif %}>{{ l }}</option>{% endfor %}
+                </select>
+                <input type="search" name="q" class="ox-ctl ox-grow" autocomplete="off" enterkeyhint="search" aria-label="Search" placeholder="Username, title or text" value="{{ q }}">
+                <button type="submit" class="ox-btn ox-btn-neutral" aria-label="Search"><i class="bi bi-search" aria-hidden="true"></i></button>
+            </form>
+
+            {% if page_obj.object_list %}
+            <ul class="ox-list">
+                {% for n in page_obj %}
+                <li class="ox-item has-body{% if n.priority == 'urgent' %} is-bad{% elif n.priority == 'high' %} is-flag{% endif %}">
+                    <div class="ox-who">
+                        <span class="ox-av" aria-hidden="true">{{ n.recipient.username|slice:":1" }}</span>
+                        <div class="ox-who-t"><b>{{ n.title|truncatechars:70 }}</b><span>to @{{ n.recipient.username }}</span></div>
+                    </div>
+                    <span class="ox-pill ox-wash pr-{{ n.priority }}">{{ n.get_priority_display }}</span>
+                    <div class="ox-body"><div class="ox-quote">{{ n.message|truncatechars:280|linebreaksbr }}</div></div>
+                    <dl class="ox-nums">
+                        <div><dt>Category</dt><dd>{{ n.get_category_display }}</dd></div>
+                        <div><dt>Sent</dt><dd>{{ n.created_at|date:"M d, Y" }}<small>{{ n.created_at|date:"H:i" }}</small></dd></div>
+                        <div><dt>Status</dt><dd>{% if n.is_read %}Read{% if n.read_at %}<small>{{ n.read_at|date:"M d, H:i" }}</small>{% endif %}{% else %}Unread{% endif %}</dd></div>
+                        <div><dt>Linked to</dt><dd>{% if n.content_type %}{{ n.content_type.model|title }}{% else %}-{% endif %}{% if n.action_text %}<small>Button: {{ n.action_text }}</small>{% endif %}</dd></div>
+                    </dl>
+                    <div class="ox-acts">
+                        <a href="{% url 'notif_admin_compose' %}?to={{ n.recipient.username|urlencode }}" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-reply" aria-hidden="true"></i>Message them</a>
+                        <button type="button" class="ox-btn ox-btn-sm ox-danger" data-confirm data-action="{% url 'notif_admin_delete' n.pk %}"
+                                data-title="Delete notification" data-message="Removes this one notification from @{{ n.recipient.username }}'s inbox."
+                                data-label="Delete" data-danger="1"><i class="bi bi-trash" aria-hidden="true"></i>Delete</button>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% include 'admin/_ox_pager.html' %}
+            {% else %}
+            <div class="ox-empty"><span class="ox-ico t-navy"><i class="bi bi-inbox" aria-hidden="true"></i></span><div><h2>No notifications found</h2><p>{% if q %}No results for "{{ q }}".{% else %}Nothing matches these filters.{% endif %}</p></div></div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% include 'admin/_ox_confirm.html' %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var f = document.getElementById('filterForm');
+    f.querySelectorAll('select').forEach(function (s) { s.addEventListener('change', function () { f.submit(); }); });
+});
+</script>
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

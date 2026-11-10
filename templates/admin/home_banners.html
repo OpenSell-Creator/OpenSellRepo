@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Banners - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+/* Banner preview strip: the real ratios, 6:1 desktop and 4:1 mobile */
+.ox-strip { aspect-ratio: 6 / 1; width: 100%; }
+.ox-strip-m { aspect-ratio: 4 / 1; width: min(100%, 14rem); margin-top: var(--sp-2); }
+.ox-strip img, .ox-strip-m img { width: 100%; height: 100%; object-fit: cover; }
+.ox-cap { margin-bottom: var(--sp-1); font-size: var(--font-size-xs); color: var(--text-secondary); }
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% url 'home_admin_banner_new' as new_url %}
+    {% include 'admin/_ox_head.html' with title="Banners" sub="Adverts on the homepage and across the site" label="Live now" value=counts.live action_url=new_url action_label="Add banner" %}
+
+    <div class="ox-main">
+        {% include 'admin/_ox_subnav.html' with active="banners" %}
+
+        <nav class="ox-tabs" style="--cols:5" aria-label="Filter by status">
+            <a href="?status=live&amp;location={{ location }}" class="ox-tile ox-tab t-green"{% if status == 'live' %} aria-current="true"{% endif %}><span>Live</span><b>{{ counts.live }}</b></a>
+            <a href="?status=scheduled&amp;location={{ location }}" class="ox-tile ox-tab t-orange"{% if status == 'scheduled' %} aria-current="true"{% endif %}><span>Scheduled</span><b>{{ counts.scheduled }}</b></a>
+            <a href="?status=expired&amp;location={{ location }}" class="ox-tile ox-tab t-red"{% if status == 'expired' %} aria-current="true"{% endif %}><span>Expired</span><b>{{ counts.expired }}</b></a>
+            <a href="?status=off&amp;location={{ location }}" class="ox-tile ox-tab t-navy"{% if status == 'off' %} aria-current="true"{% endif %}><span>Switched off</span><b>{{ counts.off }}</b></a>
+            <a href="?status=all&amp;location={{ location }}" class="ox-tile ox-tab t-navy"{% if status == 'all' %} aria-current="true"{% endif %}><span>All</span><b>{{ counts.all }}</b></a>
+        </nav>
+
+        <section class="ox-card" aria-labelledby="listTitle">
+            <div class="ox-sec-h">
+                <span class="ox-ico t-navy"><i class="bi bi-image" aria-hidden="true"></i></span>
+                <div class="ox-sec-t"><h2 class="ox-h2" id="listTitle">Banners</h2></div>
+            </div>
+
+            <form method="get" class="ox-bar" id="filterForm">
+                <input type="hidden" name="status" value="{{ status }}">
+                <select name="location" class="ox-ctl" aria-label="Filter by position">
+                    <option value="">All positions</option>
+                    {% for value, label in locations %}<option value="{{ value }}"{% if location == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+                </select>
+            </form>
+
+            {% if page_obj.object_list %}
+            <ul class="ox-list">
+                {% for b in page_obj %}
+                <li class="ox-item has-body{% if b.state == 'expired' %} is-bad{% elif b.state == 'scheduled' %} is-flag{% endif %}">
+                    <div class="ox-who">
+                        <div class="ox-who-t">
+                            <b>{{ b.get_display_location_display }}</b>
+                            <span>{{ b.url|truncatechars:48 }}</span>
+                        </div>
+                    </div>
+                    <span class="ox-pill ox-wash st st-{{ b.state }}"><i class="bi {% if b.state == 'live' %}bi-broadcast{% elif b.state == 'scheduled' %}bi-clock{% elif b.state == 'expired' %}bi-calendar-x{% else %}bi-pause-circle{% endif %}" aria-hidden="true"></i>{{ b.state_label }}</span>
+
+                    <div class="ox-body">
+                        <p class="ox-cap">Desktop</p>
+                        <div class="ox-frame ox-strip"{% if b.background_color %} style="background-color:{{ b.background_color }}"{% endif %}><img src="{{ b.image.url }}" alt="Desktop banner" loading="lazy"></div>
+                        {% if b.mobile_image %}
+                        <p class="ox-cap" style="margin-top:var(--sp-2)">Mobile</p>
+                        <div class="ox-frame ox-strip-m"{% if b.background_color %} style="background-color:{{ b.background_color }}"{% endif %}><img src="{{ b.mobile_image.url }}" alt="Mobile banner" loading="lazy"></div>
+                        {% endif %}
+                    </div>
+
+                    <dl class="ox-nums" style="--ncols:3">
+                        <div><dt>Priority</dt><dd>{{ b.priority }}</dd></div>
+                        <div><dt>Starts</dt><dd>{% if b.start_date %}{{ b.start_date|date:"M d, Y" }}<small>{{ b.start_date|date:"H:i" }}</small>{% else %}Immediately{% endif %}</dd></div>
+                        <div><dt>Ends</dt><dd>{% if b.end_date %}{{ b.end_date|date:"M d, Y" }}<small>{{ b.end_date|date:"H:i" }}</small>{% else %}No end{% endif %}</dd></div>
+                    </dl>
+
+                    <div class="ox-acts">
+                        <a href="{% url 'home_admin_banner_edit' b.pk %}?next={{ request.get_full_path|urlencode }}" class="ox-btn ox-btn-sm"><i class="bi bi-pencil" aria-hidden="true"></i>Edit</a>
+                        <form method="post" action="{% url 'home_admin_banner_toggle' b.pk %}">
+                            {% csrf_token %}<input type="hidden" name="next" value="{{ next_url }}">
+                            <button type="submit" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi {% if b.is_active %}bi-pause-circle{% else %}bi-play-circle{% endif %}" aria-hidden="true"></i>{% if b.is_active %}Switch off{% else %}Switch on{% endif %}</button>
+                        </form>
+                        <a href="{{ b.url }}" target="_blank" rel="noopener noreferrer" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>Open link</a>
+                        <button type="button" class="ox-btn ox-btn-sm ox-danger" data-confirm
+                                data-action="{% url 'home_admin_banner_delete' b.pk %}"
+                                data-title="Delete banner" data-message="This removes the banner and its image files. It cannot be undone."
+                                data-label="Delete" data-danger="1"><i class="bi bi-trash" aria-hidden="true"></i>Delete</button>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% include 'admin/_ox_pager.html' %}
+            {% else %}
+            <div class="ox-empty">
+                <span class="ox-ico t-navy"><i class="bi bi-image" aria-hidden="true"></i></span>
+                <div>
+                    <h2>No banners here</h2>
+                    <p>{% if status != 'all' or location %}Nothing matches this filter.{% else %}Add the first banner to show it on the site.{% endif %}</p>
+                </div>
+                {% if status == 'all' and not location %}<a href="{{ new_url }}" class="ox-btn ox-btn-sm"><i class="bi bi-plus-lg" aria-hidden="true"></i>Add banner</a>{% endif %}
+            </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+
+{% include 'admin/_ox_confirm.html' %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var f = document.getElementById('filterForm');
+    if (f) f.querySelector('select').addEventListener('change', function () { f.submit(); });
+});
+</script>
+{% endblock %}
+{% block 'Footer' %}{% endblock %}

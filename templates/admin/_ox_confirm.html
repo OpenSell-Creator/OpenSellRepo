@@ -1,0 +1,68 @@
+{# One reusable confirm modal. Any button with data-confirm opens it. Needs: next_url in context (optional). #}
+{# Attributes: data-action (POST url), data-title, data-message, data-label, data-danger="1", data-reason="Label" (adds a required textarea named "reason") #}
+<div class="modal fade" id="oxConfirm" tabindex="-1" aria-labelledby="oxConfirmTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="oxConfirmTitle">Confirm action</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" id="oxConfirmForm">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ next_url|default:'' }}">
+                <div class="modal-body">
+                    <p id="oxConfirmMsg"></p>
+                    <div id="oxConfirmReasonWrap" hidden>
+                        <label for="oxConfirmReason" class="ox-lab" id="oxConfirmReasonLab">Reason</label>
+                        <textarea class="ox-ctl" name="reason" id="oxConfirmReason" rows="3" maxlength="500"></textarea>
+                    </div>
+                    <div class="ox-mf">
+                        <button type="button" class="ox-btn ox-btn-neutral" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="ox-btn" id="oxConfirmBtn">Confirm</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var byId = function (id) { return document.getElementById(id); };
+    var modalEl = byId('oxConfirm'), form = byId('oxConfirmForm');
+    if (!modalEl || !form) return;
+    var btn = byId('oxConfirmBtn'), wrap = byId('oxConfirmReasonWrap'), reason = byId('oxConfirmReason');
+
+    document.querySelectorAll('[data-confirm]').forEach(function (el) {
+        el.addEventListener('click', function () {
+            var needsReason = el.getAttribute('data-reason');
+            form.action = el.getAttribute('data-action');
+            byId('oxConfirmTitle').textContent = el.getAttribute('data-title') || 'Confirm action';
+            byId('oxConfirmMsg').textContent = el.getAttribute('data-message') || 'Are you sure?';
+            btn.textContent = el.getAttribute('data-label') || 'Confirm';
+            btn.classList.toggle('ox-danger', el.getAttribute('data-danger') === '1');
+            wrap.hidden = !needsReason;
+            reason.required = !!needsReason;
+            reason.value = '';
+            if (needsReason) byId('oxConfirmReasonLab').textContent = needsReason;
+            delete form.dataset.busy;
+            form.removeAttribute('aria-busy');
+            if (window.bootstrap) {
+                window.bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            } else if (window.confirm(byId('oxConfirmMsg').textContent)) {
+                if (needsReason) { var r = window.prompt(needsReason); if (!r) return; reason.value = r; }
+                form.submit();
+            }
+        });
+    });
+
+    // Ignore a second submit
+    form.addEventListener('submit', function (e) {
+        if (form.dataset.busy) { e.preventDefault(); return; }
+        form.dataset.busy = '1';
+        form.setAttribute('aria-busy', 'true');
+    });
+    window.addEventListener('pageshow', function (e) {
+        if (e.persisted) { delete form.dataset.busy; form.removeAttribute('aria-busy'); }
+    });
+});
+</script>

@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}@{{ account.user.username }} - Admin{% endblock %}
+
+{% block page_css %}
+<style>
+{% include 'admin/_ox_core.html' %}
+{% include 'admin/_ox_dash_css.html' %}
+</style>
+{% endblock %}
+
+{% block 'Body' %}
+<div class="ox">
+    {% url 'dash_admin_accounts' as list_url %}
+    {% include 'admin/_ox_head.html' with title=account.user.username sub=account.user.email label="Wallet balance" value=account.balance|floatformat:2|intcomma back=list_url %}
+
+    <div class="ox-main">
+        <div class="ox-layout">
+            <div class="ox-col ox-stack">
+                <section class="ox-card" aria-labelledby="balTitle">
+                    <div class="ox-sec-h">
+                        <span class="ox-ico t-green"><i class="bi bi-wallet2" aria-hidden="true"></i></span>
+                        <div class="ox-sec-t"><h2 class="ox-h2" id="balTitle">Money</h2><p class="ox-card-sub">Only deposits can be withdrawn. Bonus credit cannot.</p></div>
+                    </div>
+                    <dl class="ox-dl">
+                        <div><dt>Wallet balance</dt><dd>&#8358;{{ account.balance|floatformat:2|intcomma }}</dd></div>
+                        <div><dt>Ever deposited</dt><dd>&#8358;{{ deposited|floatformat:2|intcomma }}</dd></div>
+                        <div><dt>Already withdrawn</dt><dd>&#8358;{{ withdrawn|floatformat:2|intcomma }}</dd></div>
+                        <div><dt>Withdrawable now</dt><dd>&#8358;{{ withdrawable|floatformat:2|intcomma }}</dd></div>
+                        <div><dt>Bonus credit ever given</dt><dd>&#8358;{{ bonus|floatformat:2|intcomma }}</dd></div>
+                    </dl>
+                </section>
+
+                <section class="ox-card" aria-labelledby="tierTitle">
+                    <div class="ox-sec-h">
+                        <span class="ox-ico t-purple"><i class="bi bi-award" aria-hidden="true"></i></span>
+                        <div class="ox-sec-t"><h2 class="ox-h2" id="tierTitle">Tier and subscription</h2></div>
+                        <span class="ox-pill ox-wash st {% if sub_active %}st-pro{% else %}st-free{% endif %}">{{ effective.name|default:"Free" }}</span>
+                    </div>
+                    <dl class="ox-dl">
+                        <div><dt>Stored tier</dt><dd>{{ account.status.name|default:"None" }}</dd></div>
+                        <div><dt>Tier in effect</dt><dd>{{ effective.name|default:"Free" }}</dd></div>
+                        {% if sub %}
+                        <div><dt>Plan</dt><dd>{% if sub.type == 'two_month' %}Two months{% else %}Monthly{% endif %}</dd></div>
+                        <div><dt>Started</dt><dd>{{ sub.start_date|date:"M d, Y H:i" }}</dd></div>
+                        <div><dt>{% if sub_active %}Expires{% else %}Expired{% endif %}</dt><dd>{{ sub.end_date|date:"M d, Y H:i" }}</dd></div>
+                        {% else %}
+                        <div><dt>Subscription</dt><dd>None</dd></div>
+                        {% endif %}
+                    </dl>
+                    {% if account.status and account.status.is_subscription_based and not sub_active %}
+                    <div class="ox-alert t-orange ox-wash" role="note" style="margin-top:var(--sp-3)"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i><span>The subscription has lapsed but the stored tier is still {{ account.status.name }}. The user already gets Free benefits. Re-check to make the record match.</span></div>
+                    {% endif %}
+                    <form method="post" action="{% url 'dash_admin_account_recheck' account.pk %}" style="margin-top:var(--sp-3)">
+                        {% csrf_token %}<input type="hidden" name="next" value="{{ next_url }}">
+                        <button type="submit" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>Re-check tier</button>
+                    </form>
+                </section>
+
+                <section class="ox-card" aria-labelledby="txTitle">
+                    <div class="ox-sec-h">
+                        <span class="ox-ico t-navy"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+                        <div class="ox-sec-t"><h2 class="ox-h2" id="txTitle">Recent transactions</h2></div>
+                        <a href="{% url 'dash_admin_transactions' %}?q={{ account.user.username|urlencode }}" class="ox-btn ox-btn-sm ox-btn-neutral">See all</a>
+                    </div>
+                    {% if txns %}
+                    <dl class="ox-dl">
+                        {% for t in txns %}<div><dt>{{ t.get_transaction_type_display }}<br><small>{{ t.created_at|date:"M d, Y H:i" }}</small></dt><dd class="{% if t.amount < 0 %}ox-neg{% elif t.amount > 0 %}ox-pos{% endif %}">{% if t.amount > 0 %}+{% endif %}&#8358;{{ t.amount|floatformat:2|intcomma }}</dd></div>{% endfor %}
+                    </dl>
+                    {% else %}<p class="ox-help">No transactions yet.</p>{% endif %}
+                </section>
+
+                {% if wds %}
+                <section class="ox-card" aria-labelledby="wdTitle">
+                    <div class="ox-sec-h"><span class="ox-ico t-green"><i class="bi bi-cash-coin" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="wdTitle">Withdrawal requests</h2></div></div>
+                    <dl class="ox-dl">
+                        {% for w in wds %}<div><dt><a href="{% url 'dash_admin_withdrawal_detail' w.pk %}">{{ w.reference }}</a></dt><dd>&#8358;{{ w.requested_amount|floatformat:0|intcomma }} <span class="ox-pill ox-wash st st-{{ w.status }}">{{ w.get_status_display }}</span></dd></div>{% endfor %}
+                    </dl>
+                </section>
+                {% endif %}
+
+                {% if boosts %}
+                <section class="ox-card" aria-labelledby="bsTitle">
+                    <div class="ox-sec-h"><span class="ox-ico t-orange"><i class="bi bi-rocket-takeoff" aria-hidden="true"></i></span><div class="ox-sec-t"><h2 class="ox-h2" id="bsTitle">Recent boosts</h2></div></div>
+                    <dl class="ox-dl">
+                        {% for b in boosts %}<div><dt>{{ b.product.title|truncatechars:34 }}<br><small>{{ b.get_boost_type_display }}, {{ b.duration_days }} day{{ b.duration_days|pluralize }}</small></dt><dd>&#8358;{{ b.final_cost|floatformat:2|intcomma }}</dd></div>{% endfor %}
+                    </dl>
+                </section>
+                {% endif %}
+            </div>
+
+            <aside class="ox-col ox-sticky ox-stack" aria-label="Account tools">
+                <section class="ox-card">
+                    <div class="ox-sec-h"><div class="ox-sec-t"><h2 class="ox-h2">Give bonus credit</h2><p class="ox-card-sub">Adds to the wallet. Cannot be withdrawn.</p></div></div>
+                    {% if can_credit %}
+                    <form method="post" action="{% url 'dash_admin_account_credit' account.pk %}" class="ox-stack" id="bonusForm">
+                        {% csrf_token %}
+                        <div class="ox-field"><label for="{{ bonus_form.amount.id_for_label }}" class="ox-lab">Amount (&#8358;)</label>{{ bonus_form.amount }}<p class="ox-help">Up to &#8358;1,000,000 at a time.</p></div>
+                        <div class="ox-field"><label for="{{ bonus_form.reason.id_for_label }}" class="ox-lab">Reason</label>{{ bonus_form.reason }}<p class="ox-help">Saved in the transaction description.</p></div>
+                        <button type="submit" class="ox-btn" id="bonusBtn"><i class="bi bi-gift" aria-hidden="true"></i>Credit wallet</button>
+                    </form>
+                    {% else %}
+                    <p class="ox-help">Only a superuser can credit a wallet.</p>
+                    {% endif %}
+                </section>
+
+                {% if affiliate %}
+                <section class="ox-card">
+                    <div class="ox-sec-h"><div class="ox-sec-t"><h2 class="ox-h2">Affiliate</h2></div><span class="ox-pill ox-wash st st-{{ affiliate.status }}">{{ affiliate.get_status_display }}</span></div>
+                    <a href="{% url 'admin_affiliate_detail' affiliate.pk %}" class="ox-btn ox-btn-sm ox-btn-neutral"><i class="bi bi-people" aria-hidden="true"></i>Open affiliate</a>
+                </section>
+                {% endif %}
+
+                {% if vaccounts %}
+                <section class="ox-card">
+                    <div class="ox-sec-h"><div class="ox-sec-t"><h2 class="ox-h2">Virtual accounts</h2></div></div>
+                    <dl class="ox-dl">
+                        {% for v in vaccounts %}<div><dt>{{ v.bank_name }}</dt><dd>{{ v.account_number }}</dd></div>{% endfor %}
+                    </dl>
+                </section>
+                {% endif %}
+            </aside>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var f = document.getElementById('bonusForm');
+    if (!f) return;
+    f.addEventListener('submit', function (e) {
+        if (f.dataset.busy) { e.preventDefault(); return; }
+        var amt = f.querySelector('[name=amount]').value;
+        if (!window.confirm('Credit ₦' + amt + ' to @{{ account.user.username|escapejs }}? This cannot be undone.')) { e.preventDefault(); return; }
+        f.dataset.busy = '1';
+        document.getElementById('bonusBtn').disabled = true;
+    });
+    window.addEventListener('pageshow', function (e) { if (e.persisted) { delete f.dataset.busy; document.getElementById('bonusBtn').disabled = false; } });
+});
+</script>
+{% endblock %}
+{% block 'Footer' %}{% endblock %}
